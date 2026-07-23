@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
@@ -42,6 +42,13 @@ export function SessionsPage() {
     setSessionPendingDeletion(null);
     await removeSession(id);
   };
+
+  // Scrolling here (rather than in the pagination click handler) waits for the new
+  // page's shorter/taller content to actually render — otherwise the smooth scroll
+  // animates against the old document height and gets clamped mid-flight.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [page]);
 
   const hasActiveFilter = searchQuery.trim().length > 0 || projectFilter.length > 0;
 
