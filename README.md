@@ -1,5 +1,7 @@
 # Claude Session Manager
 
+## IMPORTANTE: HOJE SÓ IMPLEMENTADO PARA FUNCIONAR NO UBUNTU
+
 Gerenciador local das sessões do [Claude CLI](https://claude.com/claude-code). Lê diretamente os
 arquivos `*.jsonl` que o `claude` grava em `~/.claude/projects`, sem depender de nenhum servidor
 externo — tudo roda na sua máquina.
@@ -11,8 +13,7 @@ externo — tudo roda na sua máquina.
 
 ## Pré-requisitos
 
-- Linux com ambiente GNOME (o atalho de um clique e o "Continuar" usam `gnome-terminal` /
-  `x-terminal-emulator` / `konsole` / `xfce4-terminal` / `xterm` — o primeiro que existir)
+- Linux com ambiente GNOME
 - [Node.js](https://nodejs.org/) 20+ e npm
 - [Claude CLI](https://claude.com/claude-code) instalado e disponível no `PATH` (comando `claude`)
 
@@ -24,56 +25,53 @@ cd claude-cli-local-session-manager
 npm install
 ```
 
-### Criar o atalho no GNOME (opcional, recomendado)
-
-```bash
-./install-shortcut.sh
-```
-
-Isso cria um ícone **Claude Session Manager** na sua Área de Trabalho e no menu de aplicativos do
-GNOME (Atividades), já apontando para a pasta onde você clonou o projeto. Pode clicar nesse ícone
-sempre que quiser usar o app — ele abre um terminal, sobe frontend e backend, e abre o navegador
-sozinho.
-
-Se depois mover a pasta do projeto para outro lugar, rode `./install-shortcut.sh` de novo lá dentro
-para regerar o atalho com o caminho novo.
-
 ## Como rodar
-
-Manualmente, sem o atalho:
 
 ```bash
 npm run dev
 ```
 
-- Frontend: http://localhost:58230 (abre sozinho no navegador)
-- Backend: http://localhost:58231 (o Vite faz proxy de `/sessions` para essa porta em dev)
+- Frontend: http://localhost:58230
+- Backend: http://localhost:58231 (o Vite faz proxy de `/sessions` e `/system` para essa porta)
 
-Portas propositalmente incomuns (58230/58231) para não conflitar com outros projetos em
-desenvolvimento (3000, 3001, 5173, 8080 etc.).
+Para parar tudo, use o botão **"Parar aplicação"** no cabeçalho da interface, ou feche o terminal.
 
-Para parar tudo (frontend + backend), use o botão **"Parar aplicação"** no cabeçalho da interface,
-ou feche o terminal aberto pelo atalho.
+## Atalho no GNOME (opcional)
+
+```bash
+./install-shortcut.sh
+```
+
+Cria o ícone **Claude Session Manager** na Área de Trabalho e no menu de aplicativos, apontando
+para a pasta atual do projeto. Clicar nesse ícone:
+
+- **se a aplicação já estiver rodando:** só abre `http://localhost:58230` numa guia do navegador.
+- **se não estiver rodando:** abre um terminal e sobe a aplicação (`start.sh` → `npm run dev`).
+
+Se mover a pasta do projeto, rode `./install-shortcut.sh` de novo lá dentro para regerar o atalho
+com o caminho novo.
+
+### Remover o atalho
+
+```bash
+rm -f ~/.local/share/applications/claude-session-manager.desktop
+rm -f ~/Desktop/claude-session-manager.desktop
+update-desktop-database ~/.local/share/applications 2>/dev/null
+```
+
+Se o ícone também estiver fixado na dock, clique com o botão direito nele e escolha
+**"Remover dos favoritos"**.
 
 ## Estrutura
 
 ```
 /
 ├── install-shortcut.sh    # gera e instala o atalho do GNOME
-├── start.sh               # script que o atalho executa (roda o npm run dev)
+├── open-terminal.sh       # o que o atalho executa: abre guia se já estiver rodando,
+│                          # senão abre um terminal e chama start.sh
+├── start.sh               # roda dentro do terminal: cd no projeto + npm run dev
 ├── server/                # API Express
-│   ├── index.ts
-│   ├── routes/
-│   ├── services/
-│   ├── types/
-│   └── utils/
 └── src/                   # SPA React (raiz do workspace "web")
-    ├── components/
-    ├── hooks/
-    ├── pages/
-    ├── services/
-    ├── types/
-    └── utils/
 ```
 
 O repositório é um monorepo com [npm workspaces](https://docs.npmjs.com/cli/v10/using-npm/workspaces):
@@ -81,11 +79,11 @@ a raiz é o próprio app web e `server/` é o segundo workspace.
 
 ## API
 
-| Método | Rota                     | Descrição                                                  |
-| ------ | ------------------------ | ----------------------------------------------------------- |
-| GET    | `/sessions`              | Lista todas as sessões encontradas em `~/.claude/projects`   |
-| DELETE | `/sessions/:id`          | Exclui o arquivo `.jsonl` da sessão                          |
-| POST   | `/sessions/:id/continue` | Abre um terminal executando `claude --resume <id>`           |
+| Método | Rota                     | Descrição                                                       |
+| ------ | ------------------------ | --------------------------------------------------------------- |
+| GET    | `/sessions`              | Lista todas as sessões encontradas em `~/.claude/projects`      |
+| DELETE | `/sessions/:id`          | Exclui o arquivo `.jsonl` da sessão                             |
+| POST   | `/sessions/:id/continue` | Abre um terminal executando `claude --resume <id>`              |
 | POST   | `/system/shutdown`       | Encerra frontend e backend (usado pelo botão "Parar aplicação") |
 
 ## Scripts

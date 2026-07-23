@@ -13,7 +13,7 @@ type SessionCardProps = {
   onDeleteRequest: (session: Session) => void;
 };
 
-const COPIED_FEEDBACK_DURATION_MS = 1500;
+const COPIED_FEEDBACK_DURATION_MS = 2500;
 
 export function SessionCard({
   session,
@@ -28,6 +28,17 @@ export function SessionCard({
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
 
+  const handleCopySessionId = async () => {
+    try {
+      await navigator.clipboard.writeText(session.id);
+      setCopied(true);
+      showToast("ID da sessão copiado para a área de transferência.", "success");
+      setTimeout(() => setCopied(false), COPIED_FEEDBACK_DURATION_MS);
+    } catch {
+      showToast("Não foi possível copiar o ID da sessão.", "error");
+    }
+  }
+
   const handleCopyCommand = async () => {
     const command = resumeCommand;
     try {
@@ -41,29 +52,33 @@ export function SessionCard({
   };
 
   return (
-    <div className="group rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-      <h2 className="line-clamp-2 text-base font-semibold text-gray-900" title={session.title}>
+    <div className="flex flex-col gap-2 justify-between rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
+      <h2
+        className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
+        title={session.title}
+      >
         {session.title}
       </h2>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-        <span className="inline-flex items-center gap-1.5">
-          <Folder className="h-3.5 w-3.5" />
-          {session.project}
-        </span>
-        <span className="inline-flex items-center gap-1.5 font-mono text-xs" title={session.id}>
+      <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400" title={"Projeto"}>
+        <Folder className="h-3.5 w-3.5" />
+        {session.project}
+      </span>
+
+      <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
+        <span className="inline-flex items-center gap-1 font-mono text-[10px]" title={"Id da sessão"}>
           <Hash className="h-3.5 w-3.5" />
-          {session.id.slice(0, 8)}
+          {session.id}
         </span>
-        <Tooltip content={copied ? "Copiado!" : resumeCommand}>
+        <Tooltip content={copied ? "Copiado ID da sessão!" : "Copiar ID da sessão"}>
           <button
             type="button"
-            onClick={handleCopyCommand}
-            aria-label="Copiar comando de continuação"
-            className="inline-flex items-center justify-center rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            onClick={handleCopySessionId}
+            aria-label="Copiar ID da sessão"
+            className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
             {copied ? (
-              <Check className="h-3.5 w-3.5 text-green-600" />
+              <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
             ) : (
               <Copy className="h-3.5 w-3.5" />
             )}
@@ -71,27 +86,49 @@ export function SessionCard({
         </Tooltip>
       </div>
 
-      <p className="mt-2 text-xs text-gray-400">Atualizado {formatUpdatedAt(session.updatedAt)}</p>
+      <p className="text-xs text-gray-600 dark:text-gray-400">
+        Atualizado {formatUpdatedAt(session.updatedAt)}
+      </p>
 
-      <div className="mt-4 flex gap-2 border-t border-gray-100 pt-3">
+      <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
+        <span className="inline-flex items-center gap-1 font-mono text-[8px]" title={"Comando de continuação"}>
+          {resumeCommand}
+        </span>
+        <Tooltip content={copied ? "Copiado comando de continuação!" : "Copiar comando de continuação"}>
+          <button
+            type="button"
+            onClick={handleCopyCommand}
+            aria-label="Copiar comando de continuação"
+            className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </Tooltip>
+      </div>
+
+      <div className="flex gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
         <button
           type="button"
           onClick={() => onContinue(session)}
           disabled={isBusy}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-700 dark:hover:bg-gray-600"
         >
           {isContinuing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Play className="h-4 w-4" />
           )}
-          Continuar
+          Continuar (terminal)
         </button>
         <button
           type="button"
           onClick={() => onDeleteRequest(session)}
           disabled={isBusy}
-          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-red-400 dark:hover:bg-red-950/50"
         >
           {isDeleting ? (
             <Loader2 className="h-4 w-4 animate-spin" />

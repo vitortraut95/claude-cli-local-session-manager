@@ -114,9 +114,35 @@ const TERMINAL_LAUNCHERS: Array<{ bin: string; buildArgs: (shellCmd: string) => 
   { bin: "xterm", buildArgs: (c) => ["-e", "bash", "-c", c] },
 ];
 
+const SNAP_ORIG_SUFFIX = "_VSCODE_SNAP_ORIG";
+
+/**
+ * When this server itself runs inside VS Code's integrated terminal and VS Code was installed
+ * as a snap, its wrapper script overrides GTK/XDG/locale env vars (GTK_PATH, LOCPATH,
+ * XDG_DATA_DIRS, ...) to point at libraries bundled in the snap, stashing each original value in
+ * a `<VAR>_VSCODE_SNAP_ORIG` sibling. Those overrides leak to every child process; spawning a
+ * separate GTK app like gnome-terminal under them causes glibc/GTK symbol mismatches (e.g.
+ * `undefined symbol: __libc_pthread_init`) because it loads mismatched libraries from the snap.
+ * Undo the override for the terminal we spawn by restoring (or deleting) each affected var.
+ */
+function sanitizedSpawnEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (!key.endsWith(SNAP_ORIG_SUFFIX)) continue;
+    const originalVar = key.slice(0, -SNAP_ORIG_SUFFIX.length);
+    const originalValue = env[key];
+    if (originalValue) {
+      env[originalVar] = originalValue;
+    } else {
+      delete env[originalVar];
+    }
+  }
+  return env;
+}
+
 function trySpawnDetached(bin: string, args: string[], cwd?: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const child = spawn(bin, args, { detached: true, stdio: "ignore", cwd });
+    const child = spawn(bin, args, { detached: true, stdio: "ignore", cwd, env: sanitizedSpawnEnv() });
 
     const timer = setTimeout(() => {
       child.removeListener("error", onError);
@@ -133,12 +159,27 @@ function trySpawnDetached(bin: string, args: string[], cwd?: string): Promise<bo
   });
 }
 
+async function directoryExists(dir: string): Promise<boolean> {
+  try {
+    return (await stat(dir)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 export async function continueSession(id: string): Promise<void> {
   if (!isSafeSessionId(id)) {
     throw new Error(`Invalid session id "${id}"`);
   }
 
   const cwd = await findSessionCwd(id);
+  if (cwd && !(await directoryExists(cwd))) {
+    throw new Error(
+      `O diretório original desta sessão não existe mais ("${cwd}"). Como o Claude CLI resolve ` +
+        `sessões pelo diretório de trabalho, não é possível continuá-la a partir daqui — recrie a ` +
+        `pasta (ou um link simbólico) no caminho antigo apontando para o local atual do projeto.`,
+    );
+  }
 
   // `id` is already validated above (alphanumeric/dash/underscore only), so it's safe to interpolate.
   const shellCmd = `claude --resume ${id}; echo; read -p "Pressione Enter para fechar..." _`;

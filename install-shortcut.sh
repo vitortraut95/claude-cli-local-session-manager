@@ -5,7 +5,7 @@ TEMPLATE="$APP_DIR/claude-session-manager.desktop.template"
 DESKTOP_FILE="$APP_DIR/claude-session-manager.desktop"
 
 sed "s|__APP_DIR__|$APP_DIR|g" "$TEMPLATE" > "$DESKTOP_FILE"
-chmod +x "$DESKTOP_FILE" "$APP_DIR/start.sh"
+chmod +x "$DESKTOP_FILE" "$APP_DIR/start.sh" "$APP_DIR/open-terminal.sh"
 
 APPLICATIONS_DIR="$HOME/.local/share/applications"
 mkdir -p "$APPLICATIONS_DIR"

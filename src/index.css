@@ -1,7 +1,15 @@
 @import "tailwindcss";
 
+/* Lets `dark:` variants be toggled by a `.dark` class (see useTheme) instead of only
+   following the OS's prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
 }
 
 body {

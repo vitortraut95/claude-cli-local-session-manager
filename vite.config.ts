@@ -13,6 +13,7 @@ export default defineConfig({
     open: true,
     proxy: {
       '/sessions': 'http://localhost:58231',
+      '/system': 'http://localhost:58231',
     },
   },
 })
