@@ -1,5 +1,6 @@
 {
   "name": "server",
+  "description": "Express API backing the Claude Session Manager frontend.",
   "private": true,
   "version": "1.0.0",
   "type": "module",

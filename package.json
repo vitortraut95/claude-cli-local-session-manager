@@ -1,5 +1,6 @@
 {
   "name": "claude-session-manager",
+  "description": "Local manager for Claude CLI sessions, reading the *.jsonl files under ~/.claude/projects.",
   "private": true,
   "version": "0.0.0",
   "type": "module",
