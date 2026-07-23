@@ -21,6 +21,28 @@ if is_frontend_running; then
   exit 0
 fi
 
+# If Warp is installed, start the app in Warp instead of the regular terminal fallback below.
+# Warp has no `-e`/`--` flag to run a command on launch — the only way in is writing a "Tab
+# Config" TOML file and opening it through Warp's own `warp://tab_config/<name>` URI scheme
+# (verified working: the pane respects `directory` and runs `commands` on open). No
+# `?new_window=true`: when Warp isn't already running, that flag forces a second window on top
+# of the one Warp opens on its own during startup.
+if command -v warp-terminal >/dev/null 2>&1; then
+  TABCFG_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/warp-terminal/tab_configs"
+  mkdir -p "$TABCFG_DIR"
+  NAME="claude-session-manager-$(date +%s)"
+  {
+    echo "name = \"$NAME\""
+    echo
+    echo "[[panes]]"
+    echo "id = \"main\""
+    echo "type = \"terminal\""
+    echo "directory = \"$PROJECT_DIR\""
+    echo "commands = [\"$PROJECT_DIR/start.sh\"]"
+  } >"$TABCFG_DIR/$NAME.toml"
+  exec xdg-open "warp://tab_config/$NAME"
+fi
+
 # Opens start.sh inside a real terminal window, trying each of these emulators in order
 # until one launches (same fallback list/order used by the "Continuar" button's
 # server/services/sessionService.ts, which is known to work reliably in this environment).

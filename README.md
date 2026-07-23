@@ -19,7 +19,13 @@ everything runs on your machine.
 
 ## Installation
 
+**Clone it directly under your home directory** (not nested inside `git/`, `projects/`, or any
+other subfolder). The Claude CLI ties each session to the exact folder it was started in, and the
+one-click shortcut opens a terminal at the project's current path — moving the folder later breaks
+both, so picking one stable, top-level location up front avoids that entirely.
+
 ```bash
+cd ~
 git clone https://github.com/vitortraut95/claude-cli-local-session-manager.git
 cd claude-cli-local-session-manager
 npm install
@@ -46,7 +52,8 @@ Creates the **Claude Session Manager** icon on the Desktop and in the applicatio
 at the project's current folder. Clicking that icon:
 
 - **if the app is already running:** just opens `http://localhost:58230` in a browser tab.
-- **if it's not running:** opens a terminal and starts the app (`start.sh` → `npm run dev`).
+- **if it's not running:** starts the app (`start.sh` → `npm run dev`) in [Warp](https://www.warp.dev/)
+  if it's installed, otherwise in the first terminal emulator found on your system.
 
 If you move the project folder, run `./install-shortcut.sh` again from inside it to regenerate
 the shortcut with the new path.
