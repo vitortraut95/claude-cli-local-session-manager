@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { DateRangeFilter } from "../components/DateRangeFilter";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { Header } from "../components/Header";
@@ -24,6 +25,9 @@ export function SessionsPage() {
     projects,
     projectFilter,
     setProjectFilter,
+    updatedFrom,
+    updatedTo,
+    setUpdatedRange,
     page,
     pageCount,
     perPage,
@@ -50,7 +54,11 @@ export function SessionsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [page]);
 
-  const hasActiveFilter = searchQuery.trim().length > 0 || projectFilter.length > 0;
+  const hasActiveFilter =
+    searchQuery.trim().length > 0 ||
+    projectFilter.length > 0 ||
+    updatedFrom.length > 0 ||
+    updatedTo.length > 0;
 
   const renderContent = () => {
     if (loading) return <LoadingState />;
@@ -93,6 +101,7 @@ export function SessionsPage() {
             <SearchBar value={searchQuery} onChange={setSearchQuery} />
           </div>
           <ProjectFilter projects={projects} value={projectFilter} onChange={setProjectFilter} />
+          <DateRangeFilter from={updatedFrom} to={updatedTo} onChange={setUpdatedRange} />
 
           <button
             type="button"

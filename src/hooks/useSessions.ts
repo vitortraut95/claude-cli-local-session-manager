@@ -25,6 +25,8 @@ export function useSessions() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQueryRaw] = useUrlParam("q", "");
   const [projectFilter, setProjectFilterRaw] = useUrlParam("project", "");
+  const [updatedFrom, setUpdatedFromRaw] = useUrlParam("updated_from", "");
+  const [updatedTo, setUpdatedToRaw] = useUrlParam("updated_to", "");
   const [pageRaw, setPageRaw] = useUrlParam("page", "1");
   const [perPageRaw, setPerPageRaw] = useUrlParam("per_page", String(DEFAULT_PER_PAGE));
   const [pendingActions, setPendingActions] = useState<Record<string, PendingAction>>({});
@@ -49,6 +51,15 @@ export function useSessions() {
       setPageRaw("1");
     },
     [setProjectFilterRaw, setPageRaw],
+  );
+
+  const setUpdatedRange = useCallback(
+    (from: string, to: string) => {
+      setUpdatedFromRaw(from);
+      setUpdatedToRaw(to);
+      setPageRaw("1");
+    },
+    [setUpdatedFromRaw, setUpdatedToRaw, setPageRaw],
   );
 
   const setPerPage = useCallback(
@@ -99,6 +110,11 @@ export function useSessions() {
 
   const filteredSessions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
+    // Bounds are compared as local-midnight Date instances since `updatedFrom`/
+    // `updatedTo` come from <input type="date"> (YYYY-MM-DD, no time component),
+    // while `updatedAt` is a full ISO timestamp.
+    const fromTime = updatedFrom ? new Date(`${updatedFrom}T00:00:00`).getTime() : null;
+    const toTime = updatedTo ? new Date(`${updatedTo}T23:59:59.999`).getTime() : null;
     const filtered = sessions.filter((session) => {
       const matchesQuery =
         !query ||
@@ -106,11 +122,15 @@ export function useSessions() {
           field.toLowerCase().includes(query),
         );
       const matchesProject = !projectFilter || session.project === projectFilter;
-      return matchesQuery && matchesProject;
+      const updatedAtTime = new Date(session.updatedAt).getTime();
+      const matchesUpdatedAt =
+        (fromTime === null || updatedAtTime >= fromTime) &&
+        (toTime === null || updatedAtTime <= toTime);
+      return matchesQuery && matchesProject && matchesUpdatedAt;
     });
 
     return [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [sessions, searchQuery, projectFilter]);
+  }, [sessions, searchQuery, projectFilter, updatedFrom, updatedTo]);
 
   const pageCount = Math.max(1, Math.ceil(filteredSessions.length / perPage));
   // Clamp for display without writing back to the URL — a stale `page` param
@@ -180,6 +200,9 @@ export function useSessions() {
     projects,
     projectFilter,
     setProjectFilter,
+    updatedFrom,
+    updatedTo,
+    setUpdatedRange,
     pendingActions,
     refresh,
     removeSession,
