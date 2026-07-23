@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Runs `git pull` + `npm install` as a standalone process, detached from the API server.
+// Runs `git pull` + `yarn install` as a standalone process, detached from the API server.
 //
 // The dev server runs under `tsx watch`, which restarts the Node process the instant `git
 // pull` rewrites any watched source file — killing whatever was mid-flight in that process,
@@ -45,13 +45,13 @@ try {
   }
 
   try {
-    await execFileAsync("npm", ["install"], {
+    await execFileAsync("yarn", ["install"], {
       cwd: repoRoot,
       timeout: 5 * 60 * 1000,
       maxBuffer: 10 * 1024 * 1024,
     });
   } catch (err) {
-    throw new Error(`npm install failed: ${errorMessage(err)}`);
+    throw new Error(`yarn install failed: ${errorMessage(err)}`);
   }
 
   const branch = await git(["rev-parse", "--abbrev-ref", "HEAD"]);

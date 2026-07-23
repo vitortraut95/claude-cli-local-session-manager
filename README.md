@@ -14,7 +14,7 @@ everything runs on your machine.
 ## Prerequisites
 
 - Linux (with a GNOME environment to shortcuts work - optional)
-- [Node.js](https://nodejs.org/) 20+ and npm
+- [Node.js](https://nodejs.org/) 20+ with [Corepack](https://nodejs.org/api/corepack.html) enabled (`corepack enable`) for Yarn
 - [Claude CLI](https://claude.com/claude-code) installed and available on `PATH` (the `claude` command)
 
 ## Installation
@@ -28,13 +28,13 @@ both, so picking one stable, top-level location up front avoids that entirely.
 cd ~
 git clone https://github.com/vitortraut95/claude-cli-local-session-manager.git
 cd claude-cli-local-session-manager
-npm install
+yarn install
 ```
 
 ## Running it
 
 ```bash
-npm run dev
+yarn dev
 ```
 
 - Frontend: http://localhost:58230
@@ -52,7 +52,7 @@ Creates the **Claude Session Manager** icon on the Desktop and in the applicatio
 at the project's current folder. Clicking that icon:
 
 - **if the app is already running:** just opens `http://localhost:58230` in a browser tab.
-- **if it's not running:** starts the app (`start.sh` → `npm run dev`) in [Warp](https://www.warp.dev/)
+- **if it's not running:** starts the app (`start.sh` → `yarn dev`) in [Warp](https://www.warp.dev/)
   if it's installed, otherwise in the first terminal emulator found on your system.
 
 If you move the project folder, run `./install-shortcut.sh` again from inside it to regenerate
@@ -76,12 +76,12 @@ Favorites"**.
 ├── install-shortcut.sh    # generates and installs the GNOME shortcut
 ├── open-terminal.sh       # what the shortcut runs: opens a tab if already running,
 │                          # otherwise opens a terminal and calls start.sh
-├── start.sh               # runs inside the terminal: cd into the project + npm run dev
+├── start.sh               # runs inside the terminal: cd into the project + yarn dev
 ├── server/                # Express API
 └── src/                   # React SPA (workspace root, "web")
 ```
 
-This repository is a monorepo using [npm workspaces](https://docs.npmjs.com/cli/v10/using-npm/workspaces):
+This repository is a monorepo using [Yarn workspaces](https://yarnpkg.com/features/workspaces):
 the root is the web app itself, and `server/` is the second workspace.
 
 ## API
@@ -95,7 +95,7 @@ the root is the web app itself, and `server/` is the second workspace.
 
 ## Scripts
 
-- `npm run dev` — starts frontend and backend together
-- `npm run build` — production build for both workspaces
-- `npm run lint` — ESLint for frontend and backend
-- `npm run preview` — serves the frontend production build
+- `yarn dev` — starts frontend and backend together
+- `yarn build` — production build for both workspaces
+- `yarn lint` — ESLint for frontend and backend
+- `yarn preview` — serves the frontend production build
