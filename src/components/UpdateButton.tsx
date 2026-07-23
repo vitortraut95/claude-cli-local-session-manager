@@ -38,7 +38,11 @@ export function UpdateButton({ status, checking, updating, onUpdate }: UpdateBut
               : "border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-600"
           }`}
         >
-          {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {isBusy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
           Update
         </button>
         {updateAvailable && !isBusy && (

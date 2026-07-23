@@ -64,11 +64,13 @@ export async function getUpdateStatus(): Promise<UpdateStatus> {
     return { branch, tracking: null, ahead: 0, behind: 0, updateAvailable: false };
   }
 
-  const counts = await git(
-    ["rev-list", "--left-right", "--count", `HEAD...${tracking}`],
-    repoRoot,
-  );
-  const [ahead, behind] = counts.split(/\s+/).map(Number);
+  const counts = await git(["rev-list", "--left-right", "--count", `HEAD...${tracking}`], repoRoot);
+  const [aheadStr, behindStr] = counts.split(/\s+/);
+  if (aheadStr === undefined || behindStr === undefined) {
+    throw new Error(`Unexpected "git rev-list --left-right --count" output: "${counts}"`);
+  }
+  const ahead = Number(aheadStr);
+  const behind = Number(behindStr);
 
   return { branch, tracking, ahead, behind, updateAvailable: behind > 0 };
 }
