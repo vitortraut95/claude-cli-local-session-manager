@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { Router } from "express";
-import { getUpdateStatus, runUpdate, UpdateBlockedError } from "../services/updateService.js";
+import {
+  getUpdateJobStatus,
+  getUpdateStatus,
+  startUpdate,
+  UpdateBlockedError,
+} from "../services/updateService.js";
 
 export const systemRouter = Router();
 
@@ -18,8 +23,8 @@ systemRouter.get("/update-status", async (_req, res) => {
 
 systemRouter.post("/update", async (_req, res) => {
   try {
-    const result = await runUpdate();
-    res.json({ success: true, ...result });
+    await startUpdate();
+    res.json({ success: true, started: true });
   } catch (err) {
     if (err instanceof UpdateBlockedError) {
       res.status(409).json({ success: false, error: err.message });
@@ -28,6 +33,18 @@ systemRouter.post("/update", async (_req, res) => {
     res.status(500).json({
       success: false,
       error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+systemRouter.get("/update-job", async (_req, res) => {
+  try {
+    const job = await getUpdateJobStatus();
+    res.json(job);
+  } catch (err) {
+    res.status(500).json({
+      error: "Failed to check update job status",
+      message: err instanceof Error ? err.message : String(err),
     });
   }
 });

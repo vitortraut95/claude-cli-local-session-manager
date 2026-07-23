@@ -1,4 +1,7 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -18,10 +21,11 @@ export type UpdateStatus = {
   updateAvailable: boolean;
 };
 
-export type UpdateResult = {
-  branch: string;
-  pullSummary: string;
-};
+export type UpdateJobStatus =
+  | { state: "idle" }
+  | { state: "running"; startedAt: string }
+  | { state: "success"; branch: string; pullSummary: string; finishedAt: string }
+  | { state: "error"; message: string; finishedAt: string };
 
 async function git(args: string[], cwd: string): Promise<string> {
   const { stdout } = await execFileAsync("git", args, { cwd });
@@ -75,7 +79,31 @@ export async function getUpdateStatus(): Promise<UpdateStatus> {
   return { branch, tracking, ahead, behind, updateAvailable: behind > 0 };
 }
 
-export async function runUpdate(): Promise<UpdateResult> {
+const UPDATE_SCRIPT = fileURLToPath(new URL("../scripts/run-update.mjs", import.meta.url));
+
+function jobStatusFile(repoRoot: string): string {
+  return path.join(repoRoot, "node_modules", ".tmp", "update-job.json");
+}
+
+export async function getUpdateJobStatus(): Promise<UpdateJobStatus> {
+  const repoRoot = await getRepoRoot();
+  try {
+    const raw = await readFile(jobStatusFile(repoRoot), "utf8");
+    return JSON.parse(raw) as UpdateJobStatus;
+  } catch {
+    return { state: "idle" };
+  }
+}
+
+/**
+ * Kicks off `git pull` + `npm install` as a detached process and returns as soon as it's
+ * launched — it does not wait for the pull/install to finish. The dev server runs under `tsx
+ * watch`, which restarts this very process the instant `git pull` rewrites a watched source
+ * file; running the actual work in-process (and awaiting it here) would have this request's
+ * response killed mid-flight by that restart. The frontend instead polls getUpdateJobStatus()
+ * (backed by a status file, so it survives the restart) to learn the outcome.
+ */
+export async function startUpdate(): Promise<void> {
   const repoRoot = await getRepoRoot();
 
   const dirty = await git(["status", "--porcelain"], repoRoot);
@@ -85,23 +113,15 @@ export async function runUpdate(): Promise<UpdateResult> {
     );
   }
 
-  let pullSummary: string;
-  try {
-    pullSummary = await git(["pull", "--ff-only"], repoRoot);
-  } catch (err) {
-    throw new Error(`git pull failed: ${errorMessage(err)}`, { cause: err });
-  }
+  const statusFile = jobStatusFile(repoRoot);
+  await mkdir(path.dirname(statusFile), { recursive: true });
+  await writeFile(
+    statusFile,
+    JSON.stringify({ state: "running", startedAt: new Date().toISOString() }),
+  );
 
-  try {
-    await execFileAsync("npm", ["install"], {
-      cwd: repoRoot,
-      timeout: 5 * 60 * 1000,
-      maxBuffer: 10 * 1024 * 1024,
-    });
-  } catch (err) {
-    throw new Error(`npm install failed: ${errorMessage(err)}`, { cause: err });
-  }
-
-  const branch = await git(["rev-parse", "--abbrev-ref", "HEAD"], repoRoot);
-  return { branch, pullSummary };
+  spawn(process.execPath, [UPDATE_SCRIPT, repoRoot, statusFile], {
+    detached: true,
+    stdio: "ignore",
+  }).unref();
 }

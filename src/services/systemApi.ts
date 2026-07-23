@@ -21,6 +21,17 @@ export async function fetchUpdateStatus(): Promise<UpdateStatus> {
   return data;
 }
 
+export type UpdateJobStatus =
+  | { state: "idle" }
+  | { state: "running"; startedAt: string }
+  | { state: "success"; branch: string; pullSummary: string; finishedAt: string }
+  | { state: "error"; message: string; finishedAt: string };
+
 export async function applyUpdate(): Promise<void> {
   await client.post("/update");
+}
+
+export async function fetchUpdateJobStatus(): Promise<UpdateJobStatus> {
+  const { data } = await client.get<UpdateJobStatus>("/update-job");
+  return data;
 }
