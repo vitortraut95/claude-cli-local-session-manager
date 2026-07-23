@@ -1,0 +1,42 @@
+{
+  "name": "claude-session-manager",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "server"
+  ],
+  "overrides": {
+    "shell-quote": "^1.10.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n web,server -c blue,green \"vite\" \"npm run dev -w server\"",
+    "build": "tsc -b && vite build && npm run build -w server",
+    "lint": "eslint . && npm run lint -w server",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@radix-ui/react-tooltip": "^1.2.14",
+    "@tailwindcss/vite": "^4.3.3",
+    "axios": "^1.18.1",
+    "lucide-react": "^1.26.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^10.0.3",
+    "eslint": "^10.6.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.62.0",
+    "vite": "^8.1.1"
+  }
+}
