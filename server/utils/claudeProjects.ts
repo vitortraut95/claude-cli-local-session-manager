@@ -108,7 +108,7 @@ export async function readSessionHead(filePath: string): Promise<SessionHead> {
 
       let entry: JsonlEntry;
       try {
-        entry = JSON.parse(line);
+        entry = JSON.parse(line) as JsonlEntry;
       } catch {
         if (lineCount >= MAX_LINES_SCANNED) break;
         continue;
@@ -137,7 +137,7 @@ export async function readSessionHead(filePath: string): Promise<SessionHead> {
       const haveEverything =
         result.sessionId &&
         result.cwd &&
-        (result.aiTitle || result.summaryTitle) &&
+        (result.aiTitle ?? result.summaryTitle) &&
         result.firstUserText;
       if (haveEverything || lineCount >= MAX_LINES_SCANNED) break;
     }

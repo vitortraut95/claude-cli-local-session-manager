@@ -13,7 +13,7 @@ everything runs on your machine.
 
 ## Prerequisites
 
-- Linux with a GNOME environment
+- Linux (with a GNOME environment to shortcuts work - optional)
 - [Node.js](https://nodejs.org/) 20+ and npm
 - [Claude CLI](https://claude.com/claude-code) installed and available on `PATH` (the `claude` command)
 
@@ -79,11 +79,11 @@ the root is the web app itself, and `server/` is the second workspace.
 
 ## API
 
-| Method | Route                    | Description                                                |
-| ------ | ------------------------ | ------------------------------------------------------------ |
-| GET    | `/sessions`              | Lists every session found in `~/.claude/projects`             |
-| DELETE | `/sessions/:id`          | Deletes the session's `.jsonl` file                           |
-| POST   | `/sessions/:id/continue` | Opens a terminal running `claude --resume <id>`               |
+| Method | Route                    | Description                                                        |
+| ------ | ------------------------ | ------------------------------------------------------------------ |
+| GET    | `/sessions`              | Lists every session found in `~/.claude/projects`                  |
+| DELETE | `/sessions/:id`          | Deletes the session's `.jsonl` file                                |
+| POST   | `/sessions/:id/continue` | Opens a terminal running `claude --resume <id>`                    |
 | POST   | `/system/shutdown`       | Stops frontend and backend (used by the "Stop application" button) |
 
 ## Scripts

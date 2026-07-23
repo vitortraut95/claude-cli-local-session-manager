@@ -1,5 +1,6 @@
-import { spawn } from "node:child_process";
-import { stat, unlink } from "node:fs/promises";
+import { execFileSync, spawn } from "node:child_process";
+import { mkdir, stat, unlink, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import type { Session } from "../types/session.js";
 import {
@@ -33,10 +34,7 @@ function resolveProject(head: SessionHead, filePath: string): string {
 
 async function buildSession(filePath: string): Promise<Session | null> {
   try {
-    const [head, fileStat] = await Promise.all([
-      readSessionHead(filePath),
-      stat(filePath),
-    ]);
+    const [head, fileStat] = await Promise.all([readSessionHead(filePath), stat(filePath)]);
     const id = head.sessionId ?? path.basename(filePath, ".jsonl");
 
     return {
@@ -106,7 +104,7 @@ const SPAWN_ERROR_GRACE_PERIOD_MS = 300;
  * `<bin> ...flag, "bash", "-c", shellCmd` — argv-style rather than a single shell string, since
  * most of these emulators exec their `-e`/`--` payload directly instead of passing it through a shell.
  */
-const TERMINAL_LAUNCHERS: Array<{ bin: string; buildArgs: (shellCmd: string) => string[] }> = [
+const TERMINAL_LAUNCHERS: { bin: string; buildArgs: (shellCmd: string) => string[] }[] = [
   { bin: "x-terminal-emulator", buildArgs: (c) => ["-e", "bash", "-c", c] },
   { bin: "gnome-terminal", buildArgs: (c) => ["--", "bash", "-c", c] },
   { bin: "konsole", buildArgs: (c) => ["-e", "bash", "-c", c] },
@@ -142,7 +140,12 @@ function sanitizedSpawnEnv(): NodeJS.ProcessEnv {
 
 function trySpawnDetached(bin: string, args: string[], cwd?: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const child = spawn(bin, args, { detached: true, stdio: "ignore", cwd, env: sanitizedSpawnEnv() });
+    const child = spawn(bin, args, {
+      detached: true,
+      stdio: "ignore",
+      cwd,
+      env: sanitizedSpawnEnv(),
+    });
 
     const timer = setTimeout(() => {
       child.removeListener("error", onError);
@@ -167,7 +170,52 @@ async function directoryExists(dir: string): Promise<boolean> {
   }
 }
 
-export async function continueSession(id: string): Promise<void> {
+function commandExists(bin: string): boolean {
+  try {
+    execFileSync("which", [bin], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getWarpTabConfigsDir(): string {
+  const dataHome = process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share");
+  return path.join(dataHome, "warp-terminal", "tab_configs");
+}
+
+/**
+ * Warp has no `-e`/`--` flag to run a command on launch — the only way in is writing a "Tab
+ * Config" TOML file and opening it through Warp's own `warp://tab_config/<name>` URI scheme
+ * (verified working: the pane respects `directory` and runs `commands` on open, unlike the
+ * older/deprecated Launch Configuration YAML format, where external triggers are known to
+ * silently drop the command).
+ */
+async function launchWarp(command: string, cwd?: string): Promise<boolean> {
+  if (!commandExists("warp-terminal")) return false;
+
+  const name = `claude-session-manager-${Date.now()}`;
+  const escapedCommand = command.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const toml =
+    `name = "${name}"\n\n[[panes]]\nid = "main"\ntype = "terminal"\n` +
+    (cwd ? `directory = "${cwd.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"\n` : "") +
+    `commands = ["${escapedCommand}"]\n`;
+
+  const dir = getWarpTabConfigsDir();
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, `${name}.toml`), toml, "utf8");
+
+  // No `?new_window=true`: when Warp isn't already running, that flag forces a second window
+  // on top of the one Warp opens on its own during startup. Without it, the tab config opens in
+  // whichever window is already active (the one just opened, or an existing one).
+  return trySpawnDetached("xdg-open", [`warp://tab_config/${encodeURIComponent(name)}`]);
+}
+
+/**
+ * @param useWarp Opt-in, per the frontend's experimental Warp toggle (off by default). When
+ * false, behavior is unchanged from before Warp support existed — straight to TERMINAL_LAUNCHERS.
+ */
+export async function continueSession(id: string, useWarp = false): Promise<void> {
   if (!isSafeSessionId(id)) {
     throw new Error(`Invalid session id "${id}"`);
   }
@@ -182,10 +230,22 @@ export async function continueSession(id: string): Promise<void> {
   }
 
   // `id` is already validated above (alphanumeric/dash/underscore only), so it's safe to interpolate.
-  const shellCmd = `claude --resume ${id}; echo; read -p "Press Enter to close..." _`;
+  const resumeCommand = `claude --resume ${id}`;
+
+  if (useWarp && (await launchWarp(resumeCommand, cwd ?? undefined))) {
+    return;
+  }
+
+  // Warp tabs stay open on their own after the command finishes, but the other emulators close
+  // their window the instant the wrapped `bash -c` exits — so only these get the "press enter" pause.
+  const shellCmd = `${resumeCommand}; echo; read -p "Press Enter to close..." _`;
 
   for (const launcher of TERMINAL_LAUNCHERS) {
-    const started = await trySpawnDetached(launcher.bin, launcher.buildArgs(shellCmd), cwd ?? undefined);
+    const started = await trySpawnDetached(
+      launcher.bin,
+      launcher.buildArgs(shellCmd),
+      cwd ?? undefined,
+    );
     if (started) return;
   }
 

@@ -24,28 +24,29 @@ export function SessionCard({
   const isDeleting = pendingAction === "delete";
   const isContinuing = pendingAction === "continue";
   const isBusy = isDeleting || isContinuing;
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
+  const [copiedCommand, setCopiedCommand] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
 
   const handleCopySessionId = async () => {
     try {
       await navigator.clipboard.writeText(session.id);
-      setCopied(true);
+      setCopiedId(true);
       showToast("Session ID copied to clipboard.", "success");
-      setTimeout(() => setCopied(false), COPIED_FEEDBACK_DURATION_MS);
+      setTimeout(() => setCopiedId(false), COPIED_FEEDBACK_DURATION_MS);
     } catch {
       showToast("Could not copy the session ID.", "error");
     }
-  }
+  };
 
   const handleCopyCommand = async () => {
     const command = resumeCommand;
     try {
       await navigator.clipboard.writeText(command);
-      setCopied(true);
+      setCopiedCommand(true);
       showToast("Command copied to clipboard.", "success");
-      setTimeout(() => setCopied(false), COPIED_FEEDBACK_DURATION_MS);
+      setTimeout(() => setCopiedCommand(false), COPIED_FEEDBACK_DURATION_MS);
     } catch {
       showToast("Could not copy the command.", "error");
     }
@@ -60,7 +61,10 @@ export function SessionCard({
         {session.title}
       </h2>
 
-      <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400" title={"Project"}>
+      <span
+        className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
+        title={"Project"}
+      >
         <Folder className="h-3.5 w-3.5" />
         {session.project}
       </span>
@@ -70,14 +74,14 @@ export function SessionCard({
           <Hash className="h-3.5 w-3.5" />
           {session.id}
         </span>
-        <Tooltip content={copied ? "Session ID copied!" : "Copy session ID"}>
+        <Tooltip content={copiedId ? "Session ID copied!" : "Copy session ID"}>
           <button
             type="button"
             onClick={handleCopySessionId}
             aria-label="Copy session ID"
             className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
-            {copied ? (
+            {copiedId ? (
               <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
             ) : (
               <Copy className="h-3.5 w-3.5" />
@@ -91,17 +95,20 @@ export function SessionCard({
       </p>
 
       <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
-        <span className="inline-flex items-center gap-1 font-mono text-[8px]" title={"Resume command"}>
+        <span
+          className="inline-flex items-center gap-1 font-mono text-[8px]"
+          title={"Resume command"}
+        >
           {resumeCommand}
         </span>
-        <Tooltip content={copied ? "Resume command copied!" : "Copy resume command"}>
+        <Tooltip content={copiedCommand ? "Resume command copied!" : "Copy resume command"}>
           <button
             type="button"
             onClick={handleCopyCommand}
             aria-label="Copy resume command"
             className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
-            {copied ? (
+            {copiedCommand ? (
               <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
             ) : (
               <Copy className="h-3.5 w-3.5" />

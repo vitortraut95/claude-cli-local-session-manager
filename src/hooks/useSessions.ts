@@ -40,7 +40,8 @@ export function useSessions() {
   }, [loadSessions]);
 
   const projects = useMemo(
-    () => [...new Set(sessions.map((session) => session.project))].sort((a, b) => a.localeCompare(b)),
+    () =>
+      [...new Set(sessions.map((session) => session.project))].sort((a, b) => a.localeCompare(b)),
     [sessions],
   );
 
@@ -93,10 +94,7 @@ export function useSessions() {
         await sessionsApi.continueSession(id);
         showToast("Opening session...", "success");
       } catch (err) {
-        showToast(
-          err instanceof Error ? err.message : "Could not resume the session.",
-          "error",
-        );
+        showToast(err instanceof Error ? err.message : "Could not resume the session.", "error");
       } finally {
         setPending(id, null);
       }

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getWarpPreference } from "../hooks/useWarpPreference";
 import type { Session } from "../types/session";
 
 const client = axios.create({
@@ -15,5 +16,5 @@ export async function deleteSession(id: string): Promise<void> {
 }
 
 export async function continueSession(id: string): Promise<void> {
-  await client.post(`/${encodeURIComponent(id)}/continue`);
+  await client.post(`/${encodeURIComponent(id)}/continue`, { useWarp: getWarpPreference() });
 }

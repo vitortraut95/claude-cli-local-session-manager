@@ -2,15 +2,18 @@ import { Bot, Power } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useToast } from "../hooks/useToast";
+import { useWarpPreference } from "../hooks/useWarpPreference";
 import { stopApplication } from "../services/systemApi";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ThemeToggle } from "./ThemeToggle";
+import { WarpToggle } from "./WarpToggle";
 
 export function Header() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [stopping, setStopping] = useState(false);
   const { showToast } = useToast();
   const { theme, toggleTheme } = useTheme();
+  const { useWarp, toggleWarp } = useWarpPreference();
 
   const handleConfirmStop = async () => {
     setStopping(true);
@@ -42,6 +45,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-3">
+          <WarpToggle enabled={useWarp} onToggle={toggleWarp} />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <button
             type="button"
