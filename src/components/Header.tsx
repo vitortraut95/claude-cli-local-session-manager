@@ -39,7 +39,7 @@ export function Header() {
           </div>
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              Claude Session Manager
+              Claude CLI Local Session Manager
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Manage your local Claude CLI sessions
