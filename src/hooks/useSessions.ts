@@ -1,18 +1,70 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as sessionsApi from "../services/sessionsApi";
 import type { Session } from "../types/session";
+import { useUrlParam } from "./useUrlState";
 import { useToast } from "./useToast";
 
 export type PendingAction = "delete" | "continue";
+
+export const PER_PAGE_OPTIONS = [24, 48, 96, 192, 999999] as const;
+const DEFAULT_PER_PAGE = 24;
+
+function parsePerPage(raw: string): number {
+  const parsed = Number(raw);
+  return (PER_PAGE_OPTIONS as readonly number[]).includes(parsed) ? parsed : DEFAULT_PER_PAGE;
+}
+
+function parsePage(raw: string): number {
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
 
 export function useSessions() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [projectFilter, setProjectFilter] = useState("");
+  const [searchQuery, setSearchQueryRaw] = useUrlParam("q", "");
+  const [projectFilter, setProjectFilterRaw] = useUrlParam("project", "");
+  const [pageRaw, setPageRaw] = useUrlParam("page", "1");
+  const [perPageRaw, setPerPageRaw] = useUrlParam("per_page", String(DEFAULT_PER_PAGE));
   const [pendingActions, setPendingActions] = useState<Record<string, PendingAction>>({});
   const { showToast } = useToast();
+
+  const perPage = parsePerPage(perPageRaw);
+  const page = parsePage(pageRaw);
+
+  // Any change to what's being shown resets to page 1, so the user never lands
+  // on a page that no longer has anything on it.
+  const setSearchQuery = useCallback(
+    (value: string) => {
+      setSearchQueryRaw(value);
+      setPageRaw("1");
+    },
+    [setSearchQueryRaw, setPageRaw],
+  );
+
+  const setProjectFilter = useCallback(
+    (value: string) => {
+      setProjectFilterRaw(value);
+      setPageRaw("1");
+    },
+    [setProjectFilterRaw, setPageRaw],
+  );
+
+  const setPerPage = useCallback(
+    (value: number) => {
+      setPerPageRaw(String(value));
+      setPageRaw("1");
+    },
+    [setPerPageRaw, setPageRaw],
+  );
+
+  const setPage = useCallback(
+    (value: number) => {
+      setPageRaw(String(value));
+    },
+    [setPageRaw],
+  );
 
   const loadSessions = useCallback(async () => {
     try {
@@ -60,6 +112,16 @@ export function useSessions() {
     return [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [sessions, searchQuery, projectFilter]);
 
+  const pageCount = Math.max(1, Math.ceil(filteredSessions.length / perPage));
+  // Clamp for display without writing back to the URL — a stale `page` param
+  // (filters changed, sessions got deleted) just renders the nearest valid page.
+  const currentPage = Math.min(page, pageCount);
+
+  const paginatedSessions = useMemo(
+    () => filteredSessions.slice((currentPage - 1) * perPage, currentPage * perPage),
+    [filteredSessions, currentPage, perPage],
+  );
+
   const setPending = useCallback((id: string, action: PendingAction | null) => {
     setPendingActions((current) => {
       if (action === null) {
@@ -103,8 +165,14 @@ export function useSessions() {
   );
 
   return {
-    sessions: filteredSessions,
+    sessions: paginatedSessions,
     totalCount: sessions.length,
+    filteredCount: filteredSessions.length,
+    page: currentPage,
+    pageCount,
+    perPage,
+    setPage,
+    setPerPage,
     loading,
     error,
     searchQuery,

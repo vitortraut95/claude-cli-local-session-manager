@@ -1,13 +1,11 @@
-import { RefreshCw, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 type SearchBarProps = {
   value: string;
   onChange: (value: string) => void;
-  onRefresh: () => void;
-  isRefreshing: boolean;
 };
 
-export function SearchBar({ value, onChange, onRefresh, isRefreshing }: SearchBarProps) {
+export function SearchBar({ value, onChange }: SearchBarProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <div className="relative flex-1">
@@ -30,15 +28,6 @@ export function SearchBar({ value, onChange, onRefresh, isRefreshing }: SearchBa
           </button>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onRefresh}
-        disabled={isRefreshing}
-        className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
-      >
-        <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-        Refresh
-      </button>
     </div>
   );
 }
