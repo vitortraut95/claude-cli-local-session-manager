@@ -1,7 +1,36 @@
 import { readFileSync } from "node:fs";
 import { Router } from "express";
+import { getUpdateStatus, runUpdate, UpdateBlockedError } from "../services/updateService.js";
 
 export const systemRouter = Router();
+
+systemRouter.get("/update-status", async (_req, res) => {
+  try {
+    const status = await getUpdateStatus();
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({
+      error: "Failed to check for updates",
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+systemRouter.post("/update", async (_req, res) => {
+  try {
+    const result = await runUpdate();
+    res.json({ success: true, ...result });
+  } catch (err) {
+    if (err instanceof UpdateBlockedError) {
+      res.status(409).json({ success: false, error: err.message });
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
 
 /**
  * Node has no `process.getpgid`; on Linux the process group id is the 5th field of
