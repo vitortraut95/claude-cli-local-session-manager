@@ -20,7 +20,7 @@ export function useSessions() {
       setSessions(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível carregar as sessões.");
+      setError(err instanceof Error ? err.message : "Could not load sessions.");
     } finally {
       setLoading(false);
     }
@@ -76,9 +76,9 @@ export function useSessions() {
       try {
         await sessionsApi.deleteSession(id);
         setSessions((current) => current.filter((session) => session.id !== id));
-        showToast("Sessão excluída com sucesso.", "success");
+        showToast("Session deleted successfully.", "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Não foi possível excluir a sessão.", "error");
+        showToast(err instanceof Error ? err.message : "Could not delete the session.", "error");
       } finally {
         setPending(id, null);
       }
@@ -91,10 +91,10 @@ export function useSessions() {
       setPending(id, "continue");
       try {
         await sessionsApi.continueSession(id);
-        showToast("Abrindo sessão...", "success");
+        showToast("Opening session...", "success");
       } catch (err) {
         showToast(
-          err instanceof Error ? err.message : "Não foi possível continuar a sessão.",
+          err instanceof Error ? err.message : "Could not resume the session.",
           "error",
         );
       } finally {

@@ -9,7 +9,7 @@ import {
   type SessionHead,
 } from "../utils/claudeProjects.js";
 
-const UNTITLED = "Sem título";
+const UNTITLED = "Untitled";
 const TITLE_MAX_LENGTH = 100;
 
 function cleanTitle(raw: string): string {
@@ -175,14 +175,14 @@ export async function continueSession(id: string): Promise<void> {
   const cwd = await findSessionCwd(id);
   if (cwd && !(await directoryExists(cwd))) {
     throw new Error(
-      `O diretório original desta sessão não existe mais ("${cwd}"). Como o Claude CLI resolve ` +
-        `sessões pelo diretório de trabalho, não é possível continuá-la a partir daqui — recrie a ` +
-        `pasta (ou um link simbólico) no caminho antigo apontando para o local atual do projeto.`,
+      `This session's original directory no longer exists ("${cwd}"). Since the Claude CLI ` +
+        `resolves sessions by working directory, it can't be resumed from here — recreate the ` +
+        `folder (or a symlink) at the old path pointing to the project's current location.`,
     );
   }
 
   // `id` is already validated above (alphanumeric/dash/underscore only), so it's safe to interpolate.
-  const shellCmd = `claude --resume ${id}; echo; read -p "Pressione Enter para fechar..." _`;
+  const shellCmd = `claude --resume ${id}; echo; read -p "Press Enter to close..." _`;
 
   for (const launcher of TERMINAL_LAUNCHERS) {
     const started = await trySpawnDetached(launcher.bin, launcher.buildArgs(shellCmd), cwd ?? undefined);
@@ -190,6 +190,6 @@ export async function continueSession(id: string): Promise<void> {
   }
 
   throw new Error(
-    `Nenhum emulador de terminal encontrado (tentado: ${TERMINAL_LAUNCHERS.map((l) => l.bin).join(", ")}).`,
+    `No terminal emulator found (tried: ${TERMINAL_LAUNCHERS.map((l) => l.bin).join(", ")}).`,
   );
 }

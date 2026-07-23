@@ -76,10 +76,10 @@ export function SessionsPage() {
 
       <ConfirmDialog
         open={sessionPendingDeletion !== null}
-        title="Excluir sessão"
-        message="Deseja realmente excluir esta sessão?"
-        confirmLabel="Excluir"
-        cancelLabel="Cancelar"
+        title="Delete session"
+        message="Are you sure you want to delete this session?"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
         onConfirm={handleConfirmDelete}
         onCancel={() => setSessionPendingDeletion(null)}
       />

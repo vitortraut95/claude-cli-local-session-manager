@@ -1,23 +1,23 @@
 # Claude Session Manager
 
-## IMPORTANTE: HOJE SÓ IMPLEMENTADO PARA FUNCIONAR NO UBUNTU
+## IMPORTANT: TODAY ONLY IMPLEMENTED TO WORK ON UBUNTU
 
-Gerenciador local das sessões do [Claude CLI](https://claude.com/claude-code). Lê diretamente os
-arquivos `*.jsonl` que o `claude` grava em `~/.claude/projects`, sem depender de nenhum servidor
-externo — tudo roda na sua máquina.
+Local manager for [Claude CLI](https://claude.com/claude-code) sessions. Reads the `*.jsonl`
+files that `claude` writes to `~/.claude/projects` directly, with no external server involved —
+everything runs on your machine.
 
 ## Stack
 
 - **Frontend:** React + TypeScript + Vite + Tailwind CSS v4 + Axios
 - **Backend:** Express + TypeScript + Node.js
 
-## Pré-requisitos
+## Prerequisites
 
-- Linux com ambiente GNOME
-- [Node.js](https://nodejs.org/) 20+ e npm
-- [Claude CLI](https://claude.com/claude-code) instalado e disponível no `PATH` (comando `claude`)
+- Linux with a GNOME environment
+- [Node.js](https://nodejs.org/) 20+ and npm
+- [Claude CLI](https://claude.com/claude-code) installed and available on `PATH` (the `claude` command)
 
-## Instalação
+## Installation
 
 ```bash
 git clone https://github.com/vitortraut95/claude-cli-local-session-manager.git
@@ -25,33 +25,33 @@ cd claude-cli-local-session-manager
 npm install
 ```
 
-## Como rodar
+## Running it
 
 ```bash
 npm run dev
 ```
 
 - Frontend: http://localhost:58230
-- Backend: http://localhost:58231 (o Vite faz proxy de `/sessions` e `/system` para essa porta)
+- Backend: http://localhost:58231 (Vite proxies `/sessions` and `/system` to this port)
 
-Para parar tudo, use o botão **"Parar aplicação"** no cabeçalho da interface, ou feche o terminal.
+To stop everything, use the **"Stop application"** button in the header, or close the terminal.
 
-## Atalho no GNOME (opcional)
+## GNOME shortcut (optional)
 
 ```bash
 ./install-shortcut.sh
 ```
 
-Cria o ícone **Claude Session Manager** na Área de Trabalho e no menu de aplicativos, apontando
-para a pasta atual do projeto. Clicar nesse ícone:
+Creates the **Claude Session Manager** icon on the Desktop and in the application menu, pointing
+at the project's current folder. Clicking that icon:
 
-- **se a aplicação já estiver rodando:** só abre `http://localhost:58230` numa guia do navegador.
-- **se não estiver rodando:** abre um terminal e sobe a aplicação (`start.sh` → `npm run dev`).
+- **if the app is already running:** just opens `http://localhost:58230` in a browser tab.
+- **if it's not running:** opens a terminal and starts the app (`start.sh` → `npm run dev`).
 
-Se mover a pasta do projeto, rode `./install-shortcut.sh` de novo lá dentro para regerar o atalho
-com o caminho novo.
+If you move the project folder, run `./install-shortcut.sh` again from inside it to regenerate
+the shortcut with the new path.
 
-### Remover o atalho
+### Removing the shortcut
 
 ```bash
 rm -f ~/.local/share/applications/claude-session-manager.desktop
@@ -59,36 +59,36 @@ rm -f ~/Desktop/claude-session-manager.desktop
 update-desktop-database ~/.local/share/applications 2>/dev/null
 ```
 
-Se o ícone também estiver fixado na dock, clique com o botão direito nele e escolha
-**"Remover dos favoritos"**.
+If the icon is also pinned to the dock, right-click it and choose **"Unpin"** / **"Remove from
+Favorites"**.
 
-## Estrutura
+## Structure
 
 ```
 /
-├── install-shortcut.sh    # gera e instala o atalho do GNOME
-├── open-terminal.sh       # o que o atalho executa: abre guia se já estiver rodando,
-│                          # senão abre um terminal e chama start.sh
-├── start.sh               # roda dentro do terminal: cd no projeto + npm run dev
-├── server/                # API Express
-└── src/                   # SPA React (raiz do workspace "web")
+├── install-shortcut.sh    # generates and installs the GNOME shortcut
+├── open-terminal.sh       # what the shortcut runs: opens a tab if already running,
+│                          # otherwise opens a terminal and calls start.sh
+├── start.sh               # runs inside the terminal: cd into the project + npm run dev
+├── server/                # Express API
+└── src/                   # React SPA (workspace root, "web")
 ```
 
-O repositório é um monorepo com [npm workspaces](https://docs.npmjs.com/cli/v10/using-npm/workspaces):
-a raiz é o próprio app web e `server/` é o segundo workspace.
+This repository is a monorepo using [npm workspaces](https://docs.npmjs.com/cli/v10/using-npm/workspaces):
+the root is the web app itself, and `server/` is the second workspace.
 
 ## API
 
-| Método | Rota                     | Descrição                                                       |
-| ------ | ------------------------ | --------------------------------------------------------------- |
-| GET    | `/sessions`              | Lista todas as sessões encontradas em `~/.claude/projects`      |
-| DELETE | `/sessions/:id`          | Exclui o arquivo `.jsonl` da sessão                             |
-| POST   | `/sessions/:id/continue` | Abre um terminal executando `claude --resume <id>`              |
-| POST   | `/system/shutdown`       | Encerra frontend e backend (usado pelo botão "Parar aplicação") |
+| Method | Route                    | Description                                                |
+| ------ | ------------------------ | ------------------------------------------------------------ |
+| GET    | `/sessions`              | Lists every session found in `~/.claude/projects`             |
+| DELETE | `/sessions/:id`          | Deletes the session's `.jsonl` file                           |
+| POST   | `/sessions/:id/continue` | Opens a terminal running `claude --resume <id>`               |
+| POST   | `/system/shutdown`       | Stops frontend and backend (used by the "Stop application" button) |
 
 ## Scripts
 
-- `npm run dev` — inicia frontend e backend simultaneamente
-- `npm run build` — build de produção de ambos os workspaces
-- `npm run lint` — ESLint no frontend e no backend
-- `npm run preview` — serve o build de produção do frontend
+- `npm run dev` — starts frontend and backend together
+- `npm run build` — production build for both workspaces
+- `npm run lint` — ESLint for frontend and backend
+- `npm run preview` — serves the frontend production build

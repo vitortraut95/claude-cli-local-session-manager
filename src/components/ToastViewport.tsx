@@ -31,7 +31,7 @@ export function ToastViewport({ toasts, onDismiss }: ToastViewportProps) {
             type="button"
             onClick={() => onDismiss(toast.id)}
             className="shrink-0 rounded p-1 text-current/60 hover:bg-black/5 dark:hover:bg-white/10"
-            aria-label="Fechar notificação"
+            aria-label="Close notification"
           >
             <X className="h-4 w-4" />
           </button>

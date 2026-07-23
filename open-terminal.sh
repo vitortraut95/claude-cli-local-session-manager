@@ -31,7 +31,7 @@ TERMINAL_LAUNCHERS=(x-terminal-emulator gnome-terminal konsole xfce4-terminal xt
 
 # `read` at the end keeps the window open after `npm run dev` exits (success, crash, or
 # Ctrl+C), so the terminal is never left blank or closes before you can read the output.
-SHELL_CMD="'$PROJECT_DIR/start.sh'; echo; read -p 'Pressione Enter para fechar...' _"
+SHELL_CMD="'$PROJECT_DIR/start.sh'; echo; read -p 'Press Enter to close...' _"
 
 for bin in "${TERMINAL_LAUNCHERS[@]}"; do
   if command -v "$bin" >/dev/null 2>&1; then
@@ -46,5 +46,5 @@ for bin in "${TERMINAL_LAUNCHERS[@]}"; do
   fi
 done
 
-echo "Nenhum emulador de terminal encontrado (tentado: ${TERMINAL_LAUNCHERS[*]})." >&2
+echo "No terminal emulator found (tried: ${TERMINAL_LAUNCHERS[*]})." >&2
 exit 1

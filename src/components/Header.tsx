@@ -17,9 +17,9 @@ export function Header() {
     try {
       await stopApplication();
       setShowConfirm(false);
-      showToast("Aplicação encerrada. Você já pode fechar esta aba.", "success");
+      showToast("Application stopped. You can now close this tab.", "success");
     } catch {
-      showToast("Não foi possível encerrar a aplicação.", "error");
+      showToast("Could not stop the application.", "error");
       setStopping(false);
     }
   };
@@ -36,7 +36,7 @@ export function Header() {
               Claude Session Manager
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Gerencie suas sessões locais do Claude CLI
+              Manage your local Claude CLI sessions
             </p>
           </div>
         </div>
@@ -49,17 +49,17 @@ export function Header() {
             className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-400 dark:hover:bg-red-950"
           >
             <Power className="h-4 w-4" />
-            Parar aplicação
+            Stop application
           </button>
         </div>
       </div>
 
       <ConfirmDialog
         open={showConfirm}
-        title="Parar aplicação"
-        message="Isso encerra o frontend e o backend e fecha as portas. Deseja continuar?"
-        confirmLabel="Parar"
-        cancelLabel="Cancelar"
+        title="Stop application"
+        message="This will stop the frontend and backend and close the ports. Continue?"
+        confirmLabel="Stop"
+        cancelLabel="Cancel"
         isLoading={stopping}
         onConfirm={handleConfirmStop}
         onCancel={() => setShowConfirm(false)}

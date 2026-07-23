@@ -13,10 +13,10 @@ export function ProjectFilter({ projects, value, onChange }: ProjectFilterProps)
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        aria-label="Filtrar por projeto"
+        aria-label="Filter by project"
         className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-8 text-sm text-gray-700 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 sm:w-56 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-gray-600 dark:focus:ring-gray-100/10"
       >
-        <option value="">Todos os projetos</option>
+        <option value="">All projects</option>
         {projects.map((project) => (
           <option key={project} value={project}>
             {project}

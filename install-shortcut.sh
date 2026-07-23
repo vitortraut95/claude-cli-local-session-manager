@@ -21,4 +21,4 @@ fi
 
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPLICATIONS_DIR" 2>/dev/null || true
 
-echo "Atalho instalado! Procure por \"Claude Session Manager\" no menu de aplicativos do GNOME ou confira a Área de Trabalho."
+echo "Shortcut installed! Look for \"Claude Session Manager\" in the GNOME application menu or check your Desktop."

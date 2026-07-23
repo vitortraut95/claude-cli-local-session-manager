@@ -32,10 +32,10 @@ export function SessionCard({
     try {
       await navigator.clipboard.writeText(session.id);
       setCopied(true);
-      showToast("ID da sessão copiado para a área de transferência.", "success");
+      showToast("Session ID copied to clipboard.", "success");
       setTimeout(() => setCopied(false), COPIED_FEEDBACK_DURATION_MS);
     } catch {
-      showToast("Não foi possível copiar o ID da sessão.", "error");
+      showToast("Could not copy the session ID.", "error");
     }
   }
 
@@ -44,10 +44,10 @@ export function SessionCard({
     try {
       await navigator.clipboard.writeText(command);
       setCopied(true);
-      showToast("Comando copiado para a área de transferência.", "success");
+      showToast("Command copied to clipboard.", "success");
       setTimeout(() => setCopied(false), COPIED_FEEDBACK_DURATION_MS);
     } catch {
-      showToast("Não foi possível copiar o comando.", "error");
+      showToast("Could not copy the command.", "error");
     }
   };
 
@@ -60,21 +60,21 @@ export function SessionCard({
         {session.title}
       </h2>
 
-      <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400" title={"Projeto"}>
+      <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400" title={"Project"}>
         <Folder className="h-3.5 w-3.5" />
         {session.project}
       </span>
 
       <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
-        <span className="inline-flex items-center gap-1 font-mono text-[10px]" title={"Id da sessão"}>
+        <span className="inline-flex items-center gap-1 font-mono text-[10px]" title={"Session ID"}>
           <Hash className="h-3.5 w-3.5" />
           {session.id}
         </span>
-        <Tooltip content={copied ? "Copiado ID da sessão!" : "Copiar ID da sessão"}>
+        <Tooltip content={copied ? "Session ID copied!" : "Copy session ID"}>
           <button
             type="button"
             onClick={handleCopySessionId}
-            aria-label="Copiar ID da sessão"
+            aria-label="Copy session ID"
             className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
             {copied ? (
@@ -87,18 +87,18 @@ export function SessionCard({
       </div>
 
       <p className="text-xs text-gray-600 dark:text-gray-400">
-        Atualizado {formatUpdatedAt(session.updatedAt)}
+        Updated {formatUpdatedAt(session.updatedAt)}
       </p>
 
       <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
-        <span className="inline-flex items-center gap-1 font-mono text-[8px]" title={"Comando de continuação"}>
+        <span className="inline-flex items-center gap-1 font-mono text-[8px]" title={"Resume command"}>
           {resumeCommand}
         </span>
-        <Tooltip content={copied ? "Copiado comando de continuação!" : "Copiar comando de continuação"}>
+        <Tooltip content={copied ? "Resume command copied!" : "Copy resume command"}>
           <button
             type="button"
             onClick={handleCopyCommand}
-            aria-label="Copiar comando de continuação"
+            aria-label="Copy resume command"
             className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
             {copied ? (
@@ -122,7 +122,7 @@ export function SessionCard({
           ) : (
             <Play className="h-4 w-4" />
           )}
-          Continuar (terminal)
+          Continue (terminal)
         </button>
         <button
           type="button"
@@ -135,7 +135,7 @@ export function SessionCard({
           ) : (
             <Trash2 className="h-4 w-4" />
           )}
-          Excluir
+          Delete
         </button>
       </div>
     </div>

@@ -14,7 +14,7 @@ export function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
       type="button"
       role="switch"
       aria-checked={isDark}
-      aria-label={isDark ? "Mudar para tema claro" : "Mudar para tema escuro"}
+      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
       onClick={onToggle}
       className="relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border border-gray-300 bg-gray-100 transition-colors dark:border-gray-700 dark:bg-gray-800"
     >

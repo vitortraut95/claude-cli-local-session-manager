@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Claude Session Manager
-Comment=Gerenciador local de sessões do Claude CLI
+Comment=Local manager for Claude CLI sessions
 Exec=__APP_DIR__/open-terminal.sh
 Icon=__APP_DIR__/assets/icon.svg
 Terminal=false
