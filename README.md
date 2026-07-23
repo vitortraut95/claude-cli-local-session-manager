@@ -1,4 +1,4 @@
-# Claude Session Manager
+# Claude CLI Session Manager - Ubuntu
 
 ## IMPORTANT: TODAY ONLY IMPLEMENTED TO WORK ON UBUNTU
 
