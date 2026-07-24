@@ -174,7 +174,10 @@ export function useSessions() {
       setPending(id, "continue");
       try {
         await sessionsApi.continueSession(id);
-        showToast("Opening session...", "success");
+        // Linux window managers won't let a background process steal focus, so the new
+        // terminal window may open behind this one — this toast is the only reliable signal
+        // that it actually opened.
+        showToast("Terminal opened. Check your taskbar if it didn't come to the front.", "success");
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Could not resume the session.", "error");
       } finally {

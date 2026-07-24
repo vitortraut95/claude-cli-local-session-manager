@@ -17,8 +17,8 @@ export function ToastViewport({ toasts, onDismiss }: ToastViewportProps) {
           role="status"
           className={`flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg transition-all ${
             toast.variant === "success"
-              ? "border-green-200 bg-green-50 text-green-800 dark:border-green-900/50 dark:bg-green-950/50 dark:text-green-300"
-              : "border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/50 dark:text-red-300"
+              ? "border-green-200 bg-green-50 text-green-800 dark:border-green-900/90 dark:bg-green-950/90 dark:text-green-300"
+              : "border-red-200 bg-red-50 text-red-800 dark:border-red-900/90 dark:bg-red-950/90 dark:text-red-300"
           }`}
         >
           {toast.variant === "success" ? (
