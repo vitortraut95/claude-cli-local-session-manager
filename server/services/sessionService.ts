@@ -10,8 +10,10 @@ import {
   getClaudeProjectsDir,
   readSessionHead,
   readSessionPrompts,
+  readSessionUsage,
   type SessionHead,
 } from "../utils/claudeProjects.js";
+import { summarizeUsage } from "../utils/pricing.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -39,10 +41,11 @@ function resolveProject(head: SessionHead, filePath: string): string {
 
 async function buildSession(filePath: string): Promise<Omit<Session, "isActive"> | null> {
   try {
-    const [head, fileStat, prompts] = await Promise.all([
+    const [head, fileStat, prompts, rawUsage] = await Promise.all([
       readSessionHead(filePath),
       stat(filePath),
       readSessionPrompts(filePath),
+      readSessionUsage(filePath),
     ]);
     const id = head.sessionId ?? path.basename(filePath, ".jsonl");
     // Unknown cwd (older session, or head parse didn't find one) isn't treated as missing —
@@ -57,6 +60,7 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive">
       updatedAt: fileStat.mtime.toISOString(),
       prompts,
       directoryMissing,
+      usage: summarizeUsage(rawUsage),
     };
   } catch {
     return null;

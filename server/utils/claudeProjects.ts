@@ -59,6 +59,14 @@ type JsonlEntry = {
   message?: {
     role?: string;
     content?: unknown;
+    id?: string;
+    model?: string;
+    usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+    };
   };
 };
 
@@ -198,4 +206,66 @@ export async function readSessionPrompts(filePath: string): Promise<string[]> {
   }
 
   return prompts;
+}
+
+export type RawModelUsage = {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationInputTokens: number;
+  cacheReadInputTokens: number;
+};
+
+/**
+ * Reads the entire transcript to total up token usage per model. Each `type: "assistant"`
+ * entry's `usage` block is the total for that *API response*, but a single response with
+ * multiple content blocks (e.g. a thinking block plus a tool_use block) is logged as multiple
+ * JSONL lines sharing the same `message.id` and, critically, the *identical* usage numbers on
+ * each line — summing every line would double- (or triple-, ...) count. Dedupe by `message.id`
+ * and only tally each one once.
+ */
+export async function readSessionUsage(filePath: string): Promise<RawModelUsage[]> {
+  const seenMessageIds = new Set<string>();
+  const usageByModel = new Map<string, RawModelUsage>();
+
+  const rl = createInterface({
+    input: createReadStream(filePath, { encoding: "utf8" }),
+    crlfDelay: Infinity,
+  });
+
+  try {
+    for await (const line of rl) {
+      if (!line.trim()) continue;
+
+      let entry: JsonlEntry;
+      try {
+        entry = JSON.parse(line) as JsonlEntry;
+      } catch {
+        continue;
+      }
+
+      if (entry.type !== "assistant") continue;
+      const { message } = entry;
+      if (!message?.id || !message.model || !message.usage) continue;
+      if (seenMessageIds.has(message.id)) continue;
+      seenMessageIds.add(message.id);
+
+      const existing = usageByModel.get(message.model) ?? {
+        model: message.model,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+      };
+      existing.inputTokens += message.usage.input_tokens ?? 0;
+      existing.outputTokens += message.usage.output_tokens ?? 0;
+      existing.cacheCreationInputTokens += message.usage.cache_creation_input_tokens ?? 0;
+      existing.cacheReadInputTokens += message.usage.cache_read_input_tokens ?? 0;
+      usageByModel.set(message.model, existing);
+    }
+  } finally {
+    rl.close();
+  }
+
+  return [...usageByModel.values()];
 }

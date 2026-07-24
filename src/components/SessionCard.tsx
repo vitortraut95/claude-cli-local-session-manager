@@ -1,6 +1,7 @@
 import {
   Check,
   Copy,
+  DollarSign,
   Folder,
   Hash,
   Loader2,
@@ -15,6 +16,7 @@ import type { PendingAction } from "../hooks/useSessions";
 import type { Session } from "../types/session";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { Tooltip } from "./Tooltip";
+import { UsageDetailsModal } from "./UsageDetailsModal";
 import { formatUpdatedAt } from "../utils/formatDate";
 
 type SessionCardProps = {
@@ -38,6 +40,7 @@ export function SessionCard({
   const [copiedId, setCopiedId] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showUsage, setShowUsage] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
 
@@ -149,18 +152,32 @@ export function SessionCard({
         <p className="text-xs text-gray-600 dark:text-gray-400">
           Updated {formatUpdatedAt(session.updatedAt)}
         </p>
-        {session.prompts.length > 0 && (
-          <Tooltip content="Preview prompts sent in this session">
-            <button
-              type="button"
-              onClick={() => setShowPreview(true)}
-              aria-label="Preview prompts"
-              className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-            </button>
-          </Tooltip>
-        )}
+        <div className="flex items-center gap-1">
+          {session.usage.models.length > 0 && (
+            <Tooltip content="View token usage and estimated cost">
+              <button
+                type="button"
+                onClick={() => setShowUsage(true)}
+                aria-label="View usage and cost"
+                className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+              >
+                <DollarSign className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+          )}
+          {session.prompts.length > 0 && (
+            <Tooltip content="Preview prompts sent in this session">
+              <button
+                type="button"
+                onClick={() => setShowPreview(true)}
+                aria-label="Preview prompts"
+                className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
@@ -217,6 +234,7 @@ export function SessionCard({
         open={showPreview}
         onClose={() => setShowPreview(false)}
       />
+      <UsageDetailsModal session={session} open={showUsage} onClose={() => setShowUsage(false)} />
     </div>
   );
 }

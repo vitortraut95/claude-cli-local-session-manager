@@ -180,8 +180,7 @@ Update this list's checkmarks/notes as items get built or dropped.
 
 ### Search & context (data already sitting in the `.jsonl`, just needs exposing)
 - [x] **Full-text search across message content** — done, see below.
-- [ ] **Token usage / cost per session** — each turn's `.jsonl` entry already carries a `usage`
-  block (input/output/cache tokens); could aggregate per session, per project, per day.
+- [x] **Token usage / cost per session** — done, see below.
 - [x] **Proactive "stale directory" badge** — done, see below.
 - [ ] **Message/turn count or session size indicator** on the card.
 
@@ -281,6 +280,40 @@ Update this list's checkmarks/notes as items get built or dropped.
   - Verified live with a throwaway fake session (`~/.claude/projects/-tmp-fake-missing-dir-test/`,
     `cwd` pointing at a directory that doesn't exist, deleted again after testing): badge appeared,
     button visually disabled, click did nothing, tooltip showed the expected message on hover.
+
+### Implemented: token usage / estimated cost per session
+
+- **Backend** (`server/utils/claudeProjects.ts`, `readSessionUsage`): reads the *entire*
+  transcript and sums `message.usage` (`input_tokens`, `output_tokens`,
+  `cache_creation_input_tokens`, `cache_read_input_tokens`) per model. **Critical gotcha found
+  during development**: a single API response with multiple content blocks (e.g. a `thinking`
+  block followed by a `tool_use` block) is logged as multiple JSONL lines that share the same
+  `message.id` and carry the *identical* usage numbers on every line — naively summing every
+  `type: "assistant"` line double- (or N-times-) counts. Fixed by deduping on `message.id`,
+  tallying each unique message exactly once. Also found or a `"<synthetic>"` model marker with
+  all-zero usage on real transcripts (looks like an internal retry/injected-turn marker, not a
+  real API call) — filtered out entirely in `summarizeUsage` (see below) since it's not a real
+  call and its presence was incorrectly nulling out an otherwise-fully-known cost total.
+- **Pricing** (`server/utils/pricing.ts`): a small per-model `$/MTok` table (input/output),
+  captured from the `claude-api` skill's live-pricing reference on 2026-07-24 — **update this
+  table if pricing drifts**, and note Sonnet 5 is at introductory pricing ($2/$10 per MTok)
+  through 2026-08-31, reverting to $3/$15 after. Cache write/read aren't published as separate
+  per-model rates — they're documented multipliers of the base input rate (1.25× for the default
+  5-minute TTL, which is what Claude Code uses; 0.1× for a cache read). `summarizeUsage()` maps
+  each model's raw usage to a cost, first filtering out any all-zero-usage entries (the
+  `"<synthetic>"` case above), then returns `totalCostUsd: null` if *any remaining* model has
+  unknown pricing — a partial sum would understate the real cost, which is worse than saying
+  "unavailable." Verified with inline unit tests: known-model math checks out, an unknown model
+  with real usage nulls the total, an unknown model with zero usage does not (gets filtered
+  instead).
+- **Frontend**: a `$` icon next to the prompt-preview icon on `SessionCard` (only shown when
+  `session.usage.models.length > 0`), opening `UsageDetailsModal.tsx` — per-model token
+  breakdown + cost, an "Estimated total," and an explicit disclaimer that this is not the user's
+  actual bill (doesn't account for a Pro/Max subscription, promo pricing, etc.). Same
+  `createPortal(..., document.body)` requirement as `PromptPreviewModal` — see that section above
+  for why. Verified live: this very session showed real, correctly-deduped numbers (hundreds of
+  millions of cache-read tokens on a long-running session, ~$30+ estimated cost) that only grew
+  as the conversation continued, confirming the running total tracks accurately in real time.
 
 ### Next up: manual session rename (in progress / up next)
 
