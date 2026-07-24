@@ -17,10 +17,11 @@ to ship it on Windows and macOS too, since that came up as a future goal.
 ## Cross-platform support — status and plan
 
 ### Already fully cross-platform, no action needed
+
 - `getClaudeProjectsDir()` (`server/utils/claudeProjects.ts`) — uses `os.homedir()` + `path.join`,
   works on every OS. (Unverified assumption: the Claude CLI itself stores sessions at
   `<homedir>/.claude/projects` on Windows/macOS too — should be confirmed once someone actually
-  tests there, but nothing in *this* repo needs to change for it.)
+  tests there, but nothing in _this_ repo needs to change for it.)
 - CRLF handling in the `.jsonl` reader (`claudeProjects.ts`, `readline` interface has
   `crlfDelay: Infinity`).
 - `package.json` scripts (root and `server/`) — no `FOO=bar cmd` env-var-prefix syntax anywhere,
@@ -31,6 +32,7 @@ to ship it on Windows and macOS too, since that came up as a future goal.
   assumptions.
 
 ### Made more portable already (this session's work)
+
 - **`commandExists()`** (`server/services/sessionService.ts:182-198`) — used to shell out to
   `which` (POSIX-only, no `which` on Windows). Now a pure-Node PATH scan (checks every `PATH`
   entry, plus `PATHEXT` suffixes on `win32`). No native binary dependency at all anymore.
@@ -56,7 +58,7 @@ to ship it on Windows and macOS too, since that came up as a future goal.
      No "press enter" pause needed — `do script` leaves the shell at a fresh prompt when the
      command exits, same as Linux `read -p` was working around.
    - **win32** → `launchWindowsTerminal()` (`sessionService.ts:286`): tries `wt.exe -d
-     <cwd> cmd /k <command>` first, falls back to `cmd.exe /c start /d <cwd> cmd /k <command>`
+<cwd> cmd /k <command>` first, falls back to `cmd.exe /c start /d <cwd> cmd /k <command>`
      (every Windows install has `cmd.exe`). `/k` keeps the window open+interactive after the
      command exits, same reasoning as `do script` above.
    - **everything else (linux/default)** → unchanged, the original `TERMINAL_LAUNCHERS` loop.
@@ -77,7 +79,7 @@ to ship it on Windows and macOS too, since that came up as a future goal.
      non-interactive shell — `env -i HOME="$HOME" bash -c 'command -v node'` — `node`/`yarn`
      resolve to nothing (no system-wide Node install, only nvm, which `~/.zshrc` loads for
      interactive shells only). `open-terminal.sh` runs in exactly that non-interactive context
-     when launched from a `.desktop` file, *before* `start.sh`'s own nvm-sourcing dance ever gets
+     when launched from a `.desktop` file, _before_ `start.sh`'s own nvm-sourcing dance ever gets
      a chance to run — so making the bash script depend on Node to pick a terminal emulator would
      break the cold-bootstrap case it exists to handle. Don't "fix" this by having
      `open-terminal.sh` shell out to a Node helper without re-solving that problem first.
@@ -118,21 +120,21 @@ to ship it on Windows and macOS too, since that came up as a future goal.
      terminal-picking logic in the script at all, just the port-check/`yarn dev`/keep-open dance.
      Reuses the exact same `/dev/tcp` port probe as `open-terminal.sh` (bash built-in, works
      identically on macOS's bash, no curl dependency needed there either). Shortcut creation is a
-     plain `ln -sf` one-liner in `README.md` — deliberately *not* `osascript`/Finder-scripting
+     plain `ln -sf` one-liner in `README.md` — deliberately _not_ `osascript`/Finder-scripting
      (`tell application "Finder" to make alias ...`), since that can trigger macOS's Automation
      permission prompt the first time; a symlink needs no permission and Finder follows it
      transparently for double-click execution.
-   **Still needed**: someone with real Windows and Mac hardware to double-click each script and
-   confirm the port-check/fallback-to-`yarn dev` logic and both shortcut-creation snippets
-   actually work.
+     **Still needed**: someone with real Windows and Mac hardware to double-click each script and
+     confirm the port-check/fallback-to-`yarn dev` logic and both shortcut-creation snippets
+     actually work.
 
 ### Decisions already made (so we don't re-litigate them)
 
 - **No OS-level notifications.** We considered using `notify-send` (Linux) to signal that a
   terminal opened, as a workaround for GNOME/Wayland's focus-stealing prevention (see below). User
   explicitly chose to **keep native/OS dependencies minimal** and use the app's own in-app toast
-  instead (`src/hooks/useSessions.ts`, `resumeSession`, message: *"Terminal opened. Check your
-  taskbar if it didn't come to the front."*, rendered by `src/components/ToastViewport.tsx`, fixed
+  instead (`src/hooks/useSessions.ts`, `resumeSession`, message: _"Terminal opened. Check your
+  taskbar if it didn't come to the front."_, rendered by `src/components/ToastViewport.tsx`, fixed
   top-left, 3.5s). Any future "let the user know something happened" need should default to this
   toast system, not a native notification API, unless there's a concrete reason an in-app toast
   can't work (e.g. the browser tab is closed).
@@ -167,7 +169,7 @@ to ship it on Windows and macOS too, since that came up as a future goal.
    Warp docs/support to confirm), then wire `launchWarp()` back up for those platforms (currently
    hard-disabled off Linux — see above).
 3. Retire the duplicate logic in `open-terminal.sh` (still Linux-only, wasn't touched by #1) once
-   there's a reason to make the desktop shortcut cross-platform too — a drift *guard*
+   there's a reason to make the desktop shortcut cross-platform too — a drift _guard_
    (`scripts/check-terminal-launchers-sync.mjs`, wired into `yarn lint`) exists now, but the two
    implementations are still separate; true unification is blocked on solving the
    Node-not-on-PATH cold-bootstrap problem first (see above).
@@ -179,32 +181,29 @@ Brainstormed list of things a dev using the Claude CLI might feel is missing, th
 Update this list's checkmarks/notes as items get built or dropped.
 
 ### Search & context (data already sitting in the `.jsonl`, just needs exposing)
+
 - [x] **Full-text search across message content** — done, see below.
 - [x] **Token usage / cost per session** — done, see below.
 - [x] **Proactive "stale directory" badge** — done, see below.
-- [ ] **Message/turn count or session size indicator** on the card.
 
 ### Organization & management
+
 - [x] **Manual session rename** — done, see below.
-- [ ] **Favorite/pin sessions.**
 - [x] **Bulk select + delete** — done, see below.
-- [ ] **Group the list by day/project** instead of a flat grid.
 
 ### Workflow
+
 - [x] **"Session currently active" indicator** — done, see below.
-- [ ] **Export a session as Markdown** (for pasting into a PR/ticket).
-- [ ] **Keyboard shortcuts** (`/` focus search, `j`/`k` navigate, `Enter` continue, `Del` delete).
-- [ ] **Auto-refresh** instead of the manual "Refresh sessions" button (polling or a directory
-  watcher).
 
 ### More ambitious / lower priority
+
 - [ ] Stats dashboard (sessions per project, over time).
 - [ ] Correlate a session with the git diff/files it actually touched.
 
 ### Implemented: full-text search + prompt-preview modal
 
 - **Backend** (`server/utils/claudeProjects.ts`): `readSessionPrompts(filePath)` reads the
-  *entire* `.jsonl` (unlike `readSessionHead`, which stops after the first user prompt) and
+  _entire_ `.jsonl` (unlike `readSessionHead`, which stops after the first user prompt) and
   collects every human-authored prompt, reusing the same `type === "user"` / `!isSidechain` /
   `!startsWith("<")` filtering `readSessionHead` already used to find the first one. Capped at
   `MAX_PROMPTS_EXTRACTED` (30) prompts, each truncated to `MAX_PROMPT_PREVIEW_LENGTH` (300) chars,
@@ -221,7 +220,7 @@ Update this list's checkmarks/notes as items get built or dropped.
   prompts, opened via a small icon button next to "Updated ..." on `SessionCard`.
   **Rendered via `createPortal(..., document.body)` — this is load-bearing, not decorative.**
   `SessionCard`'s root div has `hover:-translate-y-0.5` (a transform-on-hover utility); since the
-  button that opens the modal lives *inside* the card, the user's cursor is hovering the card at
+  button that opens the modal lives _inside_ the card, the user's cursor is hovering the card at
   the exact moment the modal mounts, which makes the card a CSS containing block for any
   `position: fixed` descendant — clipping the modal to the card's own tiny bounding box instead of
   centering over the full viewport. Confirmed by direct DOM measurement during development (moving
@@ -281,12 +280,12 @@ Update this list's checkmarks/notes as items get built or dropped.
 
 ### Implemented: token usage / estimated cost per session
 
-- **Backend** (`server/utils/claudeProjects.ts`, `readSessionUsage`): reads the *entire*
+- **Backend** (`server/utils/claudeProjects.ts`, `readSessionUsage`): reads the _entire_
   transcript and sums `message.usage` (`input_tokens`, `output_tokens`,
   `cache_creation_input_tokens`, `cache_read_input_tokens`) per model. **Critical gotcha found
   during development**: a single API response with multiple content blocks (e.g. a `thinking`
   block followed by a `tool_use` block) is logged as multiple JSONL lines that share the same
-  `message.id` and carry the *identical* usage numbers on every line — naively summing every
+  `message.id` and carry the _identical_ usage numbers on every line — naively summing every
   `type: "assistant"` line double- (or N-times-) counts. Fixed by deduping on `message.id`,
   tallying each unique message exactly once. Also found or a `"<synthetic>"` model marker with
   all-zero usage on real transcripts (looks like an internal retry/injected-turn marker, not a
@@ -299,7 +298,7 @@ Update this list's checkmarks/notes as items get built or dropped.
   per-model rates — they're documented multipliers of the base input rate (1.25× for the default
   5-minute TTL, which is what Claude Code uses; 0.1× for a cache read). `summarizeUsage()` maps
   each model's raw usage to a cost, first filtering out any all-zero-usage entries (the
-  `"<synthetic>"` case above), then returns `totalCostUsd: null` if *any remaining* model has
+  `"<synthetic>"` case above), then returns `totalCostUsd: null` if _any remaining_ model has
   unknown pricing — a partial sum would understate the real cost, which is worse than saying
   "unavailable." Verified with inline unit tests: known-model math checks out, an unknown model
   with real usage nulls the total, an unknown model with zero usage does not (gets filtered
@@ -326,9 +325,9 @@ Update this list's checkmarks/notes as items get built or dropped.
   `renameSession()` (`sessionService.ts`) re-checks `getActiveResumeSessionIds()` (the same
   active/inactive indicator function above) and throws `SessionActiveError` — mapped to **HTTP
   409** in `server/routes/sessions.ts` — if the id is currently `claude --resume`d. This is
-  deliberately a *second* check, independent of the disabled button client-side: the button can
+  deliberately a _second_ check, independent of the disabled button client-side: the button can
   only prevent the common case (page loaded, then user clicks rename while it's already
-  displayed as active); it can't prevent a session that *became* active in the gap between page
+  displayed as active); it can't prevent a session that _became_ active in the gap between page
   load and the request landing. Verified directly: `curl -X PATCH .../title` against this very
   session's own id (genuinely active) returned `409` with the expected message; renaming an
   inactive session and clearing it back to blank both worked and persisted correctly.
@@ -373,16 +372,16 @@ Update this list's checkmarks/notes as items get built or dropped.
   all-or-nothing outcome. Marks every id `pending: "delete"` up front so each selected
   `SessionCard`'s own Delete button shows its existing spinner — no new per-card pending-state UI
   needed.
-- **No active-session restriction on bulk delete** — deliberately consistent with the existing
-  single-session delete, which has never had one either (only *rename* has the active-session
-  gate, per explicit instruction). Expanding delete's safety behavior wasn't asked for here and
-  would be a separate, bigger discussion (e.g. whether deleting an active session's `.jsonl`
-  file out from under a running `claude --resume` process is actually a problem — untested).
+- **No active-session restriction on bulk delete at the time this feature was built** — deliberately
+  consistent with the single-session delete at the time, which didn't have one either (only
+  _rename_ had the active-session gate). **This has since changed** — see "active-session gate
+  extended to delete, continue, and bulk selection" below; single delete, continue, and bulk
+  selection all now block on `session.isActive`.
 - **Frontend**: a checkbox on each `SessionCard` (top-left, next to the title, native
   `<input type="checkbox">` — this app doesn't have a custom checkbox component and one wasn't
   needed here), a selected-card highlight (ring + border color), a "Select all on this page" link
   next to the results-count line, and a selection bar (shown only when `selectedIds.size > 0`)
-  with the count, "Clear", and "Delete selected" — the latter opens the *same* `ConfirmDialog`
+  with the count, "Clear", and "Delete selected" — the latter opens the _same_ `ConfirmDialog`
   component already used for single-session delete, just with a dynamic count in the message.
 - Verified live with 3 disposable fake sessions created directly under `~/.claude/projects/`
   (`-tmp-bulk-delete-test-{1,2,3}/`, deleted again after testing, including the empty parent
@@ -391,3 +390,52 @@ Update this list's checkmarks/notes as items get built or dropped.
   confirmed the bar showed "3 selected," confirmed the dialog's message showed the count
   correctly, deleted, and confirmed all three `.jsonl` files were actually gone from disk
   afterward (not just removed from the UI list).
+
+### Implemented: active-session gate extended to delete, continue, and bulk selection
+
+Per explicit user instruction ("se a sessão está ativa não pode executar ações em massa nem
+deletar nem continuar" — if a session is active it must not be deletable, continuable, or
+selectable for bulk actions), the active-session gate that previously only covered rename
+(see "manual session rename" above) now covers **all four** mutating/selecting actions.
+
+- **`SessionActiveError`** (`server/services/sessionService.ts`) generalized from a fixed
+  `constructor(id: string)` message to `constructor(message: string)`, so each call site phrases
+  its own action-specific message instead of one generic string.
+- **Backend gates — the actual safety-relevant piece, independent of the UI.**
+  `deleteSession()` and `continueSession()` (`sessionService.ts`) now both call
+  `getActiveResumeSessionIds()` (same shared detector as the LED indicator and rename gate) and
+  throw `SessionActiveError` if the target id is active — `deleteSession` checks it before the
+  `unlink`, `continueSession` checks it before even resolving `cwd` or picking a terminal
+  launcher. `server/routes/sessions.ts`'s `DELETE /:id` and `POST /:id/continue` routes both
+  catch `SessionActiveError` → **HTTP 409** (mirroring the existing `PATCH /:id/title` handling).
+  This is deliberately a second, independent check — the disabled button only prevents the common
+  case; it can't prevent a session that became active in the gap between page load and the
+  request landing. Verified directly: `curl -X DELETE .../f27322ff-...` and
+  `curl -X POST .../f27322ff-.../continue` against this very session's own (genuinely active) id
+  both returned `409` with the expected action-specific messages.
+- **`src/services/sessionsApi.ts`** refactored so all three mutating calls (`deleteSession`,
+  `continueSession`, `renameSession`) share one `withServerErrorMessage()` helper that extracts the
+  server's specific `error` string from a 409/other error response and re-throws it as a plain
+  `Error` (with `{ cause: err }` to satisfy the `preserve-caught-error` lint rule) — previously
+  only `renameSession` did this extraction, the other two surfaced axios's generic
+  "Request failed with status code 409" instead.
+- **Frontend** (`src/components/SessionCard.tsx`):
+  - Continue button: `continueDisabledReason` picks between the pre-existing `directoryMissing`
+    tooltip and a new `"This session is already open in a terminal."` one when `session.isActive`
+    — `directoryMissing` takes priority if a session were somehow both (unlikely in practice: an
+    active session's directory presumably existed when it was resumed), so the tooltip always
+    points at the more actionable problem. `disabled` now checks
+    `isBusy || continueDisabledReason !== null`.
+  - Delete button: previously had **no** tooltip wrapper at all (`disabled={isBusy}` only). Now
+    pulled into its own `deleteButton` variable and wrapped in the same disabled-button-tooltip
+    `<span>` trick already used for rename/continue, showing "Close this session in its terminal
+    before deleting." when `session.isActive`.
+  - Selection checkbox: `disabled={isBusy}` → `disabled={isBusy || session.isActive}` — an active
+    session can no longer be checked for bulk actions.
+  - `useSessions.ts`'s `selectAllOnPage()` now skips `session.isActive` entries when adding to the
+    selection set, so "Select all on this page" doesn't try to include a session whose checkbox is
+    disabled.
+- Verified live in the browser against this very session's own (genuinely active) card: hovering
+  Continue showed "This session is already open in a terminal.", hovering Delete showed "Close
+  this session in its terminal before deleting.", and clicking the checkbox did nothing (stayed
+  unchecked, no selection bar appeared) — all three confirmed disabled with correct tooltips.

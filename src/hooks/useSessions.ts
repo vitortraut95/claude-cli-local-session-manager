@@ -162,7 +162,12 @@ export function useSessions() {
   const selectAllOnPage = useCallback(() => {
     setSelectedIds((current) => {
       const next = new Set(current);
-      for (const session of paginatedSessions) next.add(session.id);
+      // Active sessions' checkboxes are disabled (can't bulk-delete/continue a session that's
+      // open in a terminal), so skip them here too rather than selecting something the UI
+      // won't let the user act on.
+      for (const session of paginatedSessions) {
+        if (!session.isActive) next.add(session.id);
+      }
       return next;
     });
   }, [paginatedSessions]);

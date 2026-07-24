@@ -146,17 +146,30 @@ export class SessionNotFoundError extends Error {
   }
 }
 
+export class SessionActiveError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SessionActiveError";
+  }
+}
+
+/**
+ * Deleting a session that's actively `claude --resume`d would pull the `.jsonl` file out from
+ * under a running process mid-write — reject it server-side too, not just via the disabled
+ * Delete button in the UI, in case a session becomes active between page load and this request
+ * landing (same defense-in-depth reasoning as `renameSession`/`continueSession` below).
+ */
 export async function deleteSession(id: string): Promise<void> {
+  const activeIds = await getActiveResumeSessionIds();
+  if (activeIds.has(id)) {
+    throw new SessionActiveError(
+      `Session "${id}" is currently active in a terminal — close it before deleting.`,
+    );
+  }
+
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
   await unlink(filePath);
-}
-
-export class SessionActiveError extends Error {
-  constructor(id: string) {
-    super(`Session "${id}" is currently active in a terminal — close it before renaming.`);
-    this.name = "SessionActiveError";
-  }
 }
 
 /**
@@ -172,7 +185,9 @@ export async function renameSession(id: string, title: string): Promise<void> {
 
   const activeIds = await getActiveResumeSessionIds();
   if (activeIds.has(id)) {
-    throw new SessionActiveError(id);
+    throw new SessionActiveError(
+      `Session "${id}" is currently active in a terminal — close it before renaming.`,
+    );
   }
 
   await setCustomTitle(id, title);
@@ -440,10 +455,19 @@ async function launchWindowsTerminal(resumeCommand: string, cwd?: string): Promi
  * Always tries Warp first (silently falls through to the OS-specific terminal launcher below
  * when Warp isn't installed, per `launchWarp`'s own `commandExists`/platform checks) — no
  * user-facing toggle for this anymore.
+ *
+ * Rejects an already-active session server-side too, not just via the disabled Continue button
+ * in the UI: opening a second `claude --resume` for the same session would race with the first
+ * process's own writes to that session's `.jsonl`.
  */
 export async function continueSession(id: string): Promise<void> {
   if (!isSafeSessionId(id)) {
     throw new Error(`Invalid session id "${id}"`);
+  }
+
+  const activeIds = await getActiveResumeSessionIds();
+  if (activeIds.has(id)) {
+    throw new SessionActiveError(`Session "${id}" is already open in a terminal.`);
   }
 
   const cwd = await findSessionCwd(id);

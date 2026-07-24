@@ -93,18 +93,39 @@ export function SessionCard({
     </button>
   );
 
+  // Directory-missing is checked first: it's the more actionable problem to surface if a
+  // session somehow ended up both without its original folder and (per stale process-list data)
+  // still "active" — an edge case, but this keeps the tooltip pointing at the fixable issue.
+  const continueDisabledReason = session.directoryMissing
+    ? "Recreate the original folder (or a symlink to it) before resuming — the Claude CLI resolves sessions by working directory."
+    : session.isActive
+      ? "This session is already open in a terminal."
+      : null;
+
   const continueButton = (
     <span className="flex flex-1">
       <button
         type="button"
         onClick={() => onContinue(session)}
-        disabled={isBusy || session.directoryMissing}
+        disabled={isBusy || continueDisabledReason !== null}
         className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-700 dark:hover:bg-gray-600"
       >
         {isContinuing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
         Continue (terminal)
       </button>
     </span>
+  );
+
+  const deleteButton = (
+    <button
+      type="button"
+      onClick={() => onDeleteRequest(session)}
+      disabled={isBusy || session.isActive}
+      className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-red-400 dark:hover:bg-red-950/50"
+    >
+      {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+      Delete
+    </button>
   );
 
   return (
@@ -115,6 +136,15 @@ export function SessionCard({
           : "border-gray-200 dark:border-gray-800"
       }`}
     >
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={() => onToggleSelect(session.id)}
+        disabled={isBusy || session.isActive}
+        aria-label={selected ? "Deselect session" : "Select session"}
+        className="absolute -top-1.5 -left-1.5 h-4 w-4 shrink-0 accent-gray-900 disabled:cursor-not-allowed disabled:opacity-40 dark:accent-gray-100"
+      />
+
       <Tooltip
         content={
           session.isActive
@@ -124,7 +154,7 @@ export function SessionCard({
       >
         <span
           aria-label={session.isActive ? "Active session" : "Inactive session"}
-          className={`absolute top-0 right-0 h-3 w-3 rounded-full border-2 border-white shadow dark:border-gray-900 ${
+          className={`absolute -top-1 left-4 h-3 w-3 rounded-full border-2 border-white shadow dark:border-gray-900 ${
             session.isActive ? "bg-green-500 animate-pulse" : "bg-red-400"
           }`}
         />
@@ -132,13 +162,6 @@ export function SessionCard({
 
       <div className="flex items-start justify-between gap-2">
         <label className="flex min-w-0 items-start gap-2">
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={() => onToggleSelect(session.id)}
-            aria-label={selected ? "Deselect session" : "Select session"}
-            className="mt-1 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
-          />
           <h2
             className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
             title={session.title}
@@ -252,29 +275,21 @@ export function SessionCard({
       </div>
 
       <div className="flex gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
-        {session.directoryMissing ? (
+        {continueDisabledReason !== null ? (
           // Native `disabled` buttons don't reliably fire hover events, so the tooltip needs a
           // separate, non-disabled wrapper — same pattern Radix's own docs recommend for
           // disabled-button tooltips (the wrapping `<span>` inside continueButton is that layer).
-          <Tooltip content="Recreate the original folder (or a symlink to it) before resuming — the Claude CLI resolves sessions by working directory.">
-            {continueButton}
-          </Tooltip>
+          <Tooltip content={continueDisabledReason}>{continueButton}</Tooltip>
         ) : (
           continueButton
         )}
-        <button
-          type="button"
-          onClick={() => onDeleteRequest(session)}
-          disabled={isBusy}
-          className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-red-400 dark:hover:bg-red-950/50"
-        >
-          {isDeleting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
-          Delete
-        </button>
+        {session.isActive ? (
+          <Tooltip content="Close this session in its terminal before deleting.">
+            <span className="inline-flex shrink-0">{deleteButton}</span>
+          </Tooltip>
+        ) : (
+          deleteButton
+        )}
       </div>
 
       <PromptPreviewModal

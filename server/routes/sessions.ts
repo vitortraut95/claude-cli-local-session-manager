@@ -39,6 +39,10 @@ sessionsRouter.delete("/:id", async (req, res) => {
       res.status(404).json({ success: false, error: err.message });
       return;
     }
+    if (err instanceof SessionActiveError) {
+      res.status(409).json({ success: false, error: err.message });
+      return;
+    }
     res.status(500).json({
       success: false,
       error: err instanceof Error ? err.message : String(err),
@@ -67,6 +71,10 @@ sessionsRouter.post("/:id/continue", async (req, res) => {
     await continueSession(req.params.id);
     res.json({ success: true });
   } catch (err) {
+    if (err instanceof SessionActiveError) {
+      res.status(409).json({ success: false, error: err.message });
+      return;
+    }
     res.status(500).json({
       success: false,
       error: err instanceof Error ? err.message : String(err),
