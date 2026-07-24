@@ -1,6 +1,7 @@
 import { Loader2, X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { Button } from "./Button";
 
 type ModalSize = "sm" | "md" | "lg";
 
@@ -57,11 +58,6 @@ export function Modal({
 
   if (!open) return null;
 
-  const confirmButtonClass =
-    confirmVariant === "danger"
-      ? "inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-      : "inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-700 dark:hover:bg-gray-600";
-
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600/80 p-4"
@@ -83,14 +79,9 @@ export function Modal({
               {title}
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="shrink-0 rounded p-1 text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-          >
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
 
         <div className="overflow-y-auto p-4">{children}</div>
@@ -98,25 +89,19 @@ export function Modal({
         {(onConfirm ?? onCancel) && (
           <div className="flex justify-end gap-2 border-t border-gray-100 p-4 dark:border-gray-800">
             {onCancel && (
-              <button
-                type="button"
-                onClick={onCancel}
-                disabled={isConfirmLoading}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-              >
+              <Button variant="outline" onClick={onCancel} disabled={isConfirmLoading}>
                 {cancelLabel}
-              </button>
+              </Button>
             )}
             {onConfirm && (
-              <button
-                type="button"
+              <Button
+                variant={confirmVariant === "danger" ? "danger" : "primary"}
                 onClick={onConfirm}
                 disabled={isConfirmLoading}
-                className={confirmButtonClass}
+                icon={isConfirmLoading && <Loader2 className="h-4 w-4 animate-spin" />}
               >
-                {isConfirmLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                 {confirmLabel}
-              </button>
+              </Button>
             )}
           </div>
         )}

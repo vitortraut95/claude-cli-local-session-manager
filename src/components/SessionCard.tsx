@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
 import type { Session } from "../types/session";
+import { Button } from "./Button";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { NicknameModal } from "./NicknameModal";
 import { Tooltip } from "./Tooltip";
@@ -78,19 +79,20 @@ export function SessionCard({
   };
 
   const nicknameButton = (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon"
       onClick={() => setShowNicknameModal(true)}
       disabled={isBusy || session.isActive}
       aria-label={session.nickname ? "Edit local nickname" : "Add local nickname"}
-      className="inline-flex shrink-0 items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-    >
-      {isSettingNickname ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <Pencil className="h-3.5 w-3.5" />
-      )}
-    </button>
+      icon={
+        isSettingNickname ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Pencil className="h-3.5 w-3.5" />
+        )
+      }
+    />
   );
 
   // Directory-missing is checked first: it's the more actionable problem to surface if a
@@ -104,28 +106,29 @@ export function SessionCard({
 
   const continueButton = (
     <span className="flex flex-1">
-      <button
-        type="button"
+      <Button
+        variant="primary"
+        size="sm"
+        fullWidth
         onClick={() => onContinue(session)}
         disabled={isBusy || continueDisabledReason !== null}
-        className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-700 dark:hover:bg-gray-600"
+        icon={isContinuing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
       >
-        {isContinuing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
         Resume (terminal)
-      </button>
+      </Button>
     </span>
   );
 
   const deleteButton = (
-    <button
-      type="button"
+    <Button
+      variant="outline-danger"
+      size="sm"
       onClick={() => onDeleteRequest(session)}
       disabled={isBusy || session.isActive}
-      className="inline-flex items-center justify-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-red-400 dark:hover:bg-red-950/50"
+      icon={isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
     >
-      {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
       Delete
-    </button>
+    </Button>
   );
 
   return (
@@ -214,18 +217,19 @@ export function SessionCard({
           {session.id}
         </span>
         <Tooltip content={copiedId ? "Session ID copied!" : "Copy session ID"}>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleCopySessionId}
             aria-label="Copy session ID"
-            className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-          >
-            {copiedId ? (
-              <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
-          </button>
+            icon={
+              copiedId ? (
+                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )
+            }
+          />
         </Tooltip>
       </div>
 
@@ -236,26 +240,24 @@ export function SessionCard({
         <div className="flex items-center gap-1">
           {session.usage.models.length > 0 && (
             <Tooltip content="View token usage and estimated cost">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowUsage(true)}
                 aria-label="View usage and cost"
-                className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-              >
-                <DollarSign className="h-3.5 w-3.5" />
-              </button>
+                icon={<DollarSign className="h-3.5 w-3.5" />}
+              />
             </Tooltip>
           )}
           {session.prompts.length > 0 && (
             <Tooltip content="Preview prompts sent in this session">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowPreview(true)}
                 aria-label="Preview prompts"
-                className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-              </button>
+                icon={<MessageSquare className="h-3.5 w-3.5" />}
+              />
             </Tooltip>
           )}
         </div>
@@ -269,18 +271,19 @@ export function SessionCard({
           {resumeCommand}
         </span>
         <Tooltip content={copiedCommand ? "Resume command copied!" : "Copy resume command"}>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleCopyCommand}
             aria-label="Copy resume command"
-            className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-          >
-            {copiedCommand ? (
-              <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
-          </button>
+            icon={
+              copiedCommand ? (
+                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )
+            }
+          />
         </Tooltip>
       </div>
 

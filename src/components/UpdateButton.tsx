@@ -1,5 +1,6 @@
 import { Loader2, RefreshCw } from "lucide-react";
 import type { UpdateStatus } from "../services/systemApi";
+import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 
 type UpdateButtonProps = {
@@ -27,24 +28,26 @@ export function UpdateButton({ status, checking, updating, onUpdate }: UpdateBut
   return (
     <Tooltip content={describeStatus(status, checking, updating)}>
       <span className="relative inline-flex">
-        <button
-          type="button"
+        <Button
+          variant="unstyled"
           onClick={onUpdate}
           disabled={disabled}
           aria-label="Update application"
-          className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`border ${
             updateAvailable
               ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-950"
               : "border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-600"
           }`}
+          icon={
+            isBusy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )
+          }
         >
-          {isBusy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4" />
-          )}
           Update
-        </button>
+        </Button>
         {updateAvailable && !isBusy && (
           <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-900" />
         )}

@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "./Button";
 
 type PaginationProps = {
   page: number;
@@ -9,27 +10,27 @@ type PaginationProps = {
 export function Pagination({ page, pageCount, onChange }: PaginationProps) {
   return (
     <div className="flex items-center justify-center gap-3">
-      <button
-        type="button"
+      <Button
+        variant="outline"
+        size="icon"
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
         aria-label="Previous page"
-        className="inline-flex items-center justify-center rounded-md border border-gray-300 p-1.5 text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
       >
         <ChevronLeft className="h-4 w-4" />
-      </button>
+      </Button>
       <span className="text-sm text-gray-600 dark:text-gray-400">
         Page {page} of {pageCount}
       </span>
-      <button
-        type="button"
+      <Button
+        variant="outline"
+        size="icon"
         onClick={() => onChange(page + 1)}
         disabled={page >= pageCount}
         aria-label="Next page"
-        className="inline-flex items-center justify-center rounded-md border border-gray-300 p-1.5 text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
       >
         <ChevronRight className="h-4 w-4" />
-      </button>
+      </Button>
     </div>
   );
 }

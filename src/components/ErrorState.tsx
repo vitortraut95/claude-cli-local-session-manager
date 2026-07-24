@@ -1,4 +1,5 @@
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Button } from "./Button";
 
 type ErrorStateProps = {
   message: string;
@@ -13,14 +14,14 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
         Error loading sessions
       </p>
       <p className="mt-1 max-w-sm text-sm text-red-600 dark:text-red-400">{message}</p>
-      <button
-        type="button"
+      <Button
+        variant="outline-danger"
         onClick={onRetry}
-        className="mt-4 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:bg-gray-900 dark:text-red-400 dark:hover:bg-red-950/50"
+        icon={<RefreshCw className="h-4 w-4" />}
+        className="mt-4"
       >
-        <RefreshCw className="h-4 w-4" />
         Try again
-      </button>
+      </Button>
     </div>
   );
 }

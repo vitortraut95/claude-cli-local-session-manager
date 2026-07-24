@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "../components/Button";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DateRangeFilter } from "../components/DateRangeFilter";
 import { EmptyState } from "../components/EmptyState";
@@ -86,13 +87,9 @@ export function SessionsPage() {
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Showing {rangeStart}–{rangeEnd} of {filteredCount}
           </p>
-          <button
-            type="button"
-            onClick={selectAllOnPage}
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
-          >
+          <Button variant="link" size="none" onClick={selectAllOnPage}>
             Select all on this page
-          </button>
+          </Button>
         </div>
 
         {selectedIds.size > 0 && (
@@ -101,22 +98,22 @@ export function SessionsPage() {
               {selectedIds.size} selected
             </span>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={clearSelection}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                icon={<X className="h-3.5 w-3.5" />}
               >
-                <X className="h-3.5 w-3.5" />
                 Clear
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="outline-danger"
+                size="sm"
                 onClick={() => setShowBulkDeleteConfirm(true)}
-                className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/50"
+                icon={<Trash2 className="h-3.5 w-3.5" />}
               >
-                <Trash2 className="h-3.5 w-3.5" />
                 Delete selected
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -154,15 +151,15 @@ export function SessionsPage() {
           <ProjectFilter projects={projects} value={projectFilter} onChange={setProjectFilter} />
           <DateRangeFilter from={updatedFrom} to={updatedTo} onChange={setUpdatedRange} />
 
-          <button
-            type="button"
+          <Button
+            variant="outline"
             onClick={refresh}
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="shadow-sm"
+            icon={<RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />}
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh sessions
-          </button>
+          </Button>
         </div>
         {renderContent()}
       </main>
