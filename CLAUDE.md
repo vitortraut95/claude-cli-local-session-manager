@@ -228,6 +228,23 @@ Update this list's checkmarks/notes as items get built or dropped.
   descendant of a transform-bearing card — **any future modal triggered from inside `SessionCard`
   (or any other element with a hover/transform utility class) needs the same portal treatment,
   or it will intermittently render clipped to that element's box instead of centered on screen.**
+- **Fixed: the preview modal used to reuse `session.prompts` directly, so any prompt over 300
+  chars showed cut off mid-word (e.g. "...está no mob…", missing "mobile todo colado nas
+  laterais. arrume isso" — reported by the user with a real example, "Fix course content layout
+  on mobile", a 340-char prompt that got truncated exactly as designed for the list payload, just
+  not what anyone wants in a dedicated preview).** `claudeProjects.ts` now splits the scanning
+  logic into a shared `collectUserPrompts()`, with `readSessionPrompts()` (list/search, still
+  truncated — unchanged behavior) and a new `readFullSessionPrompts()` (untruncated) both calling
+  it. `sessionService.ts` exposes this as `getSessionPrompts(id)`, routed via a new
+  `GET /sessions/:id/prompts` (`server/routes/sessions.ts`) — deliberately **not** folded into the
+  existing `/sessions` list response, since embedding full prompt text for every session up front
+  is exactly the payload bloat `MAX_PROMPT_PREVIEW_LENGTH` exists to avoid. `PromptPreviewModal.tsx`
+  fetches this lazily in a `useEffect` keyed on `open`/`session.id`, guarded so it only fetches
+  once per open session (not on every re-render), shows "Loading prompts…" while in flight, and
+  falls back to the truncated `session.prompts` (with a small inline notice) if the fetch fails.
+  Verified live against the real session that surfaced this (`088db5ed-...` in the `clientarea`
+  project): the modal now shows the prompt through to "...arrume isso" instead of cutting off
+  before it.
 
 ### Implemented: active/inactive session indicator
 
