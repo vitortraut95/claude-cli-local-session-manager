@@ -182,8 +182,7 @@ Update this list's checkmarks/notes as items get built or dropped.
 - [x] **Full-text search across message content** — done, see below.
 - [ ] **Token usage / cost per session** — each turn's `.jsonl` entry already carries a `usage`
   block (input/output/cache tokens); could aggregate per session, per project, per day.
-- [ ] **Proactive "stale directory" badge** — `continueSession()` already detects a missing cwd
-  and throws a clear error, but only *when clicked*; could surface this as a badge in the list.
+- [x] **Proactive "stale directory" badge** — done, see below.
 - [ ] **Message/turn count or session size indicator** on the card.
 
 ### Organization & management
@@ -259,6 +258,29 @@ Update this list's checkmarks/notes as items get built or dropped.
   anchor to it rather than some further-up ancestor) — green + `animate-pulse` when active, red
   when not — wrapped in the existing `Tooltip` component (Radix, already portal-based internally,
   so it doesn't hit the containing-block bug described above).
+
+### Implemented: proactive "stale directory" badge + Continue button gating
+
+- **Backend** (`server/services/sessionService.ts`): `buildSession()` now also checks
+  `directoryExists(head.cwd)` (the same helper `continueSession()` already used, just moved
+  earlier in the flow) and sets `directoryMissing: boolean` on the session. An unknown/missing
+  `cwd` (older session, or head parse didn't find one) is treated as `directoryMissing: false` —
+  we only flag it once we positively know the original directory and it's gone, to avoid false
+  positives blocking sessions we simply have no cwd data for. `continueSession()`'s own
+  independent check on click is left untouched as defense-in-depth (protects direct API callers
+  that bypass the UI).
+- **Frontend** (`src/components/SessionCard.tsx`): an amber badge ("⚠ Original folder missing")
+  rendered under the title when `directoryMissing`, and the "Continue (terminal)" button gets
+  `disabled={isBusy || session.directoryMissing}`.
+  - **Tooltip-on-disabled-button gotcha**: a native `disabled` button doesn't reliably fire hover
+    events in most browsers, so wrapping `Tooltip` directly around a disabled `<button>` silently
+    fails to show anything on hover. Fixed the same way Radix's own docs recommend: the button is
+    wrapped in a plain (non-disabled) `<span className="flex flex-1">`, and that span — not the
+    button — is what `Tooltip`'s `asChild` trigger wraps. **Same pattern needed for any future
+    disabled-button tooltip in this app**, including the upcoming rename button below.
+  - Verified live with a throwaway fake session (`~/.claude/projects/-tmp-fake-missing-dir-test/`,
+    `cwd` pointing at a directory that doesn't exist, deleted again after testing): badge appeared,
+    button visually disabled, click did nothing, tooltip showed the expected message on hover.
 
 ### Next up: manual session rename (in progress / up next)
 

@@ -45,6 +45,9 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive">
       readSessionPrompts(filePath),
     ]);
     const id = head.sessionId ?? path.basename(filePath, ".jsonl");
+    // Unknown cwd (older session, or head parse didn't find one) isn't treated as missing —
+    // only flag it once we actually know the original directory and it's gone.
+    const directoryMissing = head.cwd ? !(await directoryExists(head.cwd)) : false;
 
     return {
       id,
@@ -53,6 +56,7 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive">
       path: filePath,
       updatedAt: fileStat.mtime.toISOString(),
       prompts,
+      directoryMissing,
     };
   } catch {
     return null;

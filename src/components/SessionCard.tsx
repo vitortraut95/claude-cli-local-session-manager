@@ -1,4 +1,14 @@
-import { Check, Copy, Folder, Hash, Loader2, MessageSquare, Play, Trash2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Folder,
+  Hash,
+  Loader2,
+  MessageSquare,
+  Play,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
 import { useState } from "react";
 import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
@@ -54,6 +64,24 @@ export function SessionCard({
     }
   };
 
+  const continueButton = (
+    <span className="flex flex-1">
+      <button
+        type="button"
+        onClick={() => onContinue(session)}
+        disabled={isBusy || session.directoryMissing}
+        className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-700 dark:hover:bg-gray-600"
+      >
+        {isContinuing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Play className="h-4 w-4" />
+        )}
+        Continue (terminal)
+      </button>
+    </span>
+  );
+
   return (
     <div className="relative flex flex-col gap-2 justify-between rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
       <Tooltip
@@ -77,6 +105,16 @@ export function SessionCard({
       >
         {session.title}
       </h2>
+
+      {session.directoryMissing && (
+        <div
+          className="flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+          title="This session's original directory no longer exists"
+        >
+          <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+          Original folder missing
+        </div>
+      )}
 
       <span
         className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
@@ -149,19 +187,16 @@ export function SessionCard({
       </div>
 
       <div className="flex gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
-        <button
-          type="button"
-          onClick={() => onContinue(session)}
-          disabled={isBusy}
-          className="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-700 dark:hover:bg-gray-600"
-        >
-          {isContinuing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Play className="h-4 w-4" />
-          )}
-          Continue (terminal)
-        </button>
+        {session.directoryMissing ? (
+          // Native `disabled` buttons don't reliably fire hover events, so the tooltip needs a
+          // separate, non-disabled wrapper — same pattern Radix's own docs recommend for
+          // disabled-button tooltips (the wrapping `<span>` inside continueButton is that layer).
+          <Tooltip content="Recreate the original folder (or a symlink to it) before resuming — the Claude CLI resolves sessions by working directory.">
+            {continueButton}
+          </Tooltip>
+        ) : (
+          continueButton
+        )}
         <button
           type="button"
           onClick={() => onDeleteRequest(session)}

@@ -6,4 +6,5 @@ export type Session = {
   updatedAt: string;
   prompts: string[];
   isActive: boolean;
+  directoryMissing: boolean;
 };
