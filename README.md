@@ -40,7 +40,7 @@ yarn dev
 - Frontend: http://localhost:58230
 - Backend: http://localhost:58231 (Vite proxies `/sessions` and `/system` to this port)
 
-To stop everything, use the **"Stop application"** button in the header, or close the terminal.
+To stop everything, close the terminal running `yarn dev`.
 
 ## GNOME shortcut (optional)
 
@@ -86,12 +86,11 @@ the root is the web app itself, and `server/` is the second workspace.
 
 ## API
 
-| Method | Route                    | Description                                                        |
-| ------ | ------------------------ | ------------------------------------------------------------------ |
-| GET    | `/sessions`              | Lists every session found in `~/.claude/projects`                  |
-| DELETE | `/sessions/:id`          | Deletes the session's `.jsonl` file                                |
-| POST   | `/sessions/:id/continue` | Opens a terminal running `claude --resume <id>`                    |
-| POST   | `/system/shutdown`       | Stops frontend and backend (used by the "Stop application" button) |
+| Method | Route                    | Description                                       |
+| ------ | ------------------------ | -------------------------------------------------- |
+| GET    | `/sessions`              | Lists every session found in `~/.claude/projects` |
+| DELETE | `/sessions/:id`          | Deletes the session's `.jsonl` file               |
+| POST   | `/sessions/:id/continue` | Opens a terminal running `claude --resume <id>`   |
 
 ## Scripts
 

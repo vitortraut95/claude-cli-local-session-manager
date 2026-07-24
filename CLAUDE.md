@@ -40,10 +40,12 @@ to ship it on Windows and macOS too, since that came up as a future goal.
 - **`sanitizedSpawnEnv()`** (`sessionService.ts:127-142`) — the VS Code Snap env-var workaround
   now short-circuits unless `process.platform === "linux"` (it's a Linux/Snap-only concept, this
   was previously a silent no-op elsewhere, now it's explicit).
-- **Shutdown route** (`server/routes/system.ts:52-79`) — used to read `/proc/[pid]/stat` to get
-  the process-group id (Linux-only, no `/proc` on macOS — this was a **latent macOS bug**, not
-  just a Linux-ism). Swapped to `execFileSync("ps", ["-o", "pgid=", "-p", pid])`, which works on
-  both Linux and macOS. **Still doesn't work on Windows** — see below.
+- **"Stop application" feature removed entirely** (button in `Header.tsx`, `POST /system/shutdown`
+  in `server/routes/system.ts`, `stopApplication()` in `src/services/systemApi.ts`) — it used to
+  read `/proc/[pid]/stat` to find the process group and `SIGTERM` it (Linux-only, and a **latent
+  macOS bug** too, since macOS has no `/proc`). Rather than keep porting this, the feature was cut:
+  whoever wants to stop the app just closes the terminal running `yarn dev`. One less
+  platform-specific mechanism to ever have to fix for Windows/macOS.
 
 ### Still Linux-only — real per-OS work needed, not a quick swap
 
@@ -96,14 +98,7 @@ to ship it on Windows and macOS too, since that came up as a future goal.
    confirms the real per-OS defaults and wants to wire this back up (macOS is probably somewhere
    under `~/Library/Application Support/dev.warp.Warp-Stable/`, Windows under `%APPDATA%\Warp\` —
    **both still guesses, not verified**).
-3. **Windows has no process-group signal model.** The `/shutdown` route
-   (`server/routes/system.ts:68-79`) sends `SIGTERM` to `-pgid` (the whole process group started
-   by `yarn dev` → `concurrently` → `vite`/`tsx watch`). That concept doesn't exist on Windows.
-   Options: track the actual child PIDs Node spawns and kill each directly (only works if the
-   server process is the actual parent — currently it isn't always, `concurrently` sits between
-   it and `vite`), or use `taskkill /F /T /PID <pid>` (the `/T` flag kills the whole tree, closest
-   Windows equivalent).
-4. **Desktop-shortcut installer is 100% Linux/GNOME-specific and not portable as-is**:
+3. **Desktop-shortcut installer is 100% Linux/GNOME-specific and not portable as-is**:
    `install-shortcut.sh`, `open-terminal.sh`, `start.sh`, `claude-session-manager.desktop.template`.
    Uses `.desktop` file format, `xdg-user-dir`, `gio set ... metadata::trusted`,
    `update-desktop-database`, a Bash-only `/dev/tcp/...` port probe (`open-terminal.sh:9`), and
@@ -148,12 +143,10 @@ to ship it on Windows and macOS too, since that came up as a future goal.
 2. Confirm real Warp data-dir paths for macOS/Windows (needs someone with those machines, or the
    Warp docs/support to confirm), then wire `launchWarp()` back up for those platforms (currently
    hard-disabled off Linux — see above).
-3. Fix the Windows shutdown mechanism (`system.ts`) — track spawned child PIDs directly instead of
-   relying on POSIX process groups.
-4. Decide whether the desktop-shortcut feature is worth building per-OS installers for at all, or
+3. Decide whether the desktop-shortcut feature is worth building per-OS installers for at all, or
    whether it stays a Linux-only convenience script — this is a product call, not just an
    engineering one.
-5. Retire the duplicate logic in `open-terminal.sh` (still Linux-only, wasn't touched by #1) once
+4. Retire the duplicate logic in `open-terminal.sh` (still Linux-only, wasn't touched by #1) once
    there's a reason to make the desktop shortcut cross-platform too — a drift *guard*
    (`scripts/check-terminal-launchers-sync.mjs`, wired into `yarn lint`) exists now, but the two
    implementations are still separate; true unification is blocked on solving the
