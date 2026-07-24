@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as systemApi from "../services/systemApi";
 import type { UpdateJobStatus, UpdateStatus } from "../services/systemApi";
 import { useToast } from "./useToast";
 
 const JOB_POLL_INTERVAL_MS = 1000;
 const JOB_POLL_TIMEOUT_MS = 5 * 60 * 1000;
+const MIN_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -40,22 +41,50 @@ export function useUpdate() {
   const [checking, setChecking] = useState(true);
   const [updating, setUpdating] = useState(false);
   const { showToast } = useToast();
+  const lastRefreshRef = useRef(0);
+  const mountedRef = useRef(true);
 
-  const refreshStatus = useCallback(async () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const refreshStatus = useCallback(async (force = false) => {
+    const now = Date.now();
+    if (!force && now - lastRefreshRef.current < MIN_REFRESH_INTERVAL_MS) {
+      return;
+    }
+
+    lastRefreshRef.current = now;
     setChecking(true);
     try {
       const data = await systemApi.fetchUpdateStatus();
-      setStatus(data);
+      if (mountedRef.current) setStatus(data);
     } catch {
-      setStatus(null);
+      if (mountedRef.current) setStatus(null);
     } finally {
-      setChecking(false);
+      if (mountedRef.current) setChecking(false);
     }
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refreshStatus();
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshStatus();
+      }
+    };
+
+    window.setTimeout(refreshIfVisible, 0);
+
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("focus", refreshIfVisible);
+
+    return () => {
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("focus", refreshIfVisible);
+    };
   }, [refreshStatus]);
 
   const applyUpdate = useCallback(async () => {
@@ -68,8 +97,8 @@ export function useUpdate() {
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Could not update the application.", "error");
     } finally {
-      setUpdating(false);
-      await refreshStatus();
+      if (mountedRef.current) setUpdating(false);
+      await refreshStatus(true);
     }
   }, [showToast, refreshStatus]);
 

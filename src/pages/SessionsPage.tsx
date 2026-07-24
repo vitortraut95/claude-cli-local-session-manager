@@ -96,7 +96,7 @@ export function SessionsPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <Header />
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sticky top-2 z-10">
           <div className="flex-1">
             <SearchBar value={searchQuery} onChange={setSearchQuery} />
           </div>

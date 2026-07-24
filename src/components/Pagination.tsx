@@ -7,8 +7,6 @@ type PaginationProps = {
 };
 
 export function Pagination({ page, pageCount, onChange }: PaginationProps) {
-  if (pageCount <= 1) return null;
-
   return (
     <div className="flex items-center justify-center gap-3">
       <button
