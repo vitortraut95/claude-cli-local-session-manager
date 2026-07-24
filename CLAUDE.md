@@ -99,14 +99,32 @@ to ship it on Windows and macOS too, since that came up as a future goal.
    confirms the real per-OS defaults and wants to wire this back up (macOS is probably somewhere
    under `~/Library/Application Support/dev.warp.Warp-Stable/`, Windows under `%APPDATA%\Warp\` —
    **both still guesses, not verified**).
-3. **Desktop-shortcut installer is 100% Linux/GNOME-specific and not portable as-is**:
-   `install-shortcut.sh`, `open-terminal.sh`, `start.sh`, `claude-session-manager.desktop.template`.
-   Uses `.desktop` file format, `xdg-user-dir`, `gio set ... metadata::trusted`,
-   `update-desktop-database`, a Bash-only `/dev/tcp/...` port probe (`open-terminal.sh:9`), and
-   `chmod +x` (meaningless on Windows). **Recommendation: don't try to port this — build separate,
-   clearly-labeled installers per OS** (Windows: a `.lnk` via a small script, or a `.url` file;
-   macOS: a minimal `.app` bundle or an Automator/Shortcuts workflow) rather than sharing code
-   across three very different shortcut mechanisms.
+3. **Desktop-shortcut installer was Linux/GNOME-only; Windows and macOS launchers now exist too,
+   NEITHER SMOKE-TESTED ON REAL HARDWARE.** Original Linux stack unchanged: `install-shortcut.sh`,
+   `open-terminal.sh`, `start.sh`, `claude-session-manager.desktop.template` — `.desktop` file
+   format, `xdg-user-dir`, `gio set ... metadata::trusted`, `update-desktop-database`, a Bash-only
+   `/dev/tcp/...` port probe (`open-terminal.sh:9`), `chmod +x`. Per the "don't try to port this,
+   build separate installers" call made earlier:
+   - **`start-windows.bat`** (repo root) — standalone, no shared code with the Linux scripts, no
+     Node dependency for the "is it already running" check (uses `curl.exe`, bundled with Windows
+     since 2018, instead of the `/dev/tcp` trick), and no PATH-bootstrapping dance like
+     `start.sh`'s nvm-sourcing (Windows Node installers/nvm-windows update the persistent
+     system/user `PATH`, unlike Unix nvm's shell-rc-only approach — a real platform difference,
+     not an oversight). Shortcut creation is a documented PowerShell one-liner in `README.md`
+     (`New-Object -ComObject WScript.Shell` → `.CreateShortcut()`) rather than a committed
+     installer script, since raw `cmd.exe` has no way to create a `.lnk` at all.
+   - **`start-mac.command`** (repo root) — simpler than the other two: double-clicking a
+     `.command` file already opens Terminal.app on its own, so unlike Linux/Windows there's no
+     terminal-picking logic in the script at all, just the port-check/`yarn dev`/keep-open dance.
+     Reuses the exact same `/dev/tcp` port probe as `open-terminal.sh` (bash built-in, works
+     identically on macOS's bash, no curl dependency needed there either). Shortcut creation is a
+     plain `ln -sf` one-liner in `README.md` — deliberately *not* `osascript`/Finder-scripting
+     (`tell application "Finder" to make alias ...`), since that can trigger macOS's Automation
+     permission prompt the first time; a symlink needs no permission and Finder follows it
+     transparently for double-click execution.
+   **Still needed**: someone with real Windows and Mac hardware to double-click each script and
+   confirm the port-check/fallback-to-`yarn dev` logic and both shortcut-creation snippets
+   actually work.
 
 ### Decisions already made (so we don't re-litigate them)
 
@@ -134,21 +152,21 @@ to ship it on Windows and macOS too, since that came up as a future goal.
 
 ### Suggested order of attack, when this work actually starts
 
-1. **Smoke-test the new macOS/Windows terminal launchers on real machines.** This is now the
-   single highest-priority item — the code exists (`launchMacTerminal`/`launchWindowsTerminal` in
-   `sessionService.ts`) but is completely unverified. Needs someone with an actual Mac and Windows
-   box to click "Continue (terminal)" and confirm: does Terminal.app/Windows Terminal actually
-   open, in the right directory, running the right command; does it come to focus or have the
-   same focus-stealing issue Linux/Wayland has (see decisions below — worth re-checking whether
-   macOS/Windows are more permissive here before assuming the in-app toast is the only option
-   there too).
+1. **Smoke-test on real machines — the single highest-priority item.** Nothing Windows/macOS-
+   specific in this repo has run on real hardware yet:
+   - `launchMacTerminal`/`launchWindowsTerminal` (`sessionService.ts`, used by "Continue
+     (terminal)") — confirm Terminal.app/Windows Terminal actually open, in the right directory,
+     running the right command; check whether they come to focus or hit the same focus-stealing
+     issue Linux/Wayland has (worth re-checking whether macOS/Windows are more permissive here
+     before assuming the in-app toast is the only option there too).
+   - `start-windows.bat` and `start-mac.command` (repo root) — confirm the "is it already
+     running" check and the `yarn dev` fallback both work on each OS, and that both
+     shortcut-creation snippets in `README.md` (PowerShell `.lnk` / `ln -sf` symlink) actually
+     produce a working Desktop icon.
 2. Confirm real Warp data-dir paths for macOS/Windows (needs someone with those machines, or the
    Warp docs/support to confirm), then wire `launchWarp()` back up for those platforms (currently
    hard-disabled off Linux — see above).
-3. Decide whether the desktop-shortcut feature is worth building per-OS installers for at all, or
-   whether it stays a Linux-only convenience script — this is a product call, not just an
-   engineering one.
-4. Retire the duplicate logic in `open-terminal.sh` (still Linux-only, wasn't touched by #1) once
+3. Retire the duplicate logic in `open-terminal.sh` (still Linux-only, wasn't touched by #1) once
    there's a reason to make the desktop shortcut cross-platform too — a drift *guard*
    (`scripts/check-terminal-launchers-sync.mjs`, wired into `yarn lint`) exists now, but the two
    implementations are still separate; true unification is blocked on solving the

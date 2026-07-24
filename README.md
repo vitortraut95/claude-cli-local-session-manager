@@ -13,7 +13,9 @@ everything runs on your machine.
 
 ## Prerequisites
 
-- Linux (with a GNOME environment to shortcuts work - optional)
+- Linux (with a GNOME environment for shortcuts to work - optional). Windows and macOS also have
+  experimental, not-yet-verified paths — see [Windows shortcut](#windows-shortcut-experimental-optional)
+  and [macOS shortcut](#macos-shortcut-experimental-optional) below.
 - [Node.js](https://nodejs.org/) 20+ with [Corepack](https://nodejs.org/api/corepack.html) enabled (`corepack enable`) for Yarn
 - [Claude CLI](https://claude.com/claude-code) installed and available on `PATH` (the `claude` command)
 
@@ -69,6 +71,58 @@ update-desktop-database ~/.local/share/applications 2>/dev/null
 If the icon is also pinned to the dock, right-click it and choose **"Unpin"** / **"Remove from
 Favorites"**.
 
+## Windows shortcut (experimental, optional)
+
+> **Not smoke-tested on a real Windows machine yet** — this repo's development happens on Linux.
+> The logic is straightforward (check if the port answers, otherwise run `yarn dev`), but please
+> report back if something doesn't behave as expected.
+
+Double-click **`start-windows.bat`** (in the project root) to start the app — it opens a console
+window, checks whether the frontend is already running (opens a browser tab if so), otherwise
+runs `yarn dev` and keeps the window open so you can read the output.
+
+To put a shortcut to it on your Desktop, open PowerShell **from inside the cloned project
+folder** and run:
+
+```powershell
+$ws = New-Object -ComObject WScript.Shell
+$s = $ws.CreateShortcut("$env:USERPROFILE\Desktop\Claude Session Manager.lnk")
+$s.TargetPath = "$PWD\start-windows.bat"
+$s.WorkingDirectory = "$PWD"
+$s.IconLocation = "$env:SystemRoot\System32\shell32.dll,137"
+$s.Save()
+```
+
+(Pasting commands directly into PowerShell like this runs regardless of script execution
+policy — that restriction only applies to running a saved `.ps1` file.)
+
+If you move the project folder, delete the shortcut and re-run the command above from the new
+location.
+
+## macOS shortcut (experimental, optional)
+
+> **Not smoke-tested on a real Mac yet** — this repo's development happens on Linux. Same
+> disclaimer as Windows above: please report back if something doesn't behave as expected.
+
+Double-click **`start-mac.command`** (in the project root) — macOS opens it in Terminal.app on
+its own (no terminal-picking logic needed here, unlike the Linux/Windows scripts). It checks
+whether the frontend is already running (opens a browser tab if so), otherwise runs `yarn dev`
+and keeps the window open so you can read the output.
+
+To put a shortcut to it on your Desktop, open Terminal **from inside the cloned project folder**
+and run:
+
+```bash
+ln -sf "$PWD/start-mac.command" ~/Desktop/"Claude Session Manager.command"
+```
+
+This makes a symlink, not an `osascript`/Finder-scripting alias, so it doesn't trigger macOS's
+Automation permission prompt — Finder follows it transparently, so double-clicking the Desktop
+icon runs `start-mac.command` wherever the project actually lives.
+
+If you move the project folder, re-run the command above from the new location (`-f` overwrites
+the old symlink).
+
 ## Structure
 
 ```
@@ -77,6 +131,8 @@ Favorites"**.
 ├── open-terminal.sh       # what the shortcut runs: opens a tab if already running,
 │                          # otherwise opens a terminal and calls start.sh
 ├── start.sh               # runs inside the terminal: cd into the project + yarn dev
+├── start-windows.bat      # Windows equivalent of open-terminal.sh + start.sh combined
+├── start-mac.command      # macOS equivalent (double-clickable, opens in Terminal.app itself)
 ├── server/                # Express API
 └── src/                   # React SPA (workspace root, "web")
 ```
