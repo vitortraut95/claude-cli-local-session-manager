@@ -49,6 +49,8 @@ fi
 # We spawn the terminal ourselves instead of relying on the .desktop file's own
 # `Terminal=true` handling, since that has been observed to sometimes silently do nothing
 # when launched from the GNOME dock.
+# Kept in sync with sessionService.ts by `yarn lint` (scripts/check-terminal-launchers-sync.mjs) —
+# update both lists if you change this one.
 TERMINAL_LAUNCHERS=(x-terminal-emulator gnome-terminal konsole xfce4-terminal xterm)
 
 # `read` at the end keeps the window open after `npm run dev` exits (success, crash, or

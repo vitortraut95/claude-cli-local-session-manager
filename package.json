@@ -21,8 +21,9 @@
   "scripts": {
     "dev": "concurrently -n web,server -c blue,green \"vite\" \"yarn workspace server run dev\"",
     "build": "tsc -b && vite build && yarn workspace server run build",
-    "lint": "eslint . && yarn workspace server run lint",
+    "lint": "eslint . && yarn workspace server run lint && node scripts/check-terminal-launchers-sync.mjs",
     "lint:fix": "eslint . && yarn workspace server run lint --fix",
+    "check:terminal-launchers": "node scripts/check-terminal-launchers-sync.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -b --noEmit",

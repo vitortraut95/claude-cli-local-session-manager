@@ -65,11 +65,27 @@ to ship it on Windows and macOS too, since that came up as a future goal.
      specially (`&`, `%`, `^`, parentheses) — the current Windows quoting is basic and unhardened.
    - Warp is **not** attempted on darwin/win32 (`launchWarp()` early-returns `false` off Linux) —
      see #2, still unresolved.
-   - **The parallel, duplicate implementation in `open-terminal.sh` (root) was NOT updated** —
-     it's still Linux-only (`TERMINAL_LAUNCHERS` array at line 52, same fallback list). It only
-     backs the optional GNOME desktop shortcut, not the web UI's "Continue" button, so it wasn't
-     urgent, but it'll need the same treatment (or, better, retiring in favor of one shared
-     implementation) if the desktop-shortcut feature ever needs to work cross-platform too.
+   - **The parallel, duplicate implementation in `open-terminal.sh` (root) was NOT updated for
+     other OSes** — it's still Linux-only (`TERMINAL_LAUNCHERS` array, same fallback list). It
+     only backs the optional GNOME desktop shortcut, not the web UI's "Continue" button, so
+     porting it wasn't urgent, but it'll need the same treatment if the desktop-shortcut feature
+     ever needs to work cross-platform too.
+   - **True runtime consolidation (bash script calls the same code as the TS server) was
+     investigated and ruled out for now.** Confirmed empirically on this machine: in a clean
+     non-interactive shell — `env -i HOME="$HOME" bash -c 'command -v node'` — `node`/`yarn`
+     resolve to nothing (no system-wide Node install, only nvm, which `~/.zshrc` loads for
+     interactive shells only). `open-terminal.sh` runs in exactly that non-interactive context
+     when launched from a `.desktop` file, *before* `start.sh`'s own nvm-sourcing dance ever gets
+     a chance to run — so making the bash script depend on Node to pick a terminal emulator would
+     break the cold-bootstrap case it exists to handle. Don't "fix" this by having
+     `open-terminal.sh` shell out to a Node helper without re-solving that problem first.
+   - **What was done instead**: `scripts/check-terminal-launchers-sync.mjs` (repo root) parses the
+     `TERMINAL_LAUNCHERS` list out of both `sessionService.ts` and `open-terminal.sh` and fails if
+     they've drifted (different binaries or order). Wired into `yarn lint` as of this commit.
+     **Not yet wired into the `.husky/pre-commit` hook** (which currently runs `lint-staged` +
+     `typecheck` only, not `yarn lint`) — so drift is still only caught when someone runs
+     `yarn lint` manually or in CI, not automatically on every commit. Worth revisiting if this
+     list starts changing more often.
 2. **Warp's real data directory on macOS/Windows is still unverified**, and now explicitly
    disabled there rather than guessed: `launchWarp()` (`sessionService.ts`) returns `false`
    immediately when `process.platform !== "linux"`, so `useWarp` silently falls through to the
@@ -138,4 +154,7 @@ to ship it on Windows and macOS too, since that came up as a future goal.
    whether it stays a Linux-only convenience script — this is a product call, not just an
    engineering one.
 5. Retire the duplicate logic in `open-terminal.sh` (still Linux-only, wasn't touched by #1) once
-   there's a reason to make the desktop shortcut cross-platform too.
+   there's a reason to make the desktop shortcut cross-platform too — a drift *guard*
+   (`scripts/check-terminal-launchers-sync.mjs`, wired into `yarn lint`) exists now, but the two
+   implementations are still separate; true unification is blocked on solving the
+   Node-not-on-PATH cold-bootstrap problem first (see above).

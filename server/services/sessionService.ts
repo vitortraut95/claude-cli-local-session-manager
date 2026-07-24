@@ -104,6 +104,11 @@ const SPAWN_ERROR_GRACE_PERIOD_MS = 300;
  * Candidate terminal emulators, tried in order until one launches. Each is invoked as
  * `<bin> ...flag, "bash", "-c", shellCmd` — argv-style rather than a single shell string, since
  * most of these emulators exec their `-e`/`--` payload directly instead of passing it through a shell.
+ *
+ * `open-terminal.sh` (repo root) duplicates this exact list by hand, as a plain Bash array — it
+ * has to work before Node/yarn are guaranteed to even be on PATH (see CLAUDE.md), so it can't
+ * import this. `yarn lint` runs `scripts/check-terminal-launchers-sync.mjs` to catch the two
+ * drifting apart; update both if you touch this list.
  */
 const TERMINAL_LAUNCHERS: { bin: string; buildArgs: (shellCmd: string) => string[] }[] = [
   { bin: "x-terminal-emulator", buildArgs: (c) => ["-e", "bash", "-c", c] },
