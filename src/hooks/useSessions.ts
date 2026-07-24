@@ -118,7 +118,7 @@ export function useSessions() {
     const filtered = sessions.filter((session) => {
       const matchesQuery =
         !query ||
-        [session.title, session.project, session.id].some((field) =>
+        [session.title, session.project, session.id, ...session.prompts].some((field) =>
           field.toLowerCase().includes(query),
         );
       const matchesProject = !projectFilter || session.project === projectFilter;

@@ -4,4 +4,5 @@ export type Session = {
   project: string;
   path: string;
   updatedAt: string;
+  prompts: string[];
 };

@@ -171,3 +171,67 @@ to ship it on Windows and macOS too, since that came up as a future goal.
    (`scripts/check-terminal-launchers-sync.mjs`, wired into `yarn lint`) exists now, but the two
    implementations are still separate; true unification is blocked on solving the
    Node-not-on-PATH cold-bootstrap problem first (see above).
+
+## Feature backlog — dev-experience improvements
+
+Brainstormed list of things a dev using the Claude CLI might feel is missing, that this app
+(not the CLI itself) could address. Not cross-platform related — pure product/feature ideas.
+Update this list's checkmarks/notes as items get built or dropped.
+
+### Search & context (data already sitting in the `.jsonl`, just needs exposing)
+- [x] **Full-text search across message content** — done, see below.
+- [ ] **Token usage / cost per session** — each turn's `.jsonl` entry already carries a `usage`
+  block (input/output/cache tokens); could aggregate per session, per project, per day.
+- [ ] **Proactive "stale directory" badge** — `continueSession()` already detects a missing cwd
+  and throws a clear error, but only *when clicked*; could surface this as a badge in the list.
+- [ ] **Message/turn count or session size indicator** on the card.
+
+### Organization & management
+- [ ] **Manual session rename** — title is auto-derived (`aiTitle` ?? `summaryTitle` ??
+  `firstUserText`) with no override; would need a small local sidecar store (not upstream in the
+  CLI's own files) mapping session id → custom title.
+- [ ] **Favorite/pin sessions.**
+- [ ] **Bulk select + delete.**
+- [ ] **Group the list by day/project** instead of a flat grid.
+
+### Workflow
+- [ ] **"Session currently active" indicator** — detect a running `claude` process already
+  attached to a given session id.
+- [ ] **Export a session as Markdown** (for pasting into a PR/ticket).
+- [ ] **Keyboard shortcuts** (`/` focus search, `j`/`k` navigate, `Enter` continue, `Del` delete).
+- [ ] **Auto-refresh** instead of the manual "Refresh sessions" button (polling or a directory
+  watcher).
+
+### More ambitious / lower priority
+- [ ] Stats dashboard (sessions per project, over time).
+- [ ] Correlate a session with the git diff/files it actually touched.
+
+### Implemented: full-text search + prompt-preview modal
+
+- **Backend** (`server/utils/claudeProjects.ts`): `readSessionPrompts(filePath)` reads the
+  *entire* `.jsonl` (unlike `readSessionHead`, which stops after the first user prompt) and
+  collects every human-authored prompt, reusing the same `type === "user"` / `!isSidechain` /
+  `!startsWith("<")` filtering `readSessionHead` already used to find the first one. Capped at
+  `MAX_PROMPTS_EXTRACTED` (30) prompts, each truncated to `MAX_PROMPT_PREVIEW_LENGTH` (300) chars,
+  so one huge session can't bloat the `/sessions` list payload. Wired into `buildSession()`
+  (`sessionService.ts`) alongside the existing head/stat reads; `Session` (both `src/types` and
+  `server/types`) gained a `prompts: string[]` field.
+- **Search**: `useSessions.ts`'s existing client-side `matchesQuery` filter (already checking
+  title/project/id) now also spreads `...session.prompts` into the fields it checks — no new
+  endpoint, no debouncing, same architecture as before, just a longer list of fields to `.includes()`
+  against. Chosen over a server-side search endpoint because the session count for a single local
+  user is small (tens, not thousands) — reading full file content for every session on every list
+  load is cheap enough locally to not justify a second, async search architecture.
+- **Preview modal** (`src/components/PromptPreviewModal.tsx`): a numbered list of a session's
+  prompts, opened via a small icon button next to "Updated ..." on `SessionCard`.
+  **Rendered via `createPortal(..., document.body)` — this is load-bearing, not decorative.**
+  `SessionCard`'s root div has `hover:-translate-y-0.5` (a transform-on-hover utility); since the
+  button that opens the modal lives *inside* the card, the user's cursor is hovering the card at
+  the exact moment the modal mounts, which makes the card a CSS containing block for any
+  `position: fixed` descendant — clipping the modal to the card's own tiny bounding box instead of
+  centering over the full viewport. Confirmed by direct DOM measurement during development (moving
+  the modal's DOM node to be a child of `<body>` immediately fixed its size/position). `ConfirmDialog`
+  next to it doesn't hit this because it's rendered as a sibling in `SessionsPage`, never a
+  descendant of a transform-bearing card — **any future modal triggered from inside `SessionCard`
+  (or any other element with a hover/transform utility class) needs the same portal treatment,
+  or it will intermittently render clipped to that element's box instead of centered on screen.**

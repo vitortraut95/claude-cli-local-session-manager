@@ -1,8 +1,9 @@
-import { Check, Copy, Folder, Hash, Loader2, Play, Trash2 } from "lucide-react";
+import { Check, Copy, Folder, Hash, Loader2, MessageSquare, Play, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
 import type { Session } from "../types/session";
+import { PromptPreviewModal } from "./PromptPreviewModal";
 import { Tooltip } from "./Tooltip";
 import { formatUpdatedAt } from "../utils/formatDate";
 
@@ -26,6 +27,7 @@ export function SessionCard({
   const isBusy = isDeleting || isContinuing;
   const [copiedId, setCopiedId] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
 
@@ -90,9 +92,23 @@ export function SessionCard({
         </Tooltip>
       </div>
 
-      <p className="text-xs text-gray-600 dark:text-gray-400">
-        Updated {formatUpdatedAt(session.updatedAt)}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-gray-600 dark:text-gray-400">
+          Updated {formatUpdatedAt(session.updatedAt)}
+        </p>
+        {session.prompts.length > 0 && (
+          <Tooltip content="Preview prompts sent in this session">
+            <button
+              type="button"
+              onClick={() => setShowPreview(true)}
+              aria-label="Preview prompts"
+              className="inline-flex items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
+        )}
+      </div>
 
       <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
         <span
@@ -145,6 +161,12 @@ export function SessionCard({
           Delete
         </button>
       </div>
+
+      <PromptPreviewModal
+        session={session}
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+      />
     </div>
   );
 }

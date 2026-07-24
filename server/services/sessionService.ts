@@ -8,6 +8,7 @@ import {
   findJsonlFiles,
   getClaudeProjectsDir,
   readSessionHead,
+  readSessionPrompts,
   type SessionHead,
 } from "../utils/claudeProjects.js";
 
@@ -35,7 +36,11 @@ function resolveProject(head: SessionHead, filePath: string): string {
 
 async function buildSession(filePath: string): Promise<Session | null> {
   try {
-    const [head, fileStat] = await Promise.all([readSessionHead(filePath), stat(filePath)]);
+    const [head, fileStat, prompts] = await Promise.all([
+      readSessionHead(filePath),
+      stat(filePath),
+      readSessionPrompts(filePath),
+    ]);
     const id = head.sessionId ?? path.basename(filePath, ".jsonl");
 
     return {
@@ -44,6 +49,7 @@ async function buildSession(filePath: string): Promise<Session | null> {
       project: resolveProject(head, filePath),
       path: filePath,
       updatedAt: fileStat.mtime.toISOString(),
+      prompts,
     };
   } catch {
     return null;

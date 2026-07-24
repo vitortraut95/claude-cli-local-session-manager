@@ -147,3 +147,55 @@ export async function readSessionHead(filePath: string): Promise<SessionHead> {
 
   return result;
 }
+
+/** Caps how much prompt text ends up in the session-list payload (see readSessionPrompts). */
+const MAX_PROMPTS_EXTRACTED = 30;
+const MAX_PROMPT_PREVIEW_LENGTH = 300;
+
+function truncatePrompt(text: string): string {
+  const trimmed = text.trim();
+  return trimmed.length > MAX_PROMPT_PREVIEW_LENGTH
+    ? `${trimmed.slice(0, MAX_PROMPT_PREVIEW_LENGTH - 1)}…`
+    : trimmed;
+}
+
+/**
+ * Reads the *entire* session transcript (unlike readSessionHead, which stops after the first
+ * user prompt) to collect every human-authored prompt — powers full-text search and the
+ * prompt-preview modal. Caps both how many prompts are kept and how long each one is, so one
+ * unusually long session can't bloat the session-list payload; later prompts in a very long
+ * session are simply not included past that cap.
+ */
+export async function readSessionPrompts(filePath: string): Promise<string[]> {
+  const prompts: string[] = [];
+
+  const rl = createInterface({
+    input: createReadStream(filePath, { encoding: "utf8" }),
+    crlfDelay: Infinity,
+  });
+
+  try {
+    for await (const line of rl) {
+      if (prompts.length >= MAX_PROMPTS_EXTRACTED) break;
+      if (!line.trim()) continue;
+
+      let entry: JsonlEntry;
+      try {
+        entry = JSON.parse(line) as JsonlEntry;
+      } catch {
+        continue;
+      }
+
+      if (entry.type === "user" && !entry.isSidechain && entry.message?.role === "user") {
+        const text = extractText(entry.message.content);
+        if (text && !text.trimStart().startsWith("<")) {
+          prompts.push(truncatePrompt(text));
+        }
+      }
+    }
+  } finally {
+    rl.close();
+  }
+
+  return prompts;
+}
