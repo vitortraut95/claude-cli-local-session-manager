@@ -14,6 +14,7 @@ import {
   type SessionHead,
 } from "../utils/claudeProjects.js";
 import { summarizeUsage } from "../utils/pricing.js";
+import { getCustomTitles, setCustomTitle } from "../utils/titleOverrides.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -97,14 +98,19 @@ async function getActiveResumeSessionIds(): Promise<Set<string>> {
 
 export async function listSessions(): Promise<Session[]> {
   const files = await findJsonlFiles(getClaudeProjectsDir());
-  const [built, activeIds] = await Promise.all([
+  const [built, activeIds, customTitles] = await Promise.all([
     Promise.all(files.map(buildSession)),
     getActiveResumeSessionIds(),
+    getCustomTitles(),
   ]);
 
   return built
     .filter((session): session is Omit<Session, "isActive"> => session !== null)
-    .map((session) => ({ ...session, isActive: activeIds.has(session.id) }))
+    .map((session) => ({
+      ...session,
+      title: customTitles[session.id] ?? session.title,
+      isActive: activeIds.has(session.id),
+    }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
@@ -144,6 +150,32 @@ export async function deleteSession(id: string): Promise<void> {
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
   await unlink(filePath);
+}
+
+export class SessionActiveError extends Error {
+  constructor(id: string) {
+    super(`Session "${id}" is currently active in a terminal — close it before renaming.`);
+    this.name = "SessionActiveError";
+  }
+}
+
+/**
+ * Renaming a session that's actively `claude --resume`d could race with the CLI's own writes to
+ * that session's `.jsonl` (title metadata included) — reject it server-side too, not just via
+ * the disabled rename button in the UI, in case a session becomes active between page load and
+ * this request landing.
+ */
+export async function renameSession(id: string, title: string): Promise<void> {
+  if (!isSafeSessionId(id)) {
+    throw new Error(`Invalid session id "${id}"`);
+  }
+
+  const activeIds = await getActiveResumeSessionIds();
+  if (activeIds.has(id)) {
+    throw new SessionActiveError(id);
+  }
+
+  await setCustomTitle(id, title);
 }
 
 /** Time to wait for an immediate spawn failure (e.g. binary missing) before assuming success. */

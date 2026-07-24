@@ -185,9 +185,7 @@ Update this list's checkmarks/notes as items get built or dropped.
 - [ ] **Message/turn count or session size indicator** on the card.
 
 ### Organization & management
-- [ ] **Manual session rename** — title is auto-derived (`aiTitle` ?? `summaryTitle` ??
-  `firstUserText`) with no override; would need a small local sidecar store (not upstream in the
-  CLI's own files) mapping session id → custom title.
+- [x] **Manual session rename** — done, see below.
 - [ ] **Favorite/pin sessions.**
 - [ ] **Bulk select + delete.**
 - [ ] **Group the list by day/project** instead of a flat grid.
@@ -315,12 +313,47 @@ Update this list's checkmarks/notes as items get built or dropped.
   millions of cache-read tokens on a long-running session, ~$30+ estimated cost) that only grew
   as the conversation continued, confirming the running total tracks accurately in real time.
 
-### Next up: manual session rename (in progress / up next)
+### Implemented: manual session rename
 
-Per explicit user instruction: the rename button/control must be **disabled whenever
-`session.isActive` is true**, with a tooltip explaining the session needs to be closed first —
-renaming a session file while a `claude --resume` process has it open is the scenario to guard
-against. The active/inactive indicator above was built specifically as the prerequisite for this
-gate. Title storage approach still to be decided (a local sidecar file mapping session id → custom
-title is the leading idea from the feature-backlog section above, since the CLI's own `.jsonl`
-files shouldn't be modified by this app).
+- **Storage** (`server/utils/titleOverrides.ts`): a small sidecar JSON file at
+  `~/.claude-session-manager/custom-titles.json` — deliberately **not** inside
+  `~/.claude/projects/`, since that's the Claude CLI's own data and this app never writes to it.
+  `{ [sessionId]: customTitle }`, capped at 100 chars (same cap as the auto-derived title).
+  Setting a blank/whitespace-only title **deletes** the override key, reverting to the
+  auto-derived title on the next load — there's no separate "reset" action needed.
+- **Backend gate — this is the actual safety-relevant piece.** Per explicit user instruction, the
+  rename must be blocked while the session is active, not just discouraged in the UI.
+  `renameSession()` (`sessionService.ts`) re-checks `getActiveResumeSessionIds()` (the same
+  active/inactive indicator function above) and throws `SessionActiveError` — mapped to **HTTP
+  409** in `server/routes/sessions.ts` — if the id is currently `claude --resume`d. This is
+  deliberately a *second* check, independent of the disabled button client-side: the button can
+  only prevent the common case (page loaded, then user clicks rename while it's already
+  displayed as active); it can't prevent a session that *became* active in the gap between page
+  load and the request landing. Verified directly: `curl -X PATCH .../title` against this very
+  session's own id (genuinely active) returned `409` with the expected message; renaming an
+  inactive session and clearing it back to blank both worked and persisted correctly.
+- **Frontend**: `RenameSessionModal.tsx` — pre-filled text input, portalled to `document.body`
+  (same reasoning as the other SessionCard modals). **Deliberately mounted only while open**
+  (`{showRenameModal && <RenameSessionModal .../>}` in `SessionCard.tsx`, not an always-mounted
+  component with an `open` prop) — this was the clean fix for a real lint failure
+  (`react-hooks/set-state-in-effect`) that showed up when the first draft tried to resync the
+  input's local state from a `currentTitle` prop inside a `useEffect` on every open; mounting
+  fresh each time means `useState(currentTitle)` already picks up the right value with no effect
+  needed. **Any future modal with internal form state that needs to reset per-open should use
+  this same conditional-mount pattern**, not an effect-based resync.
+  - Pencil icon rendered next to the title (not in the bottom action row) — disabled +
+    tooltip ("Close this session in its terminal before renaming.") whenever `session.isActive`,
+    using the same disabled-button-tooltip wrapper trick as the Continue button. Modal closes
+    immediately on submit (matching the existing delete-confirmation pattern in `SessionsPage.tsx`
+    — the dialog isn't what shows pending state; the button's own spinner is), then
+    `useSessions.ts`'s `renameSession()` calls the API and reloads the session list (not a local
+    optimistic patch — the "reset to blank" case needs the server's resolved auto-title, which the
+    frontend has no way to compute itself) and surfaces the specific server error message (e.g.
+    the 409 case above) via `sessionsApi.ts`'s `renameSession()`, which re-throws an
+    `axios.isAxiosError` response body's `.error` as a plain `Error` so the existing
+    `err instanceof Error ? err.message : ...` catch pattern used everywhere else in this app
+    picks it up without needing its own special case.
+  - Verified live end-to-end in the browser: renamed an inactive session, confirmed the new title
+    persisted after reload; cleared it back to blank and confirmed it reverted to the real
+    auto-derived title; clicked the disabled pencil on this session's own (genuinely active) card
+    and confirmed the tooltip showed and the click did nothing.

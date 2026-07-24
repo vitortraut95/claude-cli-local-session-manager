@@ -37,6 +37,7 @@ export function SessionsPage() {
     refresh,
     removeSession,
     resumeSession,
+    renameSession,
   } = useSessions();
   const [sessionPendingDeletion, setSessionPendingDeletion] = useState<Session | null>(null);
 
@@ -81,6 +82,7 @@ export function SessionsPage() {
               pendingAction={pendingActions[session.id]}
               onContinue={(s) => resumeSession(s.id)}
               onDeleteRequest={setSessionPendingDeletion}
+              onRename={(s, title) => renameSession(s.id, title)}
             />
           ))}
         </div>

@@ -4,7 +4,7 @@ import type { Session } from "../types/session";
 import { useUrlParam } from "./useUrlState";
 import { useToast } from "./useToast";
 
-export type PendingAction = "delete" | "continue";
+export type PendingAction = "delete" | "continue" | "rename";
 
 export const PER_PAGE_OPTIONS = [24, 48, 96, 192, 999999] as const;
 const DEFAULT_PER_PAGE = 24;
@@ -169,6 +169,26 @@ export function useSessions() {
     [showToast, setPending],
   );
 
+  const renameSession = useCallback(
+    async (id: string, title: string) => {
+      setPending(id, "rename");
+      try {
+        await sessionsApi.renameSession(id, title);
+        // A blank title resets to the auto-derived one (aiTitle/summary/first message) — that
+        // resolution logic only exists server-side, so there's nothing to optimistically patch
+        // in locally for that case. Reload from the server either way for a title guaranteed to
+        // match what was actually saved.
+        await loadSessions();
+        showToast("Session renamed.", "success");
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Could not rename the session.", "error");
+      } finally {
+        setPending(id, null);
+      }
+    },
+    [showToast, setPending, loadSessions],
+  );
+
   const resumeSession = useCallback(
     async (id: string) => {
       setPending(id, "continue");
@@ -210,5 +230,6 @@ export function useSessions() {
     refresh,
     removeSession,
     resumeSession,
+    renameSession,
   };
 }

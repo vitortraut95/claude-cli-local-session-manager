@@ -6,6 +6,7 @@ import {
   Hash,
   Loader2,
   MessageSquare,
+  Pencil,
   Play,
   Trash2,
   TriangleAlert,
@@ -15,6 +16,7 @@ import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
 import type { Session } from "../types/session";
 import { PromptPreviewModal } from "./PromptPreviewModal";
+import { RenameSessionModal } from "./RenameSessionModal";
 import { Tooltip } from "./Tooltip";
 import { UsageDetailsModal } from "./UsageDetailsModal";
 import { formatUpdatedAt } from "../utils/formatDate";
@@ -24,6 +26,7 @@ type SessionCardProps = {
   pendingAction?: PendingAction;
   onContinue: (session: Session) => void;
   onDeleteRequest: (session: Session) => void;
+  onRename: (session: Session, title: string) => void;
 };
 
 const COPIED_FEEDBACK_DURATION_MS = 2500;
@@ -33,14 +36,17 @@ export function SessionCard({
   pendingAction,
   onContinue,
   onDeleteRequest,
+  onRename,
 }: SessionCardProps) {
   const isDeleting = pendingAction === "delete";
   const isContinuing = pendingAction === "continue";
-  const isBusy = isDeleting || isContinuing;
+  const isRenaming = pendingAction === "rename";
+  const isBusy = isDeleting || isContinuing || isRenaming;
   const [copiedId, setCopiedId] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showUsage, setShowUsage] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
 
@@ -66,6 +72,22 @@ export function SessionCard({
       showToast("Could not copy the command.", "error");
     }
   };
+
+  const renameButton = (
+    <button
+      type="button"
+      onClick={() => setShowRenameModal(true)}
+      disabled={isBusy || session.isActive}
+      aria-label="Rename session"
+      className="inline-flex shrink-0 items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+    >
+      {isRenaming ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Pencil className="h-3.5 w-3.5" />
+      )}
+    </button>
+  );
 
   const continueButton = (
     <span className="flex flex-1">
@@ -102,12 +124,23 @@ export function SessionCard({
         />
       </Tooltip>
 
-      <h2
-        className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
-        title={session.title}
-      >
-        {session.title}
-      </h2>
+      <div className="flex items-start justify-between gap-2">
+        <h2
+          className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
+          title={session.title}
+        >
+          {session.title}
+        </h2>
+        {session.isActive ? (
+          // Same disabled-button-tooltip wrapper trick as the Continue button below — a native
+          // `disabled` button won't reliably fire hover events on its own.
+          <Tooltip content="Close this session in its terminal before renaming.">
+            <span className="inline-flex shrink-0">{renameButton}</span>
+          </Tooltip>
+        ) : (
+          <Tooltip content="Rename session">{renameButton}</Tooltip>
+        )}
+      </div>
 
       {session.directoryMissing && (
         <div
@@ -235,6 +268,16 @@ export function SessionCard({
         onClose={() => setShowPreview(false)}
       />
       <UsageDetailsModal session={session} open={showUsage} onClose={() => setShowUsage(false)} />
+      {showRenameModal && (
+        <RenameSessionModal
+          currentTitle={session.title}
+          onSave={(title) => {
+            setShowRenameModal(false);
+            onRename(session, title);
+          }}
+          onCancel={() => setShowRenameModal(false)}
+        />
+      )}
     </div>
   );
 }
