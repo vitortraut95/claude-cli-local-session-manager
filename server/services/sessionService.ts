@@ -1,4 +1,5 @@
-import { execFileSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
+import { accessSync, constants } from "node:fs";
 import { mkdir, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -125,6 +126,8 @@ const SNAP_ORIG_SUFFIX = "_VSCODE_SNAP_ORIG";
  */
 function sanitizedSpawnEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
+  if (process.platform !== "linux") return env;
+
   for (const key of Object.keys(env)) {
     if (!key.endsWith(SNAP_ORIG_SUFFIX)) continue;
     const originalVar = key.slice(0, -SNAP_ORIG_SUFFIX.length);
@@ -170,16 +173,39 @@ async function directoryExists(dir: string): Promise<boolean> {
   }
 }
 
+/**
+ * Pure-Node PATH lookup — same job as `which`/`where`, but without shelling out to a binary
+ * that doesn't exist by that name on every OS (Windows has `where`, not `which`). Checks each
+ * `PATH` entry for `bin` (plus every `PATHEXT` suffix on Windows, since `foo` there really
+ * means `foo.exe`/`foo.cmd`/etc).
+ */
 function commandExists(bin: string): boolean {
-  try {
-    execFileSync("which", [bin], { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
+  const dirs = (process.env.PATH ?? "").split(path.delimiter);
+  const extensions =
+    process.platform === "win32" ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT").split(path.delimiter) : [""];
+
+  for (const dir of dirs) {
+    for (const ext of extensions) {
+      try {
+        accessSync(path.join(dir, bin + ext), constants.X_OK);
+        return true;
+      } catch {
+        // Not in this PATH entry — keep looking.
+      }
+    }
   }
+  return false;
 }
 
+/**
+ * `WARP_DATA_DIR` lets this be overridden outright — useful on macOS/Windows, where Warp's data
+ * directory isn't the Linux XDG one below and hasn't been mapped out here yet (see project notes
+ * for cross-platform work still to do). Without the override, this only targets Linux.
+ */
 function getWarpTabConfigsDir(): string {
+  if (process.env.WARP_DATA_DIR) {
+    return path.join(process.env.WARP_DATA_DIR, "tab_configs");
+  }
   const dataHome = process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share");
   return path.join(dataHome, "warp-terminal", "tab_configs");
 }

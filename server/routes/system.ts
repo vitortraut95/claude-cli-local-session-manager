@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { Router } from "express";
 import {
   getUpdateJobStatus,
@@ -50,14 +50,13 @@ systemRouter.get("/update-job", async (_req, res) => {
 });
 
 /**
- * Node has no `process.getpgid`; on Linux the process group id is the 5th field of
- * /proc/[pid]/stat (after the "(comm)" part, which may itself contain spaces/parens).
+ * Node has no `process.getpgid`. `ps -o pgid=` reports it directly and, unlike reading
+ * /proc/[pid]/stat, works on both Linux and macOS (macOS has no /proc). Windows has no
+ * process-group signal model at all, so this whole shutdown approach doesn't apply there yet.
  */
 function getProcessGroupId(pid: number): number {
-  const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
-  const afterComm = stat.slice(stat.lastIndexOf(")") + 2);
-  const [, , pgrp] = afterComm.split(" ");
-  return Number(pgrp);
+  const output = execFileSync("ps", ["-o", "pgid=", "-p", String(pid)], { encoding: "utf8" });
+  return Number(output.trim());
 }
 
 /**
