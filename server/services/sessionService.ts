@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { accessSync, constants } from "node:fs";
-import { mkdir, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { Session } from "../types/session.js";
@@ -215,6 +215,50 @@ function getWarpTabConfigsDir(): string {
   return path.join(dataHome, "warp-terminal", "tab_configs");
 }
 
+const WARP_TAB_CONFIG_PREFIX = "claude-session-manager-";
+/**
+ * Long enough that a slow cold-start Warp launch has certainly read the file by the time the
+ * *next* one is written — see `pruneStaleWarpTabConfigs`'s doc comment for why this can't just
+ * delete the file it opens right after opening it.
+ */
+const WARP_TAB_CONFIG_MAX_AGE_MS = 5 * 60 * 1000;
+
+/**
+ * Each `launchWarp` call writes a new, uniquely-named tab config and never cleans it up on its
+ * own — they'd otherwise accumulate forever in Warp's own "Tab Config" list (every past resume
+ * shows up as a separate entry). Deleting the file right after opening it isn't safe: `xdg-open`
+ * returning success only means the URI was handed off, not that Warp has actually read the file
+ * yet (cold-start, when Warp isn't already running, can take a noticeable moment). Instead, each
+ * new launch sweeps up *old* ones first — anything past `WARP_TAB_CONFIG_MAX_AGE_MS` old is
+ * certainly already consumed, so there's no race. Only touches files with our own naming prefix,
+ * never a user's own hand-made tab configs living in the same directory.
+ */
+async function pruneStaleWarpTabConfigs(dir: string): Promise<void> {
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return;
+  }
+
+  const now = Date.now();
+  await Promise.all(
+    entries
+      .filter((name) => name.startsWith(WARP_TAB_CONFIG_PREFIX) && name.endsWith(".toml"))
+      .map(async (name) => {
+        const filePath = path.join(dir, name);
+        try {
+          const fileStat = await stat(filePath);
+          if (now - fileStat.mtimeMs > WARP_TAB_CONFIG_MAX_AGE_MS) {
+            await unlink(filePath);
+          }
+        } catch {
+          // Best-effort cleanup — ignore races with a concurrent delete, permission errors, etc.
+        }
+      }),
+  );
+}
+
 /**
  * Warp has no `-e`/`--` flag to run a command on launch — the only way in is writing a "Tab
  * Config" TOML file and opening it through Warp's own `warp://tab_config/<name>` URI scheme
@@ -232,7 +276,7 @@ async function launchWarp(command: string, cwd?: string): Promise<boolean> {
   if (process.platform !== "linux") return false;
   if (!commandExists("warp-terminal")) return false;
 
-  const name = `claude-session-manager-${Date.now()}`;
+  const name = `${WARP_TAB_CONFIG_PREFIX}${Date.now()}`;
   const escapedCommand = command.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const toml =
     `name = "${name}"\n\n[[panes]]\nid = "main"\ntype = "terminal"\n` +
@@ -241,6 +285,7 @@ async function launchWarp(command: string, cwd?: string): Promise<boolean> {
 
   const dir = getWarpTabConfigsDir();
   await mkdir(dir, { recursive: true });
+  await pruneStaleWarpTabConfigs(dir);
   await writeFile(path.join(dir, `${name}.toml`), toml, "utf8");
 
   // No `?new_window=true`: when Warp isn't already running, that flag forces a second window
