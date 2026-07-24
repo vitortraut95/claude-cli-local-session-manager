@@ -156,8 +156,10 @@ export async function readSessionHead(filePath: string): Promise<SessionHead> {
   return result;
 }
 
-/** Caps how much prompt text ends up in the session-list payload (see readSessionPrompts). */
+/** Caps how many prompts are kept, so one unusually long session can't bloat either payload. */
 const MAX_PROMPTS_EXTRACTED = 30;
+/** Caps per-prompt length only in the *list* payload (see readSessionPrompts) — the full-text
+ *  preview modal fetches the untruncated version separately via readFullSessionPrompts. */
 const MAX_PROMPT_PREVIEW_LENGTH = 300;
 
 function truncatePrompt(text: string): string {
@@ -169,12 +171,12 @@ function truncatePrompt(text: string): string {
 
 /**
  * Reads the *entire* session transcript (unlike readSessionHead, which stops after the first
- * user prompt) to collect every human-authored prompt — powers full-text search and the
- * prompt-preview modal. Caps both how many prompts are kept and how long each one is, so one
- * unusually long session can't bloat the session-list payload; later prompts in a very long
- * session are simply not included past that cap.
+ * user prompt) to collect every human-authored prompt, up to MAX_PROMPTS_EXTRACTED — later
+ * prompts in a very long session are simply not included past that cap. Shared by both
+ * `readSessionPrompts` (list/search, additionally truncated per-prompt) and
+ * `readFullSessionPrompts` (preview modal, untruncated).
  */
-export async function readSessionPrompts(filePath: string): Promise<string[]> {
+async function collectUserPrompts(filePath: string): Promise<string[]> {
   const prompts: string[] = [];
 
   const rl = createInterface({
@@ -197,7 +199,7 @@ export async function readSessionPrompts(filePath: string): Promise<string[]> {
       if (entry.type === "user" && !entry.isSidechain && entry.message?.role === "user") {
         const text = extractText(entry.message.content);
         if (text && !text.trimStart().startsWith("<")) {
-          prompts.push(truncatePrompt(text));
+          prompts.push(text.trim());
         }
       }
     }
@@ -206,6 +208,25 @@ export async function readSessionPrompts(filePath: string): Promise<string[]> {
   }
 
   return prompts;
+}
+
+/**
+ * Powers full-text search and the (truncated) list payload — every prompt is capped at
+ * MAX_PROMPT_PREVIEW_LENGTH so one unusually long prompt can't bloat the `/sessions` response,
+ * which embeds this for every session up front.
+ */
+export async function readSessionPrompts(filePath: string): Promise<string[]> {
+  const prompts = await collectUserPrompts(filePath);
+  return prompts.map(truncatePrompt);
+}
+
+/**
+ * Powers the prompt-preview modal only — fetched on demand for a single session (see
+ * `GET /sessions/:id/prompts`), so returning full, untruncated text here doesn't affect the
+ * `/sessions` list payload's size the way including it in `readSessionPrompts` would.
+ */
+export async function readFullSessionPrompts(filePath: string): Promise<string[]> {
+  return collectUserPrompts(filePath);
 }
 
 export type RawModelUsage = {

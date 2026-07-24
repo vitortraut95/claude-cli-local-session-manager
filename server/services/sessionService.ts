@@ -8,6 +8,7 @@ import type { Session } from "../types/session.js";
 import {
   findJsonlFiles,
   getClaudeProjectsDir,
+  readFullSessionPrompts,
   readSessionHead,
   readSessionPrompts,
   readSessionUsage,
@@ -151,6 +152,17 @@ export class SessionActiveError extends Error {
     super(message);
     this.name = "SessionActiveError";
   }
+}
+
+/**
+ * Fetched on demand when the prompt-preview modal opens for a single session, rather than
+ * embedded in `listSessions()` — see `readFullSessionPrompts` for why (it's untruncated, unlike
+ * the copy already sitting in `Session.prompts`, which stays capped for the list payload).
+ */
+export async function getSessionPrompts(id: string): Promise<string[]> {
+  const filePath = await findSessionFilePath(id);
+  if (!filePath) throw new SessionNotFoundError(id);
+  return readFullSessionPrompts(filePath);
 }
 
 /**

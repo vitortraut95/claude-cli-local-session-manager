@@ -111,7 +111,7 @@ export function SessionCard({
         className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-700 dark:hover:bg-gray-600"
       >
         {isContinuing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-        Continue (terminal)
+        Resume (terminal)
       </button>
     </span>
   );
