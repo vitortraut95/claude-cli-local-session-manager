@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Input } from "./Input";
 import { Modal } from "./Modal";
 
 type NicknameModalProps = {
@@ -33,7 +34,7 @@ export function NicknameModal({ currentNickname, onSave, onCancel }: NicknameMod
         to remove the nickname.
       </p>
 
-      <input
+      <Input
         type="text"
         value={nickname}
         onChange={(event) => setNickname(event.target.value)}
@@ -43,7 +44,7 @@ export function NicknameModal({ currentNickname, onSave, onCancel }: NicknameMod
         autoFocus
         maxLength={100}
         placeholder="Nickname"
-        className="mt-4 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-gray-600 dark:focus:ring-gray-100/10"
+        className="mt-4"
       />
     </Modal>
   );

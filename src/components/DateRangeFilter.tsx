@@ -1,4 +1,5 @@
 import { Calendar } from "lucide-react";
+import { Input } from "./Input";
 
 type DateRangeFilterProps = {
   from: string;
@@ -9,29 +10,25 @@ type DateRangeFilterProps = {
 export function DateRangeFilter({ from, to, onChange }: DateRangeFilterProps) {
   return (
     <div className="flex items-center gap-2">
-      <div className="relative">
-        <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-        <input
-          type="date"
-          value={from}
-          onChange={(event) => onChange(event.target.value, to)}
-          max={to || undefined}
-          aria-label="Updated from"
-          className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-700 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 sm:w-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-gray-600 dark:focus:ring-gray-100/10"
-        />
-      </div>
+      <Input
+        type="date"
+        value={from}
+        onChange={(event) => onChange(event.target.value, to)}
+        max={to || undefined}
+        aria-label="Updated from"
+        icon={<Calendar className="h-4 w-4" />}
+        className="sm:w-40"
+      />
       <span className="text-sm text-gray-400 dark:text-gray-500">to</span>
-      <div className="relative">
-        <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-        <input
-          type="date"
-          value={to}
-          onChange={(event) => onChange(from, event.target.value)}
-          min={from || undefined}
-          aria-label="Updated to"
-          className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-700 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 sm:w-40 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-gray-600 dark:focus:ring-gray-100/10"
-        />
-      </div>
+      <Input
+        type="date"
+        value={to}
+        onChange={(event) => onChange(from, event.target.value)}
+        min={from || undefined}
+        aria-label="Updated to"
+        icon={<Calendar className="h-4 w-4" />}
+        className="sm:w-40"
+      />
     </div>
   );
 }
