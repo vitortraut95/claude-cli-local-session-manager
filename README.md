@@ -1,88 +1,70 @@
-# Claude CLI Local Session Manager - Ubuntu
+# Claude CLI Local Session Manager
 
-## IMPORTANT: TODAY ONLY IMPLEMENTED TO WORK ON UBUNTU
+Local web app for managing [Claude CLI](https://claude.com/claude-code) sessions. Reads the
+`*.jsonl` files `claude` writes to `~/.claude/projects`, lists them, and lets you resume, delete,
+search, or nickname them. Everything runs on your machine — no external server involved.
 
-Local manager for [Claude CLI](https://claude.com/claude-code) sessions. Reads the `*.jsonl`
-files that `claude` writes to `~/.claude/projects` directly, with no external server involved —
-everything runs on your machine.
+**Primary support: Linux.** Experimental (not smoke-tested) Windows/macOS launch scripts are
+included — see below.
 
-## Stack
+## Features
 
-- **Frontend:** React + TypeScript + Vite + Tailwind CSS v4 + Axios
-- **Backend:** Express + TypeScript + Node.js
+- List all sessions with title, project, last-updated time, and estimated token cost
+- Resume a session in a new terminal (`claude --resume <id>`), Warp preferred if installed
+- Delete sessions individually or in bulk
+- Full-text search across every prompt in a session
+- Local nicknames (shown alongside the real session title, doesn't rename anything Claude/Warp show)
+- Active-session indicator, with delete/continue/bulk-select blocked while a session is in use
+- Warning badge when a session's original working directory no longer exists
 
 ## Prerequisites
 
-- Linux (with a GNOME environment for shortcuts to work - optional). Windows and macOS also have
-  experimental, not-yet-verified paths — see [Windows shortcut](#windows-shortcut-experimental-optional)
-  and [macOS shortcut](#macos-shortcut-experimental-optional) below.
-- [Node.js](https://nodejs.org/) 20+ with [Corepack](https://nodejs.org/api/corepack.html) enabled (`corepack enable`) for Yarn
-- [Claude CLI](https://claude.com/claude-code) installed and available on `PATH` (the `claude` command)
+- [Node.js](https://nodejs.org/) 20+ with [Corepack](https://nodejs.org/api/corepack.html) enabled
+- [Claude CLI](https://claude.com/claude-code) installed and on `PATH` (the `claude` command)
 
-## Installation
-
-**Clone it directly under your home directory** (not nested inside `git/`, `projects/`, or any
-other subfolder). The Claude CLI ties each session to the exact folder it was started in, and the
-one-click shortcut opens a terminal at the project's current path — moving the folder later breaks
-both, so picking one stable, top-level location up front avoids that entirely.
+## Install & run
 
 ```bash
 cd ~
 git clone https://github.com/vitortraut95/claude-cli-local-session-manager.git
 cd claude-cli-local-session-manager
+corepack enable
 yarn install
-```
-
-## Running it
-
-```bash
 yarn dev
 ```
 
 - Frontend: http://localhost:58230
-- Backend: http://localhost:58231 (Vite proxies `/sessions` and `/system` to this port)
+- Backend: http://localhost:58231 (Vite proxies `/sessions` to this port)
 
-To stop everything, close the terminal running `yarn dev`.
+Stop the app by closing the terminal running `yarn dev`.
 
-## GNOME shortcut (optional)
+> Clone directly under your home directory, not nested inside another folder — the Claude CLI
+> ties each session to the exact path it was started in, and the desktop shortcut below opens a
+> terminal at the project's current path. Moving the folder later breaks both.
+
+## Desktop shortcut (optional)
+
+### Linux (GNOME)
 
 ```bash
 ./install-shortcut.sh
 ```
 
-Creates the **Claude Session Manager** icon on the Desktop and in the application menu, pointing
-at the project's current folder. Clicking that icon:
+Adds a **Claude Session Manager** icon to the Desktop and application menu. Clicking it opens the
+app in a browser if it's already running, or starts it (in Warp if installed, otherwise the first
+terminal emulator found) if not.
 
-- **if the app is already running:** just opens `http://localhost:58230` in a browser tab.
-- **if it's not running:** starts the app (`start.sh` → `yarn dev`) in [Warp](https://www.warp.dev/)
-  if it's installed, otherwise in the first terminal emulator found on your system.
-
-If you move the project folder, run `./install-shortcut.sh` again from inside it to regenerate
-the shortcut with the new path.
-
-### Removing the shortcut
+Remove it with:
 
 ```bash
-rm -f ~/.local/share/applications/claude-session-manager.desktop
-rm -f ~/Desktop/claude-session-manager.desktop
+rm -f ~/.local/share/applications/claude-session-manager.desktop ~/Desktop/claude-session-manager.desktop
 update-desktop-database ~/.local/share/applications 2>/dev/null
 ```
 
-If the icon is also pinned to the dock, right-click it and choose **"Unpin"** / **"Remove from
-Favorites"**.
+### Windows (experimental)
 
-## Windows shortcut (experimental, optional)
-
-> **Not smoke-tested on a real Windows machine yet** — this repo's development happens on Linux.
-> The logic is straightforward (check if the port answers, otherwise run `yarn dev`), but please
-> report back if something doesn't behave as expected.
-
-Double-click **`start-windows.bat`** (in the project root) to start the app — it opens a console
-window, checks whether the frontend is already running (opens a browser tab if so), otherwise
-runs `yarn dev` and keeps the window open so you can read the output.
-
-To put a shortcut to it on your Desktop, open PowerShell **from inside the cloned project
-folder** and run:
+Double-click `start-windows.bat` to start the app. To add a Desktop shortcut, open PowerShell
+inside the project folder and run:
 
 ```powershell
 $ws = New-Object -ComObject WScript.Shell
@@ -93,64 +75,44 @@ $s.IconLocation = "$env:SystemRoot\System32\shell32.dll,137"
 $s.Save()
 ```
 
-(Pasting commands directly into PowerShell like this runs regardless of script execution
-policy — that restriction only applies to running a saved `.ps1` file.)
+### macOS (experimental)
 
-If you move the project folder, delete the shortcut and re-run the command above from the new
-location.
-
-## macOS shortcut (experimental, optional)
-
-> **Not smoke-tested on a real Mac yet** — this repo's development happens on Linux. Same
-> disclaimer as Windows above: please report back if something doesn't behave as expected.
-
-Double-click **`start-mac.command`** (in the project root) — macOS opens it in Terminal.app on
-its own (no terminal-picking logic needed here, unlike the Linux/Windows scripts). It checks
-whether the frontend is already running (opens a browser tab if so), otherwise runs `yarn dev`
-and keeps the window open so you can read the output.
-
-To put a shortcut to it on your Desktop, open Terminal **from inside the cloned project folder**
-and run:
+Double-click `start-mac.command` to start the app. To add a Desktop shortcut, open Terminal
+inside the project folder and run:
 
 ```bash
 ln -sf "$PWD/start-mac.command" ~/Desktop/"Claude Session Manager.command"
 ```
-
-This makes a symlink, not an `osascript`/Finder-scripting alias, so it doesn't trigger macOS's
-Automation permission prompt — Finder follows it transparently, so double-clicking the Desktop
-icon runs `start-mac.command` wherever the project actually lives.
-
-If you move the project folder, re-run the command above from the new location (`-f` overwrites
-the old symlink).
 
 ## Structure
 
 ```
 /
 ├── install-shortcut.sh    # generates and installs the GNOME shortcut
-├── open-terminal.sh       # what the shortcut runs: opens a tab if already running,
-│                          # otherwise opens a terminal and calls start.sh
+├── open-terminal.sh       # opens a browser tab if already running, else a terminal + start.sh
 ├── start.sh               # runs inside the terminal: cd into the project + yarn dev
-├── start-windows.bat      # Windows equivalent of open-terminal.sh + start.sh combined
-├── start-mac.command      # macOS equivalent (double-clickable, opens in Terminal.app itself)
+├── start-windows.bat      # Windows equivalent
+├── start-mac.command      # macOS equivalent
 ├── server/                # Express API
-└── src/                   # React SPA (workspace root, "web")
+└── src/                   # React SPA (workspace root)
 ```
 
-This repository is a monorepo using [Yarn workspaces](https://yarnpkg.com/features/workspaces):
-the root is the web app itself, and `server/` is the second workspace.
+Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 
 ## API
 
-| Method | Route                    | Description                                       |
-| ------ | ------------------------ | -------------------------------------------------- |
-| GET    | `/sessions`              | Lists every session found in `~/.claude/projects` |
-| DELETE | `/sessions/:id`          | Deletes the session's `.jsonl` file               |
-| POST   | `/sessions/:id/continue` | Opens a terminal running `claude --resume <id>`   |
+| Method | Route                     | Description                                   |
+| ------ | ------------------------- | ---------------------------------------------- |
+| GET    | `/sessions`               | List every session found in `~/.claude/projects` |
+| GET    | `/sessions/:id/prompts`   | Full, untruncated list of prompts for a session |
+| PATCH  | `/sessions/:id/nickname`  | Set or clear a session's local nickname       |
+| DELETE | `/sessions/:id`           | Delete the session's `.jsonl` file            |
+| POST   | `/sessions/:id/continue`  | Open a terminal running `claude --resume <id>` |
 
 ## Scripts
 
-- `yarn dev` — starts frontend and backend together
+- `yarn dev` — start frontend and backend together
 - `yarn build` — production build for both workspaces
-- `yarn lint` — ESLint for frontend and backend
-- `yarn preview` — serves the frontend production build
+- `yarn lint` — lint frontend and backend
+- `yarn typecheck` — type-check both workspaces
+- `yarn preview` — serve the frontend production build
