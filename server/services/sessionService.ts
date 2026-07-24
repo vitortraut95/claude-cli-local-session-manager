@@ -1,9 +1,8 @@
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { accessSync, constants } from "node:fs";
-import { mkdir, readdir, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
 import type { Session } from "../types/session.js";
 import {
   findJsonlFiles,
@@ -16,8 +15,6 @@ import {
 } from "../utils/claudeProjects.js";
 import { summarizeUsage } from "../utils/pricing.js";
 import { getNicknames, setNickname } from "../utils/nicknames.js";
-
-const execFileAsync = promisify(execFile);
 
 const UNTITLED = "Untitled";
 const TITLE_MAX_LENGTH = 100;
@@ -70,31 +67,56 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
 }
 
 /**
- * Finds every session id currently `claude --resume`d in a running process, by scanning full
- * process command lines (`ps -eo args=`, no header, one command line per row — verified this
- * doesn't truncate here since a resume command is short). `args`/`ps -eo` are POSIX-standard,
- * shared by GNU (Linux) and BSD (macOS) ps; Windows has no `ps` at all, so this is skipped there
- * entirely rather than guessing at a `tasklist`/WMI equivalent — same "don't guess, disable
- * instead" call as `launchWarp` (see CLAUDE.md).
+ * Finds every session id currently running in a live `claude` process.
+ *
+ * Used to key off `ps -eo args=` output for a `claude --resume <id>` command line, but the CLI
+ * (>=2.1.210) now hides its args from `ps`/`/proc/<pid>/cmdline` — every process shows up as bare
+ * `claude`, so that regex never matches anymore. Instead, read the CLI's own state files at
+ * `~/.claude/sessions/<pid>.json` (`{pid, sessionId, ...}`, one per running instance, written on
+ * start and removed on clean exit) and confirm the pid is still alive with a signal-0 `kill` — a
+ * dead pid means the file is a leftover from an unclean exit (e.g. `kill -9`) and its sessionId
+ * should not count as active. `process.kill(pid, 0)` works the same way on Windows as on
+ * Linux/macOS, so this also lifts the previous win32 restriction.
  */
-const RESUME_COMMAND_PATTERN = /claude --resume (\S+)/;
+function getClaudeSessionsDir(): string {
+  return path.join(os.homedir(), ".claude", "sessions");
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function getActiveResumeSessionIds(): Promise<Set<string>> {
-  if (process.platform === "win32") return new Set();
-
+  const dir = getClaudeSessionsDir();
+  let entries: string[];
   try {
-    const { stdout } = await execFileAsync("ps", ["-eo", "args="], {
-      maxBuffer: 10 * 1024 * 1024,
-    });
-    const ids = new Set<string>();
-    for (const line of stdout.split("\n")) {
-      const id = RESUME_COMMAND_PATTERN.exec(line)?.[1];
-      if (id) ids.add(id);
-    }
-    return ids;
+    entries = await readdir(dir);
   } catch {
     return new Set();
   }
+
+  const ids = new Set<string>();
+  await Promise.all(
+    entries
+      .filter((name) => name.endsWith(".json"))
+      .map(async (name) => {
+        try {
+          const raw = await readFile(path.join(dir, name), "utf-8");
+          const data = JSON.parse(raw) as { pid?: number; sessionId?: string };
+          if (data.pid && data.sessionId && isProcessAlive(data.pid)) {
+            ids.add(data.sessionId);
+          }
+        } catch {
+          // Ignore unreadable/malformed session state files.
+        }
+      }),
+  );
+  return ids;
 }
 
 export async function listSessions(): Promise<Session[]> {

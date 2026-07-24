@@ -23,9 +23,14 @@ hardware — see "Cross-platform caveats" below.
   darwin/win32 rather than guessing a path — a wrong guess would silently fail (Warp opens but
   ignores the resume command), which is worse than not offering Warp there. `WARP_DATA_DIR` env
   var overrides the directory if you need to test/wire up another OS.
-  `getActiveResumeSessionIds()` (active-session detection, `sessionService.ts`) uses `ps -eo args=`
-  and is Linux/macOS only — returns an empty set on `win32` for the same reason (no verified
-  Windows equivalent).
+  `getActiveResumeSessionIds()` (active-session detection, `sessionService.ts`) reads the CLI's own
+  `~/.claude/sessions/<pid>.json` state files (`{pid, sessionId, ...}`, written on start, removed on
+  clean exit) and confirms each pid is still alive with a signal-0 `kill`. It used to regex-match
+  `ps -eo args=` for a `claude --resume <id>` command line, but the CLI (>=2.1.210) started hiding
+  its args from `ps`/`/proc/<pid>/cmdline` — every process shows up as bare `claude` — which broke
+  detection entirely (no active session ever showed as active). `process.kill(pid, 0)` works the
+  same on Windows as on Linux/macOS, so this also lifts the old win32-only restriction — not
+  smoke-tested on real Windows hardware, but no longer deliberately disabled there either.
 - `open-terminal.sh` (used by the GNOME desktop shortcut) duplicates the terminal-picking logic in
   `sessionService.ts` instead of calling it — a Node dependency here would break the cold-bootstrap
   case where no system Node is on `PATH` yet (only nvm, which only loads for interactive shells).
