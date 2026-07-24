@@ -30,6 +30,7 @@ export function useSessions() {
   const [pageRaw, setPageRaw] = useUrlParam("page", "1");
   const [perPageRaw, setPerPageRaw] = useUrlParam("per_page", String(DEFAULT_PER_PAGE));
   const [pendingActions, setPendingActions] = useState<Record<string, PendingAction>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { showToast } = useToast();
 
   const perPage = parsePerPage(perPageRaw);
@@ -142,6 +143,30 @@ export function useSessions() {
     [filteredSessions, currentPage, perPage],
   );
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  // Selection isn't cleared on page/filter changes — a session selected on page 1 stays
+  // selected after navigating to page 2, so a bulk delete can span pages.
+  const selectAllOnPage = useCallback(() => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      for (const session of paginatedSessions) next.add(session.id);
+      return next;
+    });
+  }, [paginatedSessions]);
+
   const setPending = useCallback((id: string, action: PendingAction | null) => {
     setPendingActions((current) => {
       if (action === null) {
@@ -164,6 +189,45 @@ export function useSessions() {
         showToast(err instanceof Error ? err.message : "Could not delete the session.", "error");
       } finally {
         setPending(id, null);
+      }
+    },
+    [showToast, setPending],
+  );
+
+  const removeSessions = useCallback(
+    async (ids: string[]) => {
+      ids.forEach((id) => setPending(id, "delete"));
+
+      const results = await Promise.allSettled(ids.map((id) => sessionsApi.deleteSession(id)));
+      const succeededIds = new Set(
+        ids.filter((_, index) => results[index]?.status === "fulfilled"),
+      );
+      const failedCount = ids.length - succeededIds.size;
+
+      setSessions((current) => current.filter((session) => !succeededIds.has(session.id)));
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        succeededIds.forEach((id) => next.delete(id));
+        return next;
+      });
+      ids.forEach((id) => setPending(id, null));
+
+      if (failedCount === 0) {
+        showToast(
+          `Deleted ${succeededIds.size} session${succeededIds.size === 1 ? "" : "s"}.`,
+          "success",
+        );
+      } else if (succeededIds.size === 0) {
+        showToast(
+          `Could not delete ${failedCount} session${failedCount === 1 ? "" : "s"}.`,
+          "error",
+        );
+      } else {
+        showToast(
+          `Deleted ${succeededIds.size} session${succeededIds.size === 1 ? "" : "s"}, ` +
+            `${failedCount} failed.`,
+          "error",
+        );
       }
     },
     [showToast, setPending],
@@ -227,8 +291,13 @@ export function useSessions() {
     updatedTo,
     setUpdatedRange,
     pendingActions,
+    selectedIds,
+    toggleSelect,
+    clearSelection,
+    selectAllOnPage,
     refresh,
     removeSession,
+    removeSessions,
     resumeSession,
     renameSession,
   };

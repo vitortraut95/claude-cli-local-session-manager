@@ -187,7 +187,7 @@ Update this list's checkmarks/notes as items get built or dropped.
 ### Organization & management
 - [x] **Manual session rename** — done, see below.
 - [ ] **Favorite/pin sessions.**
-- [ ] **Bulk select + delete.**
+- [x] **Bulk select + delete** — done, see below.
 - [ ] **Group the list by day/project** instead of a flat grid.
 
 ### Workflow
@@ -357,3 +357,37 @@ Update this list's checkmarks/notes as items get built or dropped.
     persisted after reload; cleared it back to blank and confirmed it reverted to the real
     auto-derived title; clicked the disabled pencil on this session's own (genuinely active) card
     and confirmed the tooltip showed and the click did nothing.
+
+### Implemented: bulk select + delete
+
+- **State** (`src/hooks/useSessions.ts`): `selectedIds: Set<string>`, `toggleSelect`,
+  `clearSelection`, `selectAllOnPage`. Deliberately **not** cleared on page/filter changes — a
+  session selected on page 1 stays selected after navigating to page 2 or changing a filter, so a
+  bulk delete can span pages/filters. Only cleared automatically for ids that are actually
+  deleted (see `removeSessions` below); "Clear" in the UI empties it explicitly.
+- **`removeSessions(ids)`** — reuses the existing single-session `deleteSession` API call via
+  `Promise.allSettled` (no new bulk-delete backend endpoint; a local app deleting a few dozen
+  files in parallel doesn't need one) rather than adding a batch endpoint. Handles partial
+  failure explicitly: a mixed success/fail result still removes the ones that succeeded from
+  local state and reports a toast like "Deleted 2 sessions, 1 failed." instead of an
+  all-or-nothing outcome. Marks every id `pending: "delete"` up front so each selected
+  `SessionCard`'s own Delete button shows its existing spinner — no new per-card pending-state UI
+  needed.
+- **No active-session restriction on bulk delete** — deliberately consistent with the existing
+  single-session delete, which has never had one either (only *rename* has the active-session
+  gate, per explicit instruction). Expanding delete's safety behavior wasn't asked for here and
+  would be a separate, bigger discussion (e.g. whether deleting an active session's `.jsonl`
+  file out from under a running `claude --resume` process is actually a problem — untested).
+- **Frontend**: a checkbox on each `SessionCard` (top-left, next to the title, native
+  `<input type="checkbox">` — this app doesn't have a custom checkbox component and one wasn't
+  needed here), a selected-card highlight (ring + border color), a "Select all on this page" link
+  next to the results-count line, and a selection bar (shown only when `selectedIds.size > 0`)
+  with the count, "Clear", and "Delete selected" — the latter opens the *same* `ConfirmDialog`
+  component already used for single-session delete, just with a dynamic count in the message.
+- Verified live with 3 disposable fake sessions created directly under `~/.claude/projects/`
+  (`-tmp-bulk-delete-test-{1,2,3}/`, deleted again after testing, including the empty parent
+  directories `deleteSession` leaves behind — same as single delete, this app only unlinks the
+  `.jsonl` file, never removes the directory): searched for them, used "Select all on this page,"
+  confirmed the bar showed "3 selected," confirmed the dialog's message showed the count
+  correctly, deleted, and confirmed all three `.jsonl` files were actually gone from disk
+  afterward (not just removed from the UI list).

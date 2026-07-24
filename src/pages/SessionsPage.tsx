@@ -12,7 +12,7 @@ import { SearchBar } from "../components/SearchBar";
 import { SessionCard } from "../components/SessionCard";
 import { useSessions } from "../hooks/useSessions";
 import type { Session } from "../types/session";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Trash2, X } from "lucide-react";
 
 export function SessionsPage() {
   const {
@@ -34,18 +34,29 @@ export function SessionsPage() {
     setPage,
     setPerPage,
     pendingActions,
+    selectedIds,
+    toggleSelect,
+    clearSelection,
+    selectAllOnPage,
     refresh,
     removeSession,
+    removeSessions,
     resumeSession,
     renameSession,
   } = useSessions();
   const [sessionPendingDeletion, setSessionPendingDeletion] = useState<Session | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   const handleConfirmDelete = async () => {
     if (!sessionPendingDeletion) return;
     const id = sessionPendingDeletion.id;
     setSessionPendingDeletion(null);
     await removeSession(id);
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    setShowBulkDeleteConfirm(false);
+    await removeSessions([...selectedIds]);
   };
 
   // Scrolling here (rather than in the pagination click handler) waits for the new
@@ -71,15 +82,53 @@ export function SessionsPage() {
 
     return (
       <>
-        <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
-          Showing {rangeStart}–{rangeEnd} of {filteredCount}
-        </p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Showing {rangeStart}–{rangeEnd} of {filteredCount}
+          </p>
+          <button
+            type="button"
+            onClick={selectAllOnPage}
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            Select all on this page
+          </button>
+        </div>
+
+        {selectedIds.size > 0 && (
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {selectedIds.size} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+              >
+                <X className="h-3.5 w-3.5" />
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteConfirm(true)}
+                className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete selected
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {sessions.map((session) => (
             <SessionCard
               key={session.id}
               session={session}
               pendingAction={pendingActions[session.id]}
+              selected={selectedIds.has(session.id)}
+              onToggleSelect={toggleSelect}
               onContinue={(s) => resumeSession(s.id)}
               onDeleteRequest={setSessionPendingDeletion}
               onRename={(s, title) => renameSession(s.id, title)}
@@ -126,6 +175,18 @@ export function SessionsPage() {
         cancelLabel="Cancel"
         onConfirm={handleConfirmDelete}
         onCancel={() => setSessionPendingDeletion(null)}
+      />
+
+      <ConfirmDialog
+        open={showBulkDeleteConfirm}
+        title="Delete selected sessions"
+        message={`Are you sure you want to delete ${selectedIds.size} session${
+          selectedIds.size === 1 ? "" : "s"
+        }? This cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleConfirmBulkDelete}
+        onCancel={() => setShowBulkDeleteConfirm(false)}
       />
     </div>
   );

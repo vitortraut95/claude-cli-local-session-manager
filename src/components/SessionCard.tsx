@@ -24,6 +24,8 @@ import { formatUpdatedAt } from "../utils/formatDate";
 type SessionCardProps = {
   session: Session;
   pendingAction?: PendingAction;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
   onContinue: (session: Session) => void;
   onDeleteRequest: (session: Session) => void;
   onRename: (session: Session, title: string) => void;
@@ -34,6 +36,8 @@ const COPIED_FEEDBACK_DURATION_MS = 2500;
 export function SessionCard({
   session,
   pendingAction,
+  selected,
+  onToggleSelect,
   onContinue,
   onDeleteRequest,
   onRename,
@@ -97,18 +101,20 @@ export function SessionCard({
         disabled={isBusy || session.directoryMissing}
         className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-700 dark:hover:bg-gray-600"
       >
-        {isContinuing ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Play className="h-4 w-4" />
-        )}
+        {isContinuing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
         Continue (terminal)
       </button>
     </span>
   );
 
   return (
-    <div className="relative flex flex-col gap-2 justify-between rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
+    <div
+      className={`relative flex flex-col gap-2 justify-between rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-900 ${
+        selected
+          ? "border-gray-900 ring-2 ring-gray-900/20 dark:border-gray-100 dark:ring-gray-100/20"
+          : "border-gray-200 dark:border-gray-800"
+      }`}
+    >
       <Tooltip
         content={
           session.isActive
@@ -118,19 +124,28 @@ export function SessionCard({
       >
         <span
           aria-label={session.isActive ? "Active session" : "Inactive session"}
-          className={`absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full border-2 border-white shadow dark:border-gray-900 ${
+          className={`absolute top-0 right-0 h-3 w-3 rounded-full border-2 border-white shadow dark:border-gray-900 ${
             session.isActive ? "bg-green-500 animate-pulse" : "bg-red-400"
           }`}
         />
       </Tooltip>
 
       <div className="flex items-start justify-between gap-2">
-        <h2
-          className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
-          title={session.title}
-        >
-          {session.title}
-        </h2>
+        <label className="flex min-w-0 items-start gap-2">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(session.id)}
+            aria-label={selected ? "Deselect session" : "Select session"}
+            className="mt-1 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+          />
+          <h2
+            className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
+            title={session.title}
+          >
+            {session.title}
+          </h2>
+        </label>
         {session.isActive ? (
           // Same disabled-button-tooltip wrapper trick as the Continue button below — a native
           // `disabled` button won't reliably fire hover events on its own.
