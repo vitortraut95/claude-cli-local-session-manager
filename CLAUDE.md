@@ -12,6 +12,73 @@ backend. See `README.md` for setup/run instructions.
 **Primary support: Linux.** Windows/macOS have code paths but are not smoke-tested on real
 hardware — see "Cross-platform caveats" below.
 
+## Stack & layout
+
+Read this before exploring the repo — it's meant to save a round of `package.json`/directory
+spelunking at the start of a task.
+
+- **Package manager**: Yarn 4 (Berry) via Corepack, workspaces = root + `server/`. Always
+  `yarn <script>` / `yarn workspace server run <script>`, never `npm`.
+- **Frontend** (root workspace): React 19 + TypeScript, built with Vite 8
+  (`@vitejs/plugin-react`). Tailwind CSS v4 via the `@tailwindcss/vite` plugin (no `tailwind.config`
+  file — v4 is CSS-first, config lives in `src/index.css`). Radix UI (`@radix-ui/react-tooltip`)
+  for the tooltip primitive, `lucide-react` for icons, `axios` for API calls. Dev server on
+  **port 58230**, proxies `/sessions` and `/system` to the backend (`vite.config.ts`).
+- **Backend** (`server/`): Express 5 + TypeScript. Dev via `tsx watch index.ts` (no build step
+  needed locally); prod build is plain `tsc`. Listens on **port 58231**
+  (`server/index.ts`, `PORT` env override).
+- **TypeScript**: project-references setup — root `tsconfig.json` references
+  `tsconfig.app.json` (src) and `tsconfig.node.json` (vite config); `server/tsconfig.json` is
+  separate/standalone. `yarn typecheck` = `tsc -b --noEmit` at the root.
+- **Lint/format**: ESLint 10 flat config (`eslint.config.js` at root, separate one in `server/`),
+  `typescript-eslint` with type-checked rules, `eslint-plugin-react-hooks` +
+  `eslint-plugin-react-refresh` for the frontend. Prettier 3 (see `.prettierrc.json`: double-quote
+  style off i.e. double quotes, semicolons, 100 print width). Husky pre-commit hook runs
+  `lint-staged` (ESLint only, on staged `.ts`/`.tsx`). `yarn lint` also runs
+  `scripts/check-terminal-launchers-sync.mjs` (see below).
+- **No test suite** — nothing runs under `yarn test` in this repo; verification is
+  `yarn typecheck` + `yarn lint` + manual exercise via `yarn dev`.
+- **Data sources on disk** (no database): `~/.claude/projects/*.jsonl` (session transcripts, read
+  by `server/utils/claudeProjects.ts`), `~/.claude-session-manager/custom-titles.json` (this app's
+  nickname sidecar, `server/utils/nicknames.ts`), `~/.claude/sessions/<pid>.json` (CLI's own active-
+  session state, read by `getActiveResumeSessionIds()` in `sessionService.ts`).
+- **Layout**:
+  - `src/components/` — presentational + modal components (`SessionCard`, `PromptPreviewModal`,
+    `UsageDetailsModal`, `Header`, etc.)
+  - `src/hooks/` — `useSessions`, `useTheme`, `useToast`, `useUpdate`, `useUrlState`
+  - `src/pages/SessionsPage.tsx` — the single page/route
+  - `src/services/` — `sessionsApi.ts` / `systemApi.ts`, thin axios wrappers around the backend
+  - `server/routes/` — `sessions.ts`, `system.ts` (Express routers, thin — error mapping only)
+  - `server/services/` — `sessionService.ts` (core logic: list/delete/continue/nickname sessions,
+    active-session detection), `updateService.ts` (self-update via git pull)
+  - `server/utils/` — `claudeProjects.ts` (JSONL parsing), `nicknames.ts` (sidecar file),
+    `pricing.ts` (token cost table)
+- **API surface** (see README.md for the full table): `GET /sessions`, `GET
+  /sessions/:id/prompts`, `PATCH /sessions/:id/nickname`, `DELETE /sessions/:id`, `POST
+  /sessions/:id/continue`, plus `/system/update*` routes for the self-update feature.
+- **Session data model** — `src/types/session.ts` and `server/types/session.ts` define the *same*
+  `Session` type independently (no shared package between the two workspaces) — a shape change
+  needs both files edited, there's nothing that enforces they match:
+  ```ts
+  type Session = {
+    id: string; title: string; nickname: string | null; project: string; path: string;
+    updatedAt: string; prompts: string[]; isActive: boolean; directoryMissing: boolean;
+    usage: { models: ModelUsage[]; totalCostUsd: number | null };
+  };
+  // ModelUsage: { model, inputTokens, outputTokens, cacheCreationInputTokens,
+  //              cacheReadInputTokens, costUsd }
+  ```
+- **No global state/query library** — all session state (list, filters, pagination, selection,
+  pending actions) lives in `src/hooks/useSessions.ts` as plain `useState`/`useEffect`; filters and
+  pagination are mirrored to URL query params via `useUrlState.ts`. No polling/websocket — the
+  list only refetches on mount or after an explicit `refresh()`/mutation, so it won't reflect
+  changes made outside the app (e.g. editing `~/.claude/projects` by hand) until reloaded.
+- **No CI** — there's no `.github/workflows`. `yarn lint`/`yarn typecheck` and the Husky
+  pre-commit hook are the only checks; nothing runs them on push, so run both yourself before
+  calling a change done.
+- README.md has install/run instructions and the desktop-shortcut setup — don't duplicate that
+  here, refer to it for setup questions.
+
 ## Cross-platform caveats
 
 - Terminal launching (`sessionService.ts`: `launchMacTerminal`, `launchWindowsTerminal`) and the
