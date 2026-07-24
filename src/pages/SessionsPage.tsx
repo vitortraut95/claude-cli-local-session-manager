@@ -118,7 +118,7 @@ export function SessionsPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {sessions.map((session) => (
             <SessionCard
               key={session.id}
@@ -143,11 +143,9 @@ export function SessionsPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <Header />
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sticky top-2 z-10">
-          <div className="flex-1">
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
-          </div>
+      <main className="px-4 py-6 sm:px-6">
+        <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} />
           <ProjectFilter projects={projects} value={projectFilter} onChange={setProjectFilter} />
           <DateRangeFilter from={updatedFrom} to={updatedTo} onChange={setUpdatedRange} />
 
