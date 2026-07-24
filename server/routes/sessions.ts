@@ -8,12 +8,6 @@ import {
 
 export const sessionsRouter = Router();
 
-function wantsWarp(body: unknown): boolean {
-  return (
-    typeof body === "object" && body !== null && (body as { useWarp?: unknown }).useWarp === true
-  );
-}
-
 sessionsRouter.get("/", async (_req, res) => {
   try {
     const sessions = await listSessions();
@@ -44,7 +38,7 @@ sessionsRouter.delete("/:id", async (req, res) => {
 
 sessionsRouter.post("/:id/continue", async (req, res) => {
   try {
-    await continueSession(req.params.id, wantsWarp(req.body));
+    await continueSession(req.params.id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({

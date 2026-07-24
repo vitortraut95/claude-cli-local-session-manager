@@ -311,11 +311,11 @@ async function launchWindowsTerminal(resumeCommand: string, cwd?: string): Promi
 }
 
 /**
- * @param useWarp Opt-in, per the frontend's experimental Warp toggle (off by default). When
- * false, behavior is unchanged from before Warp support existed — straight to the OS-specific
- * terminal launcher below.
+ * Always tries Warp first (silently falls through to the OS-specific terminal launcher below
+ * when Warp isn't installed, per `launchWarp`'s own `commandExists`/platform checks) — no
+ * user-facing toggle for this anymore.
  */
-export async function continueSession(id: string, useWarp = false): Promise<void> {
+export async function continueSession(id: string): Promise<void> {
   if (!isSafeSessionId(id)) {
     throw new Error(`Invalid session id "${id}"`);
   }
@@ -332,7 +332,7 @@ export async function continueSession(id: string, useWarp = false): Promise<void
   // `id` is already validated above (alphanumeric/dash/underscore only), so it's safe to interpolate.
   const resumeCommand = `claude --resume ${id}`;
 
-  if (useWarp && (await launchWarp(resumeCommand, cwd ?? undefined))) {
+  if (await launchWarp(resumeCommand, cwd ?? undefined)) {
     return;
   }
 

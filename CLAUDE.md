@@ -90,8 +90,9 @@ to ship it on Windows and macOS too, since that came up as a future goal.
      list starts changing more often.
 2. **Warp's real data directory on macOS/Windows is still unverified**, and now explicitly
    disabled there rather than guessed: `launchWarp()` (`sessionService.ts`) returns `false`
-   immediately when `process.platform !== "linux"`, so `useWarp` silently falls through to the
-   plain-terminal branch above on Mac/Windows. Reasoning: a wrong guessed path wouldn't error, it'd
+   immediately when `process.platform !== "linux"`, so `continueSession()` (which always tries
+   Warp first, no toggle anymore — see below) silently falls through to the plain-terminal branch
+   above on Mac/Windows. Reasoning: a wrong guessed path wouldn't error, it'd
    silently write the tab-config TOML to a folder Warp never looks at — Warp would open, but
    ignore the resume command, which is a more confusing failure than just not offering Warp there.
    `WARP_DATA_DIR` env var override still exists (see above) as the escape hatch once someone
@@ -126,9 +127,10 @@ to ship it on Windows and macOS too, since that came up as a future goal.
   session support is ever wanted**, `wmctrl -a <title>` (after giving the spawned terminal a
   unique `--title`/`-T` flag) would work reliably there — but that's a separate, opt-in code path,
   not something to build blindly today.
-- **`warp-terminal` and `gnome-terminal` are both installed on this dev machine**; Warp is the
-  default terminal choice (`src/hooks/useWarpPreference.ts`, `getWarpPreference()` defaults to
-  `true`/Warp when the user hasn't chosen).
+- **`warp-terminal` and `gnome-terminal` are both installed on this dev machine.** There's no
+  user-facing Warp on/off toggle anymore (the old `WarpToggle`/`useWarpPreference` were removed) —
+  `continueSession()` (`sessionService.ts`) always tries Warp first unconditionally, falling back
+  to the OS terminal launcher automatically when Warp isn't installed/available.
 
 ### Suggested order of attack, when this work actually starts
 

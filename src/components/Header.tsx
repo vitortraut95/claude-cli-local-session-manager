@@ -1,14 +1,11 @@
 import { Bot } from "lucide-react";
 import { useTheme } from "../hooks/useTheme";
 import { useUpdate } from "../hooks/useUpdate";
-import { useWarpPreference } from "../hooks/useWarpPreference";
 import { ThemeToggle } from "./ThemeToggle";
 import { UpdateButton } from "./UpdateButton";
-import { WarpToggle } from "./WarpToggle";
 
 export function Header() {
   const { theme, toggleTheme } = useTheme();
-  const { useWarp, toggleWarp } = useWarpPreference();
   const { status: updateStatus, checking, updating, applyUpdate } = useUpdate();
 
   return (
@@ -29,7 +26,6 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-3">
-          <WarpToggle enabled={useWarp} onToggle={toggleWarp} />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <UpdateButton
             status={updateStatus}
