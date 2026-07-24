@@ -216,8 +216,15 @@ function getWarpTabConfigsDir(): string {
  * (verified working: the pane respects `directory` and runs `commands` on open, unlike the
  * older/deprecated Launch Configuration YAML format, where external triggers are known to
  * silently drop the command).
+ *
+ * Linux-only for now: Warp's real data directory on macOS/Windows (and even its CLI binary name
+ * there) hasn't been verified against a real install. Guessing wrong would fail silently — Warp
+ * would still open, just without ever finding the tab config, since it'd be looking in the wrong
+ * folder — which is worse than skipping straight to the plain-terminal fallback below. See
+ * CLAUDE.md.
  */
 async function launchWarp(command: string, cwd?: string): Promise<boolean> {
+  if (process.platform !== "linux") return false;
   if (!commandExists("warp-terminal")) return false;
 
   const name = `claude-session-manager-${Date.now()}`;
@@ -237,9 +244,71 @@ async function launchWarp(command: string, cwd?: string): Promise<boolean> {
   return trySpawnDetached("xdg-open", [`warp://tab_config/${encodeURIComponent(name)}`]);
 }
 
+/** Wraps `value` in single quotes for a POSIX shell, escaping any embedded ones. */
+function posixShellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+/** Escapes `value` to sit inside an AppleScript double-quoted string literal. */
+function escapeForAppleScript(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+/**
+ * NOT YET SMOKE-TESTED ON A REAL MAC — written from documented `osascript`/Terminal.app
+ * behavior, but nobody has run this on macOS yet. Verify before relying on it.
+ *
+ * `do script "<command>"` opens a new Terminal window, runs the command, and leaves the shell
+ * at a fresh prompt afterwards (unlike the Linux emulators below, which close the instant their
+ * wrapped `bash -c` exits) — so no "press enter to close" pause is needed here.
+ */
+async function launchMacTerminal(resumeCommand: string, cwd?: string): Promise<boolean> {
+  // osascript's own `cwd` (a spawn option) only affects osascript itself, not the new Terminal
+  // window Terminal.app creates — the working directory has to be part of the script's command.
+  const shellCommand = cwd ? `cd ${posixShellQuote(cwd)} && ${resumeCommand}` : resumeCommand;
+  const script =
+    `tell application "Terminal"\n` +
+    `  activate\n` +
+    `  do script "${escapeForAppleScript(shellCommand)}"\n` +
+    `end tell`;
+  return trySpawnDetached("osascript", ["-e", script]);
+}
+
+/**
+ * NOT YET SMOKE-TESTED ON A REAL WINDOWS MACHINE — written from documented `wt.exe`/`cmd.exe`
+ * behavior, but nobody has run this on Windows yet. Verify before relying on it, especially
+ * `cwd` values containing characters cmd.exe treats specially (`&`, `%`, `^`, parentheses).
+ *
+ * Tries Windows Terminal first (falls back to a plain `cmd.exe` window via `start`, which every
+ * Windows install has). `/k` (vs. `/c`) keeps the window open with an interactive prompt after
+ * the command exits — the same "stay open" job the Linux branch's `read -p` pause does.
+ */
+async function launchWindowsTerminal(resumeCommand: string, cwd?: string): Promise<boolean> {
+  // Like macOS above: the new window's starting directory has to be requested explicitly
+  // (`-d`/`/d`), since it isn't reliably inherited from the process we spawn here.
+  if (
+    await trySpawnDetached(
+      "wt.exe",
+      cwd ? ["-d", cwd, "cmd", "/k", resumeCommand] : ["cmd", "/k", resumeCommand],
+    )
+  ) {
+    return true;
+  }
+
+  return trySpawnDetached("cmd.exe", [
+    "/c",
+    "start",
+    ...(cwd ? ["/d", cwd] : []),
+    "cmd",
+    "/k",
+    resumeCommand,
+  ]);
+}
+
 /**
  * @param useWarp Opt-in, per the frontend's experimental Warp toggle (off by default). When
- * false, behavior is unchanged from before Warp support existed — straight to TERMINAL_LAUNCHERS.
+ * false, behavior is unchanged from before Warp support existed — straight to the OS-specific
+ * terminal launcher below.
  */
 export async function continueSession(id: string, useWarp = false): Promise<void> {
   if (!isSafeSessionId(id)) {
@@ -260,6 +329,16 @@ export async function continueSession(id: string, useWarp = false): Promise<void
 
   if (useWarp && (await launchWarp(resumeCommand, cwd ?? undefined))) {
     return;
+  }
+
+  if (process.platform === "darwin") {
+    if (await launchMacTerminal(resumeCommand, cwd ?? undefined)) return;
+    throw new Error("Could not open Terminal.app (osascript failed to launch).");
+  }
+
+  if (process.platform === "win32") {
+    if (await launchWindowsTerminal(resumeCommand, cwd ?? undefined)) return;
+    throw new Error("Could not open a terminal (tried: Windows Terminal, cmd.exe).");
   }
 
   // Warp tabs stay open on their own after the command finishes, but the other emulators close
