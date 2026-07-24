@@ -98,7 +98,22 @@ spelunking at the start of a task.
   detection entirely (no active session ever showed as active). `process.kill(pid, 0)` works the
   same on Windows as on Linux/macOS, so this also lifts the old win32-only restriction — not
   smoke-tested on real Windows hardware, but no longer deliberately disabled there either.
-- `open-terminal.sh` (used by the GNOME desktop shortcut) duplicates the terminal-picking logic in
+- **Desktop-shortcut launch chain** (how clicking the app icon starts the dev servers):
+  `install-shortcut.sh` templates `claude-session-manager.desktop.template` →
+  `claude-session-manager.desktop` and installs it to `~/.local/share/applications/` and
+  `~/Desktop/`. Its `Exec=` points at `open-terminal.sh` — the actual entrypoint for both the
+  Desktop icon and the app-menu entry. `open-terminal.sh` probes both dev-server ports directly
+  via `/dev/tcp/127.0.0.1/<port>` (frontend 58230, backend 58231, no `lsof`/`curl` dependency):
+  if both are already up, it just `xdg-open`s a browser tab and exits — no second `yarn dev`. If
+  **exactly one** is up (an orphaned process from a previous crash/partial shutdown — frontend and
+  backend are meant to live and die together as one `yarn dev` under `concurrently`), it runs
+  `fuser -k -n tcp` on both ports to clear the stray side before continuing, so every shortcut
+  click ends with exactly one frontend + one backend, never a duplicate or a stale orphan left
+  serving alongside a fresh instance. If neither is up, it launches a terminal running
+  `start.sh` (which just cds into the project, makes sure `yarn` is on `PATH` — loading nvm
+  manually if invoked non-interactively, since nvm only auto-loads for interactive shells — and
+  runs `yarn dev`), preferring Warp (via a generated Tab Config TOML) and otherwise falling back
+  through a `TERMINAL_LAUNCHERS` list. `open-terminal.sh` duplicates the terminal-picking logic in
   `sessionService.ts` instead of calling it — a Node dependency here would break the cold-bootstrap
   case where no system Node is on `PATH` yet (only nvm, which only loads for interactive shells).
   `scripts/check-terminal-launchers-sync.mjs` (run via `yarn lint`) fails the build if the two

@@ -3,22 +3,40 @@ set -e
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 FRONTEND_PORT=58230
+BACKEND_PORT=58231
 URL="http://localhost:$FRONTEND_PORT"
 
-is_frontend_running() {
-  (exec 3<>"/dev/tcp/127.0.0.1/$FRONTEND_PORT") 2>/dev/null
+is_port_open() {
+  (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
   local result=$?
   exec 3<&- 2>/dev/null
   exec 3>&- 2>/dev/null
   return $result
 }
 
-# Already running: just open a browser tab, no terminal, no second `npm run dev`
+frontend_up=false
+backend_up=false
+is_port_open "$FRONTEND_PORT" && frontend_up=true
+is_port_open "$BACKEND_PORT" && backend_up=true
+
+# Both already running: just open a browser tab, no terminal, no second `npm run dev`
 # (which would fail anyway since vite's `strictPort` refuses to reuse the port).
-if is_frontend_running; then
+if $frontend_up && $backend_up; then
   nohup xdg-open "$URL" >/dev/null 2>&1 &
   disown
   exit 0
+fi
+
+# Exactly one side up means an orphaned process from a previous crash/partial shutdown
+# (frontend and backend are meant to live and die together as one `yarn dev`). Starting a
+# fresh `yarn dev` on top of that would either bind fine on the free port while the stray
+# process keeps serving stale code on the other, or fail outright with EADDRINUSE. Kill
+# whichever port(s) are occupied so every shortcut click ends with exactly one frontend +
+# one backend, never a stray extra of either.
+if $frontend_up || $backend_up; then
+  fuser -k -n tcp "$FRONTEND_PORT" >/dev/null 2>&1 || true
+  fuser -k -n tcp "$BACKEND_PORT" >/dev/null 2>&1 || true
+  sleep 1
 fi
 
 # If Warp is installed, start the app in Warp instead of the regular terminal fallback below.
