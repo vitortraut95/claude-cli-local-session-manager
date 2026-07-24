@@ -14,7 +14,7 @@ import {
   type SessionHead,
 } from "../utils/claudeProjects.js";
 import { summarizeUsage } from "../utils/pricing.js";
-import { getCustomTitles, setCustomTitle } from "../utils/titleOverrides.js";
+import { getNicknames, setNickname } from "../utils/nicknames.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -40,7 +40,7 @@ function resolveProject(head: SessionHead, filePath: string): string {
   return projectDir.replace(/^-/, "") || projectDir;
 }
 
-async function buildSession(filePath: string): Promise<Omit<Session, "isActive"> | null> {
+async function buildSession(filePath: string): Promise<Omit<Session, "isActive" | "nickname"> | null> {
   try {
     const [head, fileStat, prompts, rawUsage] = await Promise.all([
       readSessionHead(filePath),
@@ -98,17 +98,17 @@ async function getActiveResumeSessionIds(): Promise<Set<string>> {
 
 export async function listSessions(): Promise<Session[]> {
   const files = await findJsonlFiles(getClaudeProjectsDir());
-  const [built, activeIds, customTitles] = await Promise.all([
+  const [built, activeIds, nicknames] = await Promise.all([
     Promise.all(files.map(buildSession)),
     getActiveResumeSessionIds(),
-    getCustomTitles(),
+    getNicknames(),
   ]);
 
   return built
-    .filter((session): session is Omit<Session, "isActive"> => session !== null)
+    .filter((session): session is Omit<Session, "isActive" | "nickname"> => session !== null)
     .map((session) => ({
       ...session,
-      title: customTitles[session.id] ?? session.title,
+      nickname: nicknames[session.id] ?? null,
       isActive: activeIds.has(session.id),
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -157,7 +157,7 @@ export class SessionActiveError extends Error {
  * Deleting a session that's actively `claude --resume`d would pull the `.jsonl` file out from
  * under a running process mid-write — reject it server-side too, not just via the disabled
  * Delete button in the UI, in case a session becomes active between page load and this request
- * landing (same defense-in-depth reasoning as `renameSession`/`continueSession` below).
+ * landing (same defense-in-depth reasoning as `setSessionNickname`/`continueSession` below).
  */
 export async function deleteSession(id: string): Promise<void> {
   const activeIds = await getActiveResumeSessionIds();
@@ -173,12 +173,12 @@ export async function deleteSession(id: string): Promise<void> {
 }
 
 /**
- * Renaming a session that's actively `claude --resume`d could race with the CLI's own writes to
- * that session's `.jsonl` (title metadata included) — reject it server-side too, not just via
- * the disabled rename button in the UI, in case a session becomes active between page load and
- * this request landing.
+ * Nicknames are purely local (see `nicknames.ts`), but still gated on the session being
+ * inactive for consistency with the other mutating actions — not for data-race reasons (nothing
+ * here touches the session's own `.jsonl`), just so a session can't be relabeled while someone
+ * might be actively working in it, mirroring `deleteSession`/`continueSession` above.
  */
-export async function renameSession(id: string, title: string): Promise<void> {
+export async function setSessionNickname(id: string, nickname: string): Promise<void> {
   if (!isSafeSessionId(id)) {
     throw new Error(`Invalid session id "${id}"`);
   }
@@ -186,11 +186,11 @@ export async function renameSession(id: string, title: string): Promise<void> {
   const activeIds = await getActiveResumeSessionIds();
   if (activeIds.has(id)) {
     throw new SessionActiveError(
-      `Session "${id}" is currently active in a terminal — close it before renaming.`,
+      `Session "${id}" is currently active in a terminal — close it before changing its nickname.`,
     );
   }
 
-  await setCustomTitle(id, title);
+  await setNickname(id, nickname);
 }
 
 /** Time to wait for an immediate spawn failure (e.g. binary missing) before assuming success. */

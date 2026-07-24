@@ -36,6 +36,8 @@ export async function continueSession(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/continue`));
 }
 
-export async function renameSession(id: string, title: string): Promise<void> {
-  await withServerErrorMessage(() => client.patch(`/${encodeURIComponent(id)}/title`, { title }));
+export async function setNickname(id: string, nickname: string): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.patch(`/${encodeURIComponent(id)}/nickname`, { nickname }),
+  );
 }

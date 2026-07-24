@@ -188,7 +188,7 @@ Update this list's checkmarks/notes as items get built or dropped.
 
 ### Organization & management
 
-- [x] **Manual session rename** — done, see below.
+- [x] **Local nickname** (originally shipped as "manual session rename") — done, see below.
 - [x] **Bulk select + delete** — done, see below.
 
 ### Workflow
@@ -198,7 +198,6 @@ Update this list's checkmarks/notes as items get built or dropped.
 ### More ambitious / lower priority
 
 - [ ] Stats dashboard (sessions per project, over time).
-- [ ] Correlate a session with the git diff/files it actually touched.
 
 ### Implemented: full-text search + prompt-preview modal
 
@@ -312,50 +311,62 @@ Update this list's checkmarks/notes as items get built or dropped.
   millions of cache-read tokens on a long-running session, ~$30+ estimated cost) that only grew
   as the conversation continued, confirming the running total tracks accurately in real time.
 
-### Implemented: manual session rename
+### Implemented: local nickname (originally shipped as "manual session rename")
 
-- **Storage** (`server/utils/titleOverrides.ts`): a small sidecar JSON file at
-  `~/.claude-session-manager/custom-titles.json` — deliberately **not** inside
-  `~/.claude/projects/`, since that's the Claude CLI's own data and this app never writes to it.
-  `{ [sessionId]: customTitle }`, capped at 100 chars (same cap as the auto-derived title).
-  Setting a blank/whitespace-only title **deletes** the override key, reverting to the
-  auto-derived title on the next load — there's no separate "reset" action needed.
-- **Backend gate — this is the actual safety-relevant piece.** Per explicit user instruction, the
-  rename must be blocked while the session is active, not just discouraged in the UI.
-  `renameSession()` (`sessionService.ts`) re-checks `getActiveResumeSessionIds()` (the same
-  active/inactive indicator function above) and throws `SessionActiveError` — mapped to **HTTP
-  409** in `server/routes/sessions.ts` — if the id is currently `claude --resume`d. This is
-  deliberately a _second_ check, independent of the disabled button client-side: the button can
-  only prevent the common case (page loaded, then user clicks rename while it's already
-  displayed as active); it can't prevent a session that _became_ active in the gap between page
-  load and the request landing. Verified directly: `curl -X PATCH .../title` against this very
-  session's own id (genuinely active) returned `409` with the expected message; renaming an
-  inactive session and clearing it back to blank both worked and persisted correctly.
-- **Frontend**: `RenameSessionModal.tsx` — pre-filled text input, portalled to `document.body`
-  (same reasoning as the other SessionCard modals). **Deliberately mounted only while open**
-  (`{showRenameModal && <RenameSessionModal .../>}` in `SessionCard.tsx`, not an always-mounted
-  component with an `open` prop) — this was the clean fix for a real lint failure
-  (`react-hooks/set-state-in-effect`) that showed up when the first draft tried to resync the
-  input's local state from a `currentTitle` prop inside a `useEffect` on every open; mounting
-  fresh each time means `useState(currentTitle)` already picks up the right value with no effect
-  needed. **Any future modal with internal form state that needs to reset per-open should use
-  this same conditional-mount pattern**, not an effect-based resync.
-  - Pencil icon rendered next to the title (not in the bottom action row) — disabled +
-    tooltip ("Close this session in its terminal before renaming.") whenever `session.isActive`,
-    using the same disabled-button-tooltip wrapper trick as the Continue button. Modal closes
-    immediately on submit (matching the existing delete-confirmation pattern in `SessionsPage.tsx`
-    — the dialog isn't what shows pending state; the button's own spinner is), then
-    `useSessions.ts`'s `renameSession()` calls the API and reloads the session list (not a local
-    optimistic patch — the "reset to blank" case needs the server's resolved auto-title, which the
-    frontend has no way to compute itself) and surfaces the specific server error message (e.g.
-    the 409 case above) via `sessionsApi.ts`'s `renameSession()`, which re-throws an
-    `axios.isAxiosError` response body's `.error` as a plain `Error` so the existing
-    `err instanceof Error ? err.message : ...` catch pattern used everywhere else in this app
-    picks it up without needing its own special case.
-  - Verified live end-to-end in the browser: renamed an inactive session, confirmed the new title
-    persisted after reload; cleared it back to blank and confirmed it reverted to the real
-    auto-derived title; clicked the disabled pencil on this session's own (genuinely active) card
-    and confirmed the tooltip showed and the click did nothing.
+**Reworked from a straight rename into a secondary label, per explicit user instruction, once a
+real limitation surfaced**: after renaming a session, the user reported (with a screenshot) that
+Warp's tab title for that same, still-active session still showed the old auto-derived title. Root
+cause, confirmed via web research
+([warpdotdev/warp#9102](https://github.com/warpdotdev/warp/issues/9102),
+[warpdotdev/warp#11970](https://github.com/warpdotdev/warp/issues/11970),
+[Warp Tab Configs docs](https://docs.warp.dev/terminal/windows/tab-configs/)): Warp's visible tab
+title for a Claude Code session is set by Claude Code itself, as an AI agent, calling a
+`set_tab_title` tool that emits an OSC 0 escape sequence — re-asserted on essentially every prompt
+per the linked issues. This was **always** true, including back when this feature was still called
+"rename" — the old naming just implied a real rename (of the session, its tab, everywhere) that the
+implementation never actually did or could do: `renameSession()` only ever wrote to this app's own
+sidecar file, never to `~/.claude/projects/` or anything Warp/Claude Code reads. There is no lever
+in this codebase to change what Warp/Claude Code display — that would require changing the `claude`
+CLI's own behavior, out of scope for this app. Given that, the fix was to stop pretending this is a
+rename and instead show the local label *alongside* the real title, so the UI itself communicates
+the limitation instead of contradicting it.
+- **Storage** (`server/utils/nicknames.ts`, functions `getNicknames()`/`setNickname()` — same
+  underlying file as before, `~/.claude-session-manager/custom-titles.json`, deliberately **not**
+  inside `~/.claude/projects/` since that's the Claude CLI's own data and this app never writes to
+  it): `{ [sessionId]: nickname }`, capped at 100 chars. A blank/whitespace-only nickname **deletes**
+  the override key — no separate "clear" action needed.
+- **`Session.title` is now always the real, auto-derived title — never overridden.** A new
+  `Session.nickname: string | null` field carries the local override separately (both
+  `server/types/session.ts` and `src/types/session.ts`). `listSessions()` (`sessionService.ts`) sets
+  `nickname: nicknames[session.id] ?? null` instead of overwriting `title`.
+- **Backend gate.** `setSessionNickname()` (`sessionService.ts`, was `renameSession()`) still
+  re-checks `getActiveResumeSessionIds()` and throws `SessionActiveError` — mapped to **HTTP 409**
+  in `server/routes/sessions.ts` (now `PATCH /:id/nickname`, body `{ nickname }`) — if the session is
+  active. Unlike the original doc comment's claim, this was never actually preventing a data race
+  with the CLI's own `.jsonl` writes (nicknames never touch that file) — it's kept purely for
+  consistency with delete/continue/rename-turned-nickname's shared active-session gating, and
+  re-verified after the rename: `curl -X PATCH .../nickname` against this session's own (active) id
+  still returns `409` with the updated message ("...before changing its nickname.").
+- **Frontend**: `NicknameModal.tsx` (was `RenameSessionModal.tsx`) — same pre-filled-input,
+  portalled-to-`document.body`, mounted-only-while-open patterns as before (see the original
+  rename-feature notes on the `react-hooks/set-state-in-effect` lint fix and the containing-block
+  modal bug — both still apply verbatim). Copy now reads "Local nickname" / "Only shown in this
+  app's session list, alongside the session's real title — it won't rename the session or change
+  what any terminal (including Warp) shows for it."
+  - `SessionCard.tsx`: the title block is now a small flex-column — `session.title` always on top,
+    `session.nickname` (if set) rendered right below it in smaller italic text, so both are visible
+    at once instead of one replacing the other. The pencil button's `aria-label`/tooltip switches
+    between "Add local nickname" and "Edit local nickname" depending on whether one is already set;
+    disabled + "Close this session in its terminal before changing its nickname." tooltip whenever
+    `session.isActive`, same disabled-button-tooltip wrapper trick as Continue/Delete.
+  - `useSessions.ts`: `renameSession` → `setNickname`; the `PendingAction` union's `"rename"` value
+    became `"nickname"`. Search (`matchesQuery`) now checks `session.nickname ?? ""` in addition to
+    `session.title`, so a session found only by its nickname still surfaces.
+  - Verified live end-to-end in the browser against this very (active) session, after setting its
+    nickname to "Melhorias no projeto" while it was still inactive earlier in the conversation: the
+    card shows both "Adicionar filtro de range de data de last updated" (real title) and "Melhorias
+    no projeto" (nickname) at once; clicking the now-disabled pencil (session active) showed the
+    updated tooltip and did nothing, confirming the active-session gate survived the rework.
 
 ### Implemented: bulk select + delete
 
@@ -397,6 +408,11 @@ Per explicit user instruction ("se a sessão está ativa não pode executar aç�
 deletar nem continuar" — if a session is active it must not be deletable, continuable, or
 selectable for bulk actions), the active-session gate that previously only covered rename
 (see "manual session rename" above) now covers **all four** mutating/selecting actions.
+
+_Note: this section predates the rename → nickname rework above (`renameSession` is now
+`setSessionNickname`, `PATCH /:id/title` is now `PATCH /:id/nickname`, `RenameSessionModal.tsx` is
+now `NicknameModal.tsx`). Left as-is below since it's an accurate record of what changed at the
+time; see "local nickname" above for the current names._
 
 - **`SessionActiveError`** (`server/services/sessionService.ts`) generalized from a fixed
   `constructor(id: string)` message to `constructor(message: string)`, so each call site phrases

@@ -4,7 +4,7 @@ import type { Session } from "../types/session";
 import { useUrlParam } from "./useUrlState";
 import { useToast } from "./useToast";
 
-export type PendingAction = "delete" | "continue" | "rename";
+export type PendingAction = "delete" | "continue" | "nickname";
 
 export const PER_PAGE_OPTIONS = [24, 48, 96, 192, 999999] as const;
 const DEFAULT_PER_PAGE = 24;
@@ -119,9 +119,13 @@ export function useSessions() {
     const filtered = sessions.filter((session) => {
       const matchesQuery =
         !query ||
-        [session.title, session.project, session.id, ...session.prompts].some((field) =>
-          field.toLowerCase().includes(query),
-        );
+        [
+          session.title,
+          session.nickname ?? "",
+          session.project,
+          session.id,
+          ...session.prompts,
+        ].some((field) => field.toLowerCase().includes(query));
       const matchesProject = !projectFilter || session.project === projectFilter;
       const updatedAtTime = new Date(session.updatedAt).getTime();
       const matchesUpdatedAt =
@@ -238,19 +242,17 @@ export function useSessions() {
     [showToast, setPending],
   );
 
-  const renameSession = useCallback(
-    async (id: string, title: string) => {
-      setPending(id, "rename");
+  const setNickname = useCallback(
+    async (id: string, nickname: string) => {
+      setPending(id, "nickname");
       try {
-        await sessionsApi.renameSession(id, title);
-        // A blank title resets to the auto-derived one (aiTitle/summary/first message) — that
-        // resolution logic only exists server-side, so there's nothing to optimistically patch
-        // in locally for that case. Reload from the server either way for a title guaranteed to
-        // match what was actually saved.
+        await sessionsApi.setNickname(id, nickname);
+        // Reload from the server rather than optimistically patching locally — a blank nickname
+        // clears the override server-side, and this keeps that resolution in one place.
         await loadSessions();
-        showToast("Session renamed.", "success");
+        showToast(nickname.trim() ? "Nickname saved." : "Nickname removed.", "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Could not rename the session.", "error");
+        showToast(err instanceof Error ? err.message : "Could not save the nickname.", "error");
       } finally {
         setPending(id, null);
       }
@@ -304,6 +306,6 @@ export function useSessions() {
     removeSession,
     removeSessions,
     resumeSession,
-    renameSession,
+    setNickname,
   };
 }

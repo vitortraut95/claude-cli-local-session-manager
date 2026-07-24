@@ -16,7 +16,7 @@ import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
 import type { Session } from "../types/session";
 import { PromptPreviewModal } from "./PromptPreviewModal";
-import { RenameSessionModal } from "./RenameSessionModal";
+import { NicknameModal } from "./NicknameModal";
 import { Tooltip } from "./Tooltip";
 import { UsageDetailsModal } from "./UsageDetailsModal";
 import { formatUpdatedAt } from "../utils/formatDate";
@@ -28,7 +28,7 @@ type SessionCardProps = {
   onToggleSelect: (id: string) => void;
   onContinue: (session: Session) => void;
   onDeleteRequest: (session: Session) => void;
-  onRename: (session: Session, title: string) => void;
+  onSetNickname: (session: Session, nickname: string) => void;
 };
 
 const COPIED_FEEDBACK_DURATION_MS = 2500;
@@ -40,17 +40,17 @@ export function SessionCard({
   onToggleSelect,
   onContinue,
   onDeleteRequest,
-  onRename,
+  onSetNickname,
 }: SessionCardProps) {
   const isDeleting = pendingAction === "delete";
   const isContinuing = pendingAction === "continue";
-  const isRenaming = pendingAction === "rename";
-  const isBusy = isDeleting || isContinuing || isRenaming;
+  const isSettingNickname = pendingAction === "nickname";
+  const isBusy = isDeleting || isContinuing || isSettingNickname;
   const [copiedId, setCopiedId] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showUsage, setShowUsage] = useState(false);
-  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showNicknameModal, setShowNicknameModal] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
 
@@ -77,15 +77,15 @@ export function SessionCard({
     }
   };
 
-  const renameButton = (
+  const nicknameButton = (
     <button
       type="button"
-      onClick={() => setShowRenameModal(true)}
+      onClick={() => setShowNicknameModal(true)}
       disabled={isBusy || session.isActive}
-      aria-label="Rename session"
+      aria-label={session.nickname ? "Edit local nickname" : "Add local nickname"}
       className="inline-flex shrink-0 items-center justify-center rounded p-1 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
     >
-      {isRenaming ? (
+      {isSettingNickname ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       ) : (
         <Pencil className="h-3.5 w-3.5" />
@@ -161,22 +161,32 @@ export function SessionCard({
       </Tooltip>
 
       <div className="flex items-start justify-between gap-2">
-        <label className="flex min-w-0 items-start gap-2">
+        <div className="flex min-w-0 flex-col gap-0.5">
           <h2
             className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
             title={session.title}
           >
             {session.title}
           </h2>
-        </label>
+          {session.nickname && (
+            <span
+              className="line-clamp-1 text-xs italic text-gray-500 dark:text-gray-400"
+              title="Local nickname — only shown in this app"
+            >
+              {session.nickname}
+            </span>
+          )}
+        </div>
         {session.isActive ? (
           // Same disabled-button-tooltip wrapper trick as the Continue button below — a native
           // `disabled` button won't reliably fire hover events on its own.
-          <Tooltip content="Close this session in its terminal before renaming.">
-            <span className="inline-flex shrink-0">{renameButton}</span>
+          <Tooltip content="Close this session in its terminal before changing its nickname.">
+            <span className="inline-flex shrink-0">{nicknameButton}</span>
           </Tooltip>
         ) : (
-          <Tooltip content="Rename session">{renameButton}</Tooltip>
+          <Tooltip content={session.nickname ? "Edit local nickname" : "Add local nickname"}>
+            {nicknameButton}
+          </Tooltip>
         )}
       </div>
 
@@ -298,14 +308,14 @@ export function SessionCard({
         onClose={() => setShowPreview(false)}
       />
       <UsageDetailsModal session={session} open={showUsage} onClose={() => setShowUsage(false)} />
-      {showRenameModal && (
-        <RenameSessionModal
-          currentTitle={session.title}
-          onSave={(title) => {
-            setShowRenameModal(false);
-            onRename(session, title);
+      {showNicknameModal && (
+        <NicknameModal
+          currentNickname={session.nickname ?? ""}
+          onSave={(nickname) => {
+            setShowNicknameModal(false);
+            onSetNickname(session, nickname);
           }}
-          onCancel={() => setShowRenameModal(false)}
+          onCancel={() => setShowNicknameModal(false)}
         />
       )}
     </div>

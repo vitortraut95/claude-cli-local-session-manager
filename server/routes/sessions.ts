@@ -3,17 +3,17 @@ import {
   continueSession,
   deleteSession,
   listSessions,
-  renameSession,
+  setSessionNickname,
   SessionActiveError,
   SessionNotFoundError,
 } from "../services/sessionService.js";
 
 export const sessionsRouter = Router();
 
-function extractTitle(body: unknown): string {
-  if (typeof body === "object" && body !== null && "title" in body) {
-    const { title } = body;
-    if (typeof title === "string") return title;
+function extractNickname(body: unknown): string {
+  if (typeof body === "object" && body !== null && "nickname" in body) {
+    const { nickname } = body;
+    if (typeof nickname === "string") return nickname;
   }
   return "";
 }
@@ -50,9 +50,9 @@ sessionsRouter.delete("/:id", async (req, res) => {
   }
 });
 
-sessionsRouter.patch("/:id/title", async (req, res) => {
+sessionsRouter.patch("/:id/nickname", async (req, res) => {
   try {
-    await renameSession(req.params.id, extractTitle(req.body));
+    await setSessionNickname(req.params.id, extractNickname(req.body));
     res.json({ success: true });
   } catch (err) {
     if (err instanceof SessionActiveError) {

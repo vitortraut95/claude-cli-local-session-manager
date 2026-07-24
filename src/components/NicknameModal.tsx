@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-type RenameSessionModalProps = {
-  currentTitle: string;
-  onSave: (title: string) => void;
+type NicknameModalProps = {
+  currentNickname: string;
+  onSave: (nickname: string) => void;
   onCancel: () => void;
 };
 
 /**
- * The caller only mounts this component while the modal is open (`{showRenameModal && <RenameSessionModal ... />}`,
- * not an always-mounted `open` prop) specifically so `useState(currentTitle)` re-initializes
+ * The caller only mounts this component while the modal is open (`{showNicknameModal && <NicknameModal ... />}`,
+ * not an always-mounted `open` prop) specifically so `useState(currentNickname)` re-initializes
  * fresh on every open — no effect-based resync needed, which would otherwise trip the
  * `set-state-in-effect` lint rule for a plain "sync from a prop" pattern.
  */
-export function RenameSessionModal({ currentTitle, onSave, onCancel }: RenameSessionModalProps) {
-  const [title, setTitle] = useState(currentTitle);
+export function NicknameModal({ currentNickname, onSave, onCancel }: NicknameModalProps) {
+  const [nickname, setNickname] = useState(currentNickname);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -26,7 +26,7 @@ export function RenameSessionModal({ currentTitle, onSave, onCancel }: RenameSes
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    onSave(title);
+    onSave(nickname);
   };
 
   // Portalled to document.body — same containing-block reasoning as the other SessionCard
@@ -44,19 +44,21 @@ export function RenameSessionModal({ currentTitle, onSave, onCancel }: RenameSes
         onClick={(event) => event.stopPropagation()}
       >
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-          Rename session
+          Local nickname
         </h2>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Leave blank to reset to the auto-generated title.
+          Only shown in this app's session list, alongside the session's real title — it won't
+          rename the session or change what any terminal (including Warp) shows for it. Leave
+          blank to remove the nickname.
         </p>
 
         <input
           type="text"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          value={nickname}
+          onChange={(event) => setNickname(event.target.value)}
           autoFocus
           maxLength={100}
-          placeholder="Session title"
+          placeholder="Nickname"
           className="mt-4 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-gray-600 dark:focus:ring-gray-100/10"
         />
 

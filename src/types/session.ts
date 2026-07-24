@@ -15,6 +15,7 @@ export type SessionUsage = {
 export type Session = {
   id: string;
   title: string;
+  nickname: string | null;
   project: string;
   path: string;
   updatedAt: string;

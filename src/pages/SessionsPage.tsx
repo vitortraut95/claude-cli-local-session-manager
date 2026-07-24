@@ -42,7 +42,7 @@ export function SessionsPage() {
     removeSession,
     removeSessions,
     resumeSession,
-    renameSession,
+    setNickname,
   } = useSessions();
   const [sessionPendingDeletion, setSessionPendingDeletion] = useState<Session | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
@@ -131,7 +131,7 @@ export function SessionsPage() {
               onToggleSelect={toggleSelect}
               onContinue={(s) => resumeSession(s.id)}
               onDeleteRequest={setSessionPendingDeletion}
-              onRename={(s, title) => renameSession(s.id, title)}
+              onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
             />
           ))}
         </div>
