@@ -1,8 +1,9 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import { mkdir, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import type { Session } from "../types/session.js";
 import {
   findJsonlFiles,
@@ -11,6 +12,8 @@ import {
   readSessionPrompts,
   type SessionHead,
 } from "../utils/claudeProjects.js";
+
+const execFileAsync = promisify(execFile);
 
 const UNTITLED = "Untitled";
 const TITLE_MAX_LENGTH = 100;
@@ -34,7 +37,7 @@ function resolveProject(head: SessionHead, filePath: string): string {
   return projectDir.replace(/^-/, "") || projectDir;
 }
 
-async function buildSession(filePath: string): Promise<Session | null> {
+async function buildSession(filePath: string): Promise<Omit<Session, "isActive"> | null> {
   try {
     const [head, fileStat, prompts] = await Promise.all([
       readSessionHead(filePath),
@@ -56,12 +59,44 @@ async function buildSession(filePath: string): Promise<Session | null> {
   }
 }
 
+/**
+ * Finds every session id currently `claude --resume`d in a running process, by scanning full
+ * process command lines (`ps -eo args=`, no header, one command line per row — verified this
+ * doesn't truncate here since a resume command is short). `args`/`ps -eo` are POSIX-standard,
+ * shared by GNU (Linux) and BSD (macOS) ps; Windows has no `ps` at all, so this is skipped there
+ * entirely rather than guessing at a `tasklist`/WMI equivalent — same "don't guess, disable
+ * instead" call as `launchWarp` (see CLAUDE.md).
+ */
+const RESUME_COMMAND_PATTERN = /claude --resume (\S+)/;
+
+async function getActiveResumeSessionIds(): Promise<Set<string>> {
+  if (process.platform === "win32") return new Set();
+
+  try {
+    const { stdout } = await execFileAsync("ps", ["-eo", "args="], {
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    const ids = new Set<string>();
+    for (const line of stdout.split("\n")) {
+      const id = RESUME_COMMAND_PATTERN.exec(line)?.[1];
+      if (id) ids.add(id);
+    }
+    return ids;
+  } catch {
+    return new Set();
+  }
+}
+
 export async function listSessions(): Promise<Session[]> {
   const files = await findJsonlFiles(getClaudeProjectsDir());
-  const sessions = await Promise.all(files.map(buildSession));
+  const [built, activeIds] = await Promise.all([
+    Promise.all(files.map(buildSession)),
+    getActiveResumeSessionIds(),
+  ]);
 
-  return sessions
-    .filter((session): session is Session => session !== null)
+  return built
+    .filter((session): session is Omit<Session, "isActive"> => session !== null)
+    .map((session) => ({ ...session, isActive: activeIds.has(session.id) }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 

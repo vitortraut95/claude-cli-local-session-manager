@@ -55,7 +55,22 @@ export function SessionCard({
   };
 
   return (
-    <div className="flex flex-col gap-2 justify-between rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
+    <div className="relative flex flex-col gap-2 justify-between rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
+      <Tooltip
+        content={
+          session.isActive
+            ? "Active — a terminal currently has this session resumed"
+            : "Inactive — no terminal currently has this session resumed"
+        }
+      >
+        <span
+          aria-label={session.isActive ? "Active session" : "Inactive session"}
+          className={`absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full border-2 border-white shadow dark:border-gray-900 ${
+            session.isActive ? "bg-green-500 animate-pulse" : "bg-red-400"
+          }`}
+        />
+      </Tooltip>
+
       <h2
         className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
         title={session.title}

@@ -195,8 +195,7 @@ Update this list's checkmarks/notes as items get built or dropped.
 - [ ] **Group the list by day/project** instead of a flat grid.
 
 ### Workflow
-- [ ] **"Session currently active" indicator** — detect a running `claude` process already
-  attached to a given session id.
+- [x] **"Session currently active" indicator** — done, see below.
 - [ ] **Export a session as Markdown** (for pasting into a PR/ticket).
 - [ ] **Keyboard shortcuts** (`/` focus search, `j`/`k` navigate, `Enter` continue, `Del` delete).
 - [ ] **Auto-refresh** instead of the manual "Refresh sessions" button (polling or a directory
@@ -235,3 +234,38 @@ Update this list's checkmarks/notes as items get built or dropped.
   descendant of a transform-bearing card — **any future modal triggered from inside `SessionCard`
   (or any other element with a hover/transform utility class) needs the same portal treatment,
   or it will intermittently render clipped to that element's box instead of centered on screen.**
+
+### Implemented: active/inactive session indicator
+
+- **Backend** (`server/services/sessionService.ts`): `getActiveResumeSessionIds()` runs
+  `ps -eo args=` (no header, one full command line per row) and regex-matches
+  `claude --resume (\S+)` against every line to build a `Set` of currently-resumed session ids.
+  Called once per `listSessions()` call (not per-file), then merged into each session via
+  `isActive: activeIds.has(session.id)`. `Session` (both `src/types` and `server/types`) gained
+  an `isActive: boolean` field. Verified live: this very session's own `claude --resume` process
+  shows up correctly, and a synthetic fake process (`exec -a "claude --resume <fake-id>" sleep`)
+  was also correctly detected during development.
+  - **Linux/macOS only** — explicitly skipped on `win32` (`process.platform === "win32"` returns
+    an empty `Set` immediately) rather than guessing at a `tasklist`/WMI equivalent, same
+    "disable rather than guess wrong" call as `launchWarp`. `args`/`ps -eo` are POSIX-standard, so
+    no platform branching was needed between Linux (GNU ps) and macOS (BSD ps) — same command
+    works on both.
+  - Only detects sessions resumed **through this app's "Continue" flow or a manually-typed
+    `claude --resume <id>`** — it greps process command lines, so it can't tell the difference
+    between "resumed via this app" and "resumed by hand in some other terminal," which is
+    actually the desired behavior (either way, the session file is in use).
+- **Frontend** (`src/components/SessionCard.tsx`): a small floating dot, absolutely positioned in
+  the card's top-right corner (`-top-1.5 -right-1.5`, needs `relative` on the card's root div to
+  anchor to it rather than some further-up ancestor) — green + `animate-pulse` when active, red
+  when not — wrapped in the existing `Tooltip` component (Radix, already portal-based internally,
+  so it doesn't hit the containing-block bug described above).
+
+### Next up: manual session rename (in progress / up next)
+
+Per explicit user instruction: the rename button/control must be **disabled whenever
+`session.isActive` is true**, with a tooltip explaining the session needs to be closed first —
+renaming a session file while a `claude --resume` process has it open is the scenario to guard
+against. The active/inactive indicator above was built specifically as the prerequisite for this
+gate. Title storage approach still to be decided (a local sidecar file mapping session id → custom
+title is the leading idea from the feature-backlog section above, since the CLI's own `.jsonl`
+files shouldn't be modified by this app).

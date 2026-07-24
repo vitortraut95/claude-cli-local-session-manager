@@ -5,4 +5,5 @@ export type Session = {
   path: string;
   updatedAt: string;
   prompts: string[];
+  isActive: boolean;
 };
