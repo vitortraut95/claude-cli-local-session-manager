@@ -10,6 +10,9 @@ included — see below.
 ## Features
 
 - List all sessions with title, project, last-updated time, and estimated token cost
+- "Active time" next to the last-updated time — actual time Claude spent processing the session
+  (summed from the CLI's own per-turn duration entries), a more honest signal than the file's
+  mtime alone
 - Resume a session in a new terminal (`claude --resume <id>`), Warp preferred if installed
 - Delete sessions individually or in bulk
 - Full-text search across every prompt in a session
@@ -144,7 +147,3 @@ these — just parked here so they aren't lost.
 - **Git branch / ticket badge** — every JSONL entry already carries `gitBranch`. Surfacing it as a
   badge (and parsing a ticket id out of it, e.g. `env/LED-53995`) would let sessions be
   filtered/searched by the ticket they belong to.
-- **Real "active work time" instead of raw last-updated** — `{"type":"system",
-"subtype":"turn_duration","durationMs":...}` entries, summed per session, give the actual time
-  Claude spent processing — a more honest signal than the file's mtime (which only says when it
-  was last written).

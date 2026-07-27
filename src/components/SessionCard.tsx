@@ -1,6 +1,7 @@
 import {
   Bot,
   Check,
+  Clock,
   Copy,
   DollarSign,
   Folder,
@@ -26,7 +27,7 @@ import { SubagentsModal } from "./SubagentsModal";
 import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
 import { UsageDetailsModal } from "./UsageDetailsModal";
-import { formatUpdatedAt } from "../utils/formatDate";
+import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 
 type SessionCardProps = {
   session: Session;
@@ -244,8 +245,15 @@ export function SessionCard({
         </Tooltip>
       )}
 
-      <p className="text-xs text-gray-600 dark:text-gray-400">
+      <p className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
         Updated {formatUpdatedAt(session.updatedAt)}
+        {session.activeTimeMs > 0 && (
+          <Tooltip content="Actual time Claude spent processing this session, summed across turns">
+            <span className="inline-flex items-center gap-0.5">
+              · <Clock className="h-3 w-3" /> {formatActiveTime(session.activeTimeMs)} active
+            </span>
+          </Tooltip>
+        )}
       </p>
 
       <span className="inline-flex items-center gap-1 font-mono text-[10px] text-gray-600 dark:text-gray-400">

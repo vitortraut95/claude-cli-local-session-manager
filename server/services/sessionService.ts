@@ -10,6 +10,7 @@ import {
   getClaudeProjectsDir,
   mergeRawModelUsage,
   readFullSessionPrompts,
+  readSessionActiveTimeMs,
   readSessionHead,
   readSessionPrompts,
   readSessionUsage,
@@ -44,12 +45,13 @@ function resolveProject(head: SessionHead, filePath: string): string {
 
 async function buildSession(filePath: string): Promise<Omit<Session, "isActive" | "nickname"> | null> {
   try {
-    const [head, fileStat, prompts, rawUsage, subagentFiles] = await Promise.all([
+    const [head, fileStat, prompts, rawUsage, subagentFiles, activeTimeMs] = await Promise.all([
       readSessionHead(filePath),
       stat(filePath),
       readSessionPrompts(filePath),
       readSessionUsage(filePath),
       findSubagentFiles(filePath),
+      readSessionActiveTimeMs(filePath),
     ]);
     const id = head.sessionId ?? path.basename(filePath, ".jsonl");
     // Unknown cwd (older session, or head parse didn't find one) isn't treated as missing —
@@ -77,6 +79,7 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
       directoryMissing,
       sizeBytes: fileStat.size,
       subagentCount: subagentFiles.length,
+      activeTimeMs,
       usage: { ...usage, subagentCostUsd },
     };
   } catch {

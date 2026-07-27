@@ -26,3 +26,15 @@ export function formatUpdatedAt(iso: string): string {
 
   return absoluteFormatter.format(date);
 }
+
+/** Renders a millisecond duration compactly ("42m", "1h 12m", "3h") for the "active time" stat. */
+export function formatActiveTime(ms: number): string {
+  const totalMinutes = Math.round(ms / MINUTE);
+  if (totalMinutes < 1) return "<1m";
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}

@@ -55,5 +55,8 @@ export type Session = {
   sizeBytes: number;
   /** Number of subagents (via the Agent tool) spawned during this session. */
   subagentCount: number;
+  /** Sum of the CLI's own `turn_duration` entries — actual time spent processing, a more honest
+   *  signal than `updatedAt` (the file's mtime, which only says when it was last written). */
+  activeTimeMs: number;
   usage: SessionUsage;
 };

@@ -51,6 +51,8 @@ export type SessionHead = {
 
 type JsonlEntry = {
   type?: string;
+  subtype?: string;
+  durationMs?: number;
   sessionId?: string;
   cwd?: string;
   aiTitle?: string;
@@ -402,4 +404,39 @@ export async function readSessionUsage(filePath: string): Promise<RawModelUsage[
   }
 
   return [...usageByModel.values()];
+}
+
+/**
+ * Sums `{"type":"system","subtype":"turn_duration","durationMs":...}` entries — the CLI's own
+ * measurement of how long it actually spent processing each turn. A more honest signal of active
+ * work than the file's mtime, which only says when the transcript was last written to.
+ */
+export async function readSessionActiveTimeMs(filePath: string): Promise<number> {
+  let totalMs = 0;
+
+  const rl = createInterface({
+    input: createReadStream(filePath, { encoding: "utf8" }),
+    crlfDelay: Infinity,
+  });
+
+  try {
+    for await (const line of rl) {
+      if (!line.trim()) continue;
+
+      let entry: JsonlEntry;
+      try {
+        entry = JSON.parse(line) as JsonlEntry;
+      } catch {
+        continue;
+      }
+
+      if (entry.type === "system" && entry.subtype === "turn_duration" && entry.durationMs) {
+        totalMs += entry.durationMs;
+      }
+    }
+  } finally {
+    rl.close();
+  }
+
+  return totalMs;
 }
