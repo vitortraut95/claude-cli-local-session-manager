@@ -19,6 +19,7 @@ import type { Session } from "../types/session";
 import { Button } from "./Button";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { NicknameModal } from "./NicknameModal";
+import { SessionSizeMeter } from "./SessionSizeMeter";
 import { SubagentsModal } from "./SubagentsModal";
 import { Tooltip } from "./Tooltip";
 import { UsageDetailsModal } from "./UsageDetailsModal";
@@ -319,6 +320,10 @@ export function SessionCard({
         ) : (
           deleteButton
         )}
+      </div>
+
+      <div className="-mx-4 -mb-4 mt-1">
+        <SessionSizeMeter sizeBytes={session.sizeBytes} />
       </div>
 
       <PromptPreviewModal

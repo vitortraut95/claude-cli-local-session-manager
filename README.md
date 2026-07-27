@@ -20,6 +20,8 @@ included — see below.
   instead of silently disappearing, with a "N subagents" badge and its own cost line in the usage
   modal; clicking the badge opens a detail view of each subagent (type, task description, its
   final result text, duration, and cost)
+- Session-size meter along the bottom of each card (green → amber → red as the `.jsonl` file
+  grows), hinting when it's worth running `/compact` or starting a fresh session
 
 ## Prerequisites
 

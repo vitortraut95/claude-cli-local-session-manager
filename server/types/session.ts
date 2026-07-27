@@ -40,6 +40,8 @@ export type Session = {
   prompts: string[];
   isActive: boolean;
   directoryMissing: boolean;
+  /** Size of the session's own `.jsonl` file in bytes — powers the "session size" meter. */
+  sizeBytes: number;
   /** Number of subagents (via the Agent tool) spawned during this session. */
   subagentCount: number;
   usage: SessionUsage;

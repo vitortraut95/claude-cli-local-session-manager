@@ -74,6 +74,7 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
       updatedAt: fileStat.mtime.toISOString(),
       prompts,
       directoryMissing,
+      sizeBytes: fileStat.size,
       subagentCount: subagentFiles.length,
       usage: { ...usage, subagentCostUsd },
     };
