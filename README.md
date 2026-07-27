@@ -15,7 +15,8 @@ included — see below.
 - Full-text search across every prompt in a session
 - Local nicknames (shown alongside the real session title, doesn't rename anything Claude/Warp show)
 - Active-session indicator, with delete/continue/bulk-select blocked while a session is in use
-- Warning badge when a session's original working directory no longer exists
+- Warning badge when a session's original working directory no longer exists, with the full path
+  shown on hover (also available as a tooltip on the project name)
 - Subagent token usage (spawned via the `Agent` tool) is folded into the session's total cost
   instead of silently disappearing, with a "N subagents" badge and its own cost line in the usage
   modal; clicking the badge opens a detail view of each subagent (type, task description, its
@@ -147,6 +148,3 @@ these — just parked here so they aren't lost.
 "subtype":"turn_duration","durationMs":...}` entries, summed per session, give the actual time
   Claude spent processing — a more honest signal than the file's mtime (which only says when it
   was last written).
-- **Show the session's full working-directory path** — `session.path` is already computed
-  server-side and typed on `Session`, but never rendered anywhere in the UI (currently only
-  implied by the "original folder missing" badge).

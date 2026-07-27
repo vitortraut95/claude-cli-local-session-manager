@@ -212,7 +212,11 @@ export function SessionCard({
       {session.directoryMissing && (
         <div
           className="flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
-          title="This session's original directory no longer exists"
+          title={
+            session.workingDirectory
+              ? `Original directory no longer exists: ${session.workingDirectory}`
+              : "This session's original directory no longer exists"
+          }
         >
           <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
           Original folder missing
@@ -221,7 +225,7 @@ export function SessionCard({
 
       <span
         className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
-        title={"Project"}
+        title={session.workingDirectory ?? "Project"}
       >
         <Folder className="h-3.5 w-3.5" />
         {session.project}

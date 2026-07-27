@@ -44,6 +44,9 @@ export type Session = {
   nickname: string | null;
   project: string;
   path: string;
+  /** Session's original working directory, as logged by the CLI. Null when older transcripts
+   *  didn't log a `cwd` — matches the same fallback used for directoryMissing. */
+  workingDirectory: string | null;
   updatedAt: string;
   prompts: string[];
   isActive: boolean;

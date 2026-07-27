@@ -71,6 +71,7 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
       title: resolveTitle(head),
       project: resolveProject(head, filePath),
       path: filePath,
+      workingDirectory: head.cwd,
       updatedAt: fileStat.mtime.toISOString(),
       prompts,
       directoryMissing,
