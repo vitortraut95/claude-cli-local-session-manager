@@ -22,9 +22,13 @@ included — see below.
   final result text, duration, and cost)
 - Session-size meter along the bottom of each card (green → amber → red as the `.jsonl` file
   grows), hinting when it's worth running `/compact` or starting a fresh session
-- Insights panel (lightbulb icon, top-right of each card) with token-saving tips: session-level
-  (large size, low cache-hit rate, subagents eating a big share of cost) and repo-level (missing
-  CLAUDE.md, topics worth documenting there based on what Explore subagents had to look up)
+- Insights panel (lightbulb icon in the card's action toolbar) with token-saving tips:
+  session-level (large size, low cache-hit rate, subagents eating a big share of cost) and
+  repo-level (missing CLAUDE.md, topics worth documenting there based on what Explore subagents
+  had to look up)
+- Card action toolbar (copy session ID, insights, usage/cost, prompt preview) as one row of
+  standardized, color-coded icons, with the active/inactive status stacked above the select
+  checkbox as the card's only floating element
 
 ## Prerequisites
 
@@ -110,13 +114,13 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 
 ## API
 
-| Method | Route                     | Description                                   |
-| ------ | ------------------------- | ---------------------------------------------- |
-| GET    | `/sessions`               | List every session found in `~/.claude/projects` |
-| GET    | `/sessions/:id/prompts`   | Full, untruncated list of prompts for a session |
-| PATCH  | `/sessions/:id/nickname`  | Set or clear a session's local nickname       |
-| DELETE | `/sessions/:id`           | Delete the session's `.jsonl` file            |
-| POST   | `/sessions/:id/continue`  | Open a terminal running `claude --resume <id>` |
+| Method | Route                    | Description                                      |
+| ------ | ------------------------ | ------------------------------------------------ |
+| GET    | `/sessions`              | List every session found in `~/.claude/projects` |
+| GET    | `/sessions/:id/prompts`  | Full, untruncated list of prompts for a session  |
+| PATCH  | `/sessions/:id/nickname` | Set or clear a session's local nickname          |
+| DELETE | `/sessions/:id`          | Delete the session's `.jsonl` file               |
+| POST   | `/sessions/:id/continue` | Open a terminal running `claude --resume <id>`   |
 
 ## Scripts
 
@@ -140,11 +144,9 @@ these — just parked here so they aren't lost.
   badge (and parsing a ticket id out of it, e.g. `env/LED-53995`) would let sessions be
   filtered/searched by the ticket they belong to.
 - **Real "active work time" instead of raw last-updated** — `{"type":"system",
-  "subtype":"turn_duration","durationMs":...}` entries, summed per session, give the actual time
+"subtype":"turn_duration","durationMs":...}` entries, summed per session, give the actual time
   Claude spent processing — a more honest signal than the file's mtime (which only says when it
   was last written).
 - **Show the session's full working-directory path** — `session.path` is already computed
   server-side and typed on `Session`, but never rendered anywhere in the UI (currently only
   implied by the "original folder missing" badge).
-- **Large-session warning** — flag sessions whose `.jsonl` file has grown very large (context
-  bloat, expensive to resume) with a badge suggesting the user start fresh instead.

@@ -23,6 +23,7 @@ import { InsightsModal } from "./InsightsModal";
 import { NicknameModal } from "./NicknameModal";
 import { SessionSizeMeter } from "./SessionSizeMeter";
 import { SubagentsModal } from "./SubagentsModal";
+import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
 import { UsageDetailsModal } from "./UsageDetailsModal";
 import { formatUpdatedAt } from "../utils/formatDate";
@@ -150,40 +151,33 @@ export function SessionCard({
           : "border-gray-200 dark:border-gray-800"
       }`}
     >
-      <input
-        type="checkbox"
-        checked={selected}
-        onChange={() => onToggleSelect(session.id)}
-        disabled={isBusy || session.isActive}
-        aria-label={selected ? "Deselect session" : "Select session"}
-        className="absolute -top-1.5 -left-1.5 h-4 w-4 shrink-0 accent-gray-900 disabled:cursor-not-allowed disabled:opacity-40 dark:accent-gray-100"
-      />
-
-      <Tooltip
-        content={
-          session.isActive
-            ? "Active — a terminal currently has this session resumed"
-            : "Inactive — no terminal currently has this session resumed"
-        }
-      >
-        <span
-          aria-label={session.isActive ? "Active session" : "Inactive session"}
-          className={`absolute -top-1 left-4 h-3 w-3 rounded-full border-2 border-white shadow dark:border-gray-900 ${
-            session.isActive ? "bg-green-500 animate-pulse" : "bg-red-400"
-          }`}
-        />
-      </Tooltip>
-
-      <Tooltip content="Insights — tips to spend fewer tokens">
-        <button
-          type="button"
-          onClick={() => setShowInsights(true)}
-          aria-label="View insights"
-          className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-amber-50 text-amber-500 shadow hover:bg-amber-100 dark:border-gray-900 dark:bg-amber-950/40 dark:text-amber-400 dark:hover:bg-amber-950/60"
+      {/* The only floating element on the card: active/inactive status stacked directly above
+          the select checkbox, so the top-left corner reads as one cluster instead of scattered
+          badges (insights/copy/usage/preview all live in the in-flow toolbar row below instead). */}
+      <div className="absolute -top-3.5 -left-1.5 flex flex-col items-center gap-1">
+        <Tooltip
+          content={
+            session.isActive
+              ? "Active — a terminal currently has this session resumed"
+              : "Inactive — no terminal currently has this session resumed"
+          }
         >
-          <Lightbulb className="h-3.5 w-3.5" />
-        </button>
-      </Tooltip>
+          <span
+            aria-label={session.isActive ? "Active session" : "Inactive session"}
+            className={`h-3 w-3 rounded-full border-2 border-white shadow dark:border-gray-900 ${
+              session.isActive ? "bg-green-500 animate-pulse" : "bg-red-400"
+            }`}
+          />
+        </Tooltip>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(session.id)}
+          disabled={isBusy || session.isActive}
+          aria-label={selected ? "Deselect session" : "Select session"}
+          className="h-4 w-4 shrink-0 accent-gray-900 disabled:cursor-not-allowed disabled:opacity-40 dark:accent-gray-100"
+        />
+      </div>
 
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-0.5">
@@ -246,56 +240,56 @@ export function SessionCard({
         </Tooltip>
       )}
 
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-gray-600 dark:text-gray-400">
-          Updated {formatUpdatedAt(session.updatedAt)}
-        </p>
-        <div className="flex items-center gap-1">
-          {session.usage.models.length > 0 && (
-            <Tooltip content="View token usage and estimated cost">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowUsage(true)}
-                aria-label="View usage and cost"
-                icon={<DollarSign className="h-3.5 w-3.5" />}
-              />
-            </Tooltip>
-          )}
-          {session.prompts.length > 0 && (
-            <Tooltip content="Preview prompts sent in this session">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowPreview(true)}
-                aria-label="Preview prompts"
-                icon={<MessageSquare className="h-3.5 w-3.5" />}
-              />
-            </Tooltip>
-          )}
-        </div>
-      </div>
+      <p className="text-xs text-gray-600 dark:text-gray-400">
+        Updated {formatUpdatedAt(session.updatedAt)}
+      </p>
 
-      <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
-        <span className="inline-flex items-center gap-1 font-mono text-[10px]" title={"Session ID"}>
-          <Hash className="h-3.5 w-3.5" />
-          {session.id}
-        </span>
-        <Tooltip content={copiedId ? "Session ID copied!" : "Copy session ID"}>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleCopySessionId}
-            aria-label="Copy session ID"
-            icon={
-              copiedId ? (
-                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )
-            }
+      <span className="inline-flex items-center gap-1 font-mono text-[10px] text-gray-600 dark:text-gray-400">
+        <Hash className="h-3.5 w-3.5" />
+        {session.id}
+      </span>
+
+      {/* Card action toolbar — one standardized-size icon per action, colored by kind so they
+          stay easy to tell apart at a glance as more get added here over time. */}
+      <div className="flex flex-wrap items-center gap-1 border-t border-gray-100 pt-3 dark:border-gray-800">
+        <ToolbarIconButton
+          tooltip={copiedId ? "Session ID copied!" : "Copy session ID"}
+          ariaLabel="Copy session ID"
+          color="neutral"
+          onClick={handleCopySessionId}
+          icon={
+            copiedId ? (
+              <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )
+          }
+        />
+        <ToolbarIconButton
+          tooltip="Insights — tips to spend fewer tokens"
+          ariaLabel="View insights"
+          color="amber"
+          onClick={() => setShowInsights(true)}
+          icon={<Lightbulb className="h-4 w-4" />}
+        />
+        {session.usage.models.length > 0 && (
+          <ToolbarIconButton
+            tooltip="View token usage and estimated cost"
+            ariaLabel="View usage and cost"
+            color="green"
+            onClick={() => setShowUsage(true)}
+            icon={<DollarSign className="h-4 w-4" />}
           />
-        </Tooltip>
+        )}
+        {session.prompts.length > 0 && (
+          <ToolbarIconButton
+            tooltip="Preview prompts sent in this session"
+            ariaLabel="Preview prompts"
+            color="blue"
+            onClick={() => setShowPreview(true)}
+            icon={<MessageSquare className="h-4 w-4" />}
+          />
+        )}
       </div>
 
       <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
