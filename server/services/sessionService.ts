@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 import { accessSync, constants } from "node:fs";
-import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { Session, SubagentDetail } from "../types/session.js";
+import type { Session, SessionRepoInsights, SubagentDetail } from "../types/session.js";
 import {
   findJsonlFiles,
   findSubagentFiles,
@@ -204,6 +204,12 @@ export async function getSessionPrompts(id: string): Promise<string[]> {
   return readFullSessionPrompts(filePath);
 }
 
+/** `agent-<id>.jsonl` and its sibling `agent-<id>.meta.json` share a directory and id. */
+function subagentMetaPath(jsonlPath: string): string {
+  const agentId = path.basename(jsonlPath, ".jsonl").replace(/^agent-/, "");
+  return path.join(path.dirname(jsonlPath), `agent-${agentId}.meta.json`);
+}
+
 /**
  * Fetched on demand (mirrors getSessionPrompts above) rather than embedded in listSessions() —
  * each subagent's own transcript has to be read in full to find its last assistant text (see
@@ -217,7 +223,7 @@ export async function getSessionSubagents(id: string): Promise<SubagentDetail[]>
   const details = await Promise.all(
     subagentFiles.map(async (jsonlPath): Promise<SubagentDetail> => {
       const agentId = path.basename(jsonlPath, ".jsonl").replace(/^agent-/, "");
-      const metaPath = path.join(path.dirname(jsonlPath), `agent-${agentId}.meta.json`);
+      const metaPath = subagentMetaPath(jsonlPath);
       const [meta, summary, rawUsage] = await Promise.all([
         readSubagentMeta(metaPath),
         readSubagentSummary(jsonlPath),
@@ -237,6 +243,42 @@ export async function getSessionSubagents(id: string): Promise<SubagentDetail[]>
   );
 
   return details.sort((a, b) => (a.startedAt ?? "").localeCompare(b.startedAt ?? ""));
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Supplies the two repo-side facts the Insights panel can't get from a session's own data: does
+ * its project already document itself (a CLAUDE.md), and what did this session's Explore
+ * subagents have to go dig up (each one is a candidate topic to add there). Tip wording/severity
+ * logic lives client-side in src/utils/sessionInsights.ts — this only reports facts.
+ */
+export async function getSessionRepoInsights(id: string): Promise<SessionRepoInsights> {
+  const filePath = await findSessionFilePath(id);
+  if (!filePath) throw new SessionNotFoundError(id);
+
+  const [head, subagentFiles] = await Promise.all([
+    readSessionHead(filePath),
+    findSubagentFiles(filePath),
+  ]);
+
+  const [hasClaudeMd, metas] = await Promise.all([
+    head.cwd ? fileExists(path.join(head.cwd, "CLAUDE.md")) : Promise.resolve(null),
+    Promise.all(subagentFiles.map((jsonlPath) => readSubagentMeta(subagentMetaPath(jsonlPath)))),
+  ]);
+
+  const exploreTopics = metas
+    .filter((meta) => meta.agentType === "Explore" && meta.description)
+    .map((meta) => meta.description!);
+
+  return { hasClaudeMd, exploreTopics };
 }
 
 /**

@@ -22,6 +22,9 @@ included — see below.
   final result text, duration, and cost)
 - Session-size meter along the bottom of each card (green → amber → red as the `.jsonl` file
   grows), hinting when it's worth running `/compact` or starting a fresh session
+- Insights panel (lightbulb icon, top-right of each card) with token-saving tips: session-level
+  (large size, low cache-hit rate, subagents eating a big share of cost) and repo-level (missing
+  CLAUDE.md, topics worth documenting there based on what Explore subagents had to look up)
 
 ## Prerequisites
 

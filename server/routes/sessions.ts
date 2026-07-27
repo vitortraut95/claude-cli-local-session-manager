@@ -3,6 +3,7 @@ import {
   continueSession,
   deleteSession,
   getSessionPrompts,
+  getSessionRepoInsights,
   getSessionSubagents,
   listSessions,
   setSessionNickname,
@@ -85,6 +86,19 @@ sessionsRouter.get("/:id/subagents", async (req, res) => {
   try {
     const subagents = await getSessionSubagents(req.params.id);
     res.json({ subagents });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+sessionsRouter.get("/:id/insights", async (req, res) => {
+  try {
+    const insights = await getSessionRepoInsights(req.params.id);
+    res.json({ insights });
   } catch (err) {
     if (err instanceof SessionNotFoundError) {
       res.status(404).json({ error: err.message });

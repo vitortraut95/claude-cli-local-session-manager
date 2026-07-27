@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Session, SubagentDetail } from "../types/session";
+import type { Session, SessionRepoInsights, SubagentDetail } from "../types/session";
 
 const client = axios.create({
   baseURL: "/sessions",
@@ -57,4 +57,13 @@ export async function fetchSessionSubagents(id: string): Promise<SubagentDetail[
     client.get<{ subagents: SubagentDetail[] }>(`/${encodeURIComponent(id)}/subagents`),
   );
   return data.subagents;
+}
+
+/** Repo-side facts (CLAUDE.md presence, Explore-subagent topics) for the Insights panel — see
+ *  sessionInsights.ts for how these combine with the already-loaded Session into actual tips. */
+export async function fetchSessionRepoInsights(id: string): Promise<SessionRepoInsights> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ insights: SessionRepoInsights }>(`/${encodeURIComponent(id)}/insights`),
+  );
+  return data.insights;
 }

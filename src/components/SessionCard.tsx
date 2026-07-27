@@ -5,6 +5,7 @@ import {
   DollarSign,
   Folder,
   Hash,
+  Lightbulb,
   Loader2,
   MessageSquare,
   Pencil,
@@ -18,6 +19,7 @@ import type { PendingAction } from "../hooks/useSessions";
 import type { Session } from "../types/session";
 import { Button } from "./Button";
 import { PromptPreviewModal } from "./PromptPreviewModal";
+import { InsightsModal } from "./InsightsModal";
 import { NicknameModal } from "./NicknameModal";
 import { SessionSizeMeter } from "./SessionSizeMeter";
 import { SubagentsModal } from "./SubagentsModal";
@@ -55,6 +57,7 @@ export function SessionCard({
   const [showPreview, setShowPreview] = useState(false);
   const [showUsage, setShowUsage] = useState(false);
   const [showSubagents, setShowSubagents] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
@@ -116,7 +119,9 @@ export function SessionCard({
         fullWidth
         onClick={() => onContinue(session)}
         disabled={isBusy || continueDisabledReason !== null}
-        icon={isContinuing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+        icon={
+          isContinuing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />
+        }
       >
         Resume (terminal)
       </Button>
@@ -129,7 +134,9 @@ export function SessionCard({
       size="sm"
       onClick={() => onDeleteRequest(session)}
       disabled={isBusy || session.isActive}
-      icon={isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+      icon={
+        isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />
+      }
     >
       Delete
     </Button>
@@ -165,6 +172,17 @@ export function SessionCard({
             session.isActive ? "bg-green-500 animate-pulse" : "bg-red-400"
           }`}
         />
+      </Tooltip>
+
+      <Tooltip content="Insights — tips to spend fewer tokens">
+        <button
+          type="button"
+          onClick={() => setShowInsights(true)}
+          aria-label="View insights"
+          className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-amber-50 text-amber-500 shadow hover:bg-amber-100 dark:border-gray-900 dark:bg-amber-950/40 dark:text-amber-400 dark:hover:bg-amber-950/60"
+        >
+          <Lightbulb className="h-3.5 w-3.5" />
+        </button>
       </Tooltip>
 
       <div className="flex items-start justify-between gap-2">
@@ -228,28 +246,6 @@ export function SessionCard({
         </Tooltip>
       )}
 
-      <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
-        <span className="inline-flex items-center gap-1 font-mono text-[10px]" title={"Session ID"}>
-          <Hash className="h-3.5 w-3.5" />
-          {session.id}
-        </span>
-        <Tooltip content={copiedId ? "Session ID copied!" : "Copy session ID"}>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleCopySessionId}
-            aria-label="Copy session ID"
-            icon={
-              copiedId ? (
-                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )
-            }
-          />
-        </Tooltip>
-      </div>
-
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-gray-600 dark:text-gray-400">
           Updated {formatUpdatedAt(session.updatedAt)}
@@ -281,8 +277,30 @@ export function SessionCard({
       </div>
 
       <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
+        <span className="inline-flex items-center gap-1 font-mono text-[10px]" title={"Session ID"}>
+          <Hash className="h-3.5 w-3.5" />
+          {session.id}
+        </span>
+        <Tooltip content={copiedId ? "Session ID copied!" : "Copy session ID"}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleCopySessionId}
+            aria-label="Copy session ID"
+            icon={
+              copiedId ? (
+                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )
+            }
+          />
+        </Tooltip>
+      </div>
+
+      <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
         <span
-          className="inline-flex items-center gap-1 font-mono text-[8px]"
+          className="inline-flex items-center gap-1 font-mono text-[10px]"
           title={"Resume command"}
         >
           {resumeCommand}
@@ -337,6 +355,7 @@ export function SessionCard({
         open={showSubagents}
         onClose={() => setShowSubagents(false)}
       />
+      <InsightsModal session={session} open={showInsights} onClose={() => setShowInsights(false)} />
       {showNicknameModal && (
         <NicknameModal
           currentNickname={session.nickname ?? ""}

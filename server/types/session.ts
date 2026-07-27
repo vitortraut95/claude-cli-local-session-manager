@@ -30,6 +30,14 @@ export type SubagentDetail = {
   usage: SubagentUsage;
 };
 
+export type SessionRepoInsights = {
+  /** Null when the session's original directory no longer exists, so this can't be checked. */
+  hasClaudeMd: boolean | null;
+  /** Task descriptions of Explore-type subagents spawned this session — candidate topics for
+   *  CLAUDE.md, since each one is something Claude had to go search the repo for. */
+  exploreTopics: string[];
+};
+
 export type Session = {
   id: string;
   title: string;
