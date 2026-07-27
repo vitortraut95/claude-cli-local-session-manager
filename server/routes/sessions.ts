@@ -3,6 +3,7 @@ import {
   continueSession,
   deleteSession,
   getSessionPrompts,
+  getSessionSubagents,
   listSessions,
   setSessionNickname,
   SessionActiveError,
@@ -71,6 +72,19 @@ sessionsRouter.get("/:id/prompts", async (req, res) => {
   try {
     const prompts = await getSessionPrompts(req.params.id);
     res.json({ prompts });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+sessionsRouter.get("/:id/subagents", async (req, res) => {
+  try {
+    const subagents = await getSessionSubagents(req.params.id);
+    res.json({ subagents });
   } catch (err) {
     if (err instanceof SessionNotFoundError) {
       res.status(404).json({ error: err.message });

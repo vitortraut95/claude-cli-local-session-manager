@@ -3,14 +3,18 @@ import { accessSync, constants } from "node:fs";
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { Session } from "../types/session.js";
+import type { Session, SubagentDetail } from "../types/session.js";
 import {
   findJsonlFiles,
+  findSubagentFiles,
   getClaudeProjectsDir,
+  mergeRawModelUsage,
   readFullSessionPrompts,
   readSessionHead,
   readSessionPrompts,
   readSessionUsage,
+  readSubagentMeta,
+  readSubagentSummary,
   type SessionHead,
 } from "../utils/claudeProjects.js";
 import { summarizeUsage } from "../utils/pricing.js";
@@ -40,16 +44,27 @@ function resolveProject(head: SessionHead, filePath: string): string {
 
 async function buildSession(filePath: string): Promise<Omit<Session, "isActive" | "nickname"> | null> {
   try {
-    const [head, fileStat, prompts, rawUsage] = await Promise.all([
+    const [head, fileStat, prompts, rawUsage, subagentFiles] = await Promise.all([
       readSessionHead(filePath),
       stat(filePath),
       readSessionPrompts(filePath),
       readSessionUsage(filePath),
+      findSubagentFiles(filePath),
     ]);
     const id = head.sessionId ?? path.basename(filePath, ".jsonl");
     // Unknown cwd (older session, or head parse didn't find one) isn't treated as missing —
     // only flag it once we actually know the original directory and it's gone.
     const directoryMissing = head.cwd ? !(await directoryExists(head.cwd)) : false;
+
+    // Subagent token usage otherwise vanishes from the parent session's totals entirely (see
+    // findSubagentFiles) — fold it into `usage`, and separately surface how much of that total
+    // came from subagents so the UI can call it out rather than silently inflate the main number.
+    const subagentRawUsageLists = await Promise.all(subagentFiles.map(readSessionUsage));
+    const usage = summarizeUsage(mergeRawModelUsage([rawUsage, ...subagentRawUsageLists]));
+    const subagentCostUsd =
+      subagentFiles.length > 0
+        ? summarizeUsage(mergeRawModelUsage(subagentRawUsageLists)).totalCostUsd
+        : null;
 
     return {
       id,
@@ -59,7 +74,8 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
       updatedAt: fileStat.mtime.toISOString(),
       prompts,
       directoryMissing,
-      usage: summarizeUsage(rawUsage),
+      subagentCount: subagentFiles.length,
+      usage: { ...usage, subagentCostUsd },
     };
   } catch {
     return null;
@@ -185,6 +201,41 @@ export async function getSessionPrompts(id: string): Promise<string[]> {
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
   return readFullSessionPrompts(filePath);
+}
+
+/**
+ * Fetched on demand (mirrors getSessionPrompts above) rather than embedded in listSessions() —
+ * each subagent's own transcript has to be read in full to find its last assistant text (see
+ * readSubagentSummary), which would be too heavy to do for every session up front.
+ */
+export async function getSessionSubagents(id: string): Promise<SubagentDetail[]> {
+  const filePath = await findSessionFilePath(id);
+  if (!filePath) throw new SessionNotFoundError(id);
+
+  const subagentFiles = await findSubagentFiles(filePath);
+  const details = await Promise.all(
+    subagentFiles.map(async (jsonlPath): Promise<SubagentDetail> => {
+      const agentId = path.basename(jsonlPath, ".jsonl").replace(/^agent-/, "");
+      const metaPath = path.join(path.dirname(jsonlPath), `agent-${agentId}.meta.json`);
+      const [meta, summary, rawUsage] = await Promise.all([
+        readSubagentMeta(metaPath),
+        readSubagentSummary(jsonlPath),
+        readSessionUsage(jsonlPath),
+      ]);
+
+      return {
+        agentId,
+        agentType: meta.agentType,
+        description: meta.description,
+        resultText: summary.resultText,
+        startedAt: summary.startedAt,
+        endedAt: summary.endedAt,
+        usage: summarizeUsage(rawUsage),
+      };
+    }),
+  );
+
+  return details.sort((a, b) => (a.startedAt ?? "").localeCompare(b.startedAt ?? ""));
 }
 
 /**

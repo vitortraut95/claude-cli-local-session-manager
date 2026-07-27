@@ -16,6 +16,10 @@ included — see below.
 - Local nicknames (shown alongside the real session title, doesn't rename anything Claude/Warp show)
 - Active-session indicator, with delete/continue/bulk-select blocked while a session is in use
 - Warning badge when a session's original working directory no longer exists
+- Subagent token usage (spawned via the `Agent` tool) is folded into the session's total cost
+  instead of silently disappearing, with a "N subagents" badge and its own cost line in the usage
+  modal; clicking the badge opens a detail view of each subagent (type, task description, its
+  final result text, duration, and cost)
 
 ## Prerequisites
 
@@ -116,3 +120,26 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 - `yarn lint` — lint frontend and backend
 - `yarn typecheck` — type-check both workspaces
 - `yarn preview` — serve the frontend production build
+
+## Ideas for future improvements
+
+Surfaced by looking at what the Claude CLI actually writes to `~/.claude/projects/*.jsonl`
+beyond what this app currently reads (title, first prompt, token usage). Not committed to any of
+these — just parked here so they aren't lost.
+
+- **Auto-generated session recap instead of the truncated first prompt** — the CLI logs a
+  `{"type":"system","subtype":"away_summary"}` entry: a natural-language "what we did / what's
+  next" recap it writes itself when the user steps away. Showing that on the card (when present)
+  would be far more useful than the truncated `firstUserText` fallback used today.
+- **Git branch / ticket badge** — every JSONL entry already carries `gitBranch`. Surfacing it as a
+  badge (and parsing a ticket id out of it, e.g. `env/LED-53995`) would let sessions be
+  filtered/searched by the ticket they belong to.
+- **Real "active work time" instead of raw last-updated** — `{"type":"system",
+  "subtype":"turn_duration","durationMs":...}` entries, summed per session, give the actual time
+  Claude spent processing — a more honest signal than the file's mtime (which only says when it
+  was last written).
+- **Show the session's full working-directory path** — `session.path` is already computed
+  server-side and typed on `Session`, but never rendered anywhere in the UI (currently only
+  implied by the "original folder missing" badge).
+- **Large-session warning** — flag sessions whose `.jsonl` file has grown very large (context
+  bloat, expensive to resume) with a badge suggesting the user start fresh instead.

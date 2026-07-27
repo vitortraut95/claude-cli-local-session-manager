@@ -1,4 +1,5 @@
 import {
+  Bot,
   Check,
   Copy,
   DollarSign,
@@ -18,6 +19,7 @@ import type { Session } from "../types/session";
 import { Button } from "./Button";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { NicknameModal } from "./NicknameModal";
+import { SubagentsModal } from "./SubagentsModal";
 import { Tooltip } from "./Tooltip";
 import { UsageDetailsModal } from "./UsageDetailsModal";
 import { formatUpdatedAt } from "../utils/formatDate";
@@ -51,6 +53,7 @@ export function SessionCard({
   const [copiedCommand, setCopiedCommand] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showUsage, setShowUsage] = useState(false);
+  const [showSubagents, setShowSubagents] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
@@ -211,6 +214,19 @@ export function SessionCard({
         {session.project}
       </span>
 
+      {session.subagentCount > 0 && (
+        <Tooltip content="View what each subagent did — their token usage is included in the cost above">
+          <button
+            type="button"
+            onClick={() => setShowSubagents(true)}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 hover:underline dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <Bot className="h-3.5 w-3.5" />
+            {session.subagentCount} subagent{session.subagentCount === 1 ? "" : "s"}
+          </button>
+        </Tooltip>
+      )}
+
       <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
         <span className="inline-flex items-center gap-1 font-mono text-[10px]" title={"Session ID"}>
           <Hash className="h-3.5 w-3.5" />
@@ -311,6 +327,11 @@ export function SessionCard({
         onClose={() => setShowPreview(false)}
       />
       <UsageDetailsModal session={session} open={showUsage} onClose={() => setShowUsage(false)} />
+      <SubagentsModal
+        session={session}
+        open={showSubagents}
+        onClose={() => setShowSubagents(false)}
+      />
       {showNicknameModal && (
         <NicknameModal
           currentNickname={session.nickname ?? ""}

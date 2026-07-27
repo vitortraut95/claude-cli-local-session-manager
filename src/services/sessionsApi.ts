@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Session } from "../types/session";
+import type { Session, SubagentDetail } from "../types/session";
 
 const client = axios.create({
   baseURL: "/sessions",
@@ -49,4 +49,12 @@ export async function fetchSessionPrompts(id: string): Promise<string[]> {
     client.get<{ prompts: string[] }>(`/${encodeURIComponent(id)}/prompts`),
   );
   return data.prompts;
+}
+
+/** Per-subagent detail (type, task description, result, cost) — fetched on demand, see SubagentsModal. */
+export async function fetchSessionSubagents(id: string): Promise<SubagentDetail[]> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ subagents: SubagentDetail[] }>(`/${encodeURIComponent(id)}/subagents`),
+  );
+  return data.subagents;
 }

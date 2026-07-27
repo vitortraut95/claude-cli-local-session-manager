@@ -1,5 +1,6 @@
 import { Modal } from "./Modal";
 import type { Session } from "../types/session";
+import { formatTokens, formatUsd } from "../utils/formatUsage";
 
 type UsageDetailsModalProps = {
   session: Session;
@@ -7,17 +8,8 @@ type UsageDetailsModalProps = {
   onClose: () => void;
 };
 
-function formatTokens(value: number): string {
-  return value.toLocaleString("en-US");
-}
-
-function formatUsd(value: number): string {
-  if (value === 0) return "$0.00";
-  return value < 0.01 ? `$${value.toFixed(4)}` : `$${value.toFixed(2)}`;
-}
-
 export function UsageDetailsModal({ session, open, onClose }: UsageDetailsModalProps) {
-  const { models, totalCostUsd } = session.usage;
+  const { models, totalCostUsd, subagentCostUsd } = session.usage;
 
   return (
     <Modal open={open} title={session.title} onClose={onClose} size="lg">
@@ -48,6 +40,15 @@ export function UsageDetailsModal({ session, open, onClose }: UsageDetailsModalP
               </div>
             </div>
           ))}
+
+          {session.subagentCount > 0 && (
+            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span>
+                Of which {session.subagentCount} subagent{session.subagentCount === 1 ? "" : "s"}
+              </span>
+              <span>{subagentCostUsd === null ? "Unknown pricing" : formatUsd(subagentCostUsd)}</span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
