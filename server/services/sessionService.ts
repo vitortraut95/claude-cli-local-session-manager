@@ -13,6 +13,7 @@ import {
   readSessionActiveTimeMs,
   readSessionHead,
   readSessionPrompts,
+  readSessionRecap,
   readSessionUsage,
   readSubagentMeta,
   readSubagentSummary,
@@ -32,8 +33,14 @@ function cleanTitle(raw: string): string {
     : collapsed;
 }
 
-function resolveTitle(head: SessionHead): string {
-  const source = head.aiTitle ?? head.summaryTitle ?? head.firstUserText;
+/**
+ * `recap` (the CLI's own auto-generated "what we did / what's next" away-summary, see
+ * `readSessionRecap`) is preferred over `firstUserText`: both are prose fallbacks for when there's
+ * no proper `aiTitle`/`summaryTitle`, but the recap describes the session's actual outcome instead
+ * of just repeating whatever the user originally typed.
+ */
+function resolveTitle(head: SessionHead, recap: string | null): string {
+  const source = head.aiTitle ?? head.summaryTitle ?? recap ?? head.firstUserText;
   return source ? cleanTitle(source) : UNTITLED;
 }
 
@@ -45,14 +52,16 @@ function resolveProject(head: SessionHead, filePath: string): string {
 
 async function buildSession(filePath: string): Promise<Omit<Session, "isActive" | "nickname"> | null> {
   try {
-    const [head, fileStat, prompts, rawUsage, subagentFiles, activeTimeMs] = await Promise.all([
-      readSessionHead(filePath),
-      stat(filePath),
-      readSessionPrompts(filePath),
-      readSessionUsage(filePath),
-      findSubagentFiles(filePath),
-      readSessionActiveTimeMs(filePath),
-    ]);
+    const [head, fileStat, prompts, rawUsage, subagentFiles, activeTimeMs, recap] =
+      await Promise.all([
+        readSessionHead(filePath),
+        stat(filePath),
+        readSessionPrompts(filePath),
+        readSessionUsage(filePath),
+        findSubagentFiles(filePath),
+        readSessionActiveTimeMs(filePath),
+        readSessionRecap(filePath),
+      ]);
     const id = head.sessionId ?? path.basename(filePath, ".jsonl");
     // Unknown cwd (older session, or head parse didn't find one) isn't treated as missing —
     // only flag it once we actually know the original directory and it's gone.
@@ -70,7 +79,7 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
 
     return {
       id,
-      title: resolveTitle(head),
+      title: resolveTitle(head, recap),
       project: resolveProject(head, filePath),
       path: filePath,
       workingDirectory: head.cwd,

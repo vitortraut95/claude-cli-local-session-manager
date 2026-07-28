@@ -232,18 +232,25 @@ export function SessionCard({
         )}
       </div>
 
-      {session.subagentCount > 0 && (
-        <Tooltip content="View what each subagent did — their token usage is included in the cost above">
-          <button
-            type="button"
-            onClick={() => setShowSubagents(true)}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 hover:underline dark:text-gray-400 dark:hover:text-gray-200"
-          >
+      <div>
+        {session.subagentCount > 0 ? (
+          <Tooltip content="View what each subagent did — their token usage is included in the cost above">
+            <button
+              type="button"
+              onClick={() => setShowSubagents(true)}
+              className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 hover:underline dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <Bot className="h-3.5 w-3.5" />
+              {session.subagentCount} subagent{session.subagentCount === 1 ? "" : "s"}
+            </button>
+          </Tooltip>
+        ) : (
+          <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
             <Bot className="h-3.5 w-3.5" />
-            {session.subagentCount} subagent{session.subagentCount === 1 ? "" : "s"}
-          </button>
-        </Tooltip>
-      )}
+            No subagents
+          </span>
+        )}
+      </div>
 
       <p className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
         Updated {formatUpdatedAt(session.updatedAt)}

@@ -9,7 +9,10 @@ included — see below.
 
 ## Features
 
-- List all sessions with title, project, last-updated time, and estimated token cost
+- List all sessions with title, project, last-updated time, and estimated token cost — title
+  falls back through the CLI's own `ai-title` / conversation-summary entries, then its
+  auto-generated "what we did / what's next" away-summary recap, then the (truncated) first
+  prompt, in that order
 - "Active time" next to the last-updated time — actual time Claude spent processing the session
   (summed from the CLI's own per-turn duration entries), a more honest signal than the file's
   mtime alone
@@ -133,14 +136,3 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 - `yarn lint` — lint frontend and backend
 - `yarn typecheck` — type-check both workspaces
 - `yarn preview` — serve the frontend production build
-
-## Ideas for future improvements
-
-Surfaced by looking at what the Claude CLI actually writes to `~/.claude/projects/*.jsonl`
-beyond what this app currently reads (title, first prompt, token usage). Not committed to any of
-these — just parked here so they aren't lost.
-
-- **Auto-generated session recap instead of the truncated first prompt** — the CLI logs a
-  `{"type":"system","subtype":"away_summary"}` entry: a natural-language "what we did / what's
-  next" recap it writes itself when the user steps away. Showing that on the card (when present)
-  would be far more useful than the truncated `firstUserText` fallback used today.

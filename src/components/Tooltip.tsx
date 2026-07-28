@@ -7,6 +7,8 @@ type TooltipProps = {
 };
 
 export function Tooltip({ content, children }: TooltipProps) {
+  if (!content) return <>{children}</>;
+
   return (
     <RadixTooltip.Root delayDuration={0} disableHoverableContent>
       <RadixTooltip.Trigger asChild>{children}</RadixTooltip.Trigger>

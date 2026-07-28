@@ -59,6 +59,7 @@ type JsonlEntry = {
   gitBranch?: string;
   aiTitle?: string;
   summary?: string;
+  content?: string;
   isSidechain?: boolean;
   timestamp?: string;
   message?: {
@@ -444,4 +445,44 @@ export async function readSessionActiveTimeMs(filePath: string): Promise<number>
   }
 
   return totalMs;
+}
+
+/** The CLI appends this hint to some recaps — a UI aside, not part of the actual summary. */
+const RECAP_HINT_SUFFIX = / \(disable recaps in \/config\)$/;
+
+/**
+ * Scans for `{"type":"system","subtype":"away_summary","content":...}` entries — the CLI's own
+ * natural-language "what we did / what's next" recap, written each time the user steps away. A
+ * session can log several over its lifetime (one per away period); later entries overwrite
+ * earlier ones here so the *most recent* recap wins, since it best reflects where the session
+ * currently stands.
+ */
+export async function readSessionRecap(filePath: string): Promise<string | null> {
+  let recap: string | null = null;
+
+  const rl = createInterface({
+    input: createReadStream(filePath, { encoding: "utf8" }),
+    crlfDelay: Infinity,
+  });
+
+  try {
+    for await (const line of rl) {
+      if (!line.trim()) continue;
+
+      let entry: JsonlEntry;
+      try {
+        entry = JSON.parse(line) as JsonlEntry;
+      } catch {
+        continue;
+      }
+
+      if (entry.type === "system" && entry.subtype === "away_summary" && entry.content) {
+        recap = entry.content.replace(RECAP_HINT_SUFFIX, "").trim();
+      }
+    }
+  } finally {
+    rl.close();
+  }
+
+  return recap;
 }
