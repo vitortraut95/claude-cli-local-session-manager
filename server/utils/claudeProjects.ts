@@ -44,6 +44,7 @@ export async function findJsonlFiles(rootDir: string): Promise<string[]> {
 export type SessionHead = {
   sessionId: string | null;
   cwd: string | null;
+  gitBranch: string | null;
   aiTitle: string | null;
   summaryTitle: string | null;
   firstUserText: string | null;
@@ -55,6 +56,7 @@ type JsonlEntry = {
   durationMs?: number;
   sessionId?: string;
   cwd?: string;
+  gitBranch?: string;
   aiTitle?: string;
   summary?: string;
   isSidechain?: boolean;
@@ -101,6 +103,7 @@ export async function readSessionHead(filePath: string): Promise<SessionHead> {
   const result: SessionHead = {
     sessionId: null,
     cwd: null,
+    gitBranch: null,
     aiTitle: null,
     summaryTitle: null,
     firstUserText: null,
@@ -127,6 +130,7 @@ export async function readSessionHead(filePath: string): Promise<SessionHead> {
 
       if (!result.sessionId && entry.sessionId) result.sessionId = entry.sessionId;
       if (!result.cwd && entry.cwd) result.cwd = entry.cwd;
+      if (!result.gitBranch && entry.gitBranch) result.gitBranch = entry.gitBranch;
       if (!result.aiTitle && entry.type === "ai-title" && entry.aiTitle) {
         result.aiTitle = entry.aiTitle;
       }
@@ -148,6 +152,7 @@ export async function readSessionHead(filePath: string): Promise<SessionHead> {
       const haveEverything =
         result.sessionId &&
         result.cwd &&
+        result.gitBranch &&
         (result.aiTitle ?? result.summaryTitle) &&
         result.firstUserText;
       if (haveEverything || lineCount >= MAX_LINES_SCANNED) break;

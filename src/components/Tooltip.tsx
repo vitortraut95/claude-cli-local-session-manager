@@ -8,7 +8,7 @@ type TooltipProps = {
 
 export function Tooltip({ content, children }: TooltipProps) {
   return (
-    <RadixTooltip.Root delayDuration={50}>
+    <RadixTooltip.Root delayDuration={0} disableHoverableContent>
       <RadixTooltip.Trigger asChild>{children}</RadixTooltip.Trigger>
       <RadixTooltip.Portal>
         <RadixTooltip.Content

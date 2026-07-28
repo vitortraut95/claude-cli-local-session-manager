@@ -5,7 +5,7 @@ import {
   Copy,
   DollarSign,
   Folder,
-  Hash,
+  GitBranch,
   Lightbulb,
   Loader2,
   MessageSquare,
@@ -54,7 +54,6 @@ export function SessionCard({
   const isContinuing = pendingAction === "continue";
   const isSettingNickname = pendingAction === "nickname";
   const isBusy = isDeleting || isContinuing || isSettingNickname;
-  const [copiedId, setCopiedId] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showUsage, setShowUsage] = useState(false);
@@ -63,17 +62,6 @@ export function SessionCard({
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
-
-  const handleCopySessionId = async () => {
-    try {
-      await navigator.clipboard.writeText(session.id);
-      setCopiedId(true);
-      showToast("Session ID copied to clipboard.", "success");
-      setTimeout(() => setCopiedId(false), COPIED_FEEDBACK_DURATION_MS);
-    } catch {
-      showToast("Could not copy the session ID.", "error");
-    }
-  };
 
   const handleCopyCommand = async () => {
     const command = resumeCommand;
@@ -155,7 +143,15 @@ export function SessionCard({
       {/* The only floating element on the card: active/inactive status stacked directly above
           the select checkbox, so the top-left corner reads as one cluster instead of scattered
           badges (insights/copy/usage/preview all live in the in-flow toolbar row below instead). */}
-      <div className="absolute -top-3.5 -left-1.5 flex flex-col items-center gap-1">
+      <div className="absolute -top-2 -left-1.5 flex items-center gap-1">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(session.id)}
+          disabled={isBusy || session.isActive}
+          aria-label={selected ? "Deselect session" : "Select session"}
+          className="h-4 w-4 shrink-0 accent-gray-900 disabled:cursor-not-allowed disabled:opacity-40 dark:accent-gray-100"
+        />
         <Tooltip
           content={
             session.isActive
@@ -170,14 +166,6 @@ export function SessionCard({
             }`}
           />
         </Tooltip>
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={() => onToggleSelect(session.id)}
-          disabled={isBusy || session.isActive}
-          aria-label={selected ? "Deselect session" : "Select session"}
-          className="h-4 w-4 shrink-0 accent-gray-900 disabled:cursor-not-allowed disabled:opacity-40 dark:accent-gray-100"
-        />
       </div>
 
       <div className="flex items-start justify-between gap-2">
@@ -224,13 +212,25 @@ export function SessionCard({
         </div>
       )}
 
-      <span
-        className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
-        title={session.workingDirectory ?? "Project"}
-      >
-        <Folder className="h-3.5 w-3.5" />
-        {session.project}
-      </span>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span
+          className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
+          title={session.workingDirectory ?? "Project"}
+        >
+          <Folder className="h-3.5 w-3.5" />
+          {session.project}
+        </span>
+
+        {session.gitBranch && (
+          <span
+            className="flex min-w-0 items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
+            title={`Git branch: ${session.gitBranch}`}
+          >
+            <GitBranch className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{session.gitBranch}</span>
+          </span>
+        )}
+      </div>
 
       {session.subagentCount > 0 && (
         <Tooltip content="View what each subagent did — their token usage is included in the cost above">
@@ -256,27 +256,9 @@ export function SessionCard({
         )}
       </p>
 
-      <span className="inline-flex items-center gap-1 font-mono text-[10px] text-gray-600 dark:text-gray-400">
-        <Hash className="h-3.5 w-3.5" />
-        {session.id}
-      </span>
-
       {/* Card action toolbar — one standardized-size icon per action, colored by kind so they
           stay easy to tell apart at a glance as more get added here over time. */}
-      <div className="flex flex-wrap items-center gap-1 border-t border-gray-100 pt-3 dark:border-gray-800">
-        <ToolbarIconButton
-          tooltip={copiedId ? "Session ID copied!" : "Copy session ID"}
-          ariaLabel="Copy session ID"
-          color="neutral"
-          onClick={handleCopySessionId}
-          icon={
-            copiedId ? (
-              <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )
-          }
-        />
+      <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 pt-3 dark:border-gray-800">
         <ToolbarIconButton
           tooltip="Insights — tips to spend fewer tokens"
           ariaLabel="View insights"

@@ -30,9 +30,9 @@ included — see below.
   session-level (large size, low cache-hit rate, subagents eating a big share of cost) and
   repo-level (missing CLAUDE.md, topics worth documenting there based on what Explore subagents
   had to look up)
-- Card action toolbar (copy session ID, insights, usage/cost, prompt preview) as one row of
-  standardized, color-coded icons, with the active/inactive status stacked above the select
-  checkbox as the card's only floating element
+- Card action toolbar (insights, usage/cost, prompt preview) as one row of standardized,
+  color-coded icons, with the active/inactive status stacked above the select checkbox as the
+  card's only floating element
 
 ## Prerequisites
 
@@ -144,6 +144,3 @@ these — just parked here so they aren't lost.
   `{"type":"system","subtype":"away_summary"}` entry: a natural-language "what we did / what's
   next" recap it writes itself when the user steps away. Showing that on the card (when present)
   would be far more useful than the truncated `firstUserText` fallback used today.
-- **Git branch / ticket badge** — every JSONL entry already carries `gitBranch`. Surfacing it as a
-  badge (and parsing a ticket id out of it, e.g. `env/LED-53995`) would let sessions be
-  filtered/searched by the ticket they belong to.

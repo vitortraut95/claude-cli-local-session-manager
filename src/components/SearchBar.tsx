@@ -14,7 +14,7 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Search by title, project, or ID..."
+        placeholder="Search by title, project, branch, or ID..."
         icon={<Search className="h-4 w-4" />}
         rightElement={
           value && (

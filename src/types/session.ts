@@ -47,6 +47,9 @@ export type Session = {
   /** Session's original working directory, as logged by the CLI. Null when older transcripts
    *  didn't log a `cwd` — matches the same fallback used for directoryMissing. */
   workingDirectory: string | null;
+  /** Git branch checked out in workingDirectory when the CLI logged the entry. Null when older
+   *  transcripts didn't log a `gitBranch`, or the session wasn't started inside a git repo. */
+  gitBranch: string | null;
   updatedAt: string;
   prompts: string[];
   isActive: boolean;

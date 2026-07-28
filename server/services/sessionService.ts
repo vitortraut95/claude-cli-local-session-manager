@@ -74,6 +74,7 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
       project: resolveProject(head, filePath),
       path: filePath,
       workingDirectory: head.cwd,
+      gitBranch: head.gitBranch,
       updatedAt: fileStat.mtime.toISOString(),
       prompts,
       directoryMissing,

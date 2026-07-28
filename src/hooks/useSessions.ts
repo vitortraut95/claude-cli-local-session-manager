@@ -124,6 +124,7 @@ export function useSessions() {
           session.nickname ?? "",
           session.project,
           session.id,
+          session.gitBranch ?? "",
           ...session.prompts,
         ].some((field) => field.toLowerCase().includes(query));
       const matchesProject = !projectFilter || session.project === projectFilter;
