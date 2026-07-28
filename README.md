@@ -1,4 +1,4 @@
-# Claude CLI Local Session Manager
+# Claude CLI Local Session Manager!
 
 Local web app for managing [Claude CLI](https://claude.com/claude-code) sessions. Reads the
 `*.jsonl` files `claude` writes to `~/.claude/projects`, lists them, and lets you resume, delete,
