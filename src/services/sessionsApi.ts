@@ -36,6 +36,10 @@ export async function continueSession(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/continue`));
 }
 
+export async function openInVSCode(id: string): Promise<void> {
+  await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/vscode`));
+}
+
 export async function setNickname(id: string, nickname: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.patch(`/${encodeURIComponent(id)}/nickname`, { nickname }),

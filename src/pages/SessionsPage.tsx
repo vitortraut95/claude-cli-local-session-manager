@@ -44,6 +44,7 @@ export function SessionsPage() {
     removeSessions,
     resumeSession,
     setNickname,
+    openInVSCode,
   } = useSessions();
   const [sessionPendingDeletion, setSessionPendingDeletion] = useState<Session | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
@@ -129,6 +130,7 @@ export function SessionsPage() {
               onContinue={(s) => resumeSession(s.id)}
               onDeleteRequest={setSessionPendingDeletion}
               onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
+              onOpenInVSCode={(s) => openInVSCode(s.id)}
             />
           ))}
         </div>

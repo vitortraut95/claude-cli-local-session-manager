@@ -128,6 +128,7 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | PATCH  | `/sessions/:id/nickname` | Set or clear a session's local nickname          |
 | DELETE | `/sessions/:id`          | Delete the session's `.jsonl` file               |
 | POST   | `/sessions/:id/continue` | Open a terminal running `claude --resume <id>`   |
+| POST   | `/sessions/:id/vscode`   | Open the session's working directory in VS Code  |
 
 ## Scripts
 

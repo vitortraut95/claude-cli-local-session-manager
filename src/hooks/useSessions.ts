@@ -4,7 +4,7 @@ import type { Session } from "../types/session";
 import { useUrlParam } from "./useUrlState";
 import { useToast } from "./useToast";
 
-export type PendingAction = "delete" | "continue" | "nickname";
+export type PendingAction = "delete" | "continue" | "nickname" | "vscode";
 
 export const PER_PAGE_OPTIONS = [24, 48, 96, 192, 999999] as const;
 const DEFAULT_PER_PAGE = 24;
@@ -279,6 +279,21 @@ export function useSessions() {
     [showToast, setPending],
   );
 
+  const openInVSCode = useCallback(
+    async (id: string) => {
+      setPending(id, "vscode");
+      try {
+        await sessionsApi.openInVSCode(id);
+        showToast("Opening in VS Code…", "success");
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Could not open VS Code.", "error");
+      } finally {
+        setPending(id, null);
+      }
+    },
+    [showToast, setPending],
+  );
+
   return {
     sessions: paginatedSessions,
     totalCount: sessions.length,
@@ -308,5 +323,6 @@ export function useSessions() {
     removeSessions,
     resumeSession,
     setNickname,
+    openInVSCode,
   };
 }

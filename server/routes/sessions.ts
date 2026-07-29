@@ -6,6 +6,7 @@ import {
   getSessionRepoInsights,
   getSessionSubagents,
   listSessions,
+  openInVSCode,
   setSessionNickname,
   SessionActiveError,
   SessionNotFoundError,
@@ -117,6 +118,18 @@ sessionsRouter.post("/:id/continue", async (req, res) => {
       res.status(409).json({ success: false, error: err.message });
       return;
     }
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+sessionsRouter.post("/:id/vscode", async (req, res) => {
+  try {
+    await openInVSCode(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({
       success: false,
       error: err instanceof Error ? err.message : String(err),

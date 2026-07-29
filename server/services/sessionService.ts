@@ -594,6 +594,41 @@ async function launchWindowsTerminal(resumeCommand: string, cwd?: string): Promi
 }
 
 /**
+ * Opens `cwd` in VS Code via its `code` CLI — no terminal involved, unlike the resume launchers
+ * above: `code <dir>` already opens the folder directly, so there's nothing to gain from wrapping
+ * it in a terminal window just to run the same command and close again. Doesn't touch git at all;
+ * `gitBranch` on the session is informational only (recorded when the CLI last logged an entry,
+ * may be stale), and checking it out here could collide with another Claude session or terminal
+ * still working in that same directory.
+ *
+ * `--new-window` forces a fresh window every time — without it, `code` reuses an already-open
+ * window and swaps its folder out from under whatever the user was looking at there.
+ */
+export async function openInVSCode(id: string): Promise<void> {
+  if (!isSafeSessionId(id)) {
+    throw new Error(`Invalid session id "${id}"`);
+  }
+
+  const cwd = await findSessionCwd(id);
+  if (!cwd) {
+    throw new Error("This session has no known working directory to open.");
+  }
+  if (!(await directoryExists(cwd))) {
+    throw new Error(
+      `This session's original directory no longer exists ("${cwd}"). Recreate the folder ` +
+        `(or a symlink) at the old path before opening it in VS Code.`,
+    );
+  }
+
+  if (!(await trySpawnDetached("code", ["--new-window", cwd]))) {
+    throw new Error(
+      `Could not open VS Code — the "code" command wasn't found on PATH. In VS Code, run ` +
+        `"Shell Command: Install 'code' command in PATH" from the Command Palette.`,
+    );
+  }
+}
+
+/**
  * Always tries Warp first (silently falls through to the OS-specific terminal launcher below
  * when Warp isn't installed, per `launchWarp`'s own `commandExists`/platform checks) — no
  * user-facing toggle for this anymore.

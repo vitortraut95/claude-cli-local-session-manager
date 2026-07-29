@@ -2,6 +2,7 @@ import {
   Bot,
   Check,
   Clock,
+  Code2,
   Copy,
   DollarSign,
   Folder,
@@ -37,6 +38,7 @@ type SessionCardProps = {
   onContinue: (session: Session) => void;
   onDeleteRequest: (session: Session) => void;
   onSetNickname: (session: Session, nickname: string) => void;
+  onOpenInVSCode: (session: Session) => void;
 };
 
 const COPIED_FEEDBACK_DURATION_MS = 2500;
@@ -49,10 +51,12 @@ export function SessionCard({
   onContinue,
   onDeleteRequest,
   onSetNickname,
+  onOpenInVSCode,
 }: SessionCardProps) {
   const isDeleting = pendingAction === "delete";
   const isContinuing = pendingAction === "continue";
   const isSettingNickname = pendingAction === "nickname";
+  const isOpeningVSCode = pendingAction === "vscode";
   const isBusy = isDeleting || isContinuing || isSettingNickname;
   const [copiedCommand, setCopiedCommand] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -212,14 +216,41 @@ export function SessionCard({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span
-          className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
-          title={session.workingDirectory ?? "Project"}
-        >
-          <Folder className="h-3.5 w-3.5" />
-          {session.project}
-        </span>
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Tooltip content={session.workingDirectory ?? session.project}>
+            <span
+              className="flex min-w-0 items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
+              title={session.workingDirectory ?? "Project"}
+            >
+              <Folder className="h-3.5 w-3.5 shrink-0" />
+              <span className="break-all">
+                {session.workingDirectory?.split("/").pop() ?? session.project}
+              </span>
+            </span>
+          </Tooltip>
+
+          {!session.directoryMissing && (
+            <Tooltip content="Open this folder in VS Code">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenInVSCode(session)}
+                disabled={isOpeningVSCode}
+                aria-label="Open in VS Code"
+                icon={
+                  isOpeningVSCode ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Code2 className="h-3.5 w-3.5" />
+                  )
+                }
+              >
+                code .
+              </Button>
+            </Tooltip>
+          )}
+        </div>
 
         {session.gitBranch && (
           <span
