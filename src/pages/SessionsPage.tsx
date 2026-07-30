@@ -9,6 +9,7 @@ import { LoadingState } from "../components/LoadingState";
 import { Pagination } from "../components/Pagination";
 import { PerPageSelect } from "../components/PerPageSelect";
 import { ProjectFilter } from "../components/ProjectFilter";
+import { ResumeConflictModal } from "../components/ResumeConflictModal";
 import { SearchBar } from "../components/SearchBar";
 import { SessionCard } from "../components/SessionCard";
 import { useSessions } from "../hooks/useSessions";
@@ -45,6 +46,12 @@ export function SessionsPage() {
     resumeSession,
     setNickname,
     openInVSCode,
+    hasSiblingActiveSession,
+    createWorktree,
+    deleteWorktree,
+    resumeConflict,
+    clearResumeConflict,
+    stopAndCheckoutResume,
   } = useSessions();
   const [sessionPendingDeletion, setSessionPendingDeletion] = useState<Session | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
@@ -126,11 +133,14 @@ export function SessionsPage() {
               session={session}
               pendingAction={pendingActions[session.id]}
               selected={selectedIds.has(session.id)}
+              hasSiblingActiveSession={hasSiblingActiveSession(session)}
               onToggleSelect={toggleSelect}
               onContinue={(s) => resumeSession(s.id)}
               onDeleteRequest={setSessionPendingDeletion}
               onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
               onOpenInVSCode={(s) => openInVSCode(s.id)}
+              onCreateWorktree={(s, name) => createWorktree(s.id, name)}
+              onDeleteWorktree={(s) => deleteWorktree(s.id)}
             />
           ))}
         </div>
@@ -185,6 +195,23 @@ export function SessionsPage() {
         onConfirm={handleConfirmBulkDelete}
         onCancel={() => setShowBulkDeleteConfirm(false)}
       />
+
+      {resumeConflict && (
+        <ResumeConflictModal
+          target={resumeConflict.target}
+          sibling={resumeConflict.sibling}
+          isCreatingWorktree={pendingActions[resumeConflict.target.id] === "worktree-create"}
+          isSwitching={pendingActions[resumeConflict.target.id] === "continue"}
+          onCreateWorktree={(name) => {
+            void createWorktree(resumeConflict.target.id, name);
+            clearResumeConflict();
+          }}
+          onStopAndCheckout={(branch) =>
+            stopAndCheckoutResume(resumeConflict.target.id, resumeConflict.sibling.id, branch)
+          }
+          onCancel={clearResumeConflict}
+        />
+      )}
     </div>
   );
 }

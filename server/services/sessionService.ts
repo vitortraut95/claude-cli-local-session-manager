@@ -21,6 +21,7 @@ import {
 } from "../utils/claudeProjects.js";
 import { summarizeUsage } from "../utils/pricing.js";
 import { getNicknames, setNickname } from "../utils/nicknames.js";
+import { isLinkedWorktree, removeWorktreeAndBranch, runGit } from "../utils/git.js";
 
 const UNTITLED = "Untitled";
 const TITLE_MAX_LENGTH = 100;
@@ -84,6 +85,9 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
       path: filePath,
       workingDirectory: head.cwd,
       gitBranch: head.gitBranch,
+      // Placeholder — listSessions() fills in the real value once, memoized per unique
+      // workingDirectory, rather than re-running `git rev-parse` for every session that shares one.
+      isWorktree: false,
       updatedAt: fileStat.mtime.toISOString(),
       prompts,
       directoryMissing,
@@ -150,6 +154,45 @@ async function getActiveResumeSessionIds(): Promise<Set<string>> {
   return ids;
 }
 
+/** Finds the live pid backing a specific active session id, if any — used by
+ *  `stopSiblingAndResume` to know what to signal. */
+async function findActiveSessionPid(sessionId: string): Promise<number | null> {
+  const dir = getClaudeSessionsDir();
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return null;
+  }
+
+  for (const name of entries.filter((n) => n.endsWith(".json"))) {
+    try {
+      const raw = await readFile(path.join(dir, name), "utf-8");
+      const data = JSON.parse(raw) as { pid?: number; sessionId?: string };
+      if (data.sessionId === sessionId && data.pid && isProcessAlive(data.pid)) {
+        return data.pid;
+      }
+    } catch {
+      // Ignore unreadable/malformed session state files.
+    }
+  }
+  return null;
+}
+
+/** Polls until `pid` is gone or `timeoutMs` elapses — gives a just-signaled process a chance to
+ *  actually exit (and release its worktree lock) before the caller moves on to `git checkout`. */
+function waitForProcessExit(pid: number, timeoutMs: number): Promise<void> {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const interval = setInterval(() => {
+      if (!isProcessAlive(pid) || Date.now() - start > timeoutMs) {
+        clearInterval(interval);
+        resolve();
+      }
+    }, 200);
+  });
+}
+
 export async function listSessions(): Promise<Session[]> {
   const files = await findJsonlFiles(getClaudeProjectsDir());
   const [built, activeIds, nicknames] = await Promise.all([
@@ -158,12 +201,24 @@ export async function listSessions(): Promise<Session[]> {
     getNicknames(),
   ]);
 
-  return built
-    .filter((session): session is Omit<Session, "isActive" | "nickname"> => session !== null)
+  const sessions = built.filter(
+    (session): session is Omit<Session, "isActive" | "nickname"> => session !== null,
+  );
+
+  // Many sessions share the same workingDirectory — run `git rev-parse` once per unique
+  // directory rather than once per session (buildSession itself only sets a false placeholder).
+  const uniqueDirs = [...new Set(sessions.map((s) => s.workingDirectory).filter((d) => d !== null))];
+  const worktreeFlags = await Promise.all(uniqueDirs.map((dir) => isLinkedWorktree(dir)));
+  const isWorktreeByDir = new Map(uniqueDirs.map((dir, i) => [dir, worktreeFlags[i]]));
+
+  return sessions
     .map((session) => ({
       ...session,
       nickname: nicknames[session.id] ?? null,
       isActive: activeIds.has(session.id),
+      isWorktree: session.workingDirectory
+        ? isWorktreeByDir.get(session.workingDirectory) ?? false
+        : false,
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
@@ -629,10 +684,43 @@ export async function openInVSCode(id: string): Promise<void> {
 }
 
 /**
- * Always tries Warp first (silently falls through to the OS-specific terminal launcher below
- * when Warp isn't installed, per `launchWarp`'s own `commandExists`/platform checks) — no
- * user-facing toggle for this anymore.
- *
+ * Shared by `continueSession` and `createSessionWorktree` — the only difference between resuming
+ * a session and starting a fresh worktree-scoped one is the command string; the terminal-picking
+ * cascade (Warp, then OS-specific, then the plain-emulator list) is identical either way. Always
+ * tries Warp first (silently falls through to the OS-specific terminal launcher below when Warp
+ * isn't installed, per `launchWarp`'s own `commandExists`/platform checks) — no user-facing toggle
+ * for this anymore.
+ */
+async function launchInTerminal(command: string, cwd?: string): Promise<void> {
+  if (await launchWarp(command, cwd)) {
+    return;
+  }
+
+  if (process.platform === "darwin") {
+    if (await launchMacTerminal(command, cwd)) return;
+    throw new Error("Could not open Terminal.app (osascript failed to launch).");
+  }
+
+  if (process.platform === "win32") {
+    if (await launchWindowsTerminal(command, cwd)) return;
+    throw new Error("Could not open a terminal (tried: Windows Terminal, cmd.exe).");
+  }
+
+  // Warp tabs stay open on their own after the command finishes, but the other emulators close
+  // their window the instant the wrapped `bash -c` exits — so only these get the "press enter" pause.
+  const shellCmd = `${command}; echo; read -p "Press Enter to close..." _`;
+
+  for (const launcher of TERMINAL_LAUNCHERS) {
+    const started = await trySpawnDetached(launcher.bin, launcher.buildArgs(shellCmd), cwd);
+    if (started) return;
+  }
+
+  throw new Error(
+    `No terminal emulator found (tried: ${TERMINAL_LAUNCHERS.map((l) => l.bin).join(", ")}).`,
+  );
+}
+
+/**
  * Rejects an already-active session server-side too, not just via the disabled Continue button
  * in the UI: opening a second `claude --resume` for the same session would race with the first
  * process's own writes to that session's `.jsonl`.
@@ -657,36 +745,114 @@ export async function continueSession(id: string): Promise<void> {
   }
 
   // `id` is already validated above (alphanumeric/dash/underscore only), so it's safe to interpolate.
-  const resumeCommand = `claude --resume ${id}`;
+  await launchInTerminal(`claude --resume ${id}`, cwd ?? undefined);
+}
 
-  if (await launchWarp(resumeCommand, cwd ?? undefined)) {
-    return;
+/**
+ * Opens a fresh `claude --worktree <name>` in `id`'s own project directory — not
+ * `claude --resume <id>`: the CLI keys a session's transcript to the exact absolute path it was
+ * started in (see `findSessionCwd`'s doc comment), so a past session can never be resumed from a
+ * different directory, worktree or not. This is for starting a *second*, independent Claude
+ * working in parallel on another branch, not for continuing this specific transcript elsewhere.
+ *
+ * Delegates the actual git worktree creation to the CLI's own `-w/--worktree [name]` flag rather
+ * than driving `git worktree add` by hand: the CLI already creates the linked worktree at
+ * `<repo>/.claude/worktrees/<name>` on a fresh `worktree-<name>` branch, locks it for the
+ * session's lifetime, and starts the conversation there in one step — reimplementing that
+ * wouldn't gain anything and would risk drifting from whatever the CLI does internally as it
+ * evolves. `removeWorktreeAndBranch` (see git.ts) knows to unlock it again on delete.
+ */
+export async function createSessionWorktree(id: string, requestedName: string): Promise<void> {
+  if (!isSafeSessionId(id)) {
+    throw new Error(`Invalid session id "${id}"`);
+  }
+  const name = requestedName.trim();
+  if (!name) {
+    throw new Error("A worktree name is required.");
   }
 
-  if (process.platform === "darwin") {
-    if (await launchMacTerminal(resumeCommand, cwd ?? undefined)) return;
-    throw new Error("Could not open Terminal.app (osascript failed to launch).");
+  const cwd = await findSessionCwd(id);
+  if (!cwd) throw new SessionNotFoundError(id);
+  if (!(await directoryExists(cwd))) {
+    throw new Error(`This session's original directory no longer exists ("${cwd}").`);
   }
 
-  if (process.platform === "win32") {
-    if (await launchWindowsTerminal(resumeCommand, cwd ?? undefined)) return;
-    throw new Error("Could not open a terminal (tried: Windows Terminal, cmd.exe).");
+  await launchInTerminal(`claude --worktree ${posixShellQuote(name)}`, cwd);
+}
+
+/**
+ * Removes the linked worktree that `id`'s session runs in, and the branch git created for it.
+ * Blocked (409, like the other mutating actions in this file) while *any* session rooted at that
+ * same directory is still active — not just this one — since deleting the worktree out from
+ * under a still-running `claude` process would pull its files out from under it.
+ */
+export async function deleteSessionWorktree(id: string): Promise<void> {
+  if (!isSafeSessionId(id)) {
+    throw new Error(`Invalid session id "${id}"`);
   }
 
-  // Warp tabs stay open on their own after the command finishes, but the other emulators close
-  // their window the instant the wrapped `bash -c` exits — so only these get the "press enter" pause.
-  const shellCmd = `${resumeCommand}; echo; read -p "Press Enter to close..." _`;
+  const cwd = await findSessionCwd(id);
+  if (!cwd) throw new SessionNotFoundError(id);
+  if (!(await directoryExists(cwd))) {
+    throw new Error(`This session's directory no longer exists ("${cwd}").`);
+  }
+  if (!(await isLinkedWorktree(cwd))) {
+    throw new Error("This session isn't running in a git worktree.");
+  }
 
-  for (const launcher of TERMINAL_LAUNCHERS) {
-    const started = await trySpawnDetached(
-      launcher.bin,
-      launcher.buildArgs(shellCmd),
-      cwd ?? undefined,
+  const sessions = await listSessions();
+  const stillActive = sessions.some((s) => s.workingDirectory === cwd && s.isActive);
+  if (stillActive) {
+    throw new SessionActiveError(
+      "A session is still active in this worktree — close its terminal before deleting it.",
     );
-    if (started) return;
   }
 
-  throw new Error(
-    `No terminal emulator found (tried: ${TERMINAL_LAUNCHERS.map((l) => l.bin).join(", ")}).`,
-  );
+  await removeWorktreeAndBranch(cwd);
+}
+
+/**
+ * The alternative to creating a worktree when `id`'s project directory is already busy: end
+ * `siblingSessionId`'s terminal process, check out `branch` in the (now free) shared directory,
+ * and resume `id` there. Deliberately not exposed as three separate calls the frontend
+ * orchestrates itself — a partial failure between "kill" and "resume" would leave the directory
+ * on the wrong branch with nothing running in it, which is easier to reason about as one
+ * operation's failure than three.
+ *
+ * SIGTERM first (a graceful "please exit" a well-behaved CLI can catch and clean up after,
+ * releasing its worktree/session-file state); escalates to SIGKILL only if it's still alive after
+ * a few seconds. Either way, this can discard unsaved state in whatever that other terminal was
+ * doing — the confirmation this is gated behind client-side needs to say so plainly.
+ */
+export async function stopSiblingAndResume(
+  id: string,
+  siblingSessionId: string,
+  requestedBranch: string,
+): Promise<void> {
+  if (!isSafeSessionId(id) || !isSafeSessionId(siblingSessionId)) {
+    throw new Error("Invalid session id.");
+  }
+  const branch = requestedBranch.trim();
+  if (!branch) {
+    throw new Error("A branch name is required to check out.");
+  }
+
+  const cwd = await findSessionCwd(id);
+  if (!cwd) throw new SessionNotFoundError(id);
+  if (!(await directoryExists(cwd))) {
+    throw new Error(`This session's original directory no longer exists ("${cwd}").`);
+  }
+
+  const pid = await findActiveSessionPid(siblingSessionId);
+  if (pid) {
+    process.kill(pid, "SIGTERM");
+    await waitForProcessExit(pid, 5000);
+    if (isProcessAlive(pid)) {
+      process.kill(pid, "SIGKILL");
+      await waitForProcessExit(pid, 2000);
+    }
+  }
+
+  await runGit(["checkout", branch], cwd);
+  await continueSession(id);
 }

@@ -54,16 +54,30 @@ spelunking at the start of a task.
   - `server/utils/` — `claudeProjects.ts` (JSONL parsing), `nicknames.ts` (sidecar file),
     `pricing.ts` (token cost table)
 - **API surface** (see README.md for the full table): `GET /sessions`, `GET
-  /sessions/:id/prompts`, `PATCH /sessions/:id/nickname`, `DELETE /sessions/:id`, `POST
-  /sessions/:id/continue`, plus `/system/update*` routes for the self-update feature.
-- **Session data model** — `src/types/session.ts` and `server/types/session.ts` define the *same*
+/sessions/:id/prompts`, `PATCH /sessions/:id/nickname`, `DELETE /sessions/:id`, `POST
+/sessions/:id/continue`, `POST /sessions/:id/worktree`, `DELETE /sessions/:id/worktree`, `POST
+/sessions/:id/checkout-and-resume`, plus `/system/update*` routes for the self-update feature.
+- **Session data model** — `src/types/session.ts` and `server/types/session.ts` define the _same_
   `Session` type independently (no shared package between the two workspaces) — a shape change
   needs both files edited, there's nothing that enforces they match:
   ```ts
   type Session = {
-    id: string; title: string; nickname: string | null; project: string; path: string;
-    updatedAt: string; prompts: string[]; isActive: boolean; directoryMissing: boolean;
-    usage: { models: ModelUsage[]; totalCostUsd: number | null };
+    id: string;
+    title: string;
+    nickname: string | null;
+    project: string;
+    path: string;
+    workingDirectory: string | null;
+    gitBranch: string | null;
+    isWorktree: boolean;
+    updatedAt: string;
+    prompts: string[];
+    isActive: boolean;
+    directoryMissing: boolean;
+    sizeBytes: number;
+    subagentCount: number;
+    activeTimeMs: number;
+    usage: { models: ModelUsage[]; totalCostUsd: number | null; subagentCostUsd: number | null };
   };
   // ModelUsage: { model, inputTokens, outputTokens, cacheCreationInputTokens,
   //              cacheReadInputTokens, costUsd }
@@ -154,3 +168,49 @@ spelunking at the start of a task.
   `MAX_PROMPT_PREVIEW_LENGTH` per prompt to keep the `/sessions` payload small. The preview modal
   fetches untruncated text on demand via `GET /sessions/:id/prompts` — don't reuse the truncated
   list field for anything meant to show full prompt text.
+- **Git worktree support** (`server/utils/git.ts`, `createSessionWorktree`/`deleteSessionWorktree`/
+  `stopSiblingAndResume` in `sessionService.ts`) lets a project with an already-active session be
+  worked on from a second terminal without two Claude processes fighting over the same working
+  tree.
+  - **Creation delegates to the CLI's own `-w/--worktree [name]` flag** (`claude --worktree
+    <name>`) rather than driving `git worktree add` by hand — the CLI already creates the linked
+    worktree at `<repo>/.claude/worktrees/<name>` on a fresh `worktree-<name>` branch, locks it for
+    the session's lifetime, and starts the conversation there in one step. It can't be combined
+    with `--resume`: the CLI ties a session's transcript to the exact absolute directory it
+    started in (see `findSessionCwd`'s doc comment), so a *past* session can never be resumed from
+    a different folder, worktree or not — "Create worktree" always starts a brand-new
+    conversation, never continues an existing transcript.
+  - **`isLinkedWorktree`** (git.ts) tells a linked worktree from a repo's main checkout by
+    comparing `git rev-parse --git-dir` vs. `--git-common-dir` (equal only for the main checkout).
+    `listSessions()` computes this once per unique `workingDirectory` (not per session) to avoid
+    redundant `git` spawns when many sessions share a directory.
+  - **Deletion unlocks before removing** — the CLI's lock (reason `claude session <name> (pid ...
+    start ...)`) persists after the process exits, so a plain `git worktree remove` fails with
+    "cannot remove a locked working tree" long after Claude closed. `removeWorktreeAndBranch` also
+    deletes the `worktree-<name>` branch afterward (best-effort) so a cleaned-up worktree doesn't
+    leave an orphan ref behind. No `--force` on the removal itself — uncommitted changes still
+    block it, same as declining to `rm -rf` uncommitted work anywhere else in this app.
+  - **A worktree with zero sessions is invisible to this app.** `isWorktree` is only known once a
+    session's `.jsonl` exists to read `workingDirectory` from — a worktree created but abandoned
+    before any prompt was sent (no transcript ever written) has no session card to hang a cleanup
+    button off of. Only shows up to a human running `git worktree list` by hand.
+  - **Resuming an inactive session checks the *live* state, not the cached list** —
+    `resumeSession` (useSessions.ts) refetches `/sessions` right before continuing, since the
+    already-loaded list only reloads on mount/explicit refresh and another terminal could have
+    started a session in the same directory since. If the fresh check finds one, it defers to
+    `resumeConflict` state instead of resuming straight into a busy working tree.
+  - **`stopSiblingAndResume`** is the "I know what I'm doing" escape hatch offered alongside
+    "create a worktree" in that same conflict modal: SIGTERM (then SIGKILL after a timeout) the
+    other terminal's `claude` process, `git checkout <branch>`, then resume the target session in
+    the now-free directory — one server-side call rather than three client-orchestrated ones, so a
+    partial failure can't leave the directory checked out to the wrong branch with nothing running
+    in it. This can discard whatever the other terminal hadn't saved/committed; the client-side
+    confirmation copy says so plainly rather than hiding it behind a generic "Continue?" dialog.
+
+## to-do's
+
+- **Show usage limits and reset times.** show all usages and limits info at header.
+- **Add resume (terminal) with multi select.** When has selected items has only delete action, add
+  also resume button.
+- **Refresh on focus.** when the web page has focus (react option) run the refresh to avoid seeing
+  unnupdated data.

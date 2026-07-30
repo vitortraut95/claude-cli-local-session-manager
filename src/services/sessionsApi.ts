@@ -40,6 +40,28 @@ export async function openInVSCode(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/vscode`));
 }
 
+/** Runs `claude --worktree <name>` for this session's project (see server-side
+ *  createSessionWorktree for why it's not `--resume`d). */
+export async function createWorktree(id: string, name: string): Promise<void> {
+  await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/worktree`, { name }));
+}
+
+export async function deleteWorktree(id: string): Promise<void> {
+  await withServerErrorMessage(() => client.delete(`/${encodeURIComponent(id)}/worktree`));
+}
+
+/** Ends `siblingSessionId`'s terminal process, checks out `branch` in the shared directory, and
+ *  resumes `id` there (see server-side stopSiblingAndResume for why this is one call). */
+export async function stopAndCheckoutResume(
+  id: string,
+  siblingSessionId: string,
+  branch: string,
+): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.post(`/${encodeURIComponent(id)}/checkout-and-resume`, { siblingSessionId, branch }),
+  );
+}
+
 export async function setNickname(id: string, nickname: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.patch(`/${encodeURIComponent(id)}/nickname`, { nickname }),

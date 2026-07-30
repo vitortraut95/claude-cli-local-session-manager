@@ -1,7 +1,9 @@
 import { Router } from "express";
 import {
   continueSession,
+  createSessionWorktree,
   deleteSession,
+  deleteSessionWorktree,
   getSessionPrompts,
   getSessionRepoInsights,
   getSessionSubagents,
@@ -10,14 +12,15 @@ import {
   setSessionNickname,
   SessionActiveError,
   SessionNotFoundError,
+  stopSiblingAndResume,
 } from "../services/sessionService.js";
 
 export const sessionsRouter = Router();
 
-function extractNickname(body: unknown): string {
-  if (typeof body === "object" && body !== null && "nickname" in body) {
-    const { nickname } = body;
-    if (typeof nickname === "string") return nickname;
+function extractStringField(body: unknown, key: string): string {
+  if (typeof body === "object" && body !== null && key in body) {
+    const value = (body as Record<string, unknown>)[key];
+    if (typeof value === "string") return value;
   }
   return "";
 }
@@ -56,7 +59,7 @@ sessionsRouter.delete("/:id", async (req, res) => {
 
 sessionsRouter.patch("/:id/nickname", async (req, res) => {
   try {
-    await setSessionNickname(req.params.id, extractNickname(req.body));
+    await setSessionNickname(req.params.id, extractStringField(req.body, "nickname"));
     res.json({ success: true });
   } catch (err) {
     if (err instanceof SessionActiveError) {
@@ -114,6 +117,66 @@ sessionsRouter.post("/:id/continue", async (req, res) => {
     await continueSession(req.params.id);
     res.json({ success: true });
   } catch (err) {
+    if (err instanceof SessionActiveError) {
+      res.status(409).json({ success: false, error: err.message });
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+sessionsRouter.post("/:id/worktree", async (req, res) => {
+  try {
+    await createSessionWorktree(req.params.id, extractStringField(req.body, "name"));
+    res.json({ success: true });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ success: false, error: err.message });
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+sessionsRouter.delete("/:id/worktree", async (req, res) => {
+  try {
+    await deleteSessionWorktree(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ success: false, error: err.message });
+      return;
+    }
+    if (err instanceof SessionActiveError) {
+      res.status(409).json({ success: false, error: err.message });
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+sessionsRouter.post("/:id/checkout-and-resume", async (req, res) => {
+  try {
+    await stopSiblingAndResume(
+      req.params.id,
+      extractStringField(req.body, "siblingSessionId"),
+      extractStringField(req.body, "branch"),
+    );
+    res.json({ success: true });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ success: false, error: err.message });
+      return;
+    }
     if (err instanceof SessionActiveError) {
       res.status(409).json({ success: false, error: err.message });
       return;

@@ -4,7 +4,13 @@ import type { Session } from "../types/session";
 import { useUrlParam } from "./useUrlState";
 import { useToast } from "./useToast";
 
-export type PendingAction = "delete" | "continue" | "nickname" | "vscode";
+export type PendingAction =
+  | "delete"
+  | "continue"
+  | "nickname"
+  | "vscode"
+  | "worktree-create"
+  | "worktree-delete";
 
 export const PER_PAGE_OPTIONS = [24, 48, 96, 192, 999999] as const;
 const DEFAULT_PER_PAGE = 24;
@@ -261,10 +267,43 @@ export function useSessions() {
     [showToast, setPending, loadSessions],
   );
 
+  const [resumeConflict, setResumeConflict] = useState<{
+    target: Session;
+    sibling: Session;
+  } | null>(null);
+
+  const clearResumeConflict = useCallback(() => setResumeConflict(null), []);
+
+  /**
+   * Refetches the session list right before resuming rather than trusting whatever's already
+   * in `sessions` state — that list only reloads on mount or an explicit refresh (see
+   * useSessions' module doc / CLAUDE.md), so another terminal could have opened a session in the
+   * same directory since the last load without this page knowing. If a fresh check finds a
+   * conflict — either a different session active in the same directory, or this exact session
+   * already open in another terminal — resuming is deferred to `resumeConflict` (rendered by the
+   * caller as a modal) instead of either silently double-opening it or refusing outright. The
+   * Resume button itself is never disabled for this (see SessionCard's continueDisabledReason) —
+   * this check is what makes that safe.
+   */
   const resumeSession = useCallback(
     async (id: string) => {
       setPending(id, "continue");
       try {
+        const fresh = await sessionsApi.fetchSessions();
+        const target = fresh.find((s) => s.id === id);
+        const sibling = target?.isActive
+          ? target
+          : target?.workingDirectory
+            ? fresh.find(
+                (s) => s.id !== id && s.workingDirectory === target.workingDirectory && s.isActive,
+              )
+            : undefined;
+
+        if (target && sibling) {
+          setResumeConflict({ target, sibling });
+          return;
+        }
+
         await sessionsApi.continueSession(id);
         // Linux window managers won't let a background process steal focus, so the new
         // terminal window may open behind this one — this toast is the only reliable signal
@@ -279,6 +318,25 @@ export function useSessions() {
     [showToast, setPending],
   );
 
+  const stopAndCheckoutResume = useCallback(
+    async (targetId: string, siblingId: string, branch: string) => {
+      setPending(targetId, "continue");
+      try {
+        await sessionsApi.stopAndCheckoutResume(targetId, siblingId, branch);
+        showToast(
+          "Stopped the other terminal, checked out the branch, and opened a terminal here.",
+          "success",
+        );
+        setResumeConflict(null);
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Could not switch sessions.", "error");
+      } finally {
+        setPending(targetId, null);
+      }
+    },
+    [showToast, setPending],
+  );
+
   const openInVSCode = useCallback(
     async (id: string) => {
       setPending(id, "vscode");
@@ -287,6 +345,61 @@ export function useSessions() {
         showToast("Opening in VS Code…", "success");
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Could not open VS Code.", "error");
+      } finally {
+        setPending(id, null);
+      }
+    },
+    [showToast, setPending],
+  );
+
+  // Counts active sessions per workingDirectory across the *full* (unfiltered, unpaginated) list —
+  // a sibling on another page still means the directory is busy. Used to decide when to offer
+  // "Create worktree" as the safe way to work on that project from a second terminal.
+  const activeCountByDir = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const session of sessions) {
+      if (session.isActive && session.workingDirectory) {
+        counts.set(session.workingDirectory, (counts.get(session.workingDirectory) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [sessions]);
+
+  const hasSiblingActiveSession = useCallback(
+    (session: Session) => {
+      if (!session.workingDirectory) return false;
+      const count = activeCountByDir.get(session.workingDirectory) ?? 0;
+      return count > (session.isActive ? 1 : 0);
+    },
+    [activeCountByDir],
+  );
+
+  const createWorktree = useCallback(
+    async (id: string, name: string) => {
+      setPending(id, "worktree-create");
+      try {
+        await sessionsApi.createWorktree(id, name);
+        showToast(
+          "Worktree created. Terminal opened — check your taskbar if it didn't come to the front.",
+          "success",
+        );
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Could not create the worktree.", "error");
+      } finally {
+        setPending(id, null);
+      }
+    },
+    [showToast, setPending],
+  );
+
+  const deleteWorktree = useCallback(
+    async (id: string) => {
+      setPending(id, "worktree-delete");
+      try {
+        await sessionsApi.deleteWorktree(id);
+        showToast("Worktree and its branch deleted.", "success");
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Could not delete the worktree.", "error");
       } finally {
         setPending(id, null);
       }
@@ -324,5 +437,11 @@ export function useSessions() {
     resumeSession,
     setNickname,
     openInVSCode,
+    hasSiblingActiveSession,
+    createWorktree,
+    deleteWorktree,
+    resumeConflict,
+    clearResumeConflict,
+    stopAndCheckoutResume,
   };
 }

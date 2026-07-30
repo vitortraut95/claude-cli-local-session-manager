@@ -50,6 +50,10 @@ export type Session = {
   /** Git branch checked out in workingDirectory when the CLI logged the entry. Null when older
    *  transcripts didn't log a `gitBranch`, or the session wasn't started inside a git repo. */
   gitBranch: string | null;
+  /** True when workingDirectory is a linked git worktree rather than a repo's main checkout —
+   *  powers the "Delete worktree" action. False (not null) when workingDirectory is missing or
+   *  isn't inside a git repo at all, same as gitBranch's "no info" case collapsing to a falsy value. */
+  isWorktree: boolean;
   updatedAt: string;
   prompts: string[];
   isActive: boolean;

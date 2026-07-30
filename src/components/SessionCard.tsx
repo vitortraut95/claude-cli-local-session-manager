@@ -7,6 +7,7 @@ import {
   DollarSign,
   Folder,
   GitBranch,
+  GitFork,
   Lightbulb,
   Loader2,
   MessageSquare,
@@ -20,6 +21,8 @@ import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
 import type { Session } from "../types/session";
 import { Button } from "./Button";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { CreateWorktreeModal } from "./CreateWorktreeModal";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { InsightsModal } from "./InsightsModal";
 import { NicknameModal } from "./NicknameModal";
@@ -29,16 +32,20 @@ import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
 import { UsageDetailsModal } from "./UsageDetailsModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
+import { formatWorktreePath } from "../utils/formatPath";
 
 type SessionCardProps = {
   session: Session;
   pendingAction?: PendingAction;
   selected: boolean;
+  hasSiblingActiveSession: boolean;
   onToggleSelect: (id: string) => void;
   onContinue: (session: Session) => void;
   onDeleteRequest: (session: Session) => void;
   onSetNickname: (session: Session, nickname: string) => void;
   onOpenInVSCode: (session: Session) => void;
+  onCreateWorktree: (session: Session, name: string) => void;
+  onDeleteWorktree: (session: Session) => void;
 };
 
 const COPIED_FEEDBACK_DURATION_MS = 2500;
@@ -47,16 +54,21 @@ export function SessionCard({
   session,
   pendingAction,
   selected,
+  hasSiblingActiveSession,
   onToggleSelect,
   onContinue,
   onDeleteRequest,
   onSetNickname,
   onOpenInVSCode,
+  onCreateWorktree,
+  onDeleteWorktree,
 }: SessionCardProps) {
   const isDeleting = pendingAction === "delete";
   const isContinuing = pendingAction === "continue";
   const isSettingNickname = pendingAction === "nickname";
   const isOpeningVSCode = pendingAction === "vscode";
+  const isCreatingWorktree = pendingAction === "worktree-create";
+  const isDeletingWorktree = pendingAction === "worktree-delete";
   const isBusy = isDeleting || isContinuing || isSettingNickname;
   const [copiedCommand, setCopiedCommand] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -64,6 +76,8 @@ export function SessionCard({
   const [showSubagents, setShowSubagents] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
+  const [showCreateWorktreeModal, setShowCreateWorktreeModal] = useState(false);
+  const [showDeleteWorktreeConfirm, setShowDeleteWorktreeConfirm] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
 
@@ -96,14 +110,14 @@ export function SessionCard({
     />
   );
 
-  // Directory-missing is checked first: it's the more actionable problem to surface if a
-  // session somehow ended up both without its original folder and (per stale process-list data)
-  // still "active" — an edge case, but this keeps the tooltip pointing at the fixable issue.
+  // Unlike Delete/nickname-edit, Resume stays clickable even while the session is already active
+  // elsewhere: onContinue (useSessions.ts resumeSession) does a fresh live check and, if it's
+  // still active, offers a choice (create a worktree, or stop that terminal and resume here)
+  // instead of just refusing outright. Only a missing directory blocks it outright — there's
+  // nothing to offer an alternative for there.
   const continueDisabledReason = session.directoryMissing
     ? "Recreate the original folder (or a symlink to it) before resuming — the Claude CLI resolves sessions by working directory."
-    : session.isActive
-      ? "This session is already open in a terminal."
-      : null;
+    : null;
 
   const continueButton = (
     <span className="flex flex-1">
@@ -218,15 +232,34 @@ export function SessionCard({
 
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <Tooltip content={session.workingDirectory ?? session.project}>
+          <Tooltip
+            content={
+              session.isWorktree
+                ? `Git worktree — ${session.workingDirectory}`
+                : session.workingDirectory ?? session.project
+            }
+          >
             <span
               className="flex min-w-0 items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
               title={session.workingDirectory ?? "Project"}
             >
-              <Folder className="h-3.5 w-3.5 shrink-0" />
+              {session.isWorktree ? (
+                <GitFork className="h-3.5 w-3.5 shrink-0 text-violet-500 dark:text-violet-400" />
+              ) : (
+                <Folder className="h-3.5 w-3.5 shrink-0" />
+              )}
               <span className="break-all">
-                {session.workingDirectory?.split("/").pop() ?? session.project}
+                {session.workingDirectory
+                  ? session.isWorktree
+                    ? formatWorktreePath(session.workingDirectory)
+                    : session.workingDirectory.split("/").pop()
+                  : session.project}
               </span>
+              {session.isWorktree && (
+                <span className="shrink-0 rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
+                  worktree
+                </span>
+              )}
             </span>
           </Tooltip>
 
@@ -260,6 +293,26 @@ export function SessionCard({
             <GitBranch className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{session.gitBranch}</span>
           </span>
+        )}
+
+        {hasSiblingActiveSession && (
+          <Tooltip content="Another terminal already has this project open — check out a branch in a separate worktree instead of fighting over the same files.">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCreateWorktreeModal(true)}
+              disabled={isCreatingWorktree}
+              icon={
+                isCreatingWorktree ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <GitFork className="h-3.5 w-3.5" />
+                )
+              }
+            >
+              Create worktree
+            </Button>
+          </Tooltip>
         )}
       </div>
 
@@ -320,6 +373,26 @@ export function SessionCard({
             color="blue"
             onClick={() => setShowPreview(true)}
             icon={<MessageSquare className="h-4 w-4" />}
+          />
+        )}
+        {session.isWorktree && (
+          <ToolbarIconButton
+            tooltip={
+              session.isActive
+                ? "Close this session in its terminal before cleaning up the worktree."
+                : "Clean up this worktree — removes its folder and the branch git created for it. Doesn't touch the session transcript."
+            }
+            ariaLabel="Clean up worktree"
+            color="red"
+            disabled={session.isActive || isDeletingWorktree}
+            onClick={() => setShowDeleteWorktreeConfirm(true)}
+            icon={
+              isDeletingWorktree ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <GitFork className="h-4 w-4" />
+              )
+            }
           />
         )}
       </div>
@@ -392,6 +465,29 @@ export function SessionCard({
           onCancel={() => setShowNicknameModal(false)}
         />
       )}
+      {showCreateWorktreeModal && (
+        <CreateWorktreeModal
+          defaultName={session.gitBranch ?? ""}
+          isLoading={isCreatingWorktree}
+          onCreate={(name) => {
+            setShowCreateWorktreeModal(false);
+            onCreateWorktree(session, name);
+          }}
+          onCancel={() => setShowCreateWorktreeModal(false)}
+        />
+      )}
+      <ConfirmDialog
+        open={showDeleteWorktreeConfirm}
+        title="Clean up worktree"
+        message="This removes the worktree's folder and the worktree-<name> branch git created for it, freeing the disk space it used. Uncommitted changes there will block the deletion — commit or stash them first if you need to keep them. The session transcript itself isn't affected."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          setShowDeleteWorktreeConfirm(false);
+          onDeleteWorktree(session);
+        }}
+        onCancel={() => setShowDeleteWorktreeConfirm(false)}
+      />
     </div>
   );
 }

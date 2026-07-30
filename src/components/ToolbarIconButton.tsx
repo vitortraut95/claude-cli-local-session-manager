@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Tooltip } from "./Tooltip";
 
-export type ToolbarIconButtonColor = "neutral" | "amber" | "green" | "blue";
+export type ToolbarIconButtonColor = "neutral" | "amber" | "green" | "blue" | "red";
 
 const COLOR_CLASSES: Record<ToolbarIconButtonColor, string> = {
   neutral:
@@ -11,6 +11,7 @@ const COLOR_CLASSES: Record<ToolbarIconButtonColor, string> = {
   green:
     "text-green-600 hover:bg-green-50 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-950/40",
   blue: "text-blue-500 hover:bg-blue-50 hover:text-blue-600 dark:text-blue-400 dark:hover:bg-blue-950/40",
+  red: "text-red-500 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-950/40",
 };
 
 type ToolbarIconButtonProps = {
@@ -19,6 +20,7 @@ type ToolbarIconButtonProps = {
   icon: ReactNode;
   color: ToolbarIconButtonColor;
   onClick: () => void;
+  disabled?: boolean;
 };
 
 /**
@@ -32,17 +34,24 @@ export function ToolbarIconButton({
   icon,
   color,
   onClick,
+  disabled = false,
 }: ToolbarIconButtonProps) {
   return (
     <Tooltip content={tooltip}>
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={ariaLabel}
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${COLOR_CLASSES[color]}`}
-      >
-        {icon}
-      </button>
+      {/* A native `disabled` button doesn't reliably fire hover events, so the tooltip is
+          anchored to this always-enabled wrapping span instead — same trick SessionCard uses for
+          its own disabled Continue/Delete buttons. */}
+      <span className="inline-flex shrink-0">
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          aria-label={ariaLabel}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${COLOR_CLASSES[color]}`}
+        >
+          {icon}
+        </button>
+      </span>
     </Tooltip>
   );
 }
