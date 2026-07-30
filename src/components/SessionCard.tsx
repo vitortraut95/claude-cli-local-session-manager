@@ -80,6 +80,10 @@ export function SessionCard({
   const [showDeleteWorktreeConfirm, setShowDeleteWorktreeConfirm] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
+  const worktreePathParts =
+    session.isWorktree && session.workingDirectory
+      ? formatWorktreePath(session.workingDirectory)
+      : null;
 
   const handleCopyCommand = async () => {
     const command = resumeCommand;
@@ -239,27 +243,24 @@ export function SessionCard({
                 : (session.workingDirectory ?? session.project)
             }
           >
-            <span
-              className="flex min-w-0 items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
-              title={session.workingDirectory ?? "Project"}
-            >
-              {session.isWorktree && (
-                <span className="shrink-0 rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
-                  worktree
-                </span>
-              )}
+            <span className="flex min-w-0 items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
               {session.isWorktree ? (
                 <GitFork className="h-3.5 w-3.5 shrink-0 text-violet-500 dark:text-violet-400" />
               ) : (
                 <Folder className="h-3.5 w-3.5 shrink-0" />
               )}
-              <span className="break-all">
-                {session.workingDirectory
-                  ? session.isWorktree
-                    ? formatWorktreePath(session.workingDirectory)
-                    : session.workingDirectory.split("/").pop()
-                  : session.project}
-              </span>
+              {worktreePathParts ? (
+                <span className="flex min-w-0 flex-col break-all">
+                  <span className="text-xs text-gray-500 dark:text-gray-500">
+                    {worktreePathParts.prefix}
+                  </span>
+                  <span>Worktree name: {worktreePathParts.name}</span>
+                </span>
+              ) : (
+                <span className="break-all">
+                  {session.workingDirectory?.split("/").pop() ?? session.project}
+                </span>
+              )}
             </span>
           </Tooltip>
 
@@ -291,7 +292,10 @@ export function SessionCard({
             title={`Git branch: ${session.gitBranch}`}
           >
             <GitBranch className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{session.gitBranch}</span>
+            <span className="truncate">
+              {session.isWorktree && "Worktree branch: "}
+              {session.gitBranch}
+            </span>
           </span>
         )}
 

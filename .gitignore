@@ -30,3 +30,4 @@ claude-session-manager.desktop
 *.njsproj
 *.sln
 *.sw?
+.claude/*
