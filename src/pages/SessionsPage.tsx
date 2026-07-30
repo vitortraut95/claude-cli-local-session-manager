@@ -12,6 +12,7 @@ import { ProjectFilter } from "../components/ProjectFilter";
 import { ResumeConflictModal } from "../components/ResumeConflictModal";
 import { SearchBar } from "../components/SearchBar";
 import { SessionCard } from "../components/SessionCard";
+import { WorktreeFilter } from "../components/WorktreeFilter";
 import { useSessions } from "../hooks/useSessions";
 import type { Session } from "../types/session";
 import { RefreshCw, Trash2, X } from "lucide-react";
@@ -27,6 +28,8 @@ export function SessionsPage() {
     projects,
     projectFilter,
     setProjectFilter,
+    worktreeOnly,
+    setWorktreeOnly,
     updatedFrom,
     updatedTo,
     setUpdatedRange,
@@ -54,13 +57,23 @@ export function SessionsPage() {
     stopAndCheckoutResume,
   } = useSessions();
   const [sessionPendingDeletion, setSessionPendingDeletion] = useState<Session | null>(null);
+  // Only meaningful while sessionPendingDeletion.isWorktree is true — reset to the recommended
+  // default each time a new deletion is requested (handleDeleteRequest), same as CreateWorktreeModal
+  // re-initializing on open, so a previous session's unchecked choice can't leak into the next one.
+  const [cleanupWorktreeOnDelete, setCleanupWorktreeOnDelete] = useState(true);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+  const handleDeleteRequest = (session: Session) => {
+    setSessionPendingDeletion(session);
+    setCleanupWorktreeOnDelete(true);
+  };
 
   const handleConfirmDelete = async () => {
     if (!sessionPendingDeletion) return;
     const id = sessionPendingDeletion.id;
+    const cleanupWorktree = sessionPendingDeletion.isWorktree && cleanupWorktreeOnDelete;
     setSessionPendingDeletion(null);
-    await removeSession(id);
+    await removeSession(id, cleanupWorktree);
   };
 
   const handleConfirmBulkDelete = async () => {
@@ -78,6 +91,7 @@ export function SessionsPage() {
   const hasActiveFilter =
     searchQuery.trim().length > 0 ||
     projectFilter.length > 0 ||
+    worktreeOnly ||
     updatedFrom.length > 0 ||
     updatedTo.length > 0;
 
@@ -136,7 +150,7 @@ export function SessionsPage() {
               hasSiblingActiveSession={hasSiblingActiveSession(session)}
               onToggleSelect={toggleSelect}
               onContinue={(s) => resumeSession(s.id)}
-              onDeleteRequest={setSessionPendingDeletion}
+              onDeleteRequest={handleDeleteRequest}
               onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
               onOpenInVSCode={(s) => openInVSCode(s.id)}
               onCreateWorktree={(s, name) => createWorktree(s.id, name)}
@@ -158,6 +172,7 @@ export function SessionsPage() {
       <main className="px-4 py-6 sm:px-6">
         <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center">
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
+          <WorktreeFilter value={worktreeOnly} onChange={setWorktreeOnly} />
           <ProjectFilter projects={projects} value={projectFilter} onChange={setProjectFilter} />
           <DateRangeFilter from={updatedFrom} to={updatedTo} onChange={setUpdatedRange} />
 
@@ -182,7 +197,19 @@ export function SessionsPage() {
         cancelLabel="Cancel"
         onConfirm={handleConfirmDelete}
         onCancel={() => setSessionPendingDeletion(null)}
-      />
+      >
+        {sessionPendingDeletion?.isWorktree && (
+          <label className="mt-3 flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <input
+              type="checkbox"
+              checked={cleanupWorktreeOnDelete}
+              onChange={(event) => setCleanupWorktreeOnDelete(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+            />
+            Also clean up the worktree — removes its folder and the branch git created for it.
+          </label>
+        )}
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={showBulkDeleteConfirm}

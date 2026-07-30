@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import type { ReactNode } from "react";
 import { Modal } from "./Modal";
 
 type ConfirmDialogProps = {
@@ -10,6 +11,8 @@ type ConfirmDialogProps = {
   isLoading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Extra content rendered below the message — e.g. a checkbox for an optional related action. */
+  children?: ReactNode;
 };
 
 export function ConfirmDialog({
@@ -21,6 +24,7 @@ export function ConfirmDialog({
   isLoading = false,
   onConfirm,
   onCancel,
+  children,
 }: ConfirmDialogProps) {
   return (
     <Modal
@@ -41,6 +45,7 @@ export function ConfirmDialog({
       }
     >
       <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+      {children}
     </Modal>
   );
 }

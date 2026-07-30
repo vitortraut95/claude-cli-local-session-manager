@@ -33,6 +33,7 @@ export function useSessions() {
   const [projectFilter, setProjectFilterRaw] = useUrlParam("project", "");
   const [updatedFrom, setUpdatedFromRaw] = useUrlParam("updated_from", "");
   const [updatedTo, setUpdatedToRaw] = useUrlParam("updated_to", "");
+  const [worktreeOnlyRaw, setWorktreeOnlyRaw] = useUrlParam("worktree_only", "");
   const [pageRaw, setPageRaw] = useUrlParam("page", "1");
   const [perPageRaw, setPerPageRaw] = useUrlParam("per_page", String(DEFAULT_PER_PAGE));
   const [pendingActions, setPendingActions] = useState<Record<string, PendingAction>>({});
@@ -67,6 +68,16 @@ export function useSessions() {
       setPageRaw("1");
     },
     [setUpdatedFromRaw, setUpdatedToRaw, setPageRaw],
+  );
+
+  const worktreeOnly = worktreeOnlyRaw === "1";
+
+  const setWorktreeOnly = useCallback(
+    (value: boolean) => {
+      setWorktreeOnlyRaw(value ? "1" : "");
+      setPageRaw("1");
+    },
+    [setWorktreeOnlyRaw, setPageRaw],
   );
 
   const setPerPage = useCallback(
@@ -134,15 +145,16 @@ export function useSessions() {
           ...session.prompts,
         ].some((field) => field.toLowerCase().includes(query));
       const matchesProject = !projectFilter || session.project === projectFilter;
+      const matchesWorktreeOnly = !worktreeOnly || session.isWorktree;
       const updatedAtTime = new Date(session.updatedAt).getTime();
       const matchesUpdatedAt =
         (fromTime === null || updatedAtTime >= fromTime) &&
         (toTime === null || updatedAtTime <= toTime);
-      return matchesQuery && matchesProject && matchesUpdatedAt;
+      return matchesQuery && matchesProject && matchesWorktreeOnly && matchesUpdatedAt;
     });
 
     return [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [sessions, searchQuery, projectFilter, updatedFrom, updatedTo]);
+  }, [sessions, searchQuery, projectFilter, worktreeOnly, updatedFrom, updatedTo]);
 
   const pageCount = Math.max(1, Math.ceil(filteredSessions.length / perPage));
   // Clamp for display without writing back to the URL — a stale `page` param
@@ -194,10 +206,28 @@ export function useSessions() {
     });
   }, []);
 
+  /**
+   * `cleanupWorktree` runs the worktree removal *before* deleting the session, with its own
+   * independent success/error toast — a failure there (e.g. uncommitted changes blocking it)
+   * doesn't stop the session deletion that follows, since the two aren't actually coupled
+   * server-side; the caller (SessionsPage's delete-confirm checkbox) just offers to do both in
+   * one click when the session happens to be worktree-backed.
+   */
   const removeSession = useCallback(
-    async (id: string) => {
+    async (id: string, cleanupWorktree = false) => {
       setPending(id, "delete");
       try {
+        if (cleanupWorktree) {
+          try {
+            await sessionsApi.deleteWorktree(id);
+            showToast("Worktree and its branch deleted.", "success");
+          } catch (err) {
+            showToast(
+              err instanceof Error ? err.message : "Could not clean up the worktree.",
+              "error",
+            );
+          }
+        }
         await sessionsApi.deleteSession(id);
         setSessions((current) => current.filter((session) => session.id !== id));
         showToast("Session deleted successfully.", "success");
@@ -423,6 +453,8 @@ export function useSessions() {
     projects,
     projectFilter,
     setProjectFilter,
+    worktreeOnly,
+    setWorktreeOnly,
     updatedFrom,
     updatedTo,
     setUpdatedRange,

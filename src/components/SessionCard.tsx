@@ -236,13 +236,18 @@ export function SessionCard({
             content={
               session.isWorktree
                 ? `Git worktree — ${session.workingDirectory}`
-                : session.workingDirectory ?? session.project
+                : (session.workingDirectory ?? session.project)
             }
           >
             <span
               className="flex min-w-0 items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
               title={session.workingDirectory ?? "Project"}
             >
+              {session.isWorktree && (
+                <span className="shrink-0 rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
+                  worktree
+                </span>
+              )}
               {session.isWorktree ? (
                 <GitFork className="h-3.5 w-3.5 shrink-0 text-violet-500 dark:text-violet-400" />
               ) : (
@@ -255,11 +260,6 @@ export function SessionCard({
                     : session.workingDirectory.split("/").pop()
                   : session.project}
               </span>
-              {session.isWorktree && (
-                <span className="shrink-0 rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
-                  worktree
-                </span>
-              )}
             </span>
           </Tooltip>
 
