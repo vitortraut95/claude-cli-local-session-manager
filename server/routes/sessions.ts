@@ -3,6 +3,7 @@ import {
   continueSession,
   createSessionWorktree,
   deleteSession,
+  deleteSessionBranch,
   deleteSessionWorktree,
   getSessionPrompts,
   getSessionRepoInsights,
@@ -48,6 +49,23 @@ sessionsRouter.delete("/:id", async (req, res) => {
     }
     if (err instanceof SessionActiveError) {
       res.status(409).json({ success: false, error: err.message });
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+sessionsRouter.delete("/:id/branch", async (req, res) => {
+  try {
+    const branch = typeof req.query.branch === "string" ? req.query.branch : "";
+    await deleteSessionBranch(req.params.id, branch);
+    res.json({ success: true });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ success: false, error: err.message });
       return;
     }
     res.status(500).json({

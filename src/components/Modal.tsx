@@ -3,12 +3,14 @@ import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "./Button";
 
-type ModalSize = "sm" | "md" | "lg";
+type ModalSize = "sm" | "md" | "lg" | "xl" | "xxl";
 
 const SIZE_CLASSES: Record<ModalSize, string> = {
   sm: "max-w-sm",
   md: "max-w-lg",
   lg: "max-w-2xl",
+  xl: "max-w-4xl",
+  xxl: "max-w-6xl",
 };
 
 type ModalProps = {
@@ -21,9 +23,14 @@ type ModalProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   isConfirmLoading?: boolean;
+  isConfirmDisabled?: boolean;
   confirmVariant?: "primary" | "danger";
   size?: ModalSize;
   icon?: ReactNode;
+  /** Optional third footer action (e.g. "Clear"), rendered on the opposite side from
+   *  Cancel/Confirm so it can't be mistaken for either of them. */
+  onSecondary?: () => void;
+  secondaryLabel?: string;
 };
 
 /**
@@ -43,9 +50,12 @@ export function Modal({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   isConfirmLoading = false,
+  isConfirmDisabled = false,
   confirmVariant = "primary",
   size = "md",
   icon,
+  onSecondary,
+  secondaryLabel,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -60,16 +70,16 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600/80 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600/80 px-4"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className={`flex max-h-[80vh] w-full ${SIZE_CLASSES[size]} flex-col rounded-xl bg-white shadow-xl dark:bg-gray-900`}
+        className={`flex max-h-[98dvh] w-full ${SIZE_CLASSES[size]} flex-col rounded-xl bg-white shadow-xl dark:bg-gray-900`}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-gray-100 p-4 dark:border-gray-800">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-8 py-4 dark:border-gray-800">
           <div className="flex items-start gap-3">
             {icon}
             <h2
@@ -84,25 +94,34 @@ export function Modal({
           </Button>
         </div>
 
-        <div className="overflow-y-auto p-4">{children}</div>
+        <div className="overflow-y-auto px-8 py-4">{children}</div>
 
         {(onConfirm ?? onCancel) && (
-          <div className="flex justify-end gap-2 border-t border-gray-100 p-4 dark:border-gray-800">
-            {onCancel && (
-              <Button variant="outline" onClick={onCancel} disabled={isConfirmLoading}>
-                {cancelLabel}
-              </Button>
-            )}
-            {onConfirm && (
-              <Button
-                variant={confirmVariant === "danger" ? "danger" : "primary"}
-                onClick={onConfirm}
-                disabled={isConfirmLoading}
-                icon={isConfirmLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              >
-                {confirmLabel}
-              </Button>
-            )}
+          <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-8 py-4 dark:border-gray-800">
+            <div>
+              {onSecondary && (
+                <Button variant="ghost" onClick={onSecondary} disabled={isConfirmLoading}>
+                  {secondaryLabel}
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {onCancel && (
+                <Button variant="outline" onClick={onCancel} disabled={isConfirmLoading}>
+                  {cancelLabel}
+                </Button>
+              )}
+              {onConfirm && (
+                <Button
+                  variant={confirmVariant === "danger" ? "danger" : "primary"}
+                  onClick={onConfirm}
+                  disabled={isConfirmLoading || isConfirmDisabled}
+                  icon={isConfirmLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                >
+                  {confirmLabel}
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>

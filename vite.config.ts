@@ -11,6 +11,7 @@ export default defineConfig({
     proxy: {
       "/sessions": "http://localhost:58231",
       "/system": "http://localhost:58231",
+      "/tasks": "http://localhost:58231",
     },
   },
 });

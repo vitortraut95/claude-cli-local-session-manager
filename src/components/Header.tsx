@@ -1,12 +1,24 @@
-import { Bot } from "lucide-react";
+import { Bot, Plus } from "lucide-react";
+import { useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useUpdate } from "../hooks/useUpdate";
+import { useUsageLimits } from "../hooks/useUsageLimits";
+import { Button } from "./Button";
+import { NewTaskModal } from "./NewTaskModal";
 import { ThemeToggle } from "./ThemeToggle";
 import { UpdateButton } from "./UpdateButton";
+import { UsageLimitsBadge } from "./UsageLimitsBadge";
 
 export function Header() {
   const { theme, toggleTheme } = useTheme();
   const { status: updateStatus, checking, updating, applyUpdate } = useUpdate();
+  const {
+    status: usageStatus,
+    loading: usageLoading,
+    error: usageError,
+    refresh: refreshUsage,
+  } = useUsageLimits();
+  const [showNewTaskModal, setShowNewTaskModal] = useState(false);
 
   return (
     <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -26,6 +38,15 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Button onClick={() => setShowNewTaskModal(true)} icon={<Plus className="h-4 w-4" />}>
+            Nova tarefa
+          </Button>
+          <UsageLimitsBadge
+            status={usageStatus}
+            loading={usageLoading}
+            error={usageError}
+            onRefresh={() => refreshUsage(true)}
+          />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <UpdateButton
             status={updateStatus}
@@ -35,6 +56,8 @@ export function Header() {
           />
         </div>
       </div>
+
+      <NewTaskModal open={showNewTaskModal} onClose={() => setShowNewTaskModal(false)} />
     </header>
   );
 }

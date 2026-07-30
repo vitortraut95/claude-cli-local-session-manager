@@ -50,6 +50,15 @@ export async function deleteWorktree(id: string): Promise<void> {
   await withServerErrorMessage(() => client.delete(`/${encodeURIComponent(id)}/worktree`));
 }
 
+/** Deletes `branch` in the session's own working directory (git branch -D) — offered alongside
+ *  session deletion for non-worktree sessions (see server-side deleteSessionBranch for why
+ *  worktree-backed ones don't need this: their own worktree cleanup already deletes the branch). */
+export async function deleteBranch(id: string, branch: string): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.delete(`/${encodeURIComponent(id)}/branch`, { params: { branch } }),
+  );
+}
+
 /** Ends `siblingSessionId`'s terminal process, checks out `branch` in the shared directory, and
  *  resumes `id` there (see server-side stopSiblingAndResume for why this is one call). */
 export async function stopAndCheckoutResume(

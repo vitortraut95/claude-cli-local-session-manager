@@ -207,14 +207,16 @@ export function useSessions() {
   }, []);
 
   /**
-   * `cleanupWorktree` runs the worktree removal *before* deleting the session, with its own
-   * independent success/error toast — a failure there (e.g. uncommitted changes blocking it)
-   * doesn't stop the session deletion that follows, since the two aren't actually coupled
-   * server-side; the caller (SessionsPage's delete-confirm checkbox) just offers to do both in
-   * one click when the session happens to be worktree-backed.
+   * `cleanupWorktree`/`cleanupBranch` run before deleting the session, each with its own
+   * independent success/error toast — a failure there (e.g. uncommitted changes blocking a
+   * worktree removal, or the branch being checked out elsewhere) doesn't stop the session
+   * deletion that follows, since none of these are actually coupled server-side. The caller
+   * (SessionsPage's delete-confirm checkboxes) offers worktree cleanup for worktree-backed
+   * sessions and branch cleanup for everything else — a worktree's own cleanup already deletes
+   * its branch, so the two are mutually exclusive, never both true at once.
    */
   const removeSession = useCallback(
-    async (id: string, cleanupWorktree = false) => {
+    async (id: string, cleanupWorktree = false, cleanupBranch = false, branchName?: string) => {
       setPending(id, "delete");
       try {
         if (cleanupWorktree) {
@@ -226,6 +228,13 @@ export function useSessions() {
               err instanceof Error ? err.message : "Could not clean up the worktree.",
               "error",
             );
+          }
+        } else if (cleanupBranch && branchName) {
+          try {
+            await sessionsApi.deleteBranch(id, branchName);
+            showToast(`Branch "${branchName}" deleted.`, "success");
+          } catch (err) {
+            showToast(err instanceof Error ? err.message : "Could not delete the branch.", "error");
           }
         }
         await sessionsApi.deleteSession(id);

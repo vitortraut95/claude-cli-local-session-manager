@@ -5,8 +5,18 @@ import {
   startUpdate,
   UpdateBlockedError,
 } from "../services/updateService.js";
+import { getClaudeUsageStatus } from "../services/usageService.js";
 
 export const systemRouter = Router();
+
+systemRouter.get("/usage-limits", async (req, res) => {
+  try {
+    const status = await getClaudeUsageStatus(req.query.refresh === "1");
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
 
 systemRouter.get("/update-status", async (_req, res) => {
   try {

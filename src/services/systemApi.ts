@@ -31,3 +31,43 @@ export async function fetchUpdateJobStatus(): Promise<UpdateJobStatus> {
   const { data } = await client.get<UpdateJobStatus>("/update-job");
   return data;
 }
+
+export type ClaudeUsageLimit = {
+  kind: string;
+  group: string;
+  percent: number;
+  severity: string;
+  resetsAt: string | null;
+  isActive: boolean;
+};
+
+export type ClaudeExtraUsage = {
+  isEnabled: boolean;
+  monthlyLimit: number;
+  usedCredits: number;
+  utilization: number | null;
+  currency: string;
+};
+
+export type ClaudeUsageStatus = {
+  limits: ClaudeUsageLimit[];
+  extraUsage: ClaudeExtraUsage | null;
+};
+
+type ErrorResponseBody = { error?: unknown };
+
+/** `forceRefresh` bypasses the server's own short cache — used by the header widget's manual
+ *  refresh button, since a plain mount-time fetch is happy with a slightly stale value. */
+export async function fetchUsageLimits(forceRefresh = false): Promise<ClaudeUsageStatus> {
+  try {
+    const { data } = await client.get<ClaudeUsageStatus>("/usage-limits", {
+      params: forceRefresh ? { refresh: "1" } : undefined,
+    });
+    return data;
+  } catch (err) {
+    if (axios.isAxiosError<ErrorResponseBody>(err) && typeof err.response?.data?.error === "string") {
+      throw new Error(err.response.data.error, { cause: err });
+    }
+    throw err;
+  }
+}

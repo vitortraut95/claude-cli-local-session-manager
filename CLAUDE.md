@@ -206,10 +206,53 @@ spelunking at the start of a task.
     partial failure can't leave the directory checked out to the wrong branch with nothing running
     in it. This can discard whatever the other terminal hadn't saved/committed; the client-side
     confirmation copy says so plainly rather than hiding it behind a generic "Continue?" dialog.
+- **"New task" modal** (`Header.tsx` → `NewTaskModal.tsx`, `server/services/taskService.ts`,
+  `server/routes/tasks.ts`) lets you paste a Jira link, pick/type a project folder, and get a
+  brand-new isolated worktree + branch with a terminal already running `claude "<prompt>"` — the
+  ticket id + your instructions passed as a positional arg, which starts an interactive session
+  with that text as the first message (no temp file/stdin needed). Always mounted (like
+  `UsageDetailsModal`'s convention, just via an `open` prop instead of conditional rendering) so
+  closing it by accident (Escape, backdrop click) never loses what you typed — only the "Limpar"
+  button or a successful create actually resets the form.
+  - **Split into 4 separate awaited API calls** (`repo-info` → `resolve-base-branch` → `worktree`
+    → `launch`), not one — the modal shows each as its own step (pending/doing/done/error) so a
+    failure is visibly attributable to one exact step instead of one opaque error. Learned this
+    the hard way: an earlier version ran it as a single call, and a Warp TOML-escaping bug (see
+    below) left a branch+worktree created with no way to tell from the UI that the last step
+    (opening the terminal) was the one that actually failed.
+  - **Base branch is always freshly fetched from origin** (`resolveBaseBranchRef` in `git.ts`) via
+    `git fetch origin refs/heads/<branch>:refs/remotes/origin/<branch>` — deliberately not a
+    `checkout`+`pull` of the local branch, since that would require checking it out somewhere and
+    could collide with whatever's already checked out in the main folder. Falls back to a local
+    ref only if the fetch fails (offline, no origin, local-only branch).
+  - **Warp's TOML tab-config generation** (`launchWarp`/`toTomlBasicString` in
+    `sessionService.ts`) must escape `\n`/`\r`, not just `\`/`"` — a TOML basic string can't
+    contain a raw newline, so a multi-paragraph prompt (blank lines between sections) used to
+    produce a `commands = [...]` value invalid enough that Warp refused to load the tab config at
+    all ("TOML parse error ... invalid basic string"). Single-line test prompts never exposed
+    this.
+  - **Blocks on the Jira MCP being connected** (`getJiraMcpStatus` in `taskService.ts`) — shells
+    out to `claude mcp list` (the CLI's own health-checked list; there's no faster "just check
+    Jira" command) and looks for any configured server name matching `/jira|atlassian/i`, since
+    the configured name varies per user/org. Re-checked every time the modal opens, plus a manual
+    "Verificar novamente" button, since `claude mcp login` happens in a separate terminal this app
+    has no way to observe.
+- **Claude usage-limits badge** (`Header.tsx` → `UsageLimitsBadge.tsx`, `useUsageLimits.ts`,
+  `server/services/usageService.ts`) reads the OAuth access token out of
+  `~/.claude/.credentials.json` and calls the same undocumented account-usage endpoint
+  (`GET https://api.anthropic.com/api/oauth/usage`, header `anthropic-beta: oauth-2025-04-20`)
+  that Claude Code's own status line and third-party "Claude usage" VS Code extensions use —
+  found by inspecting two such extensions' bundled source
+  (`harshagarwal1012.claude-usage-bar`, `ajax1029.clusage`) already installed locally. Reports a
+  generic `limits` array (`kind`, `percent`, `resetsAt`, ...) rather than hardcoding "session" and
+  "weekly" fields, so a new limit kind Anthropic adds just shows up. **The access token itself
+  never leaves `usageService.ts`** — it's read into memory, used once for the `Authorization`
+  header, and only the computed percentages/timestamps cross into the response; never log or
+  return the raw credentials file. Fetched once on mount (no polling, same philosophy as
+  everything else in this app) with a 30s server-side cache and a manual click-to-refresh.
 
 ## to-do's
 
-- **Show usage limits and reset times.** show all usages and limits info at header.
 - **Add resume (terminal) with multi select.** When has selected items has only delete action, add
   also resume button.
 - **Refresh on focus.** when the web page has focus (react option) run the refresh to avoid seeing

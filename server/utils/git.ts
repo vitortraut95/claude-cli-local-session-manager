@@ -53,6 +53,113 @@ export async function isLinkedWorktree(cwd: string): Promise<boolean> {
 }
 
 /**
+ * Resolves `cwd` to its repo's main checkout root regardless of whether `cwd` itself is the main
+ * checkout or a linked worktree — `--git-common-dir` is shared by every worktree of a repo, so
+ * `path.dirname` of it is always the main root (same trick `removeWorktreeAndBranch` uses). Used
+ * by the "new task" flow so picking an already-active worktree as the source folder still creates
+ * the new task's worktree as a sibling off the shared main repo, not nested inside another worktree.
+ */
+export async function getRepoRoot(cwd: string): Promise<string | null> {
+  const dirs = await getGitDirs(cwd);
+  return dirs ? path.dirname(dirs.commonGitDir) : null;
+}
+
+export async function branchExists(cwd: string, branch: string): Promise<boolean> {
+  try {
+    await runGit(["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`], cwd);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Best-effort default base branch for the "new task" form: prefers whatever `origin/HEAD` points
+ * at (the repo's actual configured default), falls back to a local `main`/`master` branch, and
+ * finally the current branch — better than hardcoding "main" for repos that use "master" or
+ * something else entirely.
+ */
+const ORIGIN_HEAD_REF_PATTERN = /^refs\/remotes\/origin\/(.+)$/;
+
+export async function getDefaultBaseBranch(cwd: string): Promise<string> {
+  try {
+    const ref = await runGit(["symbolic-ref", "refs/remotes/origin/HEAD"], cwd);
+    const match = ORIGIN_HEAD_REF_PATTERN.exec(ref);
+    if (match?.[1]) return match[1];
+  } catch {
+    // No origin, or no HEAD set for it (e.g. `git remote set-head origin` never ran) — fall through.
+  }
+
+  for (const candidate of ["main", "master"]) {
+    if (await branchExists(cwd, candidate)) return candidate;
+  }
+
+  try {
+    return await runGit(["rev-parse", "--abbrev-ref", "HEAD"], cwd);
+  } catch {
+    return "main";
+  }
+}
+
+/**
+ * Updates the `origin/<baseBranch>` remote-tracking ref to the latest commit on the remote, so a
+ * new task branches off a fresh base rather than whatever the local ref last happened to point
+ * at. Deliberately a plain `fetch` (not a `checkout` + `pull`, and not updating the local branch
+ * ref directly): a remote-tracking ref isn't tied to any worktree's HEAD, so this is always safe
+ * to run even while `baseBranch` is checked out and actively being worked on elsewhere in the
+ * repo — the equivalent `git fetch origin <baseBranch>:<baseBranch>` form would refuse to run in
+ * that exact case ("refusing to fetch into branch ... checked out"). Best-effort: offline, no
+ * `origin`, or a repo with no such branch upstream just fall through to whatever local ref exists.
+ */
+async function fetchOriginBranch(cwd: string, baseBranch: string): Promise<void> {
+  await runGit(
+    ["fetch", "origin", `refs/heads/${baseBranch}:refs/remotes/origin/${baseBranch}`],
+    cwd,
+  );
+}
+
+/**
+ * Resolves the actual starting commit for a new task's branch: tries to fetch the latest
+ * `origin/<baseBranch>` first (see `fetchOriginBranch`) and prefers that when it succeeds, since
+ * that's the freshest available commit. Falls back to a local branch of the same name — either
+ * because there's no origin/network, or because this is a local-only branch that was never
+ * pushed — and only gives up if neither exists.
+ */
+export async function resolveBaseBranchRef(cwd: string, baseBranch: string): Promise<string> {
+  const fetched = await fetchOriginBranch(cwd, baseBranch)
+    .then(() => true)
+    .catch(() => false);
+  if (fetched) return `origin/${baseBranch}`;
+
+  if (await branchExists(cwd, baseBranch)) return baseBranch;
+
+  throw new Error(`Base branch "${baseBranch}" was not found locally or on origin.`);
+}
+
+/** Deletes a local branch (`git branch -D`) in `cwd` — used when a session is deleted and the
+ *  user also wants its branch gone. No `--force` beyond `-D` itself: git still refuses outright
+ *  if `branch` is the directory's currently checked-out branch, surfacing that as a normal error. */
+export async function deleteLocalBranch(cwd: string, branch: string): Promise<void> {
+  await runGit(["branch", "-D", branch], cwd);
+}
+
+/**
+ * Creates a new linked worktree at `worktreePath` on a fresh `branchName`, branched off
+ * `baseBranchRef` — the "new task" flow's own worktree creation, distinct from
+ * `createSessionWorktree` in sessionService.ts (which delegates to the CLI's `--worktree` flag and
+ * can't take a custom branch name or base branch). `git worktree add` creates any missing parent
+ * directories itself.
+ */
+export async function createWorktreeWithBranch(
+  repoRoot: string,
+  worktreePath: string,
+  branchName: string,
+  baseBranchRef: string,
+): Promise<void> {
+  await runGit(["worktree", "add", "-b", branchName, worktreePath, baseBranchRef], repoRoot);
+}
+
+/**
  * `git worktree list --porcelain` reports one block per worktree, each starting with a
  * `worktree <path>` line and (unless detached) a `branch refs/heads/<name>` line — the only way
  * to learn which branch a worktree has checked out from outside it, needed here because

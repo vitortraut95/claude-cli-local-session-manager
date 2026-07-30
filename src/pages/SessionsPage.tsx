@@ -61,19 +61,26 @@ export function SessionsPage() {
   // default each time a new deletion is requested (handleDeleteRequest), same as CreateWorktreeModal
   // re-initializing on open, so a previous session's unchecked choice can't leak into the next one.
   const [cleanupWorktreeOnDelete, setCleanupWorktreeOnDelete] = useState(true);
+  // Only meaningful for non-worktree sessions with a known gitBranch — unlike the worktree
+  // checkbox above, this defaults to *off*: deleting a branch is more surprising/harder to notice
+  // than deleting a worktree folder, so it should be an explicit opt-in each time.
+  const [cleanupBranchOnDelete, setCleanupBranchOnDelete] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   const handleDeleteRequest = (session: Session) => {
     setSessionPendingDeletion(session);
     setCleanupWorktreeOnDelete(true);
+    setCleanupBranchOnDelete(false);
   };
 
   const handleConfirmDelete = async () => {
     if (!sessionPendingDeletion) return;
     const id = sessionPendingDeletion.id;
     const cleanupWorktree = sessionPendingDeletion.isWorktree && cleanupWorktreeOnDelete;
+    const cleanupBranch = !sessionPendingDeletion.isWorktree && cleanupBranchOnDelete;
+    const branchName = sessionPendingDeletion.gitBranch ?? undefined;
     setSessionPendingDeletion(null);
-    await removeSession(id, cleanupWorktree);
+    await removeSession(id, cleanupWorktree, cleanupBranch, branchName);
   };
 
   const handleConfirmBulkDelete = async () => {
@@ -207,6 +214,17 @@ export function SessionsPage() {
               className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
             />
             Also clean up the worktree — removes its folder and the branch git created for it.
+          </label>
+        )}
+        {!sessionPendingDeletion?.isWorktree && sessionPendingDeletion?.gitBranch && (
+          <label className="mt-3 flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <input
+              type="checkbox"
+              checked={cleanupBranchOnDelete}
+              onChange={(event) => setCleanupBranchOnDelete(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+            />
+            Also delete the local branch "{sessionPendingDeletion.gitBranch}".
           </label>
         )}
       </ConfirmDialog>

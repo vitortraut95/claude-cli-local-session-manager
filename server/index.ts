@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import { sessionsRouter } from "./routes/sessions.js";
 import { systemRouter } from "./routes/system.js";
+import { tasksRouter } from "./routes/tasks.js";
 
 const PORT = Number(process.env.PORT ?? 58231);
 
@@ -11,6 +12,7 @@ app.use(express.json());
 
 app.use("/sessions", sessionsRouter);
 app.use("/system", systemRouter);
+app.use("/tasks", tasksRouter);
 
 app.listen(PORT, () => {
   console.log(`Claude Session Manager API listening on http://localhost:${PORT}`);

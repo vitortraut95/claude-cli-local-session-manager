@@ -21,7 +21,7 @@ import {
 } from "../utils/claudeProjects.js";
 import { summarizeUsage } from "../utils/pricing.js";
 import { getNicknames, setNickname } from "../utils/nicknames.js";
-import { isLinkedWorktree, removeWorktreeAndBranch, runGit } from "../utils/git.js";
+import { deleteLocalBranch, isLinkedWorktree, removeWorktreeAndBranch, runGit } from "../utils/git.js";
 
 const UNTITLED = "Untitled";
 const TITLE_MAX_LENGTH = 100;
@@ -370,6 +370,32 @@ export async function deleteSession(id: string): Promise<void> {
 }
 
 /**
+ * Deletes a local git branch in the session's own working directory — offered as an option
+ * alongside session deletion (see routes/sessions.ts `DELETE /:id/branch`) for sessions that
+ * aren't worktree-backed; a worktree's own "clean up worktree" checkbox already deletes its
+ * branch as part of `removeWorktreeAndBranch`, so this is the non-worktree equivalent. `branch`
+ * comes from the client (the session's own `gitBranch` field) rather than being re-derived here,
+ * same as `stopSiblingAndResume`'s `branch` param.
+ */
+export async function deleteSessionBranch(id: string, branch: string): Promise<void> {
+  if (!isSafeSessionId(id)) {
+    throw new Error(`Invalid session id "${id}"`);
+  }
+  const trimmedBranch = branch.trim();
+  if (!trimmedBranch) {
+    throw new Error("A branch name is required.");
+  }
+
+  const cwd = await findSessionCwd(id);
+  if (!cwd) throw new SessionNotFoundError(id);
+  if (!(await directoryExists(cwd))) {
+    throw new Error(`This session's original directory no longer exists ("${cwd}").`);
+  }
+
+  await deleteLocalBranch(cwd, trimmedBranch);
+}
+
+/**
  * Nicknames are purely local (see `nicknames.ts`), but still gated on the session being
  * inactive for consistency with the other mutating actions — not for data-race reasons (nothing
  * here touches the session's own `.jsonl`), just so a session can't be relabeled while someone
@@ -463,7 +489,7 @@ function trySpawnDetached(bin: string, args: string[], cwd?: string): Promise<bo
   });
 }
 
-async function directoryExists(dir: string): Promise<boolean> {
+export async function directoryExists(dir: string): Promise<boolean> {
   try {
     return (await stat(dir)).isDirectory();
   } catch {
@@ -553,6 +579,23 @@ async function pruneStaleWarpTabConfigs(dir: string): Promise<void> {
 }
 
 /**
+ * Escapes `value` to sit inside a TOML basic (double-quoted, single-line) string. Backslash must
+ * be escaped first — the other replacements each introduce a fresh backslash of their own, which
+ * would get double-escaped if this ran after them. Newline/carriage-return escaping matters more
+ * here than it looks: a TOML basic string can't contain a raw newline at all (only a multi-line
+ * `"""..."""` string can), so a multi-paragraph "new task" prompt with blank lines between
+ * sections used to produce a `commands = [...]` value invalid enough that Warp refused to even
+ * load the tab config ("TOML parse error ... invalid basic string").
+ */
+function toTomlBasicString(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n");
+}
+
+/**
  * Warp has no `-e`/`--` flag to run a command on launch — the only way in is writing a "Tab
  * Config" TOML file and opening it through Warp's own `warp://tab_config/<name>` URI scheme
  * (verified working: the pane respects `directory` and runs `commands` on open, unlike the
@@ -570,11 +613,10 @@ async function launchWarp(command: string, cwd?: string): Promise<boolean> {
   if (!commandExists("warp-terminal")) return false;
 
   const name = `${WARP_TAB_CONFIG_PREFIX}${Date.now()}`;
-  const escapedCommand = command.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const toml =
     `name = "${name}"\n\n[[panes]]\nid = "main"\ntype = "terminal"\n` +
-    (cwd ? `directory = "${cwd.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"\n` : "") +
-    `commands = ["${escapedCommand}"]\n`;
+    (cwd ? `directory = "${toTomlBasicString(cwd)}"\n` : "") +
+    `commands = ["${toTomlBasicString(command)}"]\n`;
 
   const dir = getWarpTabConfigsDir();
   await mkdir(dir, { recursive: true });
@@ -588,7 +630,7 @@ async function launchWarp(command: string, cwd?: string): Promise<boolean> {
 }
 
 /** Wraps `value` in single quotes for a POSIX shell, escaping any embedded ones. */
-function posixShellQuote(value: string): string {
+export function posixShellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
@@ -691,7 +733,7 @@ export async function openInVSCode(id: string): Promise<void> {
  * isn't installed, per `launchWarp`'s own `commandExists`/platform checks) — no user-facing toggle
  * for this anymore.
  */
-async function launchInTerminal(command: string, cwd?: string): Promise<void> {
+export async function launchInTerminal(command: string, cwd?: string): Promise<void> {
   if (await launchWarp(command, cwd)) {
     return;
   }
