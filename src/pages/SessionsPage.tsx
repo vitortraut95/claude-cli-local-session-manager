@@ -108,7 +108,7 @@ export function SessionsPage() {
     if (filteredCount === 0) return <EmptyState hasSearchQuery={hasActiveFilter} />;
 
     const rangeStart = (page - 1) * perPage + 1;
-    const rangeEnd = Math.min(page * perPage);
+    const rangeEnd = Math.min(page * perPage, filteredCount);
 
     return (
       <>

@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch index.ts",
+    "dev": "tsx watch --exclude \"**/.claude/**\" index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint ."

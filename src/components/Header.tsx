@@ -1,9 +1,10 @@
-import { Bot, Plus } from "lucide-react";
+import { Bot, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useUpdate } from "../hooks/useUpdate";
 import { useUsageLimits } from "../hooks/useUsageLimits";
 import { Button } from "./Button";
+import { CleanupModal } from "./CleanupModal";
 import { NewTaskModal } from "./NewTaskModal";
 import { ThemeToggle } from "./ThemeToggle";
 import { UpdateButton } from "./UpdateButton";
@@ -19,6 +20,7 @@ export function Header() {
     refresh: refreshUsage,
   } = useUsageLimits();
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
+  const [showCleanupModal, setShowCleanupModal] = useState(false);
 
   return (
     <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -41,6 +43,13 @@ export function Header() {
           <Button onClick={() => setShowNewTaskModal(true)} icon={<Plus className="h-4 w-4" />}>
             Nova tarefa
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowCleanupModal(true)}
+            icon={<Sparkles className="h-4 w-4" />}
+          >
+            Limpeza
+          </Button>
           <UsageLimitsBadge
             status={usageStatus}
             loading={usageLoading}
@@ -58,6 +67,7 @@ export function Header() {
       </div>
 
       <NewTaskModal open={showNewTaskModal} onClose={() => setShowNewTaskModal(false)} />
+      <CleanupModal open={showCleanupModal} onClose={() => setShowCleanupModal(false)} />
     </header>
   );
 }

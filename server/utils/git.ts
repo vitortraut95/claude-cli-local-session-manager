@@ -174,26 +174,72 @@ export async function checkoutNewBranch(
   await runGit(["checkout", "-b", branchName, baseBranchRef], repoRoot);
 }
 
+export type WorktreeEntry = { path: string; branch: string | null };
+
 /**
- * `git worktree list --porcelain` reports one block per worktree, each starting with a
- * `worktree <path>` line and (unless detached) a `branch refs/heads/<name>` line — the only way
- * to learn which branch a worktree has checked out from outside it, needed here because
- * `removeWorktreeAndBranch` has to capture the branch name *before* removing the worktree makes
- * it unqueryable.
+ * `git worktree list --porcelain` reports one block per worktree (main checkout included), each
+ * starting with a `worktree <path>` line and (unless detached) a `branch refs/heads/<name>` line.
+ * Shared by `getWorktreeBranch` (single lookup) and the cleanup scan (`cleanupService.ts`, needs
+ * every entry to find linked worktrees whose branch might be safe to remove).
  */
+export async function listWorktrees(repoRoot: string): Promise<WorktreeEntry[]> {
+  const list = await runGit(["worktree", "list", "--porcelain"], repoRoot);
+  return list
+    .split("\n\n")
+    .map((block) => {
+      const lines = block.split("\n");
+      const worktreeLine = lines.find((line) => line.startsWith("worktree "));
+      const branchLine = lines.find((line) => line.startsWith("branch refs/heads/"));
+      return {
+        path: worktreeLine ? worktreeLine.slice("worktree ".length) : "",
+        branch: branchLine ? branchLine.slice("branch refs/heads/".length) : null,
+      };
+    })
+    .filter((entry) => entry.path !== "");
+}
+
+/** Looks up the one branch checked out at `worktreePath` — needed because
+ *  `removeWorktreeAndBranch` has to capture the branch name *before* removing the worktree makes
+ *  it unqueryable. */
 async function getWorktreeBranch(worktreePath: string, mainRoot: string): Promise<string | null> {
-  const list = await runGit(["worktree", "list", "--porcelain"], mainRoot);
+  const entries = await listWorktrees(mainRoot);
   const target = path.resolve(worktreePath);
+  return entries.find((entry) => path.resolve(entry.path) === target)?.branch ?? null;
+}
 
-  for (const block of list.split("\n\n")) {
-    const lines = block.split("\n");
-    const worktreeLine = lines.find((line) => line.startsWith("worktree "));
-    if (!worktreeLine || path.resolve(worktreeLine.slice("worktree ".length)) !== target) continue;
+/**
+ * Clears git's own administrative records for worktrees whose directory was deleted by hand
+ * (e.g. a plain `rm -rf`) instead of through `removeWorktreeAndBranch` — those leave `git worktree
+ * list` still reporting an entry that points nowhere. Doesn't touch any real files; purely
+ * internal git bookkeeping.
+ */
+export async function pruneWorktrees(repoRoot: string): Promise<void> {
+  await runGit(["worktree", "prune"], repoRoot);
+}
 
-    const branchLine = lines.find((line) => line.startsWith("branch refs/heads/"));
-    return branchLine ? branchLine.slice("branch refs/heads/".length) : null;
+/**
+ * True if every commit on `branch` is already an ancestor of `ontoBranch` — the same notion
+ * `git branch -d` (lowercase, no force) uses to decide a branch is safe to delete without losing
+ * work. Purely local (no fetch), matching the cleanup scan's "local only" scope.
+ */
+export async function isBranchMerged(
+  repoRoot: string,
+  branch: string,
+  ontoBranch: string,
+): Promise<boolean> {
+  try {
+    await runGit(["merge-base", "--is-ancestor", branch, ontoBranch], repoRoot);
+    return true;
+  } catch {
+    return false;
   }
-  return null;
+}
+
+/** True if `worktreePath` has any uncommitted changes (staged, unstaged, or untracked) — the
+ *  cleanup scan only offers to remove a worktree when this is false, so "safe, one click" holds. */
+export async function hasUncommittedChanges(worktreePath: string): Promise<boolean> {
+  const status = await runGit(["status", "--porcelain"], worktreePath);
+  return status.length > 0;
 }
 
 /**
