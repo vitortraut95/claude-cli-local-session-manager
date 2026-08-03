@@ -64,12 +64,12 @@ export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
       findings.push({
         id: `prune:${repoRoot}`,
         kind: "prune-worktrees",
-        title: `Worktrees apagados manualmente em "${path.basename(repoRoot)}"`,
+        title: `Worktrees deleted manually in "${path.basename(repoRoot)}"`,
         description:
           `${staleEntries.length} worktree(s) (${staleEntries
             .map((entry) => entry.branch ?? "?")
-            .join(", ")}) foram apagados direto no disco, fora do app — o git ainda guarda o ` +
-          `registro deles. Isso só limpa esse registro interno, não apaga nada.`,
+            .join(", ")}) were deleted directly on disk, outside the app — git still keeps their ` +
+          `record. This only cleans up that internal record, without deleting anything.`,
         command: `git worktree prune`,
         repoRoot,
         worktreePath: null,
@@ -95,11 +95,11 @@ export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
       findings.push({
         id: `remove:${entry.path}`,
         kind: "remove-merged-worktree",
-        title: `Worktree "${entry.branch}" já mergeado`,
+        title: `Worktree "${entry.branch}" already merged`,
         description:
-          `A branch "${entry.branch}" já está mergeada em "${defaultBranch}" e o worktree não ` +
-          `tem sessão ativa nem alterações pendentes. Pode remover o worktree e apagar a branch ` +
-          `local com segurança.`,
+          `Branch "${entry.branch}" is already merged into "${defaultBranch}" and the worktree ` +
+          `has no active session or pending changes. The worktree and local branch can be safely ` +
+          `removed.`,
         command: `git worktree remove ${entry.path} && git branch -D ${entry.branch}`,
         repoRoot,
         worktreePath: entry.path,

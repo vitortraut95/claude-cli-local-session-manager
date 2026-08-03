@@ -43,7 +43,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
         .catch((err) => {
           if (!cancelled) {
             setLoadError(
-              err instanceof Error ? err.message : "Não foi possível buscar itens de limpeza.",
+              err instanceof Error ? err.message : "Could not fetch cleanup items.",
             );
           }
         })
@@ -62,10 +62,10 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
     try {
       await cleanupApi.executeCleanupFinding(finding);
       setFindings((current) => current.filter((item) => item.id !== finding.id));
-      showToast("Item resolvido com sucesso.", "success");
+      showToast("Item resolved successfully.", "success");
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : "Não foi possível executar essa limpeza.",
+        err instanceof Error ? err.message : "Could not run this cleanup.",
         "error",
       );
     } finally {
@@ -76,39 +76,39 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
   return (
     <Modal
       open={open}
-      title="Limpeza"
+      title="Cleanup"
       onClose={onClose}
       onCancel={onClose}
-      cancelLabel="Fechar"
+      cancelLabel="Close"
       size="xl"
     >
       <div className="flex flex-col gap-2 mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
         <p>
-          <strong>Como funciona:</strong> verifica localmente os worktrees de todos os projetos
-          conhecidos pelo app à procura das situações:
+          <strong>How it works:</strong> locally checks the worktrees of every project known to
+          the app for these situations:
         </p>
         <ul className="mt-1 list-disc space-y-1 pl-5">
           <li>
-            <strong>Worktree apagado manualmente</strong> (pasta removida direto no disco, fora do
-            app) — o git ainda guarda o registro dele; a correção só limpa esse registro, sem apagar
-            nada.
+            <strong>Worktree deleted manually</strong> (folder removed directly on disk, outside
+            the app) — git still keeps its record of it; the fix only cleans up that record,
+            without deleting anything.
           </li>
           <li>
-            <strong>Worktree com branch já mergeada</strong> na branch padrão do repositório, sem
-            sessão ativa nem alterações pendentes — pode ser removido com segurança (worktree e
-            branch local juntos).
+            <strong>Worktree with an already-merged branch</strong> into the repository's default
+            branch, with no active session or pending changes — can be safely removed (worktree
+            and local branch together).
           </li>
         </ul>
       </div>
 
       {loading ? (
         <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-          <Loader2 className="h-4 w-4 animate-spin" /> Buscando...
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
         </p>
       ) : loadError ? (
         <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
       ) : findings.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Nada encontrado para limpar.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Nothing found to clean up.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {findings.map((finding) => (
@@ -132,7 +132,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
                     ) : undefined
                   }
                 >
-                  Executar
+                  Run
                 </Button>
               </div>
               <p className="mt-2 break-all font-mono text-xs text-gray-400 dark:text-gray-500">

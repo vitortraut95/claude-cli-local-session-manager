@@ -212,18 +212,18 @@ spelunking at the start of a task.
   ticket id + your instructions passed as a positional arg, which starts an interactive session
   with that text as the first message (no temp file/stdin needed). Always mounted (like
   `UsageDetailsModal`'s convention, just via an `open` prop instead of conditional rendering) so
-  closing it by accident (Escape, backdrop click) never loses what you typed — only the "Limpar"
+  closing it by accident (Escape, backdrop click) never loses what you typed — only the "Clear"
   button or a successful create actually resets the form.
   - **Everything the modal remembers lives in one gitignored `userPreferences.json`** at the repo
     root (`server/services/preferencesService.ts`, `GET`/`PUT /tasks/preferences`) — `defaultPrompt`,
-    `branchTypes` (the "Tipo de branch" select's options, first entry = the default selection), and
-    `useWorktreeByDefault` (the "não usar worktree" checkbox's default state). Created lazily on
+    `branchTypes` (the "Branch type" select's options, first entry = the default selection), and
+    `useWorktreeByDefault` (the "don't use worktree" checkbox's default state). Created lazily on
     first save; a fresh clone (or a missing/malformed file) just falls back to hardcoded defaults —
-    `getUserPreferences()` never throws over it. A custom ("Outro") branch type that's actually used to
+    `getUserPreferences()` never throws over it. A custom ("Other") branch type that's actually used to
     create a task gets appended to `branchTypes` automatically (best-effort PUT right after the
     "launch" step succeeds) — no separate "manage branch types" UI, it just remembers itself; to
     reorder/remove entries, hand-edit the JSON file directly. The prompt and worktree-default fields
-    each get their own "Salvar como padrão"/"Usar como padrão" link (shown only when the field's
+    each get their own "Save as default"/"Use as default" link (shown only when the field's
     current value differs from what's stored), same UX for both. Every write is a full-object PUT
     (the route validates the whole shape), so each save path must include the *stored*, not the
     in-progress-draft, value for whichever fields it isn't intentionally changing — otherwise saving
@@ -250,7 +250,7 @@ spelunking at the start of a task.
     out to `claude mcp list` (the CLI's own health-checked list; there's no faster "just check
     Jira" command) and looks for any configured server name matching `/jira|atlassian/i`, since
     the configured name varies per user/org. Re-checked every time the modal opens, plus a manual
-    "Verificar novamente" button, since `claude mcp login` happens in a separate terminal this app
+    "Check again" button, since `claude mcp login` happens in a separate terminal this app
     has no way to observe.
 - **Claude usage-limits badge** (`Header.tsx` → `UsageLimitsBadge.tsx`, `useUsageLimits.ts`,
   `server/services/usageService.ts`) reads the OAuth access token out of

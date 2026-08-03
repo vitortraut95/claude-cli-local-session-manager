@@ -57,7 +57,7 @@ export type JiraMcpStatus = {
   serverName: string | null;
 };
 
-/** Checked when the "new task" modal opens (and on demand via its "Verificar novamente" button) —
+/** Checked when the "new task" modal opens (and on demand via its "Check again" button) —
  *  the launched `claude` session needs a connected Jira/Atlassian MCP server to actually look up
  *  the pasted ticket, so creation is blocked until this comes back connected. */
 export async function fetchJiraMcpStatus(): Promise<JiraMcpStatus> {

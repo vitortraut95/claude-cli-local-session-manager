@@ -41,14 +41,14 @@ export function Header() {
 
         <div className="flex items-center gap-3">
           <Button onClick={() => setShowNewTaskModal(true)} icon={<Plus className="h-4 w-4" />}>
-            Nova tarefa
+            New task
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowCleanupModal(true)}
             icon={<Sparkles className="h-4 w-4" />}
           >
-            Limpeza
+            Cleanup
           </Button>
           <UsageLimitsBadge
             status={usageStatus}
