@@ -160,6 +160,21 @@ export async function createWorktreeWithBranch(
 }
 
 /**
+ * Creates a new branch off `baseBranchRef` and checks it out directly in `repoRoot` — the
+ * "skip worktree" path for the "new task" flow, opted into via the modal's checkbox. Unlike
+ * `createWorktreeWithBranch`, this switches the branch checked out in the repo's own main
+ * checkout, so it can collide with whatever another terminal/session already has open there —
+ * the modal warns about this before letting the checkbox be checked.
+ */
+export async function checkoutNewBranch(
+  repoRoot: string,
+  branchName: string,
+  baseBranchRef: string,
+): Promise<void> {
+  await runGit(["checkout", "-b", branchName, baseBranchRef], repoRoot);
+}
+
+/**
  * `git worktree list --porcelain` reports one block per worktree, each starting with a
  * `worktree <path>` line and (unless detached) a `branch refs/heads/<name>` line — the only way
  * to learn which branch a worktree has checked out from outside it, needed here because

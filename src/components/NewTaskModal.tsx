@@ -54,6 +54,15 @@ const STEP_LABELS: Record<StepKey, string> = {
 };
 const STEP_ORDER: StepKey[] = ["repo", "base", "worktree", "launch"];
 
+/** The "worktree" step's label changes when the "sem worktree" checkbox is on — the other three
+ *  steps read the same regardless. */
+function getStepLabel(key: StepKey, useWorktree: boolean): string {
+  if (key === "worktree" && !useWorktree) {
+    return "Criar a branch diretamente na pasta do projeto (sem worktree)";
+  }
+  return STEP_LABELS[key];
+}
+
 /**
  * Always mounted (Header renders it unconditionally, toggling `open`) rather than the
  * mount-on-open convention other modals use — an accidental close (Escape, backdrop click, the
@@ -132,31 +141,46 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   const [loadingRepoInfo, setLoadingRepoInfo] = useState(false);
   const [repoError, setRepoError] = useState<string | null>(null);
 
+  // Default false — the collision-free worktree path stays the default; checking this opts into
+  // checking the new branch out directly in the project folder instead.
+  const [skipWorktree, setSkipWorktree] = useState(false);
+
   const [creating, setCreating] = useState(false);
   // Empty while idle — the static "what will happen" explanation renders instead. Populated with
   // all four steps (each "pending") right when a create attempt starts, so the modal always shows
   // exactly which step is running, finished, or failed rather than one opaque success/failure.
   const [steps, setSteps] = useState<Step[]>([]);
 
+  // Re-fetched every time the modal opens (not just once on mount) — a project folder typed by
+  // hand into "Outro" during task creation only becomes a known option once its new session's
+  // `.jsonl` exists, so re-running this on open is the only way a just-used repo shows up in the
+  // dropdown next time without a full page reload. Deferred via a 0ms timer (same as
+  // `checkJiraMcp` below) so its setState calls happen in a callback, not synchronously in the
+  // effect body itself.
   useEffect(() => {
+    if (!open) return;
     let cancelled = false;
-    tasksApi
-      .fetchProjectFolders()
-      .then((list) => {
-        if (cancelled) return;
-        setProjects(list);
-        if (list.length === 0) setFolderChoice(OTHER_FOLDER_VALUE);
-      })
-      .catch(() => {
-        if (!cancelled) setFolderChoice(OTHER_FOLDER_VALUE);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingProjects(false);
-      });
+    const timer = setTimeout(() => {
+      setLoadingProjects(true);
+      tasksApi
+        .fetchProjectFolders()
+        .then((list) => {
+          if (cancelled) return;
+          setProjects(list);
+          if (list.length === 0) setFolderChoice(OTHER_FOLDER_VALUE);
+        })
+        .catch(() => {
+          if (!cancelled) setFolderChoice(OTHER_FOLDER_VALUE);
+        })
+        .finally(() => {
+          if (!cancelled) setLoadingProjects(false);
+        });
+    }, 0);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, []);
+  }, [open]);
 
   useEffect(() => {
     let cancelled = false;
@@ -230,6 +254,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
     setBaseBranch("main");
     setBaseBranchTouched(false);
     setRepoError(null);
+    setSkipWorktree(false);
     setSteps([]);
   }, [projects, defaultPromptLoaded]);
 
@@ -282,7 +307,13 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   const handleCreate = async () => {
     if (!canSubmit) return;
     setCreating(true);
-    setSteps(STEP_ORDER.map((key) => ({ key, label: STEP_LABELS[key], status: "pending" })));
+    setSteps(
+      STEP_ORDER.map((key) => ({
+        key,
+        label: getStepLabel(key, !skipWorktree),
+        status: "pending",
+      })),
+    );
 
     const composedPrompt = [jiraLink.trim() ? `Tarefa: ${jiraLink.trim()}` : null, trimmedPrompt]
       .filter((part): part is string => Boolean(part))
@@ -302,6 +333,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
         trimmedFolder,
         trimmedBranch,
         baseBranchRef,
+        !skipWorktree,
       );
       updateStep("worktree", "done");
 
@@ -532,6 +564,25 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
               </div>
             </div>
 
+            <div>
+              <label className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={skipWorktree}
+                  onChange={(event) => setSkipWorktree(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+                />
+                Não usar worktree — trocar a branch direto na pasta do projeto.
+              </label>
+              {skipWorktree && (
+                <p className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-400">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  Sem worktree, a branch nova é trocada direto na pasta principal do projeto —
+                  isso pode gerar conflitos se houver outro terminal ou sessão já ativo nela.
+                </p>
+              )}
+            </div>
+
             {steps.length > 0 ? (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/50">
                 <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -601,13 +652,23 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
                     a partir dessa versão atualizada.
                   </li>
                   <li>
-                    Cria um worktree isolado (pasta própria, separada da principal) já nessa branch
-                    — é isso que permite trabalhar nessa tarefa sem interferir em outro terminal
-                    aberto no mesmo projeto.
+                    {skipWorktree ? (
+                      <>
+                        Troca para essa branch direto na pasta principal do projeto — sem worktree,
+                        pode conflitar com outro terminal já aberto nela.
+                      </>
+                    ) : (
+                      <>
+                        Cria um worktree isolado (pasta própria, separada da principal) já nessa
+                        branch — é isso que permite trabalhar nessa tarefa sem interferir em outro
+                        terminal aberto no mesmo projeto.
+                      </>
+                    )}
                   </li>
                   <li>
-                    Abre um terminal novo dentro desse worktree e inicia o <code>claude</code> já
-                    com o prompt acima como primeira mensagem.
+                    Abre um terminal novo{" "}
+                    {skipWorktree ? "na pasta do projeto" : "dentro desse worktree"} e inicia o{" "}
+                    <code>claude</code> já com o prompt acima como primeira mensagem.
                   </li>
                 </ol>
               </div>

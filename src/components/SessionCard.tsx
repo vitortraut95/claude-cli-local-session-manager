@@ -6,7 +6,6 @@ import {
   Copy,
   DollarSign,
   Folder,
-  GitBranch,
   GitFork,
   Lightbulb,
   Loader2,
@@ -285,19 +284,6 @@ export function SessionCard({
             </Tooltip>
           )}
         </div>
-
-        {session.gitBranch && (
-          <span
-            className="flex min-w-0 items-center gap-1 text-sm text-gray-600 dark:text-gray-400"
-            title={`Git branch: ${session.gitBranch}`}
-          >
-            <GitBranch className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">
-              {session.isWorktree && "Worktree branch: "}
-              {session.gitBranch}
-            </span>
-          </span>
-        )}
 
         {hasSiblingActiveSession && (
           <Tooltip content="Another terminal already has this project open — check out a branch in a separate worktree instead of fighting over the same files.">

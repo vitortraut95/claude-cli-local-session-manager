@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { directoryExists, launchInTerminal, listSessions, posixShellQuote } from "./sessionService.js";
 import {
   branchExists,
+  checkoutNewBranch,
   createWorktreeWithBranch,
   getDefaultBaseBranch,
   getRepoRoot,
@@ -65,31 +66,27 @@ export type ProjectFolderOption = {
  * Folder choices for the "new task" form's project select — derived from existing sessions' own
  * working directories (there's no independent registry of project folders, see CLAUDE.md), deduped
  * by repo root rather than raw directory so a worktree-backed session collapses onto the same
- * option as its main checkout instead of appearing as a separate entry.
+ * option as its main checkout instead of appearing as a separate entry. The label always comes
+ * from the repo root's own directory name, never `session.project` — that field is just
+ * `path.basename(workingDirectory)` (see `resolveProject` in sessionService.ts), so for a
+ * worktree-backed session it'd be the worktree/branch name (e.g. `fix-PROJ-123`) rather than the
+ * repo's name.
  */
 export async function getKnownProjectFolders(): Promise<ProjectFolderOption[]> {
   const sessions = await listSessions();
   const uniqueDirs = [
     ...new Set(sessions.map((s) => s.workingDirectory).filter((d): d is string => d !== null)),
   ];
-  const labelByDir = new Map(
-    sessions
-      .filter((s): s is typeof s & { workingDirectory: string } => s.workingDirectory !== null)
-      .map((s) => [s.workingDirectory, s.project] as const),
-  );
 
   const roots = await Promise.all(uniqueDirs.map((dir) => getRepoRoot(dir)));
 
-  const options = new Map<string, string>();
+  const options = new Set<string>();
   uniqueDirs.forEach((dir, i) => {
-    const root = roots[i] ?? dir;
-    if (!options.has(root)) {
-      options.set(root, labelByDir.get(dir) ?? path.basename(root));
-    }
+    options.add(roots[i] ?? dir);
   });
 
-  return [...options.entries()]
-    .map(([folderPath, label]) => ({ path: folderPath, label }))
+  return [...options]
+    .map((folderPath) => ({ path: folderPath, label: path.basename(folderPath) }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -212,11 +209,18 @@ export async function resolveBaseBranch(
  * `folderPath`) so starting a new task never collides with whatever session might already be
  * active in that folder. `baseBranchRef` comes from `resolveBaseBranch` above (a separate step),
  * not re-resolved here.
+ *
+ * `useWorktree` is the escape hatch behind the modal's "no worktree" checkbox (default off, so the
+ * collision-free worktree path stays the default): when false, this instead checks out the new
+ * branch directly in `folderPath` via `checkoutNewBranch`, and the returned "worktreePath" is just
+ * `repoRoot` — the caller only ever uses it as "where to open the terminal", so no separate field
+ * is needed for the two cases.
  */
 export async function createTaskWorktree(
   folderPath: string,
   branchName: string,
   baseBranchRef: string,
+  useWorktree: boolean,
 ): Promise<{ worktreePath: string }> {
   const trimmedFolder = folderPath.trim();
   const trimmedBranch = branchName.trim();
@@ -242,8 +246,20 @@ export async function createTaskWorktree(
     throw new Error(`Branch "${trimmedBranch}" already exists.`);
   }
 
+  if (!useWorktree) {
+    await checkoutNewBranch(repoRoot, trimmedBranch, trimmedRef);
+    return { worktreePath: repoRoot };
+  }
+
   const worktreeDirName = trimmedBranch.replace(/[^A-Za-z0-9_-]/g, "-");
   const worktreePath = path.join(repoRoot, ".claude", "worktrees", worktreeDirName);
+
+  // Guards against reusing an existing worktree's name/folder even when its branch was already
+  // deleted (or never existed) — the `branchExists` check above wouldn't catch that case, and
+  // `git worktree add` would otherwise fail with a much less clear "already exists" error.
+  if (await directoryExists(worktreePath)) {
+    throw new Error(`A worktree named "${worktreeDirName}" already exists.`);
+  }
 
   await createWorktreeWithBranch(repoRoot, worktreePath, trimmedBranch, trimmedRef);
   return { worktreePath };

@@ -20,6 +20,14 @@ function extractStringField(body: unknown, key: string): string {
   return "";
 }
 
+function extractBooleanField(body: unknown, key: string, defaultValue: boolean): boolean {
+  if (typeof body === "object" && body !== null && key in body) {
+    const value = (body as Record<string, unknown>)[key];
+    if (typeof value === "boolean") return value;
+  }
+  return defaultValue;
+}
+
 tasksRouter.get("/projects", async (_req, res) => {
   try {
     const projects = await getKnownProjectFolders();
@@ -87,6 +95,7 @@ tasksRouter.post("/worktree", async (req, res) => {
       extractStringField(req.body, "folderPath"),
       extractStringField(req.body, "branchName"),
       extractStringField(req.body, "baseBranchRef"),
+      extractBooleanField(req.body, "useWorktree", true),
     );
     res.json(result);
   } catch (err) {
