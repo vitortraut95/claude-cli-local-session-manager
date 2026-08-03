@@ -1,13 +1,16 @@
 import { Router } from "express";
 import {
+  getUserPreferences,
+  saveUserPreferences,
+  type UserPreferences,
+} from "../services/preferencesService.js";
+import {
   createTaskWorktree,
-  getDefaultPrompt,
   getJiraMcpStatus,
   getKnownProjectFolders,
   getRepoInfo,
   launchTaskTerminal,
   resolveBaseBranch,
-  saveDefaultPrompt,
 } from "../services/taskService.js";
 
 export const tasksRouter = Router();
@@ -28,6 +31,17 @@ function extractBooleanField(body: unknown, key: string, defaultValue: boolean):
   return defaultValue;
 }
 
+function isValidPreferences(body: unknown): body is UserPreferences {
+  if (typeof body !== "object" || body === null) return false;
+  const candidate = body as Record<string, unknown>;
+  return (
+    typeof candidate.defaultPrompt === "string" &&
+    Array.isArray(candidate.branchTypes) &&
+    candidate.branchTypes.every((item) => typeof item === "string") &&
+    typeof candidate.useWorktreeByDefault === "boolean"
+  );
+}
+
 tasksRouter.get("/projects", async (_req, res) => {
   try {
     const projects = await getKnownProjectFolders();
@@ -37,21 +51,26 @@ tasksRouter.get("/projects", async (_req, res) => {
   }
 });
 
-tasksRouter.get("/default-prompt", async (_req, res) => {
+tasksRouter.get("/preferences", async (_req, res) => {
   try {
-    const content = await getDefaultPrompt();
-    res.json({ content });
+    const preferences = await getUserPreferences();
+    res.json(preferences);
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
-tasksRouter.put("/default-prompt", async (req, res) => {
+tasksRouter.put("/preferences", async (req, res) => {
   try {
-    await saveDefaultPrompt(extractStringField(req.body, "content"));
+    if (!isValidPreferences(req.body)) {
+      throw new Error(
+        "Malformed preferences payload — expected { defaultPrompt: string, branchTypes: string[], useWorktreeByDefault: boolean }.",
+      );
+    }
+    await saveUserPreferences(req.body);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({
+    res.status(400).json({
       success: false,
       error: err instanceof Error ? err.message : String(err),
     });

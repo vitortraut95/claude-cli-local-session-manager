@@ -24,8 +24,9 @@ type NewTaskModalProps = {
 
 const OTHER_FOLDER_VALUE = "__other__";
 const OTHER_PREFIX_VALUE = "__other__";
-const BRANCH_PREFIXES = ["fix", "env", "feature"] as const;
-const DEFAULT_BRANCH_PREFIX: (typeof BRANCH_PREFIXES)[number] = "fix";
+// Just the pre-load fallback shown before userPreferences.json's own `branchTypes` arrives (see
+// the preferences-fetch effect below) — the real, user-editable list lives in that file.
+const FALLBACK_BRANCH_TYPES = ["feature", "fix", "hotfix", "env"];
 
 /** Matches a Jira-style ticket key both in a bare form ("PROJ-123") and inside a full browse URL
  *  ("https://company.atlassian.net/browse/PROJ-123?foo=bar"). */
@@ -80,9 +81,9 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
 
   // "checking" is also the initial value (rather than e.g. "disconnected") so the modal never
   // flashes a false warning before the first check has even run.
-  const [jiraMcpStatus, setJiraMcpStatus] = useState<"checking" | "connected" | "disconnected" | "error">(
-    "checking",
-  );
+  const [jiraMcpStatus, setJiraMcpStatus] = useState<
+    "checking" | "connected" | "disconnected" | "error"
+  >("checking");
   const [jiraMcpServerName, setJiraMcpServerName] = useState<string | null>(null);
   const [jiraMcpError, setJiraMcpError] = useState<string | null>(null);
 
@@ -128,7 +129,11 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   const [promptText, setPromptText] = useState("");
   const [savingDefaultPrompt, setSavingDefaultPrompt] = useState(false);
 
-  const [prefixChoice, setPrefixChoice] = useState<string>(DEFAULT_BRANCH_PREFIX);
+  // The user-editable list backing the "Tipo de branch" select — loaded from userPreferences.json
+  // and grown automatically (see handleCreate) whenever a task is created with a custom ("Outro")
+  // type, so it shows up as a normal option next time without any separate management step.
+  const [branchTypes, setBranchTypes] = useState<string[]>(FALLBACK_BRANCH_TYPES);
+  const [prefixChoice, setPrefixChoice] = useState<string>(FALLBACK_BRANCH_TYPES[0] ?? "feature");
   const [customPrefix, setCustomPrefix] = useState("");
   // null means "not yet edited by hand" — the branch suffix field then tracks the Jira id
   // automatically. Once the user types into it, it holds their exact text from then on. The
@@ -142,8 +147,13 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   const [repoError, setRepoError] = useState<string | null>(null);
 
   // Default false — the collision-free worktree path stays the default; checking this opts into
-  // checking the new branch out directly in the project folder instead.
+  // checking the new branch out directly in the project folder instead. `useWorktreeDefault`
+  // mirrors userPreferences.json's stored default (see the preferences-fetch effect and
+  // `handleSaveWorktreeDefault` below); `skipWorktree` is this form's own live, possibly-unsaved
+  // draft of it — kept separate the same way `promptText`/`defaultPromptLoaded` are for the prompt.
   const [skipWorktree, setSkipWorktree] = useState(false);
+  const [useWorktreeDefault, setUseWorktreeDefault] = useState(true);
+  const [savingWorktreeDefault, setSavingWorktreeDefault] = useState(false);
 
   const [creating, setCreating] = useState(false);
   // Empty while idle — the static "what will happen" explanation renders instead. Populated with
@@ -182,14 +192,24 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
     };
   }, [open]);
 
+  // Fetched once on mount (not on every open, unlike the project-folder list above) — the loaded
+  // values only ever seed the form's initial state, and re-running this on every open would
+  // clobber whatever the user already typed/picked across an accidental close, exactly what the
+  // "always mounted" doc comment above is there to prevent.
   useEffect(() => {
     let cancelled = false;
     tasksApi
-      .fetchDefaultPrompt()
-      .then((content) => {
+      .fetchPreferences()
+      .then((prefs) => {
         if (cancelled) return;
-        setDefaultPromptLoaded(content);
-        setPromptText(content);
+        setDefaultPromptLoaded(prefs.defaultPrompt);
+        setPromptText(prefs.defaultPrompt);
+        const loadedBranchTypes =
+          prefs.branchTypes.length > 0 ? prefs.branchTypes : FALLBACK_BRANCH_TYPES;
+        setBranchTypes(loadedBranchTypes);
+        setPrefixChoice(loadedBranchTypes[0] ?? "feature");
+        setUseWorktreeDefault(prefs.useWorktreeByDefault);
+        setSkipWorktree(!prefs.useWorktreeByDefault);
       })
       .catch(() => {
         if (!cancelled) setDefaultPromptLoaded("");
@@ -242,21 +262,21 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   }, [effectiveFolderPath, baseBranchTouched]);
 
   // Used both by the Clear button and after a successful create — keeps the loaded projects list
-  // and default prompt (no need to refetch either), only wipes what the user filled in.
+  // and preferences (no need to refetch either), only wipes what the user filled in.
   const resetForm = useCallback(() => {
     setJiraLink("");
     setFolderChoice(projects.length === 0 ? OTHER_FOLDER_VALUE : "");
     setCustomFolderPath("");
     setPromptText(defaultPromptLoaded ?? "");
-    setPrefixChoice(DEFAULT_BRANCH_PREFIX);
+    setPrefixChoice(branchTypes[0] ?? FALLBACK_BRANCH_TYPES[0] ?? "feature");
     setCustomPrefix("");
     setBranchSuffixManual(null);
     setBaseBranch("main");
     setBaseBranchTouched(false);
     setRepoError(null);
-    setSkipWorktree(false);
+    setSkipWorktree(!useWorktreeDefault);
     setSteps([]);
-  }, [projects, defaultPromptLoaded]);
+  }, [projects, defaultPromptLoaded, branchTypes, useWorktreeDefault]);
 
   const promptDirty =
     (defaultPromptLoaded !== null && promptText !== defaultPromptLoaded) || !defaultPromptLoaded;
@@ -264,7 +284,11 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   const handleSaveDefaultPrompt = async () => {
     setSavingDefaultPrompt(true);
     try {
-      await tasksApi.saveDefaultPrompt(promptText);
+      await tasksApi.savePreferences({
+        defaultPrompt: promptText,
+        branchTypes,
+        useWorktreeByDefault: useWorktreeDefault,
+      });
       setDefaultPromptLoaded(promptText);
       showToast("Prompt padrão salvo.", "success");
     } catch (err) {
@@ -274,6 +298,31 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
       );
     } finally {
       setSavingDefaultPrompt(false);
+    }
+  };
+
+  // Whether the "não usar worktree" checkbox's current value differs from the stored default —
+  // mirrors `promptDirty`'s role for the prompt, gating the "Usar como padrão" link below.
+  const worktreeDefaultDirty = !skipWorktree !== useWorktreeDefault;
+
+  const handleSaveWorktreeDefault = async () => {
+    setSavingWorktreeDefault(true);
+    try {
+      const nextUseWorktreeDefault = !skipWorktree;
+      await tasksApi.savePreferences({
+        defaultPrompt: defaultPromptLoaded ?? "",
+        branchTypes,
+        useWorktreeByDefault: nextUseWorktreeDefault,
+      });
+      setUseWorktreeDefault(nextUseWorktreeDefault);
+      showToast("Preferência de worktree salva.", "success");
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Não foi possível salvar essa preferência.",
+        "error",
+      );
+    } finally {
+      setSavingWorktreeDefault(false);
     }
   };
 
@@ -340,6 +389,27 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
       updateStep("launch", "doing");
       await tasksApi.launchTaskTerminal(worktreePath, composedPrompt);
       updateStep("launch", "done");
+
+      // A custom ("Outro") branch type that was actually used becomes a normal option from now on
+      // — no separate "manage branch types" step, it just remembers itself. Best-effort: a failure
+      // here doesn't undo the task that was just successfully created.
+      if (
+        prefixChoice === OTHER_PREFIX_VALUE &&
+        effectivePrefix &&
+        !branchTypes.includes(effectivePrefix)
+      ) {
+        const updatedBranchTypes = [...branchTypes, effectivePrefix];
+        setBranchTypes(updatedBranchTypes);
+        tasksApi
+          .savePreferences({
+            defaultPrompt: defaultPromptLoaded ?? "",
+            branchTypes: updatedBranchTypes,
+            useWorktreeByDefault: useWorktreeDefault,
+          })
+          .catch(() => {
+            // Still usable for the rest of this session even if persisting it failed.
+          });
+      }
 
       showToast(
         "Terminal aberto. Verifique a barra de tarefas se ele não veio para frente.",
@@ -526,7 +596,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
                   value={prefixChoice}
                   onChange={(event) => setPrefixChoice(event.target.value)}
                 >
-                  {BRANCH_PREFIXES.map((prefix) => (
+                  {branchTypes.map((prefix) => (
                     <option key={prefix} value={prefix}>
                       {prefix}
                     </option>
@@ -565,20 +635,33 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
             </div>
 
             <div>
-              <label className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <input
-                  type="checkbox"
-                  checked={skipWorktree}
-                  onChange={(event) => setSkipWorktree(event.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
-                />
-                Não usar worktree — trocar a branch direto na pasta do projeto.
-              </label>
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <input
+                    type="checkbox"
+                    checked={skipWorktree}
+                    onChange={(event) => setSkipWorktree(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+                  />
+                  Não usar worktree — trocar a branch direto na pasta do projeto.
+                </label>
+                {worktreeDefaultDirty && (
+                  <Button
+                    variant="link"
+                    size="none"
+                    onClick={handleSaveWorktreeDefault}
+                    disabled={savingWorktreeDefault}
+                    className="shrink-0"
+                  >
+                    {savingWorktreeDefault ? "Salvando…" : "Usar como padrão"}
+                  </Button>
+                )}
+              </div>
               {skipWorktree && (
                 <p className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-400">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  Sem worktree, a branch nova é trocada direto na pasta principal do projeto —
-                  isso pode gerar conflitos se houver outro terminal ou sessão já ativo nela.
+                  Sem worktree, a branch nova é trocada direto na pasta principal do projeto — isso
+                  pode gerar conflitos se houver outro terminal ou sessão já ativo nela.
                 </p>
               )}
             </div>

@@ -80,19 +80,18 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
       onClose={onClose}
       onCancel={onClose}
       cancelLabel="Fechar"
-      size="lg"
+      size="xl"
     >
-      <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
-        <p className="mb-1 font-medium text-gray-700 dark:text-gray-300">O que essa busca faz:</p>
+      <div className="flex flex-col gap-2 mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
         <p>
-          Verifica, só localmente (sem chamada de rede), os worktrees de todos os projetos
-          conhecidos pelo app à procura de dois tipos de item:
+          <strong>Como funciona:</strong> verifica localmente os worktrees de todos os projetos
+          conhecidos pelo app à procura das situações:
         </p>
         <ul className="mt-1 list-disc space-y-1 pl-5">
           <li>
             <strong>Worktree apagado manualmente</strong> (pasta removida direto no disco, fora do
-            app) — o git ainda guarda o registro dele; a correção só limpa esse registro, sem
-            apagar nada.
+            app) — o git ainda guarda o registro dele; a correção só limpa esse registro, sem apagar
+            nada.
           </li>
           <li>
             <strong>Worktree com branch já mergeada</strong> na branch padrão do repositório, sem
@@ -100,22 +99,16 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
             branch local juntos).
           </li>
         </ul>
-        <p className="mt-1">
-          Cada item é reconferido do zero no momento de clicar em "Executar", pra evitar agir sobre
-          um estado que já mudou desde que a lista foi buscada.
-        </p>
       </div>
 
       {loading ? (
         <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-          <Loader2 className="h-4 w-4 animate-spin" /> Procurando itens de limpeza…
+          <Loader2 className="h-4 w-4 animate-spin" /> Buscando...
         </p>
       ) : loadError ? (
         <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
       ) : findings.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Nada para limpar por enquanto — nenhum worktree obsoleto ou já mergeado foi encontrado.
-        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Nada encontrado para limpar.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {findings.map((finding) => (
@@ -126,9 +119,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                 {finding.title}
               </p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                {finding.description}
-              </p>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{finding.description}</p>
               <div className="mt-3 flex items-center gap-2">
                 <Button
                   variant="outline"

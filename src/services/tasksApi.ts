@@ -31,15 +31,25 @@ export async function fetchProjectFolders(): Promise<ProjectFolderOption[]> {
   return data.projects;
 }
 
-export async function fetchDefaultPrompt(): Promise<string> {
+export type UserPreferences = {
+  defaultPrompt: string;
+  branchTypes: string[];
+  useWorktreeByDefault: boolean;
+};
+
+/** Everything the "new task" modal remembers between sessions — one JSON file
+ *  (`userPreferences.json`, see preferencesService.ts) instead of separate per-field files. */
+export async function fetchPreferences(): Promise<UserPreferences> {
   const { data } = await withServerErrorMessage(() =>
-    client.get<{ content: string }>("/default-prompt"),
+    client.get<UserPreferences>("/preferences"),
   );
-  return data.content;
+  return data;
 }
 
-export async function saveDefaultPrompt(content: string): Promise<void> {
-  await withServerErrorMessage(() => client.put("/default-prompt", { content }));
+/** Replaces the whole preferences file — callers must send the full object (merging in whatever
+ *  fields they aren't intentionally changing), not just the one field they care about. */
+export async function savePreferences(preferences: UserPreferences): Promise<void> {
+  await withServerErrorMessage(() => client.put("/preferences", preferences));
 }
 
 export type JiraMcpStatus = {

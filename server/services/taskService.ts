@@ -1,8 +1,5 @@
 import { execFile } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { directoryExists, launchInTerminal, listSessions, posixShellQuote } from "./sessionService.js";
 import {
@@ -13,49 +10,6 @@ import {
   getRepoRoot,
   resolveBaseBranchRef,
 } from "../utils/git.js";
-
-/**
- * Walks up from this file's own location looking for the monorepo root's `package.json` (the one
- * with a `workspaces` array — `server/package.json` doesn't have one). Anchoring to `__dirname`
- * rather than `process.cwd()` means this resolves correctly whether the server is started via
- * `tsx watch index.ts` (cwd = server/) or a built `dist/services/taskService.js` (one directory
- * deeper) — both would break a hardcoded `path.resolve(__dirname, "..", "..")`.
- */
-function findRepoRoot(startDir: string): string {
-  let dir = startDir;
-  while (true) {
-    const pkgPath = path.join(dir, "package.json");
-    if (existsSync(pkgPath)) {
-      try {
-        const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as { workspaces?: unknown };
-        if (Array.isArray(pkg.workspaces)) return dir;
-      } catch {
-        // Malformed package.json — keep walking up.
-      }
-    }
-    const parent = path.dirname(dir);
-    if (parent === dir) {
-      throw new Error("Could not locate the repo root (no package.json with a workspaces array).");
-    }
-    dir = parent;
-  }
-}
-
-const REPO_ROOT = findRepoRoot(path.dirname(fileURLToPath(import.meta.url)));
-const DEFAULT_PROMPT_PATH = path.join(REPO_ROOT, "newTaskDefaultPrompt.txt");
-
-/** Empty when the file has never been saved to yet — it's gitignored and created lazily. */
-export async function getDefaultPrompt(): Promise<string> {
-  try {
-    return await readFile(DEFAULT_PROMPT_PATH, "utf-8");
-  } catch {
-    return "";
-  }
-}
-
-export async function saveDefaultPrompt(content: string): Promise<void> {
-  await writeFile(DEFAULT_PROMPT_PATH, content, "utf-8");
-}
 
 export type ProjectFolderOption = {
   path: string;
