@@ -21,7 +21,13 @@ import {
 } from "../utils/claudeProjects.js";
 import { summarizeUsage } from "../utils/pricing.js";
 import { getNicknames, setNickname } from "../utils/nicknames.js";
-import { deleteLocalBranch, isLinkedWorktree, removeWorktreeAndBranch, runGit } from "../utils/git.js";
+import {
+  deleteLocalBranch,
+  getGitDirs,
+  isLinkedWorktree,
+  removeWorktreeAndBranch,
+  runGit,
+} from "../utils/git.js";
 
 const UNTITLED = "Untitled";
 const TITLE_MAX_LENGTH = 100;
@@ -208,18 +214,27 @@ export async function listSessions(): Promise<Session[]> {
   // Many sessions share the same workingDirectory — run `git rev-parse` once per unique
   // directory rather than once per session (buildSession itself only sets a false placeholder).
   const uniqueDirs = [...new Set(sessions.map((s) => s.workingDirectory).filter((d) => d !== null))];
-  const worktreeFlags = await Promise.all(uniqueDirs.map((dir) => isLinkedWorktree(dir)));
-  const isWorktreeByDir = new Map(uniqueDirs.map((dir, i) => [dir, worktreeFlags[i]]));
+  const gitDirsList = await Promise.all(uniqueDirs.map((dir) => getGitDirs(dir)));
+  const gitDirsByDir = new Map(uniqueDirs.map((dir, i) => [dir, gitDirsList[i]]));
 
   return sessions
-    .map((session) => ({
-      ...session,
-      nickname: nicknames[session.id] ?? null,
-      isActive: activeIds.has(session.id),
-      isWorktree: session.workingDirectory
-        ? isWorktreeByDir.get(session.workingDirectory) ?? false
-        : false,
-    }))
+    .map((session) => {
+      const gitDirs = session.workingDirectory ? gitDirsByDir.get(session.workingDirectory) : null;
+      const isWorktree = gitDirs ? gitDirs.gitDir !== gitDirs.commonGitDir : false;
+      // A worktree-backed session's own `project` (derived from its cwd's basename, see
+      // `resolveProject`) is the worktree/branch folder name, not the repo's — override it with
+      // the shared repo root's basename so worktree sessions collapse onto the same "project" as
+      // their main checkout, matching how the "new task" modal's `getKnownProjectFolders` already
+      // dedups by repo root instead of raw directory.
+      const project = gitDirs ? path.basename(path.dirname(gitDirs.commonGitDir)) : session.project;
+      return {
+        ...session,
+        project,
+        nickname: nicknames[session.id] ?? null,
+        isActive: activeIds.has(session.id),
+        isWorktree,
+      };
+    })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
