@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
+import { useLanguage } from "../hooks/useLanguage";
 import * as sessionsApi from "../services/sessionsApi";
 import type { Session } from "../types/session";
 
@@ -12,6 +13,7 @@ type PromptPreviewModalProps = {
 export function PromptPreviewModal({ session, open, onClose }: PromptPreviewModalProps) {
   const [fullPrompts, setFullPrompts] = useState<string[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const { t } = useLanguage();
 
   // `session.prompts` (from the /sessions list payload) is capped per-prompt at 300 chars to
   // keep that payload light — fetched here in full, on demand, only while this modal is open.
@@ -40,16 +42,16 @@ export function PromptPreviewModal({ session, open, onClose }: PromptPreviewModa
   return (
     <Modal open={open} title={session.title} onClose={onClose} size="lg">
       {displayPrompts === null ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Loading prompts…</p>
-      ) : displayPrompts.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          No prompts found for this session.
+          {t("promptPreviewModal.loading")}
         </p>
+      ) : displayPrompts.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t("promptPreviewModal.empty")}</p>
       ) : (
         <>
           {loadError && (
             <p className="mb-3 text-xs text-amber-600 dark:text-amber-400">
-              Couldn't load the full prompt text — showing a possibly truncated version.
+              {t("promptPreviewModal.loadError")}
             </p>
           )}
           <ol className="flex flex-col gap-3">

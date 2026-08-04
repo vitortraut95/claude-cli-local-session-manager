@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as sessionsApi from "../services/sessionsApi";
 import type { Session } from "../types/session";
+import { useLanguage } from "./useLanguage";
 import { useUrlParam } from "./useUrlState";
 import { useToast } from "./useToast";
 
@@ -40,6 +41,7 @@ export function useSessions() {
   const [pendingActions, setPendingActions] = useState<Record<string, PendingAction>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { showToast } = useToast();
+  const { t } = useLanguage();
 
   const perPage = parsePerPage(perPageRaw);
   const page = parsePage(pageRaw);
@@ -102,10 +104,14 @@ export function useSessions() {
       setSessions(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load sessions.");
+      setError(err instanceof Error ? err.message : t("useSessions.loadError"));
     } finally {
       setLoading(false);
     }
+    // `t` is intentionally omitted: useLanguage() returns a new `t` function identity on every
+    // render, and this callback feeds the mount-only useEffect below — depending on `t` here
+    // would re-fire that effect (and refetch sessions) on every render instead of just once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refresh = useCallback(() => {
@@ -223,31 +229,34 @@ export function useSessions() {
         if (cleanupWorktree) {
           try {
             await sessionsApi.deleteWorktree(id);
-            showToast("Worktree and its branch deleted.", "success");
+            showToast(t("useSessions.worktreeDeleted"), "success");
           } catch (err) {
             showToast(
-              err instanceof Error ? err.message : "Could not clean up the worktree.",
+              err instanceof Error ? err.message : t("useSessions.cleanupWorktreeError"),
               "error",
             );
           }
         } else if (cleanupBranch && branchName) {
           try {
             await sessionsApi.deleteBranch(id, branchName);
-            showToast(`Branch "${branchName}" deleted.`, "success");
+            showToast(t("useSessions.branchDeleted", { branch: branchName }), "success");
           } catch (err) {
-            showToast(err instanceof Error ? err.message : "Could not delete the branch.", "error");
+            showToast(
+              err instanceof Error ? err.message : t("useSessions.deleteBranchError"),
+              "error",
+            );
           }
         }
         await sessionsApi.deleteSession(id);
         setSessions((current) => current.filter((session) => session.id !== id));
-        showToast("Session deleted successfully.", "success");
+        showToast(t("useSessions.sessionDeleted"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Could not delete the session.", "error");
+        showToast(err instanceof Error ? err.message : t("useSessions.deleteSessionError"), "error");
       } finally {
         setPending(id, null);
       }
     },
-    [showToast, setPending],
+    [showToast, setPending, t],
   );
 
   const removeSessions = useCallback(
@@ -270,23 +279,28 @@ export function useSessions() {
 
       if (failedCount === 0) {
         showToast(
-          `Deleted ${succeededIds.size} session${succeededIds.size === 1 ? "" : "s"}.`,
+          succeededIds.size === 1
+            ? t("useSessions.deleted.one")
+            : t("useSessions.deleted.many", { count: succeededIds.size }),
           "success",
         );
       } else if (succeededIds.size === 0) {
         showToast(
-          `Could not delete ${failedCount} session${failedCount === 1 ? "" : "s"}.`,
+          failedCount === 1
+            ? t("useSessions.deleteFailed.one")
+            : t("useSessions.deleteFailed.many", { count: failedCount }),
           "error",
         );
       } else {
         showToast(
-          `Deleted ${succeededIds.size} session${succeededIds.size === 1 ? "" : "s"}, ` +
-            `${failedCount} failed.`,
+          succeededIds.size === 1
+            ? t("useSessions.deletedPartial.one", { failedCount })
+            : t("useSessions.deletedPartial.many", { count: succeededIds.size, failedCount }),
           "error",
         );
       }
     },
-    [showToast, setPending],
+    [showToast, setPending, t],
   );
 
   const setNickname = useCallback(
@@ -297,14 +311,17 @@ export function useSessions() {
         // Reload from the server rather than optimistically patching locally — a blank nickname
         // clears the override server-side, and this keeps that resolution in one place.
         await loadSessions();
-        showToast(nickname.trim() ? "Nickname saved." : "Nickname removed.", "success");
+        showToast(
+          nickname.trim() ? t("useSessions.nicknameSaved") : t("useSessions.nicknameRemoved"),
+          "success",
+        );
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Could not save the nickname.", "error");
+        showToast(err instanceof Error ? err.message : t("useSessions.saveNicknameError"), "error");
       } finally {
         setPending(id, null);
       }
     },
-    [showToast, setPending, loadSessions],
+    [showToast, setPending, loadSessions, t],
   );
 
   const [resumeConflict, setResumeConflict] = useState<{
@@ -348,14 +365,14 @@ export function useSessions() {
         // Linux window managers won't let a background process steal focus, so the new
         // terminal window may open behind this one — this toast is the only reliable signal
         // that it actually opened.
-        showToast("Terminal opened. Check your taskbar if it didn't come to the front.", "success");
+        showToast(t("useSessions.terminalOpened"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Could not resume the session.", "error");
+        showToast(err instanceof Error ? err.message : t("useSessions.resumeError"), "error");
       } finally {
         setPending(id, null);
       }
     },
-    [showToast, setPending],
+    [showToast, setPending, t],
   );
 
   const stopAndCheckoutResume = useCallback(
@@ -363,18 +380,15 @@ export function useSessions() {
       setPending(targetId, "continue");
       try {
         await sessionsApi.stopAndCheckoutResume(targetId, siblingId, branch);
-        showToast(
-          "Stopped the other terminal, checked out the branch, and opened a terminal here.",
-          "success",
-        );
+        showToast(t("useSessions.stoppedAndResumed"), "success");
         setResumeConflict(null);
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Could not switch sessions.", "error");
+        showToast(err instanceof Error ? err.message : t("useSessions.switchSessionsError"), "error");
       } finally {
         setPending(targetId, null);
       }
     },
-    [showToast, setPending],
+    [showToast, setPending, t],
   );
 
   const openInVSCode = useCallback(
@@ -382,14 +396,14 @@ export function useSessions() {
       setPending(id, "vscode");
       try {
         await sessionsApi.openInVSCode(id);
-        showToast("Opening in VS Code…", "success");
+        showToast(t("useSessions.openingVSCode"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Could not open VS Code.", "error");
+        showToast(err instanceof Error ? err.message : t("useSessions.openVSCodeError"), "error");
       } finally {
         setPending(id, null);
       }
     },
-    [showToast, setPending],
+    [showToast, setPending, t],
   );
 
   const openMissingWorktreeRootInVSCode = useCallback(
@@ -397,14 +411,14 @@ export function useSessions() {
       setPending(id, "vscode");
       try {
         await sessionsApi.openMissingWorktreeRootInVSCode(id);
-        showToast("Opening the project root in VS Code…", "success");
+        showToast(t("useSessions.openingRootVSCode"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Could not open VS Code.", "error");
+        showToast(err instanceof Error ? err.message : t("useSessions.openVSCodeError"), "error");
       } finally {
         setPending(id, null);
       }
     },
-    [showToast, setPending],
+    [showToast, setPending, t],
   );
 
   /**
@@ -424,17 +438,14 @@ export function useSessions() {
       setPending(session.id, "missing-root-resume");
       try {
         await sessionsApi.startFreshSessionAtMissingWorktreeRoot(session.id);
-        showToast(
-          "New terminal opened at the project root. Check your taskbar if it didn't come to the front.",
-          "success",
-        );
+        showToast(t("useSessions.newTerminalAtRoot"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Could not start a session there.", "error");
+        showToast(err instanceof Error ? err.message : t("useSessions.startSessionError"), "error");
       } finally {
         setPending(session.id, null);
       }
     },
-    [resumeSession, showToast, setPending],
+    [resumeSession, showToast, setPending, t],
   );
 
   // Only remaining caller is ResumeConflictModal's "create a worktree instead" option
@@ -444,17 +455,14 @@ export function useSessions() {
       setPending(id, "worktree-create");
       try {
         await sessionsApi.createWorktree(id, name);
-        showToast(
-          "Worktree created. Terminal opened — check your taskbar if it didn't come to the front.",
-          "success",
-        );
+        showToast(t("useSessions.worktreeCreated"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Could not create the worktree.", "error");
+        showToast(err instanceof Error ? err.message : t("useSessions.createWorktreeError"), "error");
       } finally {
         setPending(id, null);
       }
     },
-    [showToast, setPending],
+    [showToast, setPending, t],
   );
 
   const deleteWorktree = useCallback(
@@ -462,14 +470,14 @@ export function useSessions() {
       setPending(id, "worktree-delete");
       try {
         await sessionsApi.deleteWorktree(id);
-        showToast("Worktree and its branch deleted.", "success");
+        showToast(t("useSessions.worktreeDeleted"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Could not delete the worktree.", "error");
+        showToast(err instanceof Error ? err.message : t("useSessions.deleteWorktreeError"), "error");
       } finally {
         setPending(id, null);
       }
     },
-    [showToast, setPending],
+    [showToast, setPending, t],
   );
 
   return {

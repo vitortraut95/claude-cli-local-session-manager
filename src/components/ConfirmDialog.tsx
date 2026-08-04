@@ -1,5 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import type { ReactNode } from "react";
+import { useLanguage } from "../hooks/useLanguage";
 import { Modal } from "./Modal";
 
 type ConfirmDialogProps = {
@@ -19,13 +20,14 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   isLoading = false,
   onConfirm,
   onCancel,
   children,
 }: ConfirmDialogProps) {
+  const { t } = useLanguage();
   return (
     <Modal
       open={open}
@@ -33,8 +35,8 @@ export function ConfirmDialog({
       onClose={onCancel}
       onConfirm={onConfirm}
       onCancel={onCancel}
-      confirmLabel={confirmLabel}
-      cancelLabel={cancelLabel}
+      confirmLabel={confirmLabel ?? t("confirmDialog.confirm")}
+      cancelLabel={cancelLabel ?? t("confirmDialog.cancel")}
       isConfirmLoading={isLoading}
       confirmVariant="danger"
       size="sm"

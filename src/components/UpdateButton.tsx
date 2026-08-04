@@ -1,4 +1,6 @@
 import { Loader2, RefreshCw } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
+import type { TranslationKey } from "../i18n/translations";
 import type { UpdateStatus } from "../services/systemApi";
 import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
@@ -10,29 +12,37 @@ type UpdateButtonProps = {
   onUpdate: () => void;
 };
 
-function describeStatus(status: UpdateStatus | null, checking: boolean, updating: boolean) {
-  if (checking) return "Checking for updates…";
-  if (updating) return "Updating — running git pull and npm install…";
-  if (!status) return "Could not check for updates.";
-  if (!status.updateAvailable) return "Up to date";
+function describeStatus(
+  status: UpdateStatus | null,
+  checking: boolean,
+  updating: boolean,
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string,
+) {
+  if (checking) return t("updateButton.checking");
+  if (updating) return t("updateButton.updating");
+  if (!status) return t("updateButton.checkError");
+  if (!status.updateAvailable) return t("updateButton.upToDate");
 
-  const commits = status.behind === 1 ? "1 new commit" : `${status.behind} new commits`;
-  return `${commits} on ${status.tracking ?? status.branch} — click to update`;
+  const branch = status.tracking ?? status.branch;
+  return status.behind === 1
+    ? t("updateButton.updateAvailable.one", { branch })
+    : t("updateButton.updateAvailable.many", { count: status.behind, branch });
 }
 
 export function UpdateButton({ status, checking, updating, onUpdate }: UpdateButtonProps) {
+  const { t } = useLanguage();
   const isBusy = checking || updating;
   const updateAvailable = !!status?.updateAvailable;
   const disabled = isBusy || !updateAvailable;
 
   return (
-    <Tooltip content={describeStatus(status, checking, updating)}>
+    <Tooltip content={describeStatus(status, checking, updating, t)}>
       <span className="relative inline-flex">
         <Button
           variant="unstyled"
           onClick={onUpdate}
           disabled={disabled}
-          aria-label="Update application"
+          aria-label={t("updateButton.ariaLabel")}
           className={`border ${
             updateAvailable
               ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-950"
@@ -46,7 +56,7 @@ export function UpdateButton({ status, checking, updating, onUpdate }: UpdateBut
             )
           }
         >
-          Update
+          {t("updateButton.label")}
         </Button>
         {updateAvailable && !isBusy && (
           <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-900" />

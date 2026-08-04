@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { LanguageContext } from "../hooks/useLanguage";
 import { detectBrowserLanguage, type Language } from "../i18n/translations";
 import * as tasksApi from "../services/tasksApi";
 
-/**
- * Single shared fetch backing both the header's language switcher and the onboarding modal's
- * "seen once" gate. NewTaskModal keeps its own independent fetch/save for its own fields
- * (defaultPrompt/branchTypes/useWorktreeByDefault) — every write on either side goes through
- * `tasksApi.updatePreferences`, so neither side can clobber fields it doesn't own.
- */
-export function usePreferences() {
+/** Mirrors ToastProvider's shape: state lives here, consumed everywhere via useLanguage(). Fetches
+ *  preferences once for the whole app (not per-component) — writes go through
+ *  tasksApi.updatePreferences so NewTaskModal's own preference saves (different fields) can't
+ *  clobber these, or vice versa. */
+export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(detectBrowserLanguage());
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -43,5 +42,11 @@ export function usePreferences() {
     void tasksApi.updatePreferences({ hasSeenOnboarding: true });
   }, []);
 
-  return { language, setLanguage, hasSeenOnboarding, markOnboardingSeen, loaded };
+  return (
+    <LanguageContext.Provider
+      value={{ language, setLanguage, hasSeenOnboarding, markOnboardingSeen, loaded }}
+    >
+      {children}
+    </LanguageContext.Provider>
+  );
 }

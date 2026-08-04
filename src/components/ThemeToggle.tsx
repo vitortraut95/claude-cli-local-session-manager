@@ -1,4 +1,5 @@
 import { Moon, Sun } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
 import type { Theme } from "../hooks/useTheme";
 
 type ThemeToggleProps = {
@@ -7,6 +8,7 @@ type ThemeToggleProps = {
 };
 
 export function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
+  const { t } = useLanguage();
   const isDark = theme === "dark";
 
   return (
@@ -14,7 +16,7 @@ export function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
       type="button"
       role="switch"
       aria-checked={isDark}
-      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      aria-label={isDark ? t("themeToggle.switchToLight") : t("themeToggle.switchToDark")}
       onClick={onToggle}
       className="relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border border-gray-300 bg-gray-100 transition-colors dark:border-gray-700 dark:bg-gray-800"
     >

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
+import { useLanguage } from "../hooks/useLanguage";
 import * as sessionsApi from "../services/sessionsApi";
 import type { Session, SessionRepoInsights } from "../types/session";
 import { computeSessionInsights } from "../utils/sessionInsights";
@@ -10,14 +11,15 @@ type InsightsModalProps = {
   onClose: () => void;
 };
 
-const SCOPE_LABEL: Record<"repo" | "session", string> = {
-  repo: "Repo",
-  session: "Session",
-};
-
 export function InsightsModal({ session, open, onClose }: InsightsModalProps) {
   const [repoInsights, setRepoInsights] = useState<SessionRepoInsights | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const { t } = useLanguage();
+
+  const SCOPE_LABEL: Record<"repo" | "session", string> = {
+    repo: t("insightsModal.scopeRepo"),
+    session: t("insightsModal.scopeSession"),
+  };
 
   // Repo-level facts (CLAUDE.md presence, Explore-subagent topics) aren't in the /sessions list
   // payload, so they're fetched on demand here — guarded the same way as the other on-demand
@@ -42,23 +44,23 @@ export function InsightsModal({ session, open, onClose }: InsightsModalProps) {
   const insights = ready ? computeSessionInsights(session, repoInsights) : [];
 
   return (
-    <Modal open={open} title={`Insights — ${session.title}`} onClose={onClose} size="lg">
+    <Modal
+      open={open}
+      title={t("insightsModal.title", { title: session.title })}
+      onClose={onClose}
+      size="lg"
+    >
       {!ready ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Checking for ways to save tokens…
-        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t("insightsModal.loading")}</p>
       ) : (
         <>
           {loadError && (
             <p className="mb-3 text-xs text-amber-600 dark:text-amber-400">
-              Couldn't check the repo for a CLAUDE.md or exploration patterns — showing
-              session-level tips only.
+              {t("insightsModal.loadError")}
             </p>
           )}
           {insights.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Nothing stands out — this session looks efficient.
-            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t("insightsModal.empty")}</p>
           ) : (
             <ul className="flex flex-col gap-2">
               {insights.map((insight, index) => (

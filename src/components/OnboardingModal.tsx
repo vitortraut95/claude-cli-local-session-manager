@@ -1,12 +1,12 @@
 import { AlertTriangle, Copy, GitFork, GitMerge, HelpCircle, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { t, type Language, type TranslationKey } from "../i18n/translations";
+import { useLanguage } from "../hooks/useLanguage";
+import type { TranslationKey } from "../i18n/translations";
 import { Modal } from "./Modal";
 
 type OnboardingModalProps = {
   open: boolean;
   onClose: () => void;
-  language: Language;
 };
 
 type Step = {
@@ -48,11 +48,12 @@ const STEPS: Step[] = [
  * explaining the worktree-based dev workflow. Always mounted with an `open` prop, matching
  * UsageDetailsModal's convention: nothing here is per-open form state worth resetting.
  */
-export function OnboardingModal({ open, onClose, language }: OnboardingModalProps) {
+export function OnboardingModal({ open, onClose }: OnboardingModalProps) {
+  const { t } = useLanguage();
   return (
     <Modal
       open={open}
-      title={t(language, "onboarding.title")}
+      title={t("onboarding.title")}
       onClose={onClose}
       size="lg"
       icon={
@@ -62,16 +63,16 @@ export function OnboardingModal({ open, onClose, language }: OnboardingModalProp
       }
     >
       <div className="flex flex-col gap-4">
-        <p className="text-sm text-gray-600 dark:text-gray-400">{t(language, "onboarding.intro")}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">{t("onboarding.intro")}</p>
         <ol className="flex flex-col gap-3">
           {STEPS.map((step) => (
             <li key={step.titleKey} className="flex gap-2 rounded-lg border border-gray-200 p-3 dark:border-gray-800">
               {step.icon}
               <div className="flex flex-col gap-0.5">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {t(language, step.titleKey)}
+                  {t(step.titleKey)}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{t(language, step.bodyKey)}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t(step.bodyKey)}</p>
               </div>
             </li>
           ))}

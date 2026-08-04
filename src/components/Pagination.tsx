@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
 import { Button } from "./Button";
 
 type PaginationProps = {
@@ -8,6 +9,7 @@ type PaginationProps = {
 };
 
 export function Pagination({ page, pageCount, onChange }: PaginationProps) {
+  const { t } = useLanguage();
   return (
     <div className="flex items-center justify-center gap-3">
       <Button
@@ -15,19 +17,19 @@ export function Pagination({ page, pageCount, onChange }: PaginationProps) {
         size="icon"
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
-        aria-label="Previous page"
+        aria-label={t("pagination.previousLabel")}
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
       <span className="text-sm text-gray-600 dark:text-gray-400">
-        Page {page} of {pageCount}
+        {t("pagination.pageInfo", { page, pageCount })}
       </span>
       <Button
         variant="outline"
         size="icon"
         onClick={() => onChange(page + 1)}
         disabled={page >= pageCount}
-        aria-label="Next page"
+        aria-label={t("pagination.nextLabel")}
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

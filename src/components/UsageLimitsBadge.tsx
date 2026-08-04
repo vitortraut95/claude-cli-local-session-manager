@@ -1,4 +1,6 @@
 import { Gauge, Loader2 } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
+import type { TranslationKey } from "../i18n/translations";
 import type { ClaudeUsageStatus } from "../services/systemApi";
 import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
@@ -10,28 +12,35 @@ type UsageLimitsBadgeProps = {
   onRefresh: () => void;
 };
 
+type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
+
 /** Short header-badge labels for the limit kinds actually seen in practice — anything else falls
  *  back to a generic transform of its raw `kind` so a new limit type Anthropic adds still shows
  *  up (just less prettily) instead of being silently dropped. */
-const COMPACT_LABELS: Record<string, string> = { session: "5h", weekly_all: "7d" };
-const FULL_LABELS: Record<string, string> = {
-  session: "Session (5h)",
-  weekly_all: "Weekly",
-  weekly_opus: "Weekly (Opus)",
-  weekly_sonnet: "Weekly (Sonnet)",
+const COMPACT_LABEL_KEYS: Record<string, TranslationKey> = {
+  session: "usageLimitsBadge.compact.session",
+  weekly_all: "usageLimitsBadge.compact.weeklyAll",
+};
+const FULL_LABEL_KEYS: Record<string, TranslationKey> = {
+  session: "usageLimitsBadge.full.session",
+  weekly_all: "usageLimitsBadge.full.weeklyAll",
+  weekly_opus: "usageLimitsBadge.full.weeklyOpus",
+  weekly_sonnet: "usageLimitsBadge.full.weeklySonnet",
 };
 
-function compactLabel(kind: string): string {
-  return COMPACT_LABELS[kind] ?? kind.replace(/^weekly_/, "").slice(0, 6);
+function compactLabel(kind: string, t: Translate): string {
+  const key = COMPACT_LABEL_KEYS[kind];
+  return key ? t(key) : kind.replace(/^weekly_/, "").slice(0, 6);
 }
 
-function fullLabel(kind: string): string {
-  return FULL_LABELS[kind] ?? kind.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+function fullLabel(kind: string, t: Translate): string {
+  const key = FULL_LABEL_KEYS[kind];
+  return key ? t(key) : kind.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /** "resets in 3h 12min (30/07 21:29)" — both the relative countdown and an absolute local time,
  *  since "when it expires" was the whole point of adding this. */
-function formatResetsAt(resetsAt: string | null): string | null {
+function formatResetsAt(resetsAt: string | null, t: Translate): string | null {
   if (!resetsAt) return null;
   const date = new Date(resetsAt);
   if (Number.isNaN(date.getTime())) return null;
@@ -44,7 +53,7 @@ function formatResetsAt(resetsAt: string | null): string | null {
   });
 
   const diffMs = date.getTime() - Date.now();
-  if (diffMs <= 0) return `resets soon (${absolute})`;
+  if (diffMs <= 0) return t("usageLimitsBadge.resetsSoon", { absolute });
 
   const totalMinutes = Math.round(diffMs / 60000);
   const days = Math.floor(totalMinutes / (24 * 60));
@@ -54,11 +63,12 @@ function formatResetsAt(resetsAt: string | null): string | null {
   if (days > 0) parts.push(`${days}d`);
   if (hours > 0) parts.push(`${hours}h`);
   if (days === 0 && minutes > 0) parts.push(`${minutes}min`);
-  const relative = parts.length > 0 ? parts.join(" ") : "less than 1min";
-  return `resets in ${relative} (${absolute})`;
+  const relative = parts.length > 0 ? parts.join(" ") : t("usageLimitsBadge.lessThanOneMin");
+  return t("usageLimitsBadge.resetsIn", { relative, absolute });
 }
 
 export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLimitsBadgeProps) {
+  const { t } = useLanguage();
   const limits = status?.limits ?? [];
   const maxPercent = limits.reduce((max, limit) => Math.max(max, limit.percent), 0);
   const urgency = maxPercent >= 90 ? "critical" : maxPercent >= 70 ? "warning" : "normal";
@@ -72,10 +82,12 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
 
   const compactText =
     limits.length > 0
-      ? limits.map((limit) => `${compactLabel(limit.kind)} ${Math.round(limit.percent)}%`).join(" · ")
+      ? limits
+          .map((limit) => `${compactLabel(limit.kind, t)} ${Math.round(limit.percent)}%`)
+          .join(" · ")
       : error
-        ? "Usage unavailable"
-        : "Usage —";
+        ? t("usageLimitsBadge.unavailable")
+        : t("usageLimitsBadge.noData");
 
   // Anthropic's extra-usage-credits add-on: only worth a line when the account actually has a
   // limit configured — an account that's technically "enabled" but with a 0 monthly limit (the
@@ -85,15 +97,15 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
 
   const tooltipContent = (
     <div className="flex flex-col gap-2 text-left">
-      <p className="font-semibold">Claude usage limits</p>
+      <p className="font-semibold">{t("usageLimitsBadge.title")}</p>
       {error && <p className="text-red-300">{error}</p>}
-      {!error && limits.length === 0 && !loading && <p>No limits reported.</p>}
+      {!error && limits.length === 0 && !loading && <p>{t("usageLimitsBadge.noLimits")}</p>}
       {limits.map((limit) => {
-        const resetText = formatResetsAt(limit.resetsAt);
+        const resetText = formatResetsAt(limit.resetsAt, t);
         return (
           <div key={limit.kind}>
             <p>
-              {fullLabel(limit.kind)}: <strong>{Math.round(limit.percent)}%</strong>
+              {fullLabel(limit.kind, t)}: <strong>{Math.round(limit.percent)}%</strong>
             </p>
             {resetText && <p className="text-gray-300">{resetText}</p>}
           </div>
@@ -101,10 +113,14 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
       })}
       {showExtraUsage && extraUsage && (
         <p className="border-t border-gray-600 pt-1 text-gray-300">
-          Extra usage: {extraUsage.usedCredits} / {extraUsage.monthlyLimit} {extraUsage.currency}
+          {t("usageLimitsBadge.extraUsage", {
+            usedCredits: extraUsage.usedCredits,
+            monthlyLimit: extraUsage.monthlyLimit,
+            currency: extraUsage.currency,
+          })}
         </p>
       )}
-      <p className="text-gray-400">Click to refresh.</p>
+      <p className="text-gray-400">{t("usageLimitsBadge.clickToRefresh")}</p>
     </div>
   );
 
@@ -113,7 +129,7 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
       <Button
         variant="unstyled"
         onClick={onRefresh}
-        aria-label="Claude usage limits"
+        aria-label={t("usageLimitsBadge.title")}
         className={`border ${colorClass}`}
         icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gauge className="h-4 w-4" />}
       >

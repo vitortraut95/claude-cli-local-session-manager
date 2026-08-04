@@ -1,5 +1,6 @@
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import * as sessionsApi from "../services/sessionsApi";
 import type { RootStatus, Session } from "../types/session";
@@ -24,6 +25,7 @@ type ResetRootConfirmModalProps = {
  * on-open fetches).
  */
 export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModalProps) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [status, setStatus] = useState<RootStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
@@ -41,7 +43,7 @@ export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModa
         .catch((err) => {
           if (!cancelled) {
             setStatusError(
-              err instanceof Error ? err.message : "Could not read the root folder's status.",
+              err instanceof Error ? err.message : t("resetRootConfirmModal.statusErrorFallback"),
             );
           }
         })
@@ -53,7 +55,7 @@ export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModa
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [session.id]);
+  }, [session.id, t]);
 
   const handleClose = () => {
     // The reset request is already firing server-side — closing mid-request wouldn't stop it.
@@ -67,13 +69,16 @@ export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModa
       const { stashRef } = await sessionsApi.resetRootWorkingTree(session.id);
       showToast(
         stashRef
-          ? `Root folder reset. Previous changes saved — recover with "git stash apply ${stashRef}".`
-          : "Root folder was already clean — nothing to reset.",
+          ? t("resetRootConfirmModal.toast.resetWithStash", { stashRef })
+          : t("resetRootConfirmModal.toast.resetClean"),
         "success",
       );
       onClose();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Could not reset the root folder.", "error");
+      showToast(
+        err instanceof Error ? err.message : t("resetRootConfirmModal.toast.resetErrorFallback"),
+        "error",
+      );
     } finally {
       setResetting(false);
     }
@@ -82,11 +87,12 @@ export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModa
   return (
     <Modal
       open
-      title="Reset root"
+      title={t("resetRootConfirmModal.title")}
       onClose={handleClose}
       onCancel={resetting ? undefined : handleClose}
       onConfirm={handleConfirm}
-      confirmLabel="Reset root"
+      confirmLabel={t("resetRootConfirmModal.confirmLabel")}
+      cancelLabel={t("resetRootConfirmModal.cancel")}
       confirmVariant="danger"
       isConfirmLoading={resetting}
       isConfirmDisabled={loadingStatus || statusError !== null}
@@ -99,31 +105,31 @@ export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModa
               and mixed text/element siblings at that level each become their own flex item
               (breaking normal text wrapping) instead of flowing as one paragraph. */}
           <span>
-            Stashes (recoverable via <code>git stash apply</code>) then clears every uncommitted
-            change in the root folder. The branch it's on doesn't change, and nothing gitignored
-            (like <code>node_modules</code>) is touched.
+            {t("resetRootConfirmModal.warningIntro")} <code>git stash apply</code>
+            {t("resetRootConfirmModal.warningMiddle")} <code>node_modules</code>
+            {t("resetRootConfirmModal.warningEnd")}
           </span>
         </p>
         {loadingStatus && (
           <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <Loader2 className="h-4 w-4 animate-spin" /> Reading the root folder…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("resetRootConfirmModal.loading")}
           </p>
         )}
         {statusError && <p className="text-sm text-red-600 dark:text-red-400">{statusError}</p>}
         {status && !loadingStatus && (
           <>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Root folder is on branch{" "}
+              {t("resetRootConfirmModal.branchPrefix")}{" "}
               <span className="font-mono font-medium text-gray-800 dark:text-gray-200">
-                {status.rootBranch ?? "(detached HEAD)"}
+                {status.rootBranch ?? t("resetRootConfirmModal.detachedHead")}
               </span>
               .
             </p>
             <FileListBox
               title={
                 status.rootDirtyFiles.length === 0
-                  ? "Uncommitted files right now (none)"
-                  : "Uncommitted files right now — about to be stashed"
+                  ? t("resetRootConfirmModal.dirtyNoneTitle")
+                  : t("resetRootConfirmModal.dirtyTitle")
               }
               files={status.rootDirtyFiles}
               tone={status.rootDirtyFiles.length > 0 ? "danger" : "neutral"}

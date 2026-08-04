@@ -9,7 +9,9 @@ import {
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
+import type { TranslationKey } from "../i18n/translations";
 import * as tasksApi from "../services/tasksApi";
 import type { ProjectFolderOption } from "../services/tasksApi";
 import { Button } from "./Button";
@@ -47,21 +49,21 @@ type StepStatus = "pending" | "doing" | "done" | "error";
 type StepKey = "repo" | "base" | "worktree" | "launch";
 type Step = { key: StepKey; label: string; status: StepStatus; error?: string };
 
-const STEP_LABELS: Record<StepKey, string> = {
-  repo: "Confirm the folder is a git repository",
-  base: "Fetch the latest version of the base branch",
-  worktree: "Create the branch and isolated worktree",
-  launch: "Open terminal and start Claude",
+const STEP_LABEL_KEYS: Record<StepKey, TranslationKey> = {
+  repo: "newTaskModal.step.repo",
+  base: "newTaskModal.step.base",
+  worktree: "newTaskModal.step.worktree",
+  launch: "newTaskModal.step.launch",
 };
 const STEP_ORDER: StepKey[] = ["repo", "base", "worktree", "launch"];
 
 /** The "worktree" step's label changes when the "no worktree" checkbox is on — the other three
  *  steps read the same regardless. */
-function getStepLabel(key: StepKey, useWorktree: boolean): string {
+function getStepLabelKey(key: StepKey, useWorktree: boolean): TranslationKey {
   if (key === "worktree" && !useWorktree) {
-    return "Create the branch directly in the project folder (no worktree)";
+    return "newTaskModal.step.worktreeNoWorktree";
   }
-  return STEP_LABELS[key];
+  return STEP_LABEL_KEYS[key];
 }
 
 /**
@@ -73,6 +75,7 @@ function getStepLabel(key: StepKey, useWorktree: boolean): string {
  */
 export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   const { showToast } = useToast();
+  const { t } = useLanguage();
 
   const jiraLinkInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -99,10 +102,10 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
       .catch((err) => {
         setJiraMcpStatus("error");
         setJiraMcpError(
-          err instanceof Error ? err.message : "Could not check the Jira MCP status.",
+          err instanceof Error ? err.message : t("newTaskModal.jira.checkError"),
         );
       });
-  }, []);
+  }, [t]);
 
   // Checks every time the modal opens (not just once on mount) — the CLI's `claude mcp login`
   // flow happens in a separate terminal, so this is the only way the modal would ever notice the
@@ -253,13 +256,13 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
         })
         .catch((err) => {
           setRepoError(
-            err instanceof Error ? err.message : "Could not read this repository's information.",
+            err instanceof Error ? err.message : t("newTaskModal.repoInfoError"),
           );
         })
         .finally(() => setLoadingRepoInfo(false));
     }, 400);
     return () => clearTimeout(timer);
-  }, [effectiveFolderPath, baseBranchTouched]);
+  }, [effectiveFolderPath, baseBranchTouched, t]);
 
   // Used both by the Clear button and after a successful create — keeps the loaded projects list
   // and preferences (no need to refetch either), only wipes what the user filled in.
@@ -286,10 +289,10 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
     try {
       await tasksApi.updatePreferences({ defaultPrompt: promptText });
       setDefaultPromptLoaded(promptText);
-      showToast("Default prompt saved.", "success");
+      showToast(t("newTaskModal.promptSaved"), "success");
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : "Could not save the default prompt.",
+        err instanceof Error ? err.message : t("newTaskModal.promptSaveError"),
         "error",
       );
     } finally {
@@ -307,10 +310,10 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
       const nextUseWorktreeDefault = !skipWorktree;
       await tasksApi.updatePreferences({ useWorktreeByDefault: nextUseWorktreeDefault });
       setUseWorktreeDefault(nextUseWorktreeDefault);
-      showToast("Worktree preference saved.", "success");
+      showToast(t("newTaskModal.worktreePrefSaved"), "success");
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : "Could not save this preference.",
+        err instanceof Error ? err.message : t("newTaskModal.worktreePrefSaveError"),
         "error",
       );
     } finally {
@@ -351,7 +354,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
     setSteps(
       STEP_ORDER.map((key) => ({
         key,
-        label: getStepLabel(key, !skipWorktree),
+        label: t(getStepLabelKey(key, !skipWorktree)),
         status: "pending",
       })),
     );
@@ -397,20 +400,17 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
         });
       }
 
-      showToast(
-        "Terminal opened. Check your taskbar if it didn't come to the front.",
-        "success",
-      );
+      showToast(t("newTaskModal.terminalOpened"), "success");
       resetForm();
       onClose();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unexpected failure.";
+      const message = err instanceof Error ? err.message : t("newTaskModal.unexpectedFailure");
       setSteps((current) =>
         current.map((step) =>
           step.status === "doing" ? { ...step, status: "error", error: message } : step,
         ),
       );
-      showToast(`Failed to create task: ${message}`, "error");
+      showToast(t("newTaskModal.createFailed", { message }), "error");
     } finally {
       setCreating(false);
     }
@@ -419,16 +419,16 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   return (
     <Modal
       open={open}
-      title="New task"
+      title={t("newTaskModal.title")}
       onClose={onClose}
       onCancel={onClose}
       onConfirm={handleCreate}
-      confirmLabel="Create and open terminal"
-      cancelLabel="Cancel"
+      confirmLabel={t("newTaskModal.confirm")}
+      cancelLabel={t("newTaskModal.cancel")}
       isConfirmLoading={creating}
       isConfirmDisabled={!canSubmit}
       onSecondary={resetForm}
-      secondaryLabel="Clear"
+      secondaryLabel={t("newTaskModal.clear")}
       size="xl"
     >
       <div className="flex flex-col gap-4">
@@ -448,27 +448,29 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
               <AlertTriangle className="h-4 w-4 shrink-0" />
             )}
             <span>
-              {jiraMcpStatus === "checking" && "Checking Jira MCP connection…"}
+              {jiraMcpStatus === "checking" && t("newTaskModal.jira.checking")}
               {jiraMcpStatus === "connected" &&
-                `Jira MCP connected${jiraMcpServerName ? ` (${jiraMcpServerName})` : ""}.`}
+                (jiraMcpServerName
+                  ? t("newTaskModal.jira.connectedWithServer", { serverName: jiraMcpServerName })
+                  : t("newTaskModal.jira.connectedNoServer"))}
               {jiraMcpStatus === "disconnected" &&
                 (jiraMcpServerName
-                  ? `MCP "${jiraMcpServerName}" found but not connected — connect it (e.g. "claude mcp login") before creating the task.`
-                  : "No Jira/Atlassian MCP configured — connect one before creating the task.")}
+                  ? t("newTaskModal.jira.foundNotConnected", { serverName: jiraMcpServerName })
+                  : t("newTaskModal.jira.notConfigured"))}
               {jiraMcpStatus === "error" &&
-                (jiraMcpError ?? "Could not check the Jira MCP status.")}
+                (jiraMcpError ?? t("newTaskModal.jira.checkError"))}
             </span>
           </div>
           {jiraMcpStatus !== "checking" && (
             <Button variant="link" size="none" onClick={() => checkJiraMcp(true)} className="shrink-0">
-              Check again
+              {t("newTaskModal.jira.checkAgain")}
             </Button>
           )}
         </div>
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-            Task link (Jira)
+            {t("newTaskModal.jiraLinkLabel")}
           </label>
           <Input
             ref={jiraLinkInputRef}
@@ -482,13 +484,13 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
 
         {jiraLink.trim().length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Paste the task link to continue filling in the rest of the setup.
+            {t("newTaskModal.pasteLinkHint")}
           </p>
         ) : (
           <>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                Project (folder)
+                {t("newTaskModal.projectLabel")}
               </label>
               {projects.length > 0 && (
                 <Select
@@ -498,14 +500,14 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
                   disabled={loadingProjects}
                 >
                   <option value="" disabled>
-                    {loadingProjects ? "Loading projects…" : "Select a project"}
+                    {loadingProjects ? t("newTaskModal.loadingProjects") : t("newTaskModal.selectProject")}
                   </option>
                   {projects.map((project) => (
                     <option key={project.path} value={project.path}>
                       {project.label}
                     </option>
                   ))}
-                  <option value={OTHER_FOLDER_VALUE}>Other (paste folder path)</option>
+                  <option value={OTHER_FOLDER_VALUE}>{t("newTaskModal.otherFolder")}</option>
                 </Select>
               )}
               {(folderChoice === OTHER_FOLDER_VALUE || projects.length === 0) && (
@@ -520,7 +522,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
               )}
               {loadingRepoInfo && (
                 <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Reading repository information…
+                  <Loader2 className="h-3 w-3 animate-spin" /> {t("newTaskModal.readingRepoInfo")}
                 </p>
               )}
               {repoError && (
@@ -531,7 +533,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
             <div>
               <div className="mb-1 flex items-center justify-between">
                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  Prompt
+                  {t("newTaskModal.promptLabel")}
                 </label>
                 {promptDirty && (
                   <Button
@@ -540,19 +542,24 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
                     onClick={handleSaveDefaultPrompt}
                     disabled={savingDefaultPrompt}
                   >
-                    {savingDefaultPrompt ? "Saving…" : "Save as default"}
+                    {savingDefaultPrompt ? t("newTaskModal.saving") : t("newTaskModal.saveAsDefault")}
                   </Button>
                 )}
               </div>
               <textarea
                 value={promptText}
                 onChange={(event) => setPromptText(event.target.value)}
-                placeholder={loadingPrompt ? "Loading default prompt…" : "Instructions for Claude…"}
+                placeholder={
+                  loadingPrompt
+                    ? t("newTaskModal.loadingDefaultPrompt")
+                    : t("newTaskModal.promptPlaceholder")
+                }
                 rows={5}
                 className={TEXTAREA_CLASSNAME}
               />
               <span className="text-xs">
-                Final prompt: "Task: {jiraLink.trim()} + \n\n + {promptText.slice(0, 50)}
+                {t("newTaskModal.finalPromptLabel")} "Task: {jiraLink.trim()} + \n\n +{" "}
+                {promptText.slice(0, 50)}
                 ...."
               </span>
             </div>
@@ -560,7 +567,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                  Base branch
+                  {t("newTaskModal.baseBranchLabel")}
                 </label>
                 <Input
                   type="text"
@@ -574,7 +581,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                  Branch type
+                  {t("newTaskModal.branchTypeLabel")}
                 </label>
                 <Select
                   value={prefixChoice}
@@ -585,14 +592,14 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
                       {prefix}
                     </option>
                   ))}
-                  <option value={OTHER_PREFIX_VALUE}>Other</option>
+                  <option value={OTHER_PREFIX_VALUE}>{t("newTaskModal.otherBranchType")}</option>
                 </Select>
                 {prefixChoice === OTHER_PREFIX_VALUE && (
                   <Input
                     type="text"
                     value={customPrefix}
                     onChange={(event) => setCustomPrefix(event.target.value)}
-                    placeholder="custom prefix"
+                    placeholder={t("newTaskModal.customPrefixPlaceholder")}
                     className="mt-2"
                   />
                 )}
@@ -600,7 +607,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                  Branch name
+                  {t("newTaskModal.branchNameLabel")}
                 </label>
                 <Input
                   type="text"
@@ -611,7 +618,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
                 />
                 {branchName && (
                   <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-                    Preview:
+                    {t("newTaskModal.branchPreview")}
                     <span className="font-mono text-gray-600 dark:text-gray-300">{branchName}</span>
                   </p>
                 )}
@@ -627,7 +634,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
                     onChange={(event) => setSkipWorktree(event.target.checked)}
                     className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
                   />
-                  Don't use a worktree — switch the branch directly in the project folder.
+                  {t("newTaskModal.skipWorktreeLabel")}
                 </label>
                 {worktreeDefaultDirty && (
                   <Button
@@ -637,16 +644,14 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
                     disabled={savingWorktreeDefault}
                     className="shrink-0"
                   >
-                    {savingWorktreeDefault ? "Saving…" : "Use as default"}
+                    {savingWorktreeDefault ? t("newTaskModal.saving") : t("newTaskModal.useAsDefault")}
                   </Button>
                 )}
               </div>
               {skipWorktree && (
                 <p className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-400">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  Without a worktree, the new branch is switched directly in the project's main
-                  folder — this can cause conflicts if another terminal or session is already
-                  active there.
+                  {t("newTaskModal.skipWorktreeWarning")}
                 </p>
               )}
             </div>
@@ -654,7 +659,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
             {steps.length > 0 ? (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/50">
                 <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Progress:
+                  {t("newTaskModal.progressLabel")}
                 </p>
                 <ol className="space-y-2">
                   {steps.map((step) => (
@@ -694,49 +699,42 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
             ) : (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
                 <p className="mb-2 font-medium text-gray-700 dark:text-gray-300">
-                  What will happen when you click "Create and open terminal":
+                  {t("newTaskModal.whatWillHappen")}
                 </p>
                 <ol className="list-decimal space-y-1 pl-5">
                   <li>
-                    Confirms that{" "}
+                    {t("newTaskModal.explain.repo.pre")}{" "}
                     <span className="font-mono text-gray-800 dark:text-gray-200">
-                      {trimmedFolder || "(chosen folder)"}
+                      {trimmedFolder || t("newTaskModal.explain.folderPlaceholder")}
                     </span>{" "}
-                    is a git repository.
+                    {t("newTaskModal.explain.repo.post")}
                   </li>
                   <li>
-                    Fetches the latest version of the base branch{" "}
+                    {t("newTaskModal.explain.base.pre")}{" "}
                     <span className="font-mono text-gray-800 dark:text-gray-200">
-                      {trimmedBase || "(base branch)"}
+                      {trimmedBase || t("newTaskModal.explain.basePlaceholder")}
                     </span>{" "}
-                    directly from the remote — without checking it out or touching the project's
-                    main folder (doesn't affect any session already active there).
+                    {t("newTaskModal.explain.base.post")}
                   </li>
                   <li>
-                    Creates the new branch{" "}
+                    {t("newTaskModal.explain.branch.pre")}{" "}
                     <span className="font-mono text-gray-800 dark:text-gray-200">
-                      {trimmedBranch || "(branch name)"}
+                      {trimmedBranch || t("newTaskModal.explain.branchPlaceholder")}
                     </span>{" "}
-                    from that updated version.
+                    {t("newTaskModal.explain.branch.post")}
                   </li>
                   <li>
-                    {skipWorktree ? (
-                      <>
-                        Switches to that branch directly in the project's main folder — without a
-                        worktree, this can conflict with another terminal already open there.
-                      </>
-                    ) : (
-                      <>
-                        Creates an isolated worktree (its own folder, separate from the main one)
-                        already on that branch — this is what lets you work on this task without
-                        interfering with another terminal open on the same project.
-                      </>
-                    )}
+                    {skipWorktree
+                      ? t("newTaskModal.explain.worktree.skip")
+                      : t("newTaskModal.explain.worktree.create")}
                   </li>
                   <li>
-                    Opens a new terminal{" "}
-                    {skipWorktree ? "in the project folder" : "inside that worktree"} and starts{" "}
-                    <code>claude</code> with the prompt above as the first message.
+                    {t("newTaskModal.explain.launch.pre")}{" "}
+                    {skipWorktree
+                      ? t("newTaskModal.explain.launch.inProjectFolder")
+                      : t("newTaskModal.explain.launch.insideWorktree")}{" "}
+                    {t("newTaskModal.explain.launch.and")}{" "}
+                    <code>claude</code> {t("newTaskModal.explain.launch.post")}
                   </li>
                 </ol>
               </div>

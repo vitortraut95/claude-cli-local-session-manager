@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import * as cleanupApi from "../services/cleanupApi";
 import type { CleanupFinding } from "../services/cleanupApi";
@@ -20,6 +21,7 @@ type CleanupModalProps = {
  */
 export function CleanupModal({ open, onClose }: CleanupModalProps) {
   const { showToast } = useToast();
+  const { t } = useLanguage();
 
   const [findings, setFindings] = useState<CleanupFinding[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +45,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
         .catch((err) => {
           if (!cancelled) {
             setLoadError(
-              err instanceof Error ? err.message : "Could not fetch cleanup items.",
+              err instanceof Error ? err.message : t("cleanupModal.loadError"),
             );
           }
         })
@@ -55,17 +57,17 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open]);
+  }, [open, t]);
 
   const handleExecute = async (finding: CleanupFinding) => {
     setExecutingId(finding.id);
     try {
       await cleanupApi.executeCleanupFinding(finding);
       setFindings((current) => current.filter((item) => item.id !== finding.id));
-      showToast("Item resolved successfully.", "success");
+      showToast(t("cleanupModal.resolved"), "success");
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : "Could not run this cleanup.",
+        err instanceof Error ? err.message : t("cleanupModal.runError"),
         "error",
       );
     } finally {
@@ -76,39 +78,36 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
   return (
     <Modal
       open={open}
-      title="Cleanup"
+      title={t("cleanupModal.title")}
       onClose={onClose}
       onCancel={onClose}
-      cancelLabel="Close"
+      cancelLabel={t("cleanupModal.close")}
       size="xl"
     >
       <div className="flex flex-col gap-2 mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
         <p>
-          <strong>How it works:</strong> locally checks the worktrees of every project known to
-          the app for these situations:
+          <strong>{t("cleanupModal.howItWorks.label")}</strong> {t("cleanupModal.howItWorks.body")}
         </p>
         <ul className="mt-1 list-disc space-y-1 pl-5">
           <li>
-            <strong>Worktree deleted manually</strong> (folder removed directly on disk, outside
-            the app) — git still keeps its record of it; the fix only cleans up that record,
-            without deleting anything.
+            <strong>{t("cleanupModal.finding.manualDelete.label")}</strong>{" "}
+            {t("cleanupModal.finding.manualDelete.body")}
           </li>
           <li>
-            <strong>Worktree with an already-merged branch</strong> into the repository's default
-            branch, with no active session or pending changes — can be safely removed (worktree
-            and local branch together).
+            <strong>{t("cleanupModal.finding.mergedBranch.label")}</strong>{" "}
+            {t("cleanupModal.finding.mergedBranch.body")}
           </li>
         </ul>
       </div>
 
       {loading ? (
         <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+          <Loader2 className="h-4 w-4 animate-spin" /> {t("cleanupModal.loading")}
         </p>
       ) : loadError ? (
         <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
       ) : findings.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Nothing found to clean up.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t("cleanupModal.empty")}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {findings.map((finding) => (
@@ -132,7 +131,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
                     ) : undefined
                   }
                 >
-                  Run
+                  {t("cleanupModal.run")}
                 </Button>
               </div>
               <p className="mt-2 break-all font-mono text-xs text-gray-400 dark:text-gray-500">

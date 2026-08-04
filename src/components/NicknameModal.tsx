@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLanguage } from "../hooks/useLanguage";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
 
@@ -16,23 +17,20 @@ type NicknameModalProps = {
  */
 export function NicknameModal({ currentNickname, onSave, onCancel }: NicknameModalProps) {
   const [nickname, setNickname] = useState(currentNickname);
+  const { t } = useLanguage();
 
   return (
     <Modal
       open
-      title="Local nickname"
+      title={t("nicknameModal.title")}
       onClose={onCancel}
       onCancel={onCancel}
       onConfirm={() => onSave(nickname)}
-      confirmLabel="Save"
-      cancelLabel="Cancel"
+      confirmLabel={t("nicknameModal.save")}
+      cancelLabel={t("nicknameModal.cancel")}
       size="sm"
     >
-      <p className="text-sm text-gray-500 dark:text-gray-400">
-        Only shown in this app's session list, alongside the session's real title — it won't
-        rename the session or change what any terminal (including Warp) shows for it. Leave blank
-        to remove the nickname.
-      </p>
+      <p className="text-sm text-gray-500 dark:text-gray-400">{t("nicknameModal.description")}</p>
 
       <Input
         type="text"
@@ -43,7 +41,7 @@ export function NicknameModal({ currentNickname, onSave, onCancel }: NicknameMod
         }}
         autoFocus
         maxLength={100}
-        placeholder="Nickname"
+        placeholder={t("nicknameModal.placeholder")}
         className="mt-4"
       />
     </Modal>

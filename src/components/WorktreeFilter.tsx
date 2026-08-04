@@ -1,4 +1,5 @@
 import { GitFork } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
 
 type WorktreeFilterProps = {
   value: boolean;
@@ -8,6 +9,7 @@ type WorktreeFilterProps = {
 /** Violet accent matches the worktree badge/icon used on SessionCard, so the two read as the
  *  same concept wherever they show up. */
 export function WorktreeFilter({ value, onChange }: WorktreeFilterProps) {
+  const { t } = useLanguage();
   return (
     <button
       type="button"
@@ -20,7 +22,7 @@ export function WorktreeFilter({ value, onChange }: WorktreeFilterProps) {
       }`}
     >
       <GitFork className="h-4 w-4" />
-      Worktrees only
+      {t("worktreeFilter.label")}
     </button>
   );
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as systemApi from "../services/systemApi";
 import type { UpdateJobStatus, UpdateStatus } from "../services/systemApi";
+import { useLanguage } from "./useLanguage";
 import { useToast } from "./useToast";
 
 const JOB_POLL_INTERVAL_MS = 1000;
@@ -41,6 +42,7 @@ export function useUpdate() {
   const [checking, setChecking] = useState(true);
   const [updating, setUpdating] = useState(false);
   const { showToast } = useToast();
+  const { t } = useLanguage();
   const lastRefreshRef = useRef(0);
   const mountedRef = useRef(true);
 
@@ -93,14 +95,14 @@ export function useUpdate() {
       await systemApi.applyUpdate();
       const job = await waitForUpdateJob();
       if (job.state === "error") throw new Error(job.message);
-      showToast("Updated successfully. Restart the app to load the new version.", "success");
+      showToast(t("useUpdate.updateSuccess"), "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Could not update the application.", "error");
+      showToast(err instanceof Error ? err.message : t("useUpdate.updateError"), "error");
     } finally {
       if (mountedRef.current) setUpdating(false);
       await refreshStatus(true);
     }
-  }, [showToast, refreshStatus]);
+  }, [showToast, refreshStatus, t]);
 
   return { status, checking, updating, applyUpdate };
 }

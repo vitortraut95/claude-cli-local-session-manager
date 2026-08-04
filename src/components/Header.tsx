@@ -1,10 +1,10 @@
 import { Bot, Globe, HelpCircle, Plus, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
-import { usePreferences } from "../hooks/usePreferences";
+import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
 import { useUpdate } from "../hooks/useUpdate";
 import { useUsageLimits } from "../hooks/useUsageLimits";
-import { LANGUAGE_OPTIONS, t, type Language } from "../i18n/translations";
+import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
 import { Button } from "./Button";
 import { CleanupModal } from "./CleanupModal";
 import { NewTaskModal } from "./NewTaskModal";
@@ -24,7 +24,7 @@ export function Header() {
     error: usageError,
     refresh: refreshUsage,
   } = useUsageLimits();
-  const { language, setLanguage, hasSeenOnboarding, markOnboardingSeen, loaded } = usePreferences();
+  const { language, setLanguage, hasSeenOnboarding, markOnboardingSeen, loaded, t } = useLanguage();
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -54,28 +54,28 @@ export function Header() {
               Claude CLI Local Session Manager
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t(language, "header.subtitle")}
+              {t("header.subtitle")}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <Button onClick={() => setShowNewTaskModal(true)} icon={<Plus className="h-4 w-4" />}>
-            {t(language, "header.newTask")}
+            {t("header.newTask")}
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowCleanupModal(true)}
             icon={<Sparkles className="h-4 w-4" />}
           >
-            {t(language, "header.cleanup")}
+            {t("header.cleanup")}
           </Button>
-          <Tooltip content={t(language, "header.help")}>
+          <Tooltip content={t("header.help")}>
             <Button
               variant="outline"
               size="icon"
               onClick={() => setShowOnboarding(true)}
-              aria-label={t(language, "header.help")}
+              aria-label={t("header.help")}
               icon={<HelpCircle className="h-4 w-4" />}
             />
           </Tooltip>
@@ -83,7 +83,7 @@ export function Header() {
             icon={<Globe className="h-3.5 w-3.5" />}
             value={language}
             onChange={(event) => setLanguage(event.target.value as Language)}
-            aria-label={t(language, "header.language")}
+            aria-label={t("header.language")}
             className="w-auto"
           >
             {LANGUAGE_OPTIONS.map((option) => (
@@ -110,11 +110,7 @@ export function Header() {
 
       <NewTaskModal open={showNewTaskModal} onClose={() => setShowNewTaskModal(false)} />
       <CleanupModal open={showCleanupModal} onClose={() => setShowCleanupModal(false)} />
-      <OnboardingModal
-        open={showOnboarding}
-        onClose={() => setShowOnboarding(false)}
-        language={language}
-      />
+      <OnboardingModal open={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </header>
   );
 }

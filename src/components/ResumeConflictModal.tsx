@@ -1,5 +1,6 @@
 import { GitFork, Loader2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
+import { useLanguage } from "../hooks/useLanguage";
 import type { Session } from "../types/session";
 import { Button } from "./Button";
 import { Input } from "./Input";
@@ -30,6 +31,7 @@ export function ResumeConflictModal({
   onStopAndCheckout,
   onCancel,
 }: ResumeConflictModalProps) {
+  const { t } = useLanguage();
   const [worktreeName, setWorktreeName] = useState(target.gitBranch ?? "");
   const [branch, setBranch] = useState(target.gitBranch ?? "");
   const trimmedName = worktreeName.trim();
@@ -41,33 +43,38 @@ export function ResumeConflictModal({
   return (
     <Modal
       open
-      title={isSelfConflict ? "This session is already open elsewhere" : "Another session is active here"}
+      title={
+        isSelfConflict
+          ? t("resumeConflictModal.title.selfConflict")
+          : t("resumeConflictModal.title.otherConflict")
+      }
       onClose={onCancel}
       size="md"
     >
       <p className="text-sm text-gray-500 dark:text-gray-400">
         {isSelfConflict ? (
-          "This exact session is already open in another terminal. Resuming it again here would start a second Claude process against the same transcript at once."
+          t("resumeConflictModal.intro.selfConflict")
         ) : (
           <>
-            <span className="font-medium text-gray-700 dark:text-gray-300">{siblingLabel}</span> is
-            currently active in this project's folder. Resuming here too would put two Claude
-            processes in the same working tree at once.
+            <span className="font-medium text-gray-700 dark:text-gray-300">{siblingLabel}</span>{" "}
+            {t("resumeConflictModal.intro.otherConflictSuffix")}
           </>
         )}{" "}
-        Pick one of the options below instead.
+        {t("resumeConflictModal.intro.pickOption")}
       </p>
 
       <div className="mt-4 rounded-lg border border-gray-200 p-3 dark:border-gray-800">
         <p className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
           <GitFork className="h-4 w-4 shrink-0 text-violet-500 dark:text-violet-400" />
-          Create a worktree (recommended)
+          {t("resumeConflictModal.worktree.title")}
         </p>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Starts a fresh <code>claude</code> conversation in a separate checkout of this project —
-          {isSelfConflict ? " the terminal that already has this session open" : " the active session above"}{" "}
-          keeps running untouched. It won't resume this specific transcript (the CLI can't do that
-          from a different folder), just a new one alongside it.
+          {t("resumeConflictModal.worktree.bodyPrefix")} <code>claude</code>{" "}
+          {t("resumeConflictModal.worktree.bodyMiddle")}{" "}
+          {isSelfConflict
+            ? t("resumeConflictModal.worktree.selfTerminalLabel")
+            : t("resumeConflictModal.worktree.otherSessionLabel")}{" "}
+          {t("resumeConflictModal.worktree.bodySuffix")}
         </p>
         <div className="mt-2 flex gap-2">
           <Input
@@ -75,7 +82,7 @@ export function ResumeConflictModal({
             value={worktreeName}
             onChange={(event) => setWorktreeName(event.target.value)}
             disabled={isBusy}
-            placeholder="Worktree name, e.g. my-task"
+            placeholder={t("resumeConflictModal.worktree.namePlaceholder")}
             className="flex-1"
           />
           <Button
@@ -85,7 +92,7 @@ export function ResumeConflictModal({
             onClick={() => onCreateWorktree(trimmedName)}
             icon={isCreatingWorktree && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           >
-            Create
+            {t("resumeConflictModal.worktree.createButton")}
           </Button>
         </div>
       </div>
@@ -93,19 +100,21 @@ export function ResumeConflictModal({
       <div className="mt-3 rounded-lg border border-red-200 p-3 dark:border-red-900/60">
         <p className="flex items-center gap-1.5 text-sm font-medium text-red-700 dark:text-red-400">
           <TriangleAlert className="h-4 w-4 shrink-0" />
-          {isSelfConflict ? "Stop the other terminal & continue here" : "Stop the other session & continue here"}
+          {isSelfConflict
+            ? t("resumeConflictModal.stop.titleSelf")
+            : t("resumeConflictModal.stop.titleOther")}
         </p>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           {isSelfConflict ? (
-            "Ends this session's other terminal process"
+            t("resumeConflictModal.stop.bodySelf")
           ) : (
             <>
-              Ends <span className="font-medium">{siblingLabel}</span>'s terminal process
+              {t("resumeConflictModal.stop.bodyOtherPrefix")}{" "}
+              <span className="font-medium">{siblingLabel}</span>
+              {t("resumeConflictModal.stop.bodyOtherSuffix")}
             </>
           )}
-          , checks out the branch below in this shared folder, then resumes this session there.
-          Anything that terminal hadn't saved or committed yet can be lost — only do this if you're
-          sure it's safe to interrupt.
+          {t("resumeConflictModal.stop.bodyCommon")}
         </p>
         <div className="mt-2 flex gap-2">
           <Input
@@ -113,7 +122,7 @@ export function ResumeConflictModal({
             value={branch}
             onChange={(event) => setBranch(event.target.value)}
             disabled={isBusy}
-            placeholder="Branch to check out"
+            placeholder={t("resumeConflictModal.stop.branchPlaceholder")}
             className="flex-1"
           />
           <Button
@@ -123,14 +132,14 @@ export function ResumeConflictModal({
             onClick={() => onStopAndCheckout(trimmedBranch)}
             icon={isSwitching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           >
-            Stop & continue
+            {t("resumeConflictModal.stop.confirmButton")}
           </Button>
         </div>
       </div>
 
       <div className="mt-4 flex justify-end">
         <Button variant="outline" onClick={onCancel} disabled={isBusy}>
-          Cancel
+          {t("resumeConflictModal.cancel")}
         </Button>
       </div>
     </Modal>

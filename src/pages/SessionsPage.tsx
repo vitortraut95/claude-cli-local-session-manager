@@ -13,6 +13,7 @@ import { ResumeConflictModal } from "../components/ResumeConflictModal";
 import { SearchBar } from "../components/SearchBar";
 import { SessionCard } from "../components/SessionCard";
 import { WorktreeFilter } from "../components/WorktreeFilter";
+import { useLanguage } from "../hooks/useLanguage";
 import { useSessions } from "../hooks/useSessions";
 import type { Session } from "../types/session";
 import { RefreshCw, Trash2, X } from "lucide-react";
@@ -57,6 +58,7 @@ export function SessionsPage() {
     clearResumeConflict,
     stopAndCheckoutResume,
   } = useSessions();
+  const { t } = useLanguage();
   const [sessionPendingDeletion, setSessionPendingDeletion] = useState<Session | null>(null);
   // Only meaningful while sessionPendingDeletion.isWorktree is true — reset to the recommended
   // default each time a new deletion is requested (handleDeleteRequest), same as NicknameModal
@@ -115,17 +117,17 @@ export function SessionsPage() {
       <>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Showing {rangeStart}–{rangeEnd} of {filteredCount}
+            {t("sessionsPage.showingRange", { start: rangeStart, end: rangeEnd, total: filteredCount })}
           </p>
           <Button variant="link" size="none" onClick={selectAllOnPage}>
-            Select all on this page
+            {t("sessionsPage.selectAllOnPage")}
           </Button>
         </div>
 
         {selectedIds.size > 0 && (
           <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {selectedIds.size} selected
+              {t("sessionsPage.selectedCount", { count: selectedIds.size })}
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -134,7 +136,7 @@ export function SessionsPage() {
                 onClick={clearSelection}
                 icon={<X className="h-3.5 w-3.5" />}
               >
-                Clear
+                {t("sessionsPage.clearSelection")}
               </Button>
               <Button
                 variant="outline-danger"
@@ -142,7 +144,7 @@ export function SessionsPage() {
                 onClick={() => setShowBulkDeleteConfirm(true)}
                 icon={<Trash2 className="h-3.5 w-3.5" />}
               >
-                Delete selected
+                {t("sessionsPage.deleteSelected")}
               </Button>
             </div>
           </div>
@@ -192,7 +194,7 @@ export function SessionsPage() {
             className="shadow-sm"
             icon={<RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />}
           >
-            Refresh sessions
+            {t("sessionsPage.refresh")}
           </Button>
         </div>
         {renderContent()}
@@ -200,10 +202,10 @@ export function SessionsPage() {
 
       <ConfirmDialog
         open={sessionPendingDeletion !== null}
-        title="Delete session"
-        message="Are you sure you want to delete this session?"
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t("sessionsPage.deleteConfirm.title")}
+        message={t("sessionsPage.deleteConfirm.message")}
+        confirmLabel={t("sessionsPage.delete")}
+        cancelLabel={t("sessionsPage.cancel")}
         onConfirm={handleConfirmDelete}
         onCancel={() => setSessionPendingDeletion(null)}
       >
@@ -215,7 +217,7 @@ export function SessionsPage() {
               onChange={(event) => setCleanupWorktreeOnDelete(event.target.checked)}
               className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
             />
-            Also clean up the worktree — removes its folder and the branch git created for it.
+            {t("sessionsPage.deleteConfirm.cleanupWorktree")}
           </label>
         )}
         {!sessionPendingDeletion?.isWorktree && sessionPendingDeletion?.gitBranch && (
@@ -226,19 +228,22 @@ export function SessionsPage() {
               onChange={(event) => setCleanupBranchOnDelete(event.target.checked)}
               className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
             />
-            Also delete the local branch "{sessionPendingDeletion.gitBranch}".
+            {t("sessionsPage.deleteConfirm.cleanupBranch", { branch: sessionPendingDeletion.gitBranch })}
           </label>
         )}
       </ConfirmDialog>
 
       <ConfirmDialog
         open={showBulkDeleteConfirm}
-        title="Delete selected sessions"
-        message={`Are you sure you want to delete ${selectedIds.size} session${
-          selectedIds.size === 1 ? "" : "s"
-        }? This cannot be undone.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t("sessionsPage.bulkDeleteConfirm.title")}
+        message={t(
+          selectedIds.size === 1
+            ? "sessionsPage.bulkDeleteConfirm.message.one"
+            : "sessionsPage.bulkDeleteConfirm.message.many",
+          { count: selectedIds.size },
+        )}
+        confirmLabel={t("sessionsPage.delete")}
+        cancelLabel={t("sessionsPage.cancel")}
         onConfirm={handleConfirmBulkDelete}
         onCancel={() => setShowBulkDeleteConfirm(false)}
       />

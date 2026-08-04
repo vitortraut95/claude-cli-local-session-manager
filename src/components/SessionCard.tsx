@@ -18,6 +18,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useState } from "react";
+import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
 import type { Session } from "../types/session";
@@ -67,6 +68,7 @@ export function SessionCard({
   onDeleteWorktree,
   onWorktreeSyncComplete,
 }: SessionCardProps) {
+  const { t } = useLanguage();
   const isDeleting = pendingAction === "delete";
   const isContinuing = pendingAction === "continue";
   const isSettingNickname = pendingAction === "nickname";
@@ -96,10 +98,10 @@ export function SessionCard({
     try {
       await navigator.clipboard.writeText(command);
       setCopiedCommand(true);
-      showToast("Command copied to clipboard.", "success");
+      showToast(t("sessionCard.copyCommand.success"), "success");
       setTimeout(() => setCopiedCommand(false), COPIED_FEEDBACK_DURATION_MS);
     } catch {
-      showToast("Could not copy the command.", "error");
+      showToast(t("sessionCard.copyCommand.error"), "error");
     }
   };
 
@@ -109,7 +111,7 @@ export function SessionCard({
       size="icon"
       onClick={() => setShowNicknameModal(true)}
       disabled={isBusy || session.isActive}
-      aria-label={session.nickname ? "Edit local nickname" : "Add local nickname"}
+      aria-label={session.nickname ? t("sessionCard.nickname.edit") : t("sessionCard.nickname.add")}
       icon={
         isSettingNickname ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -126,7 +128,7 @@ export function SessionCard({
   // instead of just refusing outright. Only a missing directory blocks it outright — there's
   // nothing to offer an alternative for there.
   const continueDisabledReason = session.directoryMissing
-    ? "Recreate the original folder (or a symlink to it) before resuming — the Claude CLI resolves sessions by working directory."
+    ? t("sessionCard.continueDisabled.directoryMissing")
     : null;
 
   const continueButton = (
@@ -141,7 +143,7 @@ export function SessionCard({
           isContinuing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />
         }
       >
-        Resume (terminal)
+        {t("sessionCard.resumeButton")}
       </Button>
     </span>
   );
@@ -156,7 +158,7 @@ export function SessionCard({
         isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />
       }
     >
-      Delete
+      {t("sessionCard.deleteButton")}
     </Button>
   );
 
@@ -177,18 +179,18 @@ export function SessionCard({
           checked={selected}
           onChange={() => onToggleSelect(session.id)}
           disabled={isBusy || session.isActive}
-          aria-label={selected ? "Deselect session" : "Select session"}
+          aria-label={selected ? t("sessionCard.checkbox.deselect") : t("sessionCard.checkbox.select")}
           className="h-4 w-4 shrink-0 accent-gray-900 disabled:cursor-not-allowed disabled:opacity-40 dark:accent-gray-100"
         />
         <Tooltip
           content={
             session.isActive
-              ? "Active — a terminal currently has this session resumed"
-              : "Inactive — no terminal currently has this session resumed"
+              ? t("sessionCard.status.activeTooltip")
+              : t("sessionCard.status.inactiveTooltip")
           }
         >
           <span
-            aria-label={session.isActive ? "Active session" : "Inactive session"}
+            aria-label={session.isActive ? t("sessionCard.status.activeLabel") : t("sessionCard.status.inactiveLabel")}
             className={`h-3 w-3 rounded-full border-2 border-white shadow dark:border-gray-900 ${
               session.isActive ? "bg-green-500 animate-pulse" : "bg-red-400"
             }`}
@@ -207,7 +209,7 @@ export function SessionCard({
           {session.nickname && (
             <span
               className="line-clamp-1 text-xs italic text-gray-500 dark:text-gray-400"
-              title="Local nickname — only shown in this app"
+              title={t("sessionCard.nickname.localOnly")}
             >
               {session.nickname}
             </span>
@@ -216,11 +218,11 @@ export function SessionCard({
         {session.isActive ? (
           // Same disabled-button-tooltip wrapper trick as the Continue button below — a native
           // `disabled` button won't reliably fire hover events on its own.
-          <Tooltip content="Close this session in its terminal before changing its nickname.">
+          <Tooltip content={t("sessionCard.nickname.disabledTooltip")}>
             <span className="inline-flex shrink-0">{nicknameButton}</span>
           </Tooltip>
         ) : (
-          <Tooltip content={session.nickname ? "Edit local nickname" : "Add local nickname"}>
+          <Tooltip content={session.nickname ? t("sessionCard.nickname.edit") : t("sessionCard.nickname.add")}>
             {nicknameButton}
           </Tooltip>
         )}
@@ -232,18 +234,20 @@ export function SessionCard({
             className="flex items-center gap-1.5"
             title={
               session.workingDirectory
-                ? `Original directory no longer exists: ${session.workingDirectory}`
-                : "This session's original directory no longer exists"
+                ? t("sessionCard.directoryMissing.tooltipWithPath", {
+                    path: session.workingDirectory,
+                  })
+                : t("sessionCard.directoryMissing.tooltipNoPath")
             }
           >
             <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
-            Original folder missing
+            {t("sessionCard.directoryMissing.title")}
           </div>
 
           {session.missingWorktreeRepoRoot && (
             <div className="flex flex-col gap-1.5 pl-0.5 font-normal text-gray-600 dark:text-gray-400">
               <span className="break-all">
-                This looks like a removed worktree — the project's root folder is still here:{" "}
+                {t("sessionCard.directoryMissing.removedWorktree")}{" "}
                 <span className="font-mono">{session.missingWorktreeRepoRoot}</span>
               </span>
               <div className="flex flex-wrap gap-2">
@@ -252,7 +256,7 @@ export function SessionCard({
                   size="sm"
                   onClick={() => onOpenMissingWorktreeRootInVSCode(session)}
                   disabled={isOpeningVSCode}
-                  aria-label="Open the project root in VS Code"
+                  aria-label={t("sessionCard.directoryMissing.openRootAriaLabel")}
                   icon={
                     isOpeningVSCode ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -261,14 +265,13 @@ export function SessionCard({
                     )
                   }
                 >
-                  code .
+                  {t("sessionCard.codeButton")}
                 </Button>
                 <Tooltip
                   content={
                     session.rootSessionId
-                      ? "Resume the existing session already recorded at the project root."
-                      : "The old transcript can't be resumed from a different folder — this starts a new " +
-                        "conversation at the root, seeded with a recap of what the old session did."
+                      ? t("sessionCard.directoryMissing.resumeAtRootTooltip")
+                      : t("sessionCard.directoryMissing.startFreshTooltip")
                   }
                 >
                   <Button
@@ -291,7 +294,9 @@ export function SessionCard({
                       )
                     }
                   >
-                    {session.rootSessionId ? "Resume at root" : "Start fresh at root"}
+                    {session.rootSessionId
+                      ? t("sessionCard.resumeAtRootButton")
+                      : t("sessionCard.startFreshAtRootButton")}
                   </Button>
                 </Tooltip>
               </div>
@@ -305,7 +310,7 @@ export function SessionCard({
           <Tooltip
             content={
               session.isWorktree
-                ? `Git worktree — ${session.workingDirectory}`
+                ? t("sessionCard.worktreeTooltip", { path: session.workingDirectory ?? "" })
                 : (session.workingDirectory ?? session.project)
             }
           >
@@ -320,7 +325,9 @@ export function SessionCard({
                   <span className="text-xs text-gray-500 dark:text-gray-500">
                     {worktreePathParts.prefix}
                   </span>
-                  <span>Worktree name: {worktreePathParts.name}</span>
+                  <span>
+                    {t("sessionCard.worktreeNameLabel", { name: worktreePathParts.name })}
+                  </span>
                 </span>
               ) : (
                 <span className="break-all">
@@ -331,13 +338,13 @@ export function SessionCard({
           </Tooltip>
 
           {!session.directoryMissing && (
-            <Tooltip content="Open this folder in VS Code">
+            <Tooltip content={t("sessionCard.openInVSCodeTooltip")}>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => onOpenInVSCode(session)}
                 disabled={isOpeningVSCode}
-                aria-label="Open in VS Code"
+                aria-label={t("sessionCard.openInVSCodeAriaLabel")}
                 icon={
                   isOpeningVSCode ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -346,7 +353,7 @@ export function SessionCard({
                   )
                 }
               >
-                code .
+                {t("sessionCard.codeButton")}
               </Button>
             </Tooltip>
           )}
@@ -354,29 +361,29 @@ export function SessionCard({
           {session.isWorktree &&
             !session.directoryMissing &&
             (session.isActive ? (
-              <Tooltip content="Close this session in its terminal before syncing the worktree into the root folder.">
+              <Tooltip content={t("sessionCard.worktreeToRoot.disabledTooltip")}>
                 <span className="inline-flex shrink-0">
                   <Button
                     variant="outline-danger"
                     size="sm"
                     disabled
-                    aria-label="Sync worktree into the root folder"
+                    aria-label={t("sessionCard.worktreeToRoot.ariaLabel")}
                     icon={<GitMerge className="h-3.5 w-3.5" />}
                   >
-                    worktree → root
+                    {t("sessionCard.worktreeToRootButton")}
                   </Button>
                 </span>
               </Tooltip>
             ) : (
-              <Tooltip content="Sync this worktree's code into the project's root folder — copy files only, or remove the worktree and check out its branch there instead.">
+              <Tooltip content={t("sessionCard.worktreeToRoot.tooltip")}>
                 <Button
                   variant="outline-danger"
                   size="sm"
                   onClick={() => setShowWorktreeToRootModal(true)}
-                  aria-label="Sync worktree into the root folder"
+                  aria-label={t("sessionCard.worktreeToRoot.ariaLabel")}
                   icon={<GitMerge className="h-3.5 w-3.5" />}
                 >
-                  worktree → root
+                  {t("sessionCard.worktreeToRootButton")}
                 </Button>
               </Tooltip>
             ))}
@@ -385,30 +392,33 @@ export function SessionCard({
 
       <div>
         {session.subagentCount > 0 ? (
-          <Tooltip content="View what each subagent did — their token usage is included in the cost above">
+          <Tooltip content={t("sessionCard.subagents.tooltip")}>
             <button
               type="button"
               onClick={() => setShowSubagents(true)}
               className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 hover:underline dark:text-gray-400 dark:hover:text-gray-200"
             >
               <Bot className="h-3.5 w-3.5" />
-              {session.subagentCount} subagent{session.subagentCount === 1 ? "" : "s"}
+              {session.subagentCount === 1
+                ? t("sessionCard.subagentCount.one", { count: session.subagentCount })
+                : t("sessionCard.subagentCount.many", { count: session.subagentCount })}
             </button>
           </Tooltip>
         ) : (
           <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
             <Bot className="h-3.5 w-3.5" />
-            No subagents
+            {t("sessionCard.subagentCount.none")}
           </span>
         )}
       </div>
 
       <p className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-        Updated {formatUpdatedAt(session.updatedAt)}
+        {t("sessionCard.updatedPrefix")} {formatUpdatedAt(session.updatedAt)}
         {session.activeTimeMs > 0 && (
-          <Tooltip content="Actual time Claude spent processing this session, summed across turns">
+          <Tooltip content={t("sessionCard.activeTimeTooltip")}>
             <span className="inline-flex items-center gap-0.5">
-              · <Clock className="h-3 w-3" /> {formatActiveTime(session.activeTimeMs)} active
+              · <Clock className="h-3 w-3" /> {formatActiveTime(session.activeTimeMs)}{" "}
+              {t("sessionCard.activeSuffix")}
             </span>
           </Tooltip>
         )}
@@ -418,16 +428,16 @@ export function SessionCard({
           stay easy to tell apart at a glance as more get added here over time. */}
       <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 pt-3 dark:border-gray-800">
         <ToolbarIconButton
-          tooltip="Insights — tips to spend fewer tokens"
-          ariaLabel="View insights"
+          tooltip={t("sessionCard.insightsTooltip")}
+          ariaLabel={t("sessionCard.insightsAriaLabel")}
           color="amber"
           onClick={() => setShowInsights(true)}
           icon={<Lightbulb className="h-4 w-4" />}
         />
         {session.usage.models.length > 0 && (
           <ToolbarIconButton
-            tooltip="View token usage and estimated cost"
-            ariaLabel="View usage and cost"
+            tooltip={t("sessionCard.usageTooltip")}
+            ariaLabel={t("sessionCard.usageAriaLabel")}
             color="green"
             onClick={() => setShowUsage(true)}
             icon={<DollarSign className="h-4 w-4" />}
@@ -435,8 +445,8 @@ export function SessionCard({
         )}
         {session.prompts.length > 0 && (
           <ToolbarIconButton
-            tooltip="Preview prompts sent in this session"
-            ariaLabel="Preview prompts"
+            tooltip={t("sessionCard.previewTooltip")}
+            ariaLabel={t("sessionCard.previewAriaLabel")}
             color="blue"
             onClick={() => setShowPreview(true)}
             icon={<MessageSquare className="h-4 w-4" />}
@@ -444,8 +454,8 @@ export function SessionCard({
         )}
         {session.isWorktree && !session.directoryMissing && (
           <ToolbarIconButton
-            tooltip="Reset root — stashes (recoverable) then discards any uncommitted changes in the project's root folder, without touching this worktree. For the copy → test → reset → repeat loop, without opening the full worktree → root wizard each time."
-            ariaLabel="Reset root folder"
+            tooltip={t("sessionCard.resetRootTooltip")}
+            ariaLabel={t("sessionCard.resetRootAriaLabel")}
             color="amber"
             onClick={() => setShowResetRootConfirm(true)}
             icon={<RotateCcw className="h-4 w-4" />}
@@ -455,10 +465,10 @@ export function SessionCard({
           <ToolbarIconButton
             tooltip={
               session.isActive
-                ? "Close this session in its terminal before cleaning up the worktree."
-                : "Clean up this worktree — removes its folder and the branch git created for it. Doesn't touch the session transcript."
+                ? t("sessionCard.cleanupWorktree.disabledTooltip")
+                : t("sessionCard.cleanupWorktree.tooltip")
             }
-            ariaLabel="Clean up worktree"
+            ariaLabel={t("sessionCard.cleanupWorktreeAriaLabel")}
             color="red"
             disabled={session.isActive || isDeletingWorktree}
             onClick={() => setShowDeleteWorktreeConfirm(true)}
@@ -476,16 +486,22 @@ export function SessionCard({
       <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
         <span
           className="inline-flex items-center gap-1 font-mono text-[10px]"
-          title={"Resume command"}
+          title={t("sessionCard.resumeCommandTitle")}
         >
           {resumeCommand}
         </span>
-        <Tooltip content={copiedCommand ? "Resume command copied!" : "Copy resume command"}>
+        <Tooltip
+          content={
+            copiedCommand
+              ? t("sessionCard.copyCommandTooltip.copied")
+              : t("sessionCard.copyCommandTooltip.default")
+          }
+        >
           <Button
             variant="ghost"
             size="icon"
             onClick={handleCopyCommand}
-            aria-label="Copy resume command"
+            aria-label={t("sessionCard.copyCommandAriaLabel")}
             icon={
               copiedCommand ? (
                 <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
@@ -507,7 +523,7 @@ export function SessionCard({
           continueButton
         )}
         {session.isActive ? (
-          <Tooltip content="Close this session in its terminal before deleting.">
+          <Tooltip content={t("sessionCard.deleteDisabledTooltip")}>
             <span className="inline-flex shrink-0">{deleteButton}</span>
           </Tooltip>
         ) : (
@@ -554,10 +570,10 @@ export function SessionCard({
       )}
       <ConfirmDialog
         open={showDeleteWorktreeConfirm}
-        title="Clean up worktree"
-        message="This removes the worktree's folder and the worktree-<name> branch git created for it, freeing the disk space it used. Uncommitted changes there will block the deletion — commit or stash them first if you need to keep them. The session transcript itself isn't affected."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t("sessionCard.deleteWorktreeConfirm.title")}
+        message={t("sessionCard.deleteWorktreeConfirm.message")}
+        confirmLabel={t("sessionCard.deleteButton")}
+        cancelLabel={t("sessionCard.cancelButton")}
         onConfirm={() => {
           setShowDeleteWorktreeConfirm(false);
           onDeleteWorktree(session);
