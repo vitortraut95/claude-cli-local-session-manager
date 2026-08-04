@@ -38,7 +38,12 @@ function isValidPreferences(body: unknown): body is UserPreferences {
     typeof candidate.defaultPrompt === "string" &&
     Array.isArray(candidate.branchTypes) &&
     candidate.branchTypes.every((item) => typeof item === "string") &&
-    typeof candidate.useWorktreeByDefault === "boolean"
+    typeof candidate.useWorktreeByDefault === "boolean" &&
+    (candidate.language === null ||
+      candidate.language === "en" ||
+      candidate.language === "pt" ||
+      candidate.language === "es") &&
+    typeof candidate.hasSeenOnboarding === "boolean"
   );
 }
 
@@ -64,7 +69,8 @@ tasksRouter.put("/preferences", async (req, res) => {
   try {
     if (!isValidPreferences(req.body)) {
       throw new Error(
-        "Malformed preferences payload — expected { defaultPrompt: string, branchTypes: string[], useWorktreeByDefault: boolean }.",
+        "Malformed preferences payload — expected { defaultPrompt: string, branchTypes: string[], " +
+          "useWorktreeByDefault: boolean, language: \"en\"|\"pt\"|\"es\"|null, hasSeenOnboarding: boolean }.",
       );
     }
     await saveUserPreferences(req.body);

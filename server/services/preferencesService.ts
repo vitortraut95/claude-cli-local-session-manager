@@ -2,10 +2,18 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 
+export type Language = "en" | "pt" | "es";
+
 export type UserPreferences = {
   defaultPrompt: string;
   branchTypes: string[];
   useWorktreeByDefault: boolean;
+  /** Null means "never explicitly chosen" — the frontend falls back to the browser's own
+   *  language in that case rather than this ever defaulting to a fixed language server-side. */
+  language: Language | null;
+  /** Whether the onboarding modal (explains the worktree dev workflow) has already been shown
+   *  once — gates its auto-open on first visit. */
+  hasSeenOnboarding: boolean;
 };
 
 const PREFERENCES_PATH = path.join(REPO_ROOT, "userPreferences.json");
@@ -14,7 +22,13 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   defaultPrompt: "",
   branchTypes: ["feature", "fix", "hotfix", "env"],
   useWorktreeByDefault: true,
+  language: null,
+  hasSeenOnboarding: false,
 };
+
+function isLanguage(value: unknown): value is Language {
+  return value === "en" || value === "pt" || value === "es";
+}
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
@@ -44,6 +58,11 @@ export async function getUserPreferences(): Promise<UserPreferences> {
         typeof parsed.useWorktreeByDefault === "boolean"
           ? parsed.useWorktreeByDefault
           : DEFAULT_PREFERENCES.useWorktreeByDefault,
+      language: isLanguage(parsed.language) ? parsed.language : DEFAULT_PREFERENCES.language,
+      hasSeenOnboarding:
+        typeof parsed.hasSeenOnboarding === "boolean"
+          ? parsed.hasSeenOnboarding
+          : DEFAULT_PREFERENCES.hasSeenOnboarding,
     };
   } catch {
     return DEFAULT_PREFERENCES;

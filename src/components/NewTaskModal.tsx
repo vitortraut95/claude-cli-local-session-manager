@@ -284,11 +284,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   const handleSaveDefaultPrompt = async () => {
     setSavingDefaultPrompt(true);
     try {
-      await tasksApi.savePreferences({
-        defaultPrompt: promptText,
-        branchTypes,
-        useWorktreeByDefault: useWorktreeDefault,
-      });
+      await tasksApi.updatePreferences({ defaultPrompt: promptText });
       setDefaultPromptLoaded(promptText);
       showToast("Default prompt saved.", "success");
     } catch (err) {
@@ -309,11 +305,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
     setSavingWorktreeDefault(true);
     try {
       const nextUseWorktreeDefault = !skipWorktree;
-      await tasksApi.savePreferences({
-        defaultPrompt: defaultPromptLoaded ?? "",
-        branchTypes,
-        useWorktreeByDefault: nextUseWorktreeDefault,
-      });
+      await tasksApi.updatePreferences({ useWorktreeByDefault: nextUseWorktreeDefault });
       setUseWorktreeDefault(nextUseWorktreeDefault);
       showToast("Worktree preference saved.", "success");
     } catch (err) {
@@ -400,15 +392,9 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
       ) {
         const updatedBranchTypes = [...branchTypes, effectivePrefix];
         setBranchTypes(updatedBranchTypes);
-        tasksApi
-          .savePreferences({
-            defaultPrompt: defaultPromptLoaded ?? "",
-            branchTypes: updatedBranchTypes,
-            useWorktreeByDefault: useWorktreeDefault,
-          })
-          .catch(() => {
-            // Still usable for the rest of this session even if persisting it failed.
-          });
+        tasksApi.updatePreferences({ branchTypes: updatedBranchTypes }).catch(() => {
+          // Still usable for the rest of this session even if persisting it failed.
+        });
       }
 
       showToast(

@@ -1,12 +1,17 @@
-import { Bot, Plus, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { Bot, Globe, HelpCircle, Plus, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { usePreferences } from "../hooks/usePreferences";
 import { useTheme } from "../hooks/useTheme";
 import { useUpdate } from "../hooks/useUpdate";
 import { useUsageLimits } from "../hooks/useUsageLimits";
+import { LANGUAGE_OPTIONS, t, type Language } from "../i18n/translations";
 import { Button } from "./Button";
 import { CleanupModal } from "./CleanupModal";
 import { NewTaskModal } from "./NewTaskModal";
+import { OnboardingModal } from "./OnboardingModal";
+import { Select } from "./Select";
 import { ThemeToggle } from "./ThemeToggle";
+import { Tooltip } from "./Tooltip";
 import { UpdateButton } from "./UpdateButton";
 import { UsageLimitsBadge } from "./UsageLimitsBadge";
 
@@ -19,8 +24,23 @@ export function Header() {
     error: usageError,
     refresh: refreshUsage,
   } = useUsageLimits();
+  const { language, setLanguage, hasSeenOnboarding, markOnboardingSeen, loaded } = usePreferences();
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [showCleanupModal, setShowCleanupModal] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Opens once per install/machine — gated on `loaded` so this can't fire before the real
+  // preferences value comes back (which would otherwise flash it open for returning users too).
+  // `showOnboarding` has to be its own state (not derived straight from `hasSeenOnboarding`) so
+  // the modal stays open once shown, rather than snapping shut the instant markOnboardingSeen's
+  // own state update flips `hasSeenOnboarding` back to true.
+  useEffect(() => {
+    if (loaded && !hasSeenOnboarding) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowOnboarding(true);
+      markOnboardingSeen();
+    }
+  }, [loaded, hasSeenOnboarding, markOnboardingSeen]);
 
   return (
     <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -34,22 +54,44 @@ export function Header() {
               Claude CLI Local Session Manager
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Manage your local Claude CLI sessions
+              {t(language, "header.subtitle")}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <Button onClick={() => setShowNewTaskModal(true)} icon={<Plus className="h-4 w-4" />}>
-            New task
+            {t(language, "header.newTask")}
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowCleanupModal(true)}
             icon={<Sparkles className="h-4 w-4" />}
           >
-            Cleanup
+            {t(language, "header.cleanup")}
           </Button>
+          <Tooltip content={t(language, "header.help")}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowOnboarding(true)}
+              aria-label={t(language, "header.help")}
+              icon={<HelpCircle className="h-4 w-4" />}
+            />
+          </Tooltip>
+          <Select
+            icon={<Globe className="h-3.5 w-3.5" />}
+            value={language}
+            onChange={(event) => setLanguage(event.target.value as Language)}
+            aria-label={t(language, "header.language")}
+            className="w-auto"
+          >
+            {LANGUAGE_OPTIONS.map((option) => (
+              <option key={option.code} value={option.code}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
           <UsageLimitsBadge
             status={usageStatus}
             loading={usageLoading}
@@ -68,6 +110,11 @@ export function Header() {
 
       <NewTaskModal open={showNewTaskModal} onClose={() => setShowNewTaskModal(false)} />
       <CleanupModal open={showCleanupModal} onClose={() => setShowCleanupModal(false)} />
+      <OnboardingModal
+        open={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        language={language}
+      />
     </header>
   );
 }

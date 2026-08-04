@@ -31,14 +31,22 @@ export async function fetchProjectFolders(): Promise<ProjectFolderOption[]> {
   return data.projects;
 }
 
+export type Language = "en" | "pt" | "es";
+
 export type UserPreferences = {
   defaultPrompt: string;
   branchTypes: string[];
   useWorktreeByDefault: boolean;
+  /** Null means "never explicitly chosen" — callers fall back to the browser's own language in
+   *  that case rather than this ever defaulting to a fixed language. */
+  language: Language | null;
+  /** Whether the onboarding modal (worktree dev workflow walkthrough) has already been shown once. */
+  hasSeenOnboarding: boolean;
 };
 
-/** Everything the "new task" modal remembers between sessions — one JSON file
- *  (`userPreferences.json`, see preferencesService.ts) instead of separate per-field files. */
+/** Everything the app remembers between sessions in one JSON file (`userPreferences.json`, see
+ *  preferencesService.ts) instead of separate per-field files — originally just the "new task"
+ *  modal's own fields, now shared with the language switcher / onboarding-seen flag too. */
 export async function fetchPreferences(): Promise<UserPreferences> {
   const { data } = await withServerErrorMessage(() =>
     client.get<UserPreferences>("/preferences"),
@@ -47,9 +55,24 @@ export async function fetchPreferences(): Promise<UserPreferences> {
 }
 
 /** Replaces the whole preferences file — callers must send the full object (merging in whatever
- *  fields they aren't intentionally changing), not just the one field they care about. */
+ *  fields they aren't intentionally changing), not just the one field they care about. Prefer
+ *  `updatePreferences` below unless you already have a guaranteed-fresh full object in hand. */
 export async function savePreferences(preferences: UserPreferences): Promise<void> {
   await withServerErrorMessage(() => client.put("/preferences", preferences));
+}
+
+/**
+ * Safely changes just `partial`'s fields without clobbering the rest: fetches the freshest
+ * preferences, merges `partial` over them, then PUTs the full object back. Different features own
+ * different fields (NewTaskModal owns defaultPrompt/branchTypes/useWorktreeByDefault;
+ * usePreferences owns language/hasSeenOnboarding) and none of them keeps the others' fields in its
+ * own state — building a full-object PUT from a stale local copy would silently revert whatever
+ * the other side saved most recently. The extra GET keeps every save correct regardless of save
+ * order; preference saves are infrequent/user-initiated, so the round trip is cheap.
+ */
+export async function updatePreferences(partial: Partial<UserPreferences>): Promise<void> {
+  const current = await fetchPreferences();
+  await savePreferences({ ...current, ...partial });
 }
 
 export type JiraMcpStatus = {
