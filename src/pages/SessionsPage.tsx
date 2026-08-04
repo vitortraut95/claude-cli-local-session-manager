@@ -49,7 +49,6 @@ export function SessionsPage() {
     resumeSession,
     setNickname,
     openInVSCode,
-    hasSiblingActiveSession,
     createWorktree,
     deleteWorktree,
     resumeConflict,
@@ -58,7 +57,7 @@ export function SessionsPage() {
   } = useSessions();
   const [sessionPendingDeletion, setSessionPendingDeletion] = useState<Session | null>(null);
   // Only meaningful while sessionPendingDeletion.isWorktree is true — reset to the recommended
-  // default each time a new deletion is requested (handleDeleteRequest), same as CreateWorktreeModal
+  // default each time a new deletion is requested (handleDeleteRequest), same as NicknameModal
   // re-initializing on open, so a previous session's unchecked choice can't leak into the next one.
   const [cleanupWorktreeOnDelete, setCleanupWorktreeOnDelete] = useState(true);
   // Only meaningful for non-worktree sessions with a known gitBranch — unlike the worktree
@@ -154,13 +153,11 @@ export function SessionsPage() {
               session={session}
               pendingAction={pendingActions[session.id]}
               selected={selectedIds.has(session.id)}
-              hasSiblingActiveSession={hasSiblingActiveSession(session)}
               onToggleSelect={toggleSelect}
               onContinue={(s) => resumeSession(s.id)}
               onDeleteRequest={handleDeleteRequest}
               onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
               onOpenInVSCode={(s) => openInVSCode(s.id)}
-              onCreateWorktree={(s, name) => createWorktree(s.id, name)}
               onDeleteWorktree={(s) => deleteWorktree(s.id)}
               onWorktreeSyncComplete={() => refresh()}
             />

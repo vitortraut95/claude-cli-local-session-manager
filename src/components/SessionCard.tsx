@@ -23,7 +23,6 @@ import type { PendingAction } from "../hooks/useSessions";
 import type { Session } from "../types/session";
 import { Button } from "./Button";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { CreateWorktreeModal } from "./CreateWorktreeModal";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { InsightsModal } from "./InsightsModal";
 import { NicknameModal } from "./NicknameModal";
@@ -41,13 +40,11 @@ type SessionCardProps = {
   session: Session;
   pendingAction?: PendingAction;
   selected: boolean;
-  hasSiblingActiveSession: boolean;
   onToggleSelect: (id: string) => void;
   onContinue: (session: Session) => void;
   onDeleteRequest: (session: Session) => void;
   onSetNickname: (session: Session, nickname: string) => void;
   onOpenInVSCode: (session: Session) => void;
-  onCreateWorktree: (session: Session, name: string) => void;
   onDeleteWorktree: (session: Session) => void;
   onWorktreeSyncComplete: (session: Session) => void;
 };
@@ -58,13 +55,11 @@ export function SessionCard({
   session,
   pendingAction,
   selected,
-  hasSiblingActiveSession,
   onToggleSelect,
   onContinue,
   onDeleteRequest,
   onSetNickname,
   onOpenInVSCode,
-  onCreateWorktree,
   onDeleteWorktree,
   onWorktreeSyncComplete,
 }: SessionCardProps) {
@@ -72,7 +67,6 @@ export function SessionCard({
   const isContinuing = pendingAction === "continue";
   const isSettingNickname = pendingAction === "nickname";
   const isOpeningVSCode = pendingAction === "vscode";
-  const isCreatingWorktree = pendingAction === "worktree-create";
   const isDeletingWorktree = pendingAction === "worktree-delete";
   const isBusy = isDeleting || isContinuing || isSettingNickname;
   const [copiedCommand, setCopiedCommand] = useState(false);
@@ -81,7 +75,6 @@ export function SessionCard({
   const [showSubagents, setShowSubagents] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
-  const [showCreateWorktreeModal, setShowCreateWorktreeModal] = useState(false);
   const [showDeleteWorktreeConfirm, setShowDeleteWorktreeConfirm] = useState(false);
   const [showWorktreeToRootModal, setShowWorktreeToRootModal] = useState(false);
   const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
@@ -322,26 +315,6 @@ export function SessionCard({
               </Tooltip>
             ))}
         </div>
-
-        {hasSiblingActiveSession && (
-          <Tooltip content="Another terminal already has this project open — check out a branch in a separate worktree instead of fighting over the same files.">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCreateWorktreeModal(true)}
-              disabled={isCreatingWorktree}
-              icon={
-                isCreatingWorktree ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <GitFork className="h-3.5 w-3.5" />
-                )
-              }
-            >
-              Create worktree
-            </Button>
-          </Tooltip>
-        )}
       </div>
 
       <div>
@@ -500,17 +473,6 @@ export function SessionCard({
             onSetNickname(session, nickname);
           }}
           onCancel={() => setShowNicknameModal(false)}
-        />
-      )}
-      {showCreateWorktreeModal && (
-        <CreateWorktreeModal
-          defaultName={session.gitBranch ?? ""}
-          isLoading={isCreatingWorktree}
-          onCreate={(name) => {
-            setShowCreateWorktreeModal(false);
-            onCreateWorktree(session, name);
-          }}
-          onCancel={() => setShowCreateWorktreeModal(false)}
         />
       )}
       {showWorktreeToRootModal && (

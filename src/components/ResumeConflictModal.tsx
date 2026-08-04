@@ -19,7 +19,7 @@ type ResumeConflictModalProps = {
  * Shown instead of resuming directly once `resumeSession` (useSessions.ts) freshly confirms a
  * conflict — either a different session active in the same directory, or (when `sibling.id ===
  * target.id`) this exact session already open in another terminal. Mounted only while open, same
- * re-init-on-open pattern as NicknameModal/CreateWorktreeModal.
+ * re-init-on-open pattern as NicknameModal.
  */
 export function ResumeConflictModal({
   target,

@@ -391,28 +391,8 @@ export function useSessions() {
     [showToast, setPending],
   );
 
-  // Counts active sessions per workingDirectory across the *full* (unfiltered, unpaginated) list —
-  // a sibling on another page still means the directory is busy. Used to decide when to offer
-  // "Create worktree" as the safe way to work on that project from a second terminal.
-  const activeCountByDir = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const session of sessions) {
-      if (session.isActive && session.workingDirectory) {
-        counts.set(session.workingDirectory, (counts.get(session.workingDirectory) ?? 0) + 1);
-      }
-    }
-    return counts;
-  }, [sessions]);
-
-  const hasSiblingActiveSession = useCallback(
-    (session: Session) => {
-      if (!session.workingDirectory) return false;
-      const count = activeCountByDir.get(session.workingDirectory) ?? 0;
-      return count > (session.isActive ? 1 : 0);
-    },
-    [activeCountByDir],
-  );
-
+  // Only remaining caller is ResumeConflictModal's "create a worktree instead" option
+  // (SessionsPage.tsx) — SessionCard itself doesn't offer worktree creation directly.
   const createWorktree = useCallback(
     async (id: string, name: string) => {
       setPending(id, "worktree-create");
@@ -478,7 +458,6 @@ export function useSessions() {
     resumeSession,
     setNickname,
     openInVSCode,
-    hasSiblingActiveSession,
     createWorktree,
     deleteWorktree,
     resumeConflict,

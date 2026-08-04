@@ -17,7 +17,7 @@ type ResetRootConfirmModalProps = {
  * its shared first step. Meant for the exact repeated loop this app's own worktree → root feature
  * was built for: copy a worktree in to test, look at it, then reset before copying the next one.
  *
- * Mounted only while open (same convention as CreateWorktreeModal) — fetches root's live status
+ * Mounted only while open (same convention as NicknameModal) — fetches root's live status
  * on open via the lighter `fetchRootStatus` (same endpoint the wizard's own confirm step uses),
  * deferred through a 0ms timer so the fetch's setState calls land in a callback rather than
  * synchronously in the effect body (same pattern CleanupModal/NewTaskModal use for their own
