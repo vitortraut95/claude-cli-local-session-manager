@@ -273,8 +273,14 @@ export async function listSessions(): Promise<Session[]> {
       // `resolveProject`) is the worktree/branch folder name, not the repo's — override it with
       // the shared repo root's basename so worktree sessions collapse onto the same "project" as
       // their main checkout, matching how the "new task" modal's `getKnownProjectFolders` already
-      // dedups by repo root instead of raw directory.
-      const project = gitDirs ? path.basename(path.dirname(gitDirs.commonGitDir)) : session.project;
+      // dedups by repo root instead of raw directory. `gitDirs` is null (no live git call possible)
+      // for an orphaned worktree whose directory no longer exists — fall back to
+      // `missingWorktreeRepoRoot` there instead of session.project's raw (dead) worktree folder name.
+      const project = gitDirs
+        ? path.basename(path.dirname(gitDirs.commonGitDir))
+        : session.missingWorktreeRepoRoot
+          ? path.basename(session.missingWorktreeRepoRoot)
+          : session.project;
       // `session.gitBranch` comes from the CLI's historical transcript log, not live git state —
       // if the directory isn't a git repo right now (deleted/moved since the session ran), null it
       // out so callers (e.g. the "delete branch" checkbox) don't act on a branch that doesn't exist.

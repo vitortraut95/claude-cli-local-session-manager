@@ -36,7 +36,18 @@ export async function getKnownProjectFolders(): Promise<ProjectFolderOption[]> {
 
   const options = new Set<string>();
   uniqueDirs.forEach((dir, i) => {
-    options.add(roots[i] ?? dir);
+    if (roots[i]) {
+      options.add(roots[i]);
+      return;
+    }
+    // getRepoRoot shells out to `git rev-parse` in `dir` — fails for a worktree directory that no
+    // longer exists on disk (orphaned after "Worktree → root" checkout, see
+    // missingWorktreeRepoRoot). Fall back to the repo root already derived from the session's own
+    // recorded cwd there instead of adding the dead worktree path itself as a "project".
+    const missingRoot = sessions.find(
+      (s) => s.workingDirectory === dir,
+    )?.missingWorktreeRepoRoot;
+    options.add(missingRoot ?? dir);
   });
 
   return [...options]
