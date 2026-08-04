@@ -10,7 +10,8 @@ export type PendingAction =
   | "nickname"
   | "vscode"
   | "worktree-create"
-  | "worktree-delete";
+  | "worktree-delete"
+  | "missing-root-resume";
 
 export const PER_PAGE_OPTIONS = [24, 48, 96, 192, 999999] as const;
 const DEFAULT_PER_PAGE = 24;
@@ -391,6 +392,51 @@ export function useSessions() {
     [showToast, setPending],
   );
 
+  const openMissingWorktreeRootInVSCode = useCallback(
+    async (id: string) => {
+      setPending(id, "vscode");
+      try {
+        await sessionsApi.openMissingWorktreeRootInVSCode(id);
+        showToast("Opening the project root in VS Code…", "success");
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Could not open VS Code.", "error");
+      } finally {
+        setPending(id, null);
+      }
+    },
+    [showToast, setPending],
+  );
+
+  /**
+   * Backs the "Resume at root"/"Start fresh at root" action on an orphaned worktree session's
+   * card (see `Session.missingWorktreeRepoRoot`). If another session is already recorded at that
+   * root directory (`rootSessionId`), this is a real `claude --resume` of that other session —
+   * just defers to the existing `resumeSession` flow (conflict-check and all). Otherwise there's
+   * nothing to resume (the CLI ties a transcript to its exact original directory, which is gone),
+   * so it starts a brand-new conversation there instead, seeded with the old session's recap.
+   */
+  const resumeAtMissingWorktreeRoot = useCallback(
+    async (session: Session) => {
+      if (session.rootSessionId) {
+        await resumeSession(session.rootSessionId);
+        return;
+      }
+      setPending(session.id, "missing-root-resume");
+      try {
+        await sessionsApi.startFreshSessionAtMissingWorktreeRoot(session.id);
+        showToast(
+          "New terminal opened at the project root. Check your taskbar if it didn't come to the front.",
+          "success",
+        );
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Could not start a session there.", "error");
+      } finally {
+        setPending(session.id, null);
+      }
+    },
+    [resumeSession, showToast, setPending],
+  );
+
   // Only remaining caller is ResumeConflictModal's "create a worktree instead" option
   // (SessionsPage.tsx) — SessionCard itself doesn't offer worktree creation directly.
   const createWorktree = useCallback(
@@ -458,6 +504,8 @@ export function useSessions() {
     resumeSession,
     setNickname,
     openInVSCode,
+    openMissingWorktreeRootInVSCode,
+    resumeAtMissingWorktreeRoot,
     createWorktree,
     deleteWorktree,
     resumeConflict,

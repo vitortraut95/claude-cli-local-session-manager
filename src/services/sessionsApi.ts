@@ -160,6 +160,23 @@ export async function applyWorktreeCopyToRoot(id: string): Promise<void> {
   );
 }
 
+/** Opens an orphaned worktree session's repo root in VS Code — its own directory is gone, see
+ *  `Session.missingWorktreeRepoRoot`. */
+export async function openMissingWorktreeRootInVSCode(id: string): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.post(`/${encodeURIComponent(id)}/missing-worktree-root/vscode`),
+  );
+}
+
+/** Starts a brand-new `claude` conversation (not a resume — see server-side
+ *  startFreshSessionAtMissingWorktreeRoot for why) in an orphaned worktree session's repo root,
+ *  seeded with that session's own recap as the first message. */
+export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.post(`/${encodeURIComponent(id)}/missing-worktree-root/resume`),
+  );
+}
+
 /** Step 2 ("checkout" mode): removes the worktree (keeping its branch) and checks that branch out
  *  in root, as one operation — see server-side removeWorktreeAndCheckoutRoot for why it's not two
  *  separate calls. Returns the branch root switched from/to, since nothing else records what root

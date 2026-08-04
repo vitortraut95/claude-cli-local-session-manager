@@ -58,6 +58,14 @@ export type Session = {
   prompts: string[];
   isActive: boolean;
   directoryMissing: boolean;
+  /** Only set when directoryMissing and the original workingDirectory looked like this app's own
+   *  `<repoRoot>/.claude/worktrees/<name>` convention, and that repo root still exists on disk —
+   *  lets the UI offer to continue work there once the worktree itself is gone. */
+  missingWorktreeRepoRoot: string | null;
+  /** id of another existing session already recorded with workingDirectory ===
+   *  missingWorktreeRepoRoot, if any — resuming that one is a real `claude --resume`, preferred
+   *  over starting a fresh conversation. */
+  rootSessionId: string | null;
   /** Size of the session's own `.jsonl` file in bytes — powers the "session size" meter. */
   sizeBytes: number;
   /** Number of subagents (via the Agent tool) spawned during this session. */

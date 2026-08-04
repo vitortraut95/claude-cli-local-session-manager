@@ -13,12 +13,14 @@ import {
   getWorktreeToRootPreview,
   listSessions,
   openInVSCode,
+  openMissingWorktreeRootInVSCode,
   openWorktreeRootInVSCode,
   removeWorktreeAndCheckoutRoot,
   resetRootWorkingTree,
   setSessionNickname,
   SessionActiveError,
   SessionNotFoundError,
+  startFreshSessionAtMissingWorktreeRoot,
   stopSiblingAndResume,
 } from "../services/sessionService.js";
 
@@ -317,6 +319,42 @@ sessionsRouter.post("/:id/worktree-to-root/vscode-root", async (req, res) => {
   } catch (err) {
     if (err instanceof SessionNotFoundError) {
       res.status(404).json({ success: false, error: err.message });
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+sessionsRouter.post("/:id/missing-worktree-root/vscode", async (req, res) => {
+  try {
+    await openMissingWorktreeRootInVSCode(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ success: false, error: err.message });
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+sessionsRouter.post("/:id/missing-worktree-root/resume", async (req, res) => {
+  try {
+    await startFreshSessionAtMissingWorktreeRoot(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ success: false, error: err.message });
+      return;
+    }
+    if (err instanceof SessionActiveError) {
+      res.status(409).json({ success: false, error: err.message });
       return;
     }
     res.status(500).json({

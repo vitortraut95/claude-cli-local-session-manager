@@ -72,6 +72,18 @@ function resolveProject(head: SessionHead, filePath: string): string {
   return projectDir.replace(/^-/, "") || projectDir;
 }
 
+/** This app always creates its own worktrees at `<repoRoot>/.claude/worktrees/<name>` (see
+ *  createSessionWorktree below). Once a worktree-backed session's original directory is gone
+ *  (directoryMissing), that's the only way left to recover its repo root — the worktree itself no
+ *  longer exists for git to tell us, so this is a plain string split on the recorded `cwd`, not a
+ *  git call. */
+const WORKTREE_PATH_SEGMENT = "/.claude/worktrees/";
+
+function repoRootFromMissingWorktreePath(cwd: string): string | null {
+  const index = cwd.indexOf(WORKTREE_PATH_SEGMENT);
+  return index === -1 ? null : cwd.slice(0, index);
+}
+
 async function buildSession(filePath: string): Promise<Omit<Session, "isActive" | "nickname"> | null> {
   try {
     const [head, fileStat, prompts, rawUsage, subagentFiles, activeTimeMs, recap] =
@@ -88,6 +100,12 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
     // Unknown cwd (older session, or head parse didn't find one) isn't treated as missing —
     // only flag it once we actually know the original directory and it's gone.
     const directoryMissing = head.cwd ? !(await directoryExists(head.cwd)) : false;
+    // Only surfaced once the repo root itself is confirmed to still exist — otherwise the UI
+    // would offer "code ."/"resume" actions against a folder that's also gone.
+    const repoRootGuess =
+      directoryMissing && head.cwd ? repoRootFromMissingWorktreePath(head.cwd) : null;
+    const missingWorktreeRepoRoot =
+      repoRootGuess && (await directoryExists(repoRootGuess)) ? repoRootGuess : null;
 
     // Subagent token usage otherwise vanishes from the parent session's totals entirely (see
     // findSubagentFiles) — fold it into `usage`, and separately surface how much of that total
@@ -112,6 +130,10 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
       updatedAt: fileStat.mtime.toISOString(),
       prompts,
       directoryMissing,
+      missingWorktreeRepoRoot,
+      // Placeholder — listSessions() fills in the real value once it can cross-reference every
+      // other session's workingDirectory, same reason isWorktree is finalized there too.
+      rootSessionId: null,
       sizeBytes: fileStat.size,
       subagentCount: subagentFiles.length,
       activeTimeMs,
@@ -232,6 +254,17 @@ export async function listSessions(): Promise<Session[]> {
   const gitDirsList = await Promise.all(uniqueDirs.map((dir) => getGitDirs(dir)));
   const gitDirsByDir = new Map(uniqueDirs.map((dir, i) => [dir, gitDirsList[i]]));
 
+  // For an orphaned worktree session (missingWorktreeRepoRoot set), look for another session
+  // already recorded with that same directory as its own workingDirectory — lets the UI offer a
+  // real `claude --resume` there instead of only "start fresh". Ties broken by most recent.
+  const sessionsByWorkingDir = new Map<string, typeof sessions>();
+  for (const s of sessions) {
+    if (!s.workingDirectory) continue;
+    const list = sessionsByWorkingDir.get(s.workingDirectory) ?? [];
+    list.push(s);
+    sessionsByWorkingDir.set(s.workingDirectory, list);
+  }
+
   return sessions
     .map((session) => {
       const gitDirs = session.workingDirectory ? gitDirsByDir.get(session.workingDirectory) : null;
@@ -242,12 +275,23 @@ export async function listSessions(): Promise<Session[]> {
       // their main checkout, matching how the "new task" modal's `getKnownProjectFolders` already
       // dedups by repo root instead of raw directory.
       const project = gitDirs ? path.basename(path.dirname(gitDirs.commonGitDir)) : session.project;
+      // `session.gitBranch` comes from the CLI's historical transcript log, not live git state —
+      // if the directory isn't a git repo right now (deleted/moved since the session ran), null it
+      // out so callers (e.g. the "delete branch" checkbox) don't act on a branch that doesn't exist.
+      const gitBranch = gitDirs ? session.gitBranch : null;
+      const rootSessionId = session.missingWorktreeRepoRoot
+        ? ((sessionsByWorkingDir.get(session.missingWorktreeRepoRoot) ?? [])
+            .slice()
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.id ?? null)
+        : null;
       return {
         ...session,
         project,
+        gitBranch,
         nickname: nicknames[session.id] ?? null,
         isActive: activeIds.has(session.id),
         isWorktree,
+        rootSessionId,
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -775,6 +819,70 @@ export async function openInVSCode(id: string): Promise<void> {
 export async function openWorktreeRootInVSCode(id: string): Promise<void> {
   const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
   await openDirInVSCode(repoRoot);
+}
+
+/** Shared by the two "orphaned worktree" recovery actions below: re-derives the repo root purely
+ *  from the session's recorded `cwd` (the worktree itself is gone — there's nothing left for git
+ *  to tell us) and confirms it still exists on disk. */
+async function resolveMissingWorktreeRepoRoot(
+  id: string,
+): Promise<{ head: SessionHead; filePath: string; repoRoot: string }> {
+  if (!isSafeSessionId(id)) {
+    throw new Error(`Invalid session id "${id}"`);
+  }
+  const filePath = await findSessionFilePath(id);
+  if (!filePath) throw new SessionNotFoundError(id);
+
+  const head = await readSessionHead(filePath);
+  if (!head.cwd) {
+    throw new Error("This session has no known working directory.");
+  }
+  const repoRoot = repoRootFromMissingWorktreePath(head.cwd);
+  if (!repoRoot) {
+    throw new Error("This session's directory doesn't look like one of this app's own worktrees.");
+  }
+  if (!(await directoryExists(repoRoot))) {
+    throw new Error(`The project's root folder no longer exists either ("${repoRoot}").`);
+  }
+  return { head, filePath, repoRoot };
+}
+
+/** Opens the repo root in VS Code for an orphaned worktree session (its own directory is gone —
+ *  see `missingWorktreeRepoRoot`). Unlike `openWorktreeRootInVSCode`, doesn't touch git at all;
+ *  the worktree no longer exists for git to query. */
+export async function openMissingWorktreeRootInVSCode(id: string): Promise<void> {
+  const { repoRoot } = await resolveMissingWorktreeRepoRoot(id);
+  await openDirInVSCode(repoRoot);
+}
+
+/**
+ * Starts a brand-new `claude` conversation in an orphaned worktree session's repo root — not a
+ * `claude --resume`: the CLI ties a transcript to the exact directory it was started in (see
+ * `findSessionCwd`'s doc comment), and that directory is gone. Seeds the new conversation with the
+ * old session's own away-summary recap (the CLI's "what we did / what's next" note, see
+ * `readSessionRecap`) as its first message so it starts with real context instead of a blank
+ * slate, falling back down the same title-resolution chain `resolveTitle` uses for sessions that
+ * never triggered an away-summary.
+ */
+export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promise<void> {
+  const { head, filePath, repoRoot } = await resolveMissingWorktreeRepoRoot(id);
+
+  const sessions = await listSessions();
+  if (sessions.some((s) => s.workingDirectory === repoRoot && s.isActive)) {
+    throw new SessionActiveError(
+      "A session is already active in the root project directory — resume that one instead.",
+    );
+  }
+
+  const recap = await readSessionRecap(filePath);
+  const seed = recap ?? head.summaryTitle ?? head.aiTitle ?? head.firstUserText;
+  const prompt = seed
+    ? `Continuing a previous session that ran in a git worktree now merged into this folder. ` +
+      `Here's a recap of that session:\n\n${seed}\n\nPlease continue from here.`
+    : "Continuing a previous session that ran in a git worktree now merged into this folder. " +
+      "(No recap of that session was recorded — take a look around before continuing.)";
+
+  await launchInTerminal(`claude ${posixShellQuote(prompt)}`, repoRoot);
 }
 
 /**

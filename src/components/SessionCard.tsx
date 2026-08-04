@@ -45,6 +45,8 @@ type SessionCardProps = {
   onDeleteRequest: (session: Session) => void;
   onSetNickname: (session: Session, nickname: string) => void;
   onOpenInVSCode: (session: Session) => void;
+  onOpenMissingWorktreeRootInVSCode: (session: Session) => void;
+  onResumeAtMissingWorktreeRoot: (session: Session) => Promise<void>;
   onDeleteWorktree: (session: Session) => void;
   onWorktreeSyncComplete: (session: Session) => void;
 };
@@ -60,6 +62,8 @@ export function SessionCard({
   onDeleteRequest,
   onSetNickname,
   onOpenInVSCode,
+  onOpenMissingWorktreeRootInVSCode,
+  onResumeAtMissingWorktreeRoot,
   onDeleteWorktree,
   onWorktreeSyncComplete,
 }: SessionCardProps) {
@@ -68,7 +72,9 @@ export function SessionCard({
   const isSettingNickname = pendingAction === "nickname";
   const isOpeningVSCode = pendingAction === "vscode";
   const isDeletingWorktree = pendingAction === "worktree-delete";
+  const isResumingAtMissingWorktreeRoot = pendingAction === "missing-root-resume";
   const isBusy = isDeleting || isContinuing || isSettingNickname;
+  const [resumingAtRoot, setResumingAtRoot] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showUsage, setShowUsage] = useState(false);
@@ -221,16 +227,76 @@ export function SessionCard({
       </div>
 
       {session.directoryMissing && (
-        <div
-          className="flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
-          title={
-            session.workingDirectory
-              ? `Original directory no longer exists: ${session.workingDirectory}`
-              : "This session's original directory no longer exists"
-          }
-        >
-          <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
-          Original folder missing
+        <div className="flex flex-col gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+          <div
+            className="flex items-center gap-1.5"
+            title={
+              session.workingDirectory
+                ? `Original directory no longer exists: ${session.workingDirectory}`
+                : "This session's original directory no longer exists"
+            }
+          >
+            <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+            Original folder missing
+          </div>
+
+          {session.missingWorktreeRepoRoot && (
+            <div className="flex flex-col gap-1.5 pl-0.5 font-normal text-gray-600 dark:text-gray-400">
+              <span className="break-all">
+                This looks like a removed worktree — the project's root folder is still here:{" "}
+                <span className="font-mono">{session.missingWorktreeRepoRoot}</span>
+              </span>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onOpenMissingWorktreeRootInVSCode(session)}
+                  disabled={isOpeningVSCode}
+                  aria-label="Open the project root in VS Code"
+                  icon={
+                    isOpeningVSCode ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Code2 className="h-3.5 w-3.5" />
+                    )
+                  }
+                >
+                  code .
+                </Button>
+                <Tooltip
+                  content={
+                    session.rootSessionId
+                      ? "Resume the existing session already recorded at the project root."
+                      : "The old transcript can't be resumed from a different folder — this starts a new " +
+                        "conversation at the root, seeded with a recap of what the old session did."
+                  }
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setResumingAtRoot(true);
+                      try {
+                        await onResumeAtMissingWorktreeRoot(session);
+                      } finally {
+                        setResumingAtRoot(false);
+                      }
+                    }}
+                    disabled={resumingAtRoot || isResumingAtMissingWorktreeRoot}
+                    icon={
+                      resumingAtRoot || isResumingAtMissingWorktreeRoot ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )
+                    }
+                  >
+                    {session.rootSessionId ? "Resume at root" : "Start fresh at root"}
+                  </Button>
+                </Tooltip>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
