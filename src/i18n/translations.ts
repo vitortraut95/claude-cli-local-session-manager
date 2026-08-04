@@ -71,10 +71,10 @@ export const translations = {
     "\"New task\" creates a worktree and opens a terminal there already running Claude with " +
       "your prompt. The main project folder is left untouched — you (or another task) can keep " +
       "using it at the same time.",
-    "\"New task\" cria um worktree e abre um terminal já rodando o Claude com o seu prompt. A " +
+    "\"Nova tarefa\" cria um worktree e abre um terminal já rodando o Claude com o seu prompt. A " +
       "pasta principal do projeto fica intacta — você (ou outra tarefa) pode continuar usando ela " +
       "ao mesmo tempo.",
-    "\"New task\" crea un worktree y abre una terminal que ya ejecuta Claude con tu prompt. La " +
+    "\"Nueva tarea\" crea un worktree y abre una terminal que ya ejecuta Claude con tu prompt. La " +
       "carpeta principal del proyecto queda intacta — tú (u otra tarea) puedes seguir usándola al " +
       "mismo tiempo.",
   ),
@@ -89,14 +89,14 @@ export const translations = {
       "into the project's root folder so you can test using your usual local setup. This doesn't " +
       "commit or push anything — it's disposable, and you can repeat it as many times as you " +
       "like (each copy discards the previous one, recoverably, via git stash).",
-    "Quando a tarefa parecer pronta, use \"Worktree → root\" → \"Copy files only\" pra copiar os " +
-      "arquivos dela pra pasta raiz do projeto e testar usando o seu ambiente local de sempre. " +
-      "Isso não commita nem faz push de nada — é descartável, e você pode repetir quantas vezes " +
-      "quiser (cada cópia descarta a anterior, de forma recuperável, via git stash).",
-    "Cuando la tarea parezca lista, usa \"Worktree → root\" → \"Copy files only\" para copiar sus " +
-      "archivos a la carpeta raíz del proyecto y probar usando tu entorno local habitual. Esto no " +
-      "hace commit ni push de nada — es descartable, y puedes repetirlo tantas veces como " +
-      "quieras (cada copia descarta la anterior, de forma recuperable, vía git stash).",
+    "Quando a tarefa parecer pronta, use \"Worktree → raiz\" → \"Copiar apenas os arquivos\" pra " +
+      "copiar os arquivos dela pra pasta raiz do projeto e testar usando o seu ambiente local de " +
+      "sempre. Isso não commita nem faz push de nada — é descartável, e você pode repetir quantas " +
+      "vezes quiser (cada cópia descarta a anterior, de forma recuperável, via git stash).",
+    "Cuando la tarea parezca lista, usa \"Worktree → raíz\" → \"Copiar solo los archivos\" para " +
+      "copiar sus archivos a la carpeta raíz del proyecto y probar usando tu entorno local " +
+      "habitual. Esto no hace commit ni push de nada — es descartable, y puedes repetirlo tantas " +
+      "veces como quieras (cada copia descarta la anterior, de forma recuperable, vía git stash).",
   ),
 
   "onboarding.step3.title": dict(
@@ -112,14 +112,14 @@ export const translations = {
       "its session can no longer be resumed afterward.",
     "Os commits reais ficam na própria branch do worktree — faça push e abra o PR a partir de um " +
       "terminal ali, não a partir da cópia na raiz (essa cópia é só um preview sem commit). " +
-      "Como alternativa, \"Remove worktree & checkout branch\" move a branch (com todo o " +
-      "histórico) pra pasta raiz de uma vez só — mas isso é irreversível: o worktree é deletado, " +
-      "então a sessão dele não pode mais ser retomada depois.",
+      "Como alternativa, \"Remover worktree e fazer checkout da branch\" move a branch (com todo " +
+      "o histórico) pra pasta raiz de uma vez só — mas isso é irreversível: o worktree é " +
+      "deletado, então a sessão dele não pode mais ser retomada depois.",
     "Los commits reales están en la propia rama del worktree — haz push y abre tu PR desde una " +
       "terminal ahí, no desde la copia en la raíz (esa copia es solo una vista previa sin " +
-      "commit). Como alternativa, \"Remove worktree & checkout branch\" mueve la rama (con todo " +
-      "el historial) a la carpeta raíz en un solo paso — pero es irreversible: el worktree se " +
-      "elimina, así que su sesión ya no se puede reanudar después.",
+      "commit). Como alternativa, \"Eliminar worktree y hacer checkout de la rama\" mueve la " +
+      "rama (con todo el historial) a la carpeta raíz en un solo paso — pero es irreversible: el " +
+      "worktree se elimina, así que su sesión ya no se puede reanudar después.",
   ),
 
   "onboarding.step4.title": dict(
@@ -132,11 +132,11 @@ export const translations = {
       "check for unpushed commits, so only delete a worktree after its branch is safely on the " +
       "remote (ideally after the PR is merged) — otherwise you can lose local commits that " +
       "reviewers might still ask you to change.",
-    "\"Clean up worktree\" remove a pasta e força a deleção da branch local. Não existe checagem " +
+    "\"Limpar worktree\" remove a pasta e força a deleção da branch local. Não existe checagem " +
       "de commits não enviados, então só delete um worktree depois que a branch estiver a salvo " +
       "no remoto (idealmente depois do PR mergeado) — senão você pode perder commits locais que " +
       "os revisores ainda podem pedir pra mudar.",
-    "\"Clean up worktree\" elimina la carpeta y fuerza la eliminación de su rama local. No hay " +
+    "\"Limpiar worktree\" elimina la carpeta y fuerza la eliminación de su rama local. No hay " +
       "verificación de commits sin enviar, así que solo elimina un worktree después de que su " +
       "rama esté a salvo en el remoto (idealmente después de que el PR se haya fusionado) — de " +
       "lo contrario puedes perder commits locales que los revisores todavía podrían pedirte " +
@@ -154,12 +154,12 @@ export const translations = {
       "offers to open it in VS Code, or to continue working there: resuming an existing session " +
       "already at the root if one exists, or starting a fresh conversation seeded with a recap " +
       "of what the old one did.",
-    "Depois de um checkout, o card daquela sessão mostra \"Original folder missing\" — esperado, " +
+    "Depois de um checkout, o card daquela sessão mostra \"Pasta original ausente\" — esperado, " +
       "já que o worktree foi removido de propósito. Se a pasta raiz do projeto ainda existir, o " +
       "card oferece abrir ela no VS Code, ou continuar o trabalho ali: retomando uma sessão já " +
       "existente na raiz, se houver uma, ou começando uma conversa nova alimentada com um resumo " +
       "do que a antiga fez.",
-    "Después de un checkout, la tarjeta de esa sesión muestra \"Original folder missing\" — es " +
+    "Después de un checkout, la tarjeta de esa sesión muestra \"Falta la carpeta original\" — es " +
       "esperado, ya que el worktree se eliminó a propósito. Si la carpeta raíz del proyecto " +
       "todavía existe, la tarjeta ofrece abrirla en VS Code, o continuar trabajando ahí: " +
       "reanudando una sesión ya existente en la raíz, si hay una, o iniciando una conversación " +
@@ -619,8 +619,8 @@ export const translations = {
 ),
 "sessionCard.worktreeToRootButton": dict(
   "worktree → root",
-  "worktree → root",
-  "worktree → root",
+  "worktree → raiz",
+  "worktree → raíz",
 ),
 "sessionCard.worktreeToRoot.tooltip": dict(
   "Sync this worktree's code into the project's root folder — copy files only, or remove the worktree and check out its branch there instead.",
@@ -775,7 +775,7 @@ export const translations = {
 ),
 "cleanupModal.finding.manualDelete.label": dict(
   "Worktree deleted manually",
-  "Worktree deletado manualmente",
+  "Worktree excluído manualmente",
   "Worktree eliminado manualmente",
 ),
 "cleanupModal.finding.manualDelete.body": dict(
@@ -1045,8 +1045,8 @@ export const translations = {
 ),
 "newTaskModal.whatWillHappen": dict(
   "What will happen when you click \"Create and open terminal\":",
-  "O que vai acontecer quando você clicar em \"Create and open terminal\":",
-  "Qué sucederá cuando hagas clic en \"Create and open terminal\":",
+  "O que vai acontecer quando você clicar em \"Criar e abrir terminal\":",
+  "Qué sucederá cuando hagas clic en \"Crear y abrir terminal\":",
 ),
 "newTaskModal.explain.repo.pre": dict(
   "Confirms that",
@@ -1236,7 +1236,7 @@ export const translations = {
 ),
 "useSessions.stoppedAndResumed": dict(
   "Stopped the other terminal, checked out the branch, and opened a terminal here.",
-  "O outro terminal foi parado, a branch foi carregada e um terminal foi aberto aqui.",
+  "O outro terminal foi parado, foi feito checkout da branch e um terminal foi aberto aqui.",
   "Se detuvo la otra terminal, se cambió a la rama y se abrió una terminal aquí.",
 ),
 "useSessions.switchSessionsError": dict(
@@ -1610,7 +1610,7 @@ export const translations = {
 ),
 "worktreeToRootModal.done.explanation": dict(
   "This session's transcript was tied to the worktree folder that just got removed, so it can't be resumed from this app anymore — the code itself is safe, it's just in the root folder now. Delete this now-dead card, or keep it around as a record.",
-  "A transcrição desta sessão estava vinculada à pasta do worktree que acabou de ser removida, então ela não pode mais ser retomada a partir deste app — o código em si está seguro, só que agora está na pasta raiz. Exclua este card agora sem uso, ou mantenha-o como registro.",
+  "A transcrição desta sessão estava vinculada à pasta do worktree que acabou de ser removida, então ela não pode mais ser retomada a partir deste app — o código em si está seguro, só que agora está na pasta raiz. Exclua este card agora inativo, ou mantenha-o como registro.",
   "La transcripción de esta sesión estaba vinculada a la carpeta del worktree que acaba de eliminarse, así que ya no se puede reanudar desde esta app — el código en sí está seguro, solo que ahora está en la carpeta raíz. Elimina esta tarjeta ya inactiva, o conserva como registro.",
 ),
 
