@@ -131,6 +131,14 @@ export async function fetchRootStatus(id: string): Promise<RootStatus> {
   return data.status;
 }
 
+/** Opens the repo *root* (not the worktree) in VS Code — lets the "code ." button next to the
+ *  root dirty-files list actually show what's about to be discarded/overwritten. */
+export async function openWorktreeRootInVSCode(id: string): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.post(`/${encodeURIComponent(id)}/worktree-to-root/vscode-root`),
+  );
+}
+
 /** Step 1 (both "worktree → root" modes, and the standalone "Reset root" quick action): discards
  *  every uncommitted change in the repo's main checkout — recoverably, via `git stash` server-side
  *  (see resetRootWorkingTree in sessionService.ts) — returning the resulting stash ref (null if

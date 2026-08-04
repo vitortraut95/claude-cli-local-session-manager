@@ -2,17 +2,20 @@ import {
   AlertTriangle,
   CheckCircle2,
   Circle,
+  Code2,
   Copy,
   GitBranch,
   GitMerge,
   Loader2,
   XCircle,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useToast } from "../hooks/useToast";
 import * as sessionsApi from "../services/sessionsApi";
 import type { RootStatus, Session, WorktreeToRootPreview } from "../types/session";
+import { Button } from "./Button";
 import { Modal } from "./Modal";
+import { Tooltip } from "./Tooltip";
 
 type WorktreeToRootModalProps = {
   session: Session;
@@ -66,20 +69,27 @@ export function FileListBox({
   title,
   files,
   tone = "neutral",
+  titleAction,
 }: {
   title: string;
   files: string[];
   tone?: "neutral" | "danger";
+  /** Rendered next to the title, e.g. the "code ." button that opens the folder these files
+   *  belong to — lets the user actually look before something discards/overwrites them. */
+  titleAction?: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <p
-        className={`text-xs font-medium ${
-          tone === "danger" ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
-        }`}
-      >
-        {title} ({files.length})
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p
+          className={`text-xs font-medium ${
+            tone === "danger" ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          {title} ({files.length})
+        </p>
+        {titleAction}
+      </div>
       <div className="max-h-40 overflow-y-auto rounded-md border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-950">
         {files.length === 0 ? (
           <p className="text-xs text-gray-400 dark:text-gray-600">None</p>
@@ -98,7 +108,7 @@ export function FileListBox({
 }
 
 /**
- * Mounted only while open (same convention as CreateWorktreeModal/NicknameModal) so all of this
+ * Mounted only while open (same convention as NicknameModal) so all of this
  * wizard's state resets fresh every time — there's no in-progress form input here worth preserving
  * across an accidental close.
  *
@@ -129,6 +139,18 @@ export function WorktreeToRootModal({
   const [loadingConfirmStatus, setLoadingConfirmStatus] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
   const [executing, setExecuting] = useState(false);
+  const [openingRootInVSCode, setOpeningRootInVSCode] = useState(false);
+
+  const openRootInVSCode = useCallback(() => {
+    setOpeningRootInVSCode(true);
+    sessionsApi
+      .openWorktreeRootInVSCode(session.id)
+      .then(() => showToast("Opening the root folder in VS Code…", "success"))
+      .catch((err) => {
+        showToast(err instanceof Error ? err.message : "Could not open VS Code.", "error");
+      })
+      .finally(() => setOpeningRootInVSCode(false));
+  }, [session.id, showToast]);
 
   const fetchPreview = useCallback(() => {
     setLoadingPreview(true);
@@ -353,6 +375,26 @@ export function WorktreeToRootModal({
                 }
                 files={preview.rootDirtyFiles}
                 tone={preview.rootDirtyFiles.length > 0 ? "danger" : "neutral"}
+                titleAction={
+                  <Tooltip content="Open the root folder in VS Code">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={openRootInVSCode}
+                      disabled={openingRootInVSCode}
+                      aria-label="Open root folder in VS Code"
+                      icon={
+                        openingRootInVSCode ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Code2 className="h-3.5 w-3.5" />
+                        )
+                      }
+                    >
+                      code .
+                    </Button>
+                  </Tooltip>
+                }
               />
 
               {mode === "copy" && (

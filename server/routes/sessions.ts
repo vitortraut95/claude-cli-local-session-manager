@@ -13,6 +13,7 @@ import {
   getWorktreeToRootPreview,
   listSessions,
   openInVSCode,
+  openWorktreeRootInVSCode,
   removeWorktreeAndCheckoutRoot,
   resetRootWorkingTree,
   setSessionNickname,
@@ -302,6 +303,22 @@ sessionsRouter.post("/:id/vscode", async (req, res) => {
     await openInVSCode(req.params.id);
     res.json({ success: true });
   } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+sessionsRouter.post("/:id/worktree-to-root/vscode-root", async (req, res) => {
+  try {
+    await openWorktreeRootInVSCode(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ success: false, error: err.message });
+      return;
+    }
     res.status(500).json({
       success: false,
       error: err instanceof Error ? err.message : String(err),

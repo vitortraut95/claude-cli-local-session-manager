@@ -306,15 +306,45 @@ export async function removeWorktreeKeepBranch(worktreePath: string): Promise<st
 }
 
 /**
+ * Every git worktree `listWorktrees(rootDir)` reports as nested inside `rootDir` (not just one
+ * particular linked worktree), as paths relative to `rootDir` — shared by every "worktree → root"
+ * operation that must never read/modify a nested worktree as if it were a plain part of root's own
+ * working tree, since it's really a separate git repository (own `.git` file, own uncommitted
+ * state, possibly still in active use by another session). Pure/sync: callers that already fetched
+ * `entries` via `listWorktrees` (as most do, for branch lookups) pass it straight through instead of
+ * this re-querying git.
+ */
+export function nestedWorktreeRelativePaths(rootDir: string, entries: WorktreeEntry[]): string[] {
+  const resolvedRoot = path.resolve(rootDir);
+  return entries
+    .map((entry) => path.relative(resolvedRoot, path.resolve(entry.path)))
+    .filter((rel) => rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+/** Turns a list of root-relative paths into the `-- . ':(exclude)path'...` pathspec arguments that
+ *  make a `git status`/`git stash` call ignore them entirely, instead of just filtering their
+ *  names out of the result afterward — the latter wouldn't stop `git stash` from actually touching
+ *  them. Empty when there's nothing to exclude, so callers can always splice this in unconditionally. */
+function excludePathspecArgs(excludePaths: string[]): string[] {
+  if (excludePaths.length === 0) return [];
+  return ["--", ".", ...excludePaths.map((p) => `:(exclude)${p}`)];
+}
+
+/**
  * Parses `git status --porcelain` into the plain list of relative paths it reports as dirty
  * (staged, unstaged, or untracked) — same command `hasUncommittedChanges` already uses as a
  * boolean check; this returns the actual paths so a caller (the "worktree → root" preview) can
  * show the user exactly what's about to be discarded. Each line is a 2-character status code, a
  * space, then the path; a rename ("R  old -> new") reports both sides — only the new path is kept,
  * since that's what's actually on disk now.
+ *
+ * `excludePaths` (typically `nestedWorktreeRelativePaths`'s result) keeps nested worktrees out of
+ * this list entirely — otherwise an untracked `.claude/worktrees/<name>` (or an ancestor directory
+ * git collapses it into, like `.claude/`) would show up as "uncommitted changes that will be
+ * discarded" even though it's not user content at all, it's other worktrees managed by this app.
  */
-export async function getStatusFiles(cwd: string): Promise<string[]> {
-  const status = await runGit(["status", "--porcelain"], cwd);
+export async function getStatusFiles(cwd: string, excludePaths: string[] = []): Promise<string[]> {
+  const status = await runGit(["status", "--porcelain", ...excludePathspecArgs(excludePaths)], cwd);
   if (!status) return [];
   return status.split("\n").map((line) => {
     const filePath = line.slice(3);
@@ -344,12 +374,21 @@ const STASH_MESSAGE = "worktree-to-root: root's pre-sync state";
  * separate reset/clean needed), so the caller can tell the user exactly how to get it back
  * (`git stash apply <sha>`) instead of just destroying it outright. Returns the new stash's commit
  * SHA, or null when `cwd` had nothing dirty to begin with (nothing was stashed, nothing changed).
+ *
+ * `excludePaths` (see `nestedWorktreeRelativePaths`) is just as load-bearing here as it is for
+ * `getStatusFiles` — without it, an untracked `.claude/worktrees/<name>` would actually get swept
+ * into the stash, which risks corrupting/orphaning whatever other session is still using that
+ * nested worktree, not just misreporting it in the UI.
  */
-export async function discardWorkingTreeChanges(cwd: string): Promise<string | null> {
-  const dirty = await runGit(["status", "--porcelain"], cwd);
+export async function discardWorkingTreeChanges(
+  cwd: string,
+  excludePaths: string[] = [],
+): Promise<string | null> {
+  const pathspecArgs = excludePathspecArgs(excludePaths);
+  const dirty = await runGit(["status", "--porcelain", ...pathspecArgs], cwd);
   if (!dirty) return null;
 
-  await runGit(["stash", "push", "--include-untracked", "-m", STASH_MESSAGE], cwd);
+  await runGit(["stash", "push", "--include-untracked", "-m", STASH_MESSAGE, ...pathspecArgs], cwd);
   return await runGit(["rev-parse", "refs/stash"], cwd);
 }
 
@@ -470,10 +509,7 @@ export async function computeFileDiff(worktreeDir: string, rootDir: string): Pro
   const resolvedWorktree = path.resolve(worktreeDir);
 
   const nestedWorktreeEntries = new Set(
-    entries
-      .map((entry) => path.relative(resolvedRoot, path.resolve(entry.path)))
-      .filter((rel) => rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel))
-      .map((rel) => `${rel}/`),
+    nestedWorktreeRelativePaths(rootDir, entries).map((rel) => `${rel}/`),
   );
 
   const [worktreeFiles, rawRootFiles] = await Promise.all([

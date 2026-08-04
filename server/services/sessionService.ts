@@ -38,6 +38,7 @@ import {
   getStatusFiles,
   isLinkedWorktree,
   listWorktrees,
+  nestedWorktreeRelativePaths,
   removeWorktreeAndBranch,
   removeWorktreeKeepBranch,
   runGit,
@@ -720,15 +721,31 @@ async function launchWindowsTerminal(resumeCommand: string, cwd?: string): Promi
 }
 
 /**
- * Opens `cwd` in VS Code via its `code` CLI — no terminal involved, unlike the resume launchers
- * above: `code <dir>` already opens the folder directly, so there's nothing to gain from wrapping
- * it in a terminal window just to run the same command and close again. Doesn't touch git at all;
- * `gitBranch` on the session is informational only (recorded when the CLI last logged an entry,
- * may be stale), and checking it out here could collide with another Claude session or terminal
- * still working in that same directory.
+ * Opens `dir` in VS Code via its `code` CLI — no terminal involved: `code <dir>` already opens the
+ * folder directly, so there's nothing to gain from wrapping it in a terminal window just to run
+ * the same command and close again.
  *
  * `--new-window` forces a fresh window every time — without it, `code` reuses an already-open
  * window and swaps its folder out from under whatever the user was looking at there.
+ */
+async function openDirInVSCode(dir: string): Promise<void> {
+  if (!(await directoryExists(dir))) {
+    throw new Error(`This directory no longer exists ("${dir}").`);
+  }
+
+  if (!(await trySpawnDetached("code", ["--new-window", dir]))) {
+    throw new Error(
+      `Could not open VS Code — the "code" command wasn't found on PATH. In VS Code, run ` +
+        `"Shell Command: Install 'code' command in PATH" from the Command Palette.`,
+    );
+  }
+}
+
+/**
+ * Opens a session's own working directory in VS Code. Doesn't touch git at all; `gitBranch` on
+ * the session is informational only (recorded when the CLI last logged an entry, may be stale),
+ * and checking it out here could collide with another Claude session or terminal still working in
+ * that same directory.
  */
 export async function openInVSCode(id: string): Promise<void> {
   if (!isSafeSessionId(id)) {
@@ -739,19 +756,25 @@ export async function openInVSCode(id: string): Promise<void> {
   if (!cwd) {
     throw new Error("This session has no known working directory to open.");
   }
-  if (!(await directoryExists(cwd))) {
+  try {
+    await openDirInVSCode(cwd);
+  } catch {
     throw new Error(
       `This session's original directory no longer exists ("${cwd}"). Recreate the folder ` +
         `(or a symlink) at the old path before opening it in VS Code.`,
     );
   }
+}
 
-  if (!(await trySpawnDetached("code", ["--new-window", cwd]))) {
-    throw new Error(
-      `Could not open VS Code — the "code" command wasn't found on PATH. In VS Code, run ` +
-        `"Shell Command: Install 'code' command in PATH" from the Command Palette.`,
-    );
-  }
+/**
+ * Opens a worktree-backed session's *repo root* (not the worktree itself) in VS Code — backs the
+ * "Worktree → root" modal's "code ." button next to the root dirty-files list, so the user can
+ * actually look at what's about to be discarded/overwritten before confirming. Reuses the same
+ * session-id → repo-root resolution as the rest of the "worktree → root" flow.
+ */
+export async function openWorktreeRootInVSCode(id: string): Promise<void> {
+  const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
+  await openDirInVSCode(repoRoot);
 }
 
 /**
@@ -918,9 +941,10 @@ async function resolveWorktreeAndRepoRoot(id: string): Promise<{ cwd: string; re
 export async function getWorktreeToRootPreview(id: string): Promise<WorktreeToRootPreview> {
   const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
 
-  const [entries, rootDirtyFiles, fileDiff, sessions] = await Promise.all([
-    listWorktrees(repoRoot),
-    getStatusFiles(repoRoot),
+  const entries = await listWorktrees(repoRoot);
+  const excludePaths = nestedWorktreeRelativePaths(repoRoot, entries);
+  const [rootDirtyFiles, fileDiff, sessions] = await Promise.all([
+    getStatusFiles(repoRoot, excludePaths),
     computeFileDiff(cwd, repoRoot),
     listSessions(),
   ]);
@@ -949,10 +973,9 @@ export async function getWorktreeToRootPreview(id: string): Promise<WorktreeToRo
  */
 export async function getRootStatus(id: string): Promise<RootStatus> {
   const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
-  const [entries, rootDirtyFiles] = await Promise.all([
-    listWorktrees(repoRoot),
-    getStatusFiles(repoRoot),
-  ]);
+  const entries = await listWorktrees(repoRoot);
+  const excludePaths = nestedWorktreeRelativePaths(repoRoot, entries);
+  const rootDirtyFiles = await getStatusFiles(repoRoot, excludePaths);
   const resolvedRepoRoot = path.resolve(repoRoot);
   const rootBranch = entries.find((e) => path.resolve(e.path) === resolvedRepoRoot)?.branch ?? null;
 
@@ -967,6 +990,10 @@ export async function getRootStatus(id: string): Promise<RootStatus> {
  * would otherwise destroy uncommitted work in root. Not actually irreversible, though: returns
  * the stash SHA `discardWorkingTreeChanges` stores it under (null if root had nothing dirty), so
  * the caller can tell the user how to get it back.
+ *
+ * Excludes nested worktrees (see `nestedWorktreeRelativePaths`) from what gets stashed — root's
+ * own `.claude/worktrees/<name>` entries are other sessions' git repositories, not uncommitted user
+ * content, and stashing them would risk corrupting whatever is still using them.
  */
 export async function resetRootWorkingTree(id: string): Promise<string | null> {
   const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
@@ -978,7 +1005,9 @@ export async function resetRootWorkingTree(id: string): Promise<string | null> {
     );
   }
 
-  return discardWorkingTreeChanges(repoRoot);
+  const entries = await listWorktrees(repoRoot);
+  const excludePaths = nestedWorktreeRelativePaths(repoRoot, entries);
+  return discardWorkingTreeChanges(repoRoot, excludePaths);
 }
 
 /**
