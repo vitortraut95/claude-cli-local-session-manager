@@ -87,11 +87,11 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   const [jiraMcpServerName, setJiraMcpServerName] = useState<string | null>(null);
   const [jiraMcpError, setJiraMcpError] = useState<string | null>(null);
 
-  const checkJiraMcp = useCallback(() => {
+  const checkJiraMcp = useCallback((forceRefresh = false) => {
     setJiraMcpStatus("checking");
     setJiraMcpError(null);
     tasksApi
-      .fetchJiraMcpStatus()
+      .fetchJiraMcpStatus(forceRefresh)
       .then((status) => {
         setJiraMcpServerName(status.serverName);
         setJiraMcpStatus(status.connected ? "connected" : "disconnected");
@@ -104,15 +104,17 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
       });
   }, []);
 
-  // Re-checks every time the modal opens (not just once on mount) — the CLI's `claude mcp login`
-  // flow happens in a separate terminal, so a fresh check on open is the only way this modal would
-  // ever notice the user connected it since the last time. The "Check again" button below
-  // covers the case where they connect it without closing the modal at all. Deferred via a 0ms
-  // timer (rather than calling checkJiraMcp directly) so its setState calls happen in a callback,
-  // not synchronously in the effect body itself.
+  // Checks every time the modal opens (not just once on mount) — the CLI's `claude mcp login`
+  // flow happens in a separate terminal, so this is the only way the modal would ever notice the
+  // user connected it since the last time. Server-side response is cached for 4h though (see
+  // `getJiraMcpStatus` in taskService.ts), since `claude mcp list` is a real subprocess spawn and
+  // the connection state rarely changes between opens — the "Check again" button below passes
+  // `forceRefresh` to bypass that cache on demand. Deferred via a 0ms timer (rather than calling
+  // checkJiraMcp directly) so its setState calls happen in a callback, not synchronously in the
+  // effect body itself.
   useEffect(() => {
     if (!open) return;
-    const timer = setTimeout(checkJiraMcp, 0);
+    const timer = setTimeout(() => checkJiraMcp(), 0);
     return () => clearTimeout(timer);
   }, [open, checkJiraMcp]);
 
@@ -472,7 +474,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
             </span>
           </div>
           {jiraMcpStatus !== "checking" && (
-            <Button variant="link" size="none" onClick={checkJiraMcp} className="shrink-0">
+            <Button variant="link" size="none" onClick={() => checkJiraMcp(true)} className="shrink-0">
               Check again
             </Button>
           )}

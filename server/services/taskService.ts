@@ -70,6 +70,13 @@ export type JiraMcpStatus = {
   serverName: string | null;
 };
 
+/** 4 hours — `claude mcp login` happens in a separate terminal this app can't observe, so there's
+ *  no way to invalidate the cache on the actual change; this just bounds how stale the modal's
+ *  auto-check can be. The modal's manual "Check again" button (`forceRefresh`) bypasses it. */
+const JIRA_MCP_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
+
+let jiraMcpCache: { status: JiraMcpStatus; fetchedAt: number } | null = null;
+
 /**
  * Shells out to `claude mcp list` (the CLI's own health-checked server list — there's no faster
  * "just tell me if Jira is connected" command) and looks for any configured server whose name
@@ -77,8 +84,15 @@ export type JiraMcpStatus = {
  * of pasting a Jira link is for the launched `claude` session to actually be able to look the
  * ticket up, starting the task without that connected would just leave Claude unable to do the
  * first thing the prompt asks of it.
+ *
+ * Cached for `JIRA_MCP_CACHE_TTL_MS` since the modal re-checks on every open — `forceRefresh` (the
+ * modal's manual "Check again" button) bypasses that.
  */
-export async function getJiraMcpStatus(): Promise<JiraMcpStatus> {
+export async function getJiraMcpStatus(forceRefresh = false): Promise<JiraMcpStatus> {
+  if (!forceRefresh && jiraMcpCache && Date.now() - jiraMcpCache.fetchedAt < JIRA_MCP_CACHE_TTL_MS) {
+    return jiraMcpCache.status;
+  }
+
   let stdout: string;
   try {
     ({ stdout } = await execFileAsync("claude", ["mcp", "list"], { timeout: 30_000 }));
@@ -101,10 +115,15 @@ export async function getJiraMcpStatus(): Promise<JiraMcpStatus> {
     .filter((entry) => JIRA_MCP_NAME_PATTERN.test(entry.name));
 
   const [firstMatch] = matches;
-  if (!firstMatch) return { connected: false, serverName: null };
+  const status: JiraMcpStatus = firstMatch
+    ? {
+        connected: matches.some((entry) => entry.status.includes("✔")),
+        serverName: (matches.find((entry) => entry.status.includes("✔")) ?? firstMatch).name,
+      }
+    : { connected: false, serverName: null };
 
-  const connectedMatch = matches.find((entry) => entry.status.includes("✔"));
-  return { connected: connectedMatch !== undefined, serverName: (connectedMatch ?? firstMatch).name };
+  jiraMcpCache = { status, fetchedAt: Date.now() };
+  return status;
 }
 
 export type RepoInfo = {

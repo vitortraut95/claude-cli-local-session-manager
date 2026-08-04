@@ -77,9 +77,9 @@ tasksRouter.put("/preferences", async (req, res) => {
   }
 });
 
-tasksRouter.get("/jira-mcp-status", async (_req, res) => {
+tasksRouter.get("/jira-mcp-status", async (req, res) => {
   try {
-    const status = await getJiraMcpStatus();
+    const status = await getJiraMcpStatus(req.query.refresh === "1");
     res.json(status);
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
