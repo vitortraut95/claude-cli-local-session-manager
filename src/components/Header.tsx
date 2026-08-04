@@ -51,11 +51,9 @@ export function Header() {
           </div>
           <div className="min-w-0">
             <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 sm:text-xl">
-              Claude CLI Local Session Manager
+              Claude CLI <br /> Local Session Manager
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t("header.subtitle")}
-            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t("header.subtitle")}</p>
           </div>
         </div>
 
