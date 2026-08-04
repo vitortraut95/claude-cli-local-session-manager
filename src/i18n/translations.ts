@@ -1129,12 +1129,7 @@ export const translations = {
     "{count} novos commits em {branch} — clique para atualizar",
     "{count} commits nuevos en {branch} — haz clic para actualizar",
   ),
-  "updateButton.ariaLabel": dict(
-    "Update application",
-    "Atualizar aplicativo",
-    "Actualizar aplicación",
-  ),
-  "updateButton.label": dict("Update", "Atualizar", "Actualizar"),
+  "updateButton.label": dict("Update app", "Atualizar app", "Actualizar app"),
   "usageLimitsBadge.compact.session": dict("5h", "5h", "5h"),
   "usageLimitsBadge.compact.weeklyAll": dict("7d", "7d", "7d"),
   "usageLimitsBadge.full.session": dict("Session (5h)", "Sessão (5h)", "Sesión (5h)"),

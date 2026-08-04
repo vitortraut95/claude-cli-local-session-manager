@@ -117,7 +117,11 @@ export function SessionsPage() {
       <>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {t("sessionsPage.showingRange", { start: rangeStart, end: rangeEnd, total: filteredCount })}
+            {t("sessionsPage.showingRange", {
+              start: rangeStart,
+              end: rangeEnd,
+              total: filteredCount,
+            })}
           </p>
           <Button variant="link" size="none" onClick={selectAllOnPage}>
             {t("sessionsPage.selectAllOnPage")}
@@ -181,7 +185,7 @@ export function SessionsPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <Header />
       <main className="px-4 py-6 sm:px-6">
-        <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center max-w-375 mx-auto">
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
           <WorktreeFilter value={worktreeOnly} onChange={setWorktreeOnly} />
           <ProjectFilter projects={projects} value={projectFilter} onChange={setProjectFilter} />
@@ -228,7 +232,9 @@ export function SessionsPage() {
               onChange={(event) => setCleanupBranchOnDelete(event.target.checked)}
               className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
             />
-            {t("sessionsPage.deleteConfirm.cleanupBranch", { branch: sessionPendingDeletion.gitBranch })}
+            {t("sessionsPage.deleteConfirm.cleanupBranch", {
+              branch: sessionPendingDeletion.gitBranch,
+            })}
           </label>
         )}
       </ConfirmDialog>

@@ -42,7 +42,6 @@ export function UpdateButton({ status, checking, updating, onUpdate }: UpdateBut
           variant="unstyled"
           onClick={onUpdate}
           disabled={disabled}
-          aria-label={t("updateButton.ariaLabel")}
           className={`border ${
             updateAvailable
               ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-950"
