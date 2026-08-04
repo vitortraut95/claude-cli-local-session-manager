@@ -162,6 +162,7 @@ export function SessionsPage() {
               onOpenInVSCode={(s) => openInVSCode(s.id)}
               onCreateWorktree={(s, name) => createWorktree(s.id, name)}
               onDeleteWorktree={(s) => deleteWorktree(s.id)}
+              onWorktreeSyncComplete={() => refresh()}
             />
           ))}
         </div>

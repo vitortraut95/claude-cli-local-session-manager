@@ -67,3 +67,40 @@ export type Session = {
   activeTimeMs: number;
   usage: SessionUsage;
 };
+
+export type WorktreeToRootFileDiff = {
+  added: string[];
+  modified: string[];
+  removed: string[];
+};
+
+/** Snapshot returned by `GET /sessions/:id/worktree-to-root-preview` — powers the "worktree →
+ *  root" modal's preview step before the user commits to either sub-flow. Recomputed fresh on
+ *  every fetch (never cached), since the mutating steps that follow always re-derive their own
+ *  state independently rather than trusting this payload. */
+export type WorktreeToRootPreview = {
+  repoRoot: string;
+  /** Null only for a detached HEAD — the worktree's own branch is never null in practice, since
+   *  the Claude CLI's `--worktree` flag always creates a real one. */
+  rootBranch: string | null;
+  worktreeBranch: string | null;
+  /** Files `git status --porcelain` reports as uncommitted in the root checkout — what the
+   *  "reset root" step (shared by both modes) discards. */
+  rootDirtyFiles: string[];
+  /** Plain filesystem diff between the worktree's and root's working trees (not a git-history
+   *  diff) — only meaningful for "copy" mode's preview. */
+  fileDiff: WorktreeToRootFileDiff;
+  rootHasActiveSession: boolean;
+  worktreeHasActiveSession: boolean;
+};
+
+/** Lightweight snapshot returned by `GET /sessions/:id/worktree-to-root/root-status` — just
+ *  root's branch and dirty-file list, none of `WorktreeToRootPreview`'s (comparatively expensive)
+ *  file diff. Powers the standalone "Reset root" quick action's confirm dialog, and the wizard's
+ *  own final confirm step's last-second re-check — neither needs the full diff, so both use this
+ *  instead of re-fetching the whole preview just to refresh a handful of file names. */
+export type RootStatus = {
+  repoRoot: string;
+  rootBranch: string | null;
+  rootDirtyFiles: string[];
+};

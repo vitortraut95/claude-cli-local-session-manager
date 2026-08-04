@@ -1,5 +1,11 @@
 import axios from "axios";
-import type { Session, SessionRepoInsights, SubagentDetail } from "../types/session";
+import type {
+  RootStatus,
+  Session,
+  SessionRepoInsights,
+  SubagentDetail,
+  WorktreeToRootPreview,
+} from "../types/session";
 
 const client = axios.create({
   baseURL: "/sessions",
@@ -101,4 +107,62 @@ export async function fetchSessionRepoInsights(id: string): Promise<SessionRepoI
     client.get<{ insights: SessionRepoInsights }>(`/${encodeURIComponent(id)}/insights`),
   );
   return data.insights;
+}
+
+/** Read-only snapshot for the "worktree → root" modal — branches, root's dirty files, and a plain
+ *  file diff between the worktree and root. Cheap enough to call again right before the final
+ *  destructive confirm, to re-check root's dirty-file list hasn't changed since the modal opened. */
+export async function fetchWorktreeToRootPreview(id: string): Promise<WorktreeToRootPreview> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ preview: WorktreeToRootPreview }>(
+      `/${encodeURIComponent(id)}/worktree-to-root-preview`,
+    ),
+  );
+  return data.preview;
+}
+
+/** Lighter counterpart to `fetchWorktreeToRootPreview` — just root's branch and dirty-file list,
+ *  no file diff. Backs the standalone "Reset root" quick action's confirm dialog and the wizard's
+ *  own final-confirm re-check, cheap enough to call right before either one commits. */
+export async function fetchRootStatus(id: string): Promise<RootStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ status: RootStatus }>(`/${encodeURIComponent(id)}/worktree-to-root/root-status`),
+  );
+  return data.status;
+}
+
+/** Step 1 (both "worktree → root" modes, and the standalone "Reset root" quick action): discards
+ *  every uncommitted change in the repo's main checkout — recoverably, via `git stash` server-side
+ *  (see resetRootWorkingTree in sessionService.ts) — returning the resulting stash ref (null if
+ *  root had nothing dirty) so the UI can tell the user how to get it back. */
+export async function resetRootWorkingTree(id: string): Promise<{ stashRef: string | null }> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ success: true; stashRef: string | null }>(
+      `/${encodeURIComponent(id)}/worktree-to-root/reset-root`,
+    ),
+  );
+  return { stashRef: data.stashRef };
+}
+
+/** Step 2 ("copy" mode): recomputes the file diff fresh and copies/deletes root's files to match
+ *  the worktree — the worktree itself is left untouched. */
+export async function applyWorktreeCopyToRoot(id: string): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.post(`/${encodeURIComponent(id)}/worktree-to-root/copy`),
+  );
+}
+
+/** Step 2 ("checkout" mode): removes the worktree (keeping its branch) and checks that branch out
+ *  in root, as one operation — see server-side removeWorktreeAndCheckoutRoot for why it's not two
+ *  separate calls. Returns the branch root switched from/to, since nothing else records what root
+ *  used to be on. */
+export async function removeWorktreeAndCheckoutRoot(
+  id: string,
+): Promise<{ previousRootBranch: string | null; newBranch: string }> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ success: true; previousRootBranch: string | null; newBranch: string }>(
+      `/${encodeURIComponent(id)}/worktree-to-root/remove-and-checkout`,
+    ),
+  );
+  return { previousRootBranch: data.previousRootBranch, newBranch: data.newBranch };
 }

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  applyWorktreeCopyToRoot,
   continueSession,
   createSessionWorktree,
   deleteSession,
@@ -7,9 +8,13 @@ import {
   deleteSessionWorktree,
   getSessionPrompts,
   getSessionRepoInsights,
+  getRootStatus,
   getSessionSubagents,
+  getWorktreeToRootPreview,
   listSessions,
   openInVSCode,
+  removeWorktreeAndCheckoutRoot,
+  resetRootWorkingTree,
   setSessionNickname,
   SessionActiveError,
   SessionNotFoundError,
@@ -190,6 +195,92 @@ sessionsRouter.post("/:id/checkout-and-resume", async (req, res) => {
       extractStringField(req.body, "branch"),
     );
     res.json({ success: true });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ success: false, error: err.message });
+      return;
+    }
+    if (err instanceof SessionActiveError) {
+      res.status(409).json({ success: false, error: err.message });
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+sessionsRouter.get("/:id/worktree-to-root-preview", async (req, res) => {
+  try {
+    const preview = await getWorktreeToRootPreview(req.params.id);
+    res.json({ preview });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+sessionsRouter.get("/:id/worktree-to-root/root-status", async (req, res) => {
+  try {
+    const status = await getRootStatus(req.params.id);
+    res.json({ status });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+sessionsRouter.post("/:id/worktree-to-root/reset-root", async (req, res) => {
+  try {
+    const stashRef = await resetRootWorkingTree(req.params.id);
+    res.json({ success: true, stashRef });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ success: false, error: err.message });
+      return;
+    }
+    if (err instanceof SessionActiveError) {
+      res.status(409).json({ success: false, error: err.message });
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+sessionsRouter.post("/:id/worktree-to-root/copy", async (req, res) => {
+  try {
+    await applyWorktreeCopyToRoot(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ success: false, error: err.message });
+      return;
+    }
+    if (err instanceof SessionActiveError) {
+      res.status(409).json({ success: false, error: err.message });
+      return;
+    }
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+sessionsRouter.post("/:id/worktree-to-root/remove-and-checkout", async (req, res) => {
+  try {
+    const { previousRootBranch, newBranch } = await removeWorktreeAndCheckoutRoot(req.params.id);
+    res.json({ success: true, previousRootBranch, newBranch });
   } catch (err) {
     if (err instanceof SessionNotFoundError) {
       res.status(404).json({ success: false, error: err.message });

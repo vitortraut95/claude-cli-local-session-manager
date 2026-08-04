@@ -7,11 +7,13 @@ import {
   DollarSign,
   Folder,
   GitFork,
+  GitMerge,
   Lightbulb,
   Loader2,
   MessageSquare,
   Pencil,
   Play,
+  RotateCcw,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
@@ -25,11 +27,13 @@ import { CreateWorktreeModal } from "./CreateWorktreeModal";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { InsightsModal } from "./InsightsModal";
 import { NicknameModal } from "./NicknameModal";
+import { ResetRootConfirmModal } from "./ResetRootConfirmModal";
 import { SessionSizeMeter } from "./SessionSizeMeter";
 import { SubagentsModal } from "./SubagentsModal";
 import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
 import { UsageDetailsModal } from "./UsageDetailsModal";
+import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
 
@@ -45,6 +49,7 @@ type SessionCardProps = {
   onOpenInVSCode: (session: Session) => void;
   onCreateWorktree: (session: Session, name: string) => void;
   onDeleteWorktree: (session: Session) => void;
+  onWorktreeSyncComplete: (session: Session) => void;
 };
 
 const COPIED_FEEDBACK_DURATION_MS = 2500;
@@ -61,6 +66,7 @@ export function SessionCard({
   onOpenInVSCode,
   onCreateWorktree,
   onDeleteWorktree,
+  onWorktreeSyncComplete,
 }: SessionCardProps) {
   const isDeleting = pendingAction === "delete";
   const isContinuing = pendingAction === "continue";
@@ -77,6 +83,8 @@ export function SessionCard({
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [showCreateWorktreeModal, setShowCreateWorktreeModal] = useState(false);
   const [showDeleteWorktreeConfirm, setShowDeleteWorktreeConfirm] = useState(false);
+  const [showWorktreeToRootModal, setShowWorktreeToRootModal] = useState(false);
+  const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
   const worktreePathParts =
@@ -283,6 +291,36 @@ export function SessionCard({
               </Button>
             </Tooltip>
           )}
+
+          {session.isWorktree &&
+            !session.directoryMissing &&
+            (session.isActive ? (
+              <Tooltip content="Close this session in its terminal before syncing the worktree into the root folder.">
+                <span className="inline-flex shrink-0">
+                  <Button
+                    variant="outline-danger"
+                    size="sm"
+                    disabled
+                    aria-label="Sync worktree into the root folder"
+                    icon={<GitMerge className="h-3.5 w-3.5" />}
+                  >
+                    worktree → root
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : (
+              <Tooltip content="Sync this worktree's code into the project's root folder — copy files only, or remove the worktree and check out its branch there instead.">
+                <Button
+                  variant="outline-danger"
+                  size="sm"
+                  onClick={() => setShowWorktreeToRootModal(true)}
+                  aria-label="Sync worktree into the root folder"
+                  icon={<GitMerge className="h-3.5 w-3.5" />}
+                >
+                  worktree → root
+                </Button>
+              </Tooltip>
+            ))}
         </div>
 
         {hasSiblingActiveSession && (
@@ -363,6 +401,15 @@ export function SessionCard({
             color="blue"
             onClick={() => setShowPreview(true)}
             icon={<MessageSquare className="h-4 w-4" />}
+          />
+        )}
+        {session.isWorktree && !session.directoryMissing && (
+          <ToolbarIconButton
+            tooltip="Reset root — stashes (recoverable) then discards any uncommitted changes in the project's root folder, without touching this worktree. For the copy → test → reset → repeat loop, without opening the full worktree → root wizard each time."
+            ariaLabel="Reset root folder"
+            color="amber"
+            onClick={() => setShowResetRootConfirm(true)}
+            icon={<RotateCcw className="h-4 w-4" />}
           />
         )}
         {session.isWorktree && (
@@ -465,6 +512,17 @@ export function SessionCard({
           }}
           onCancel={() => setShowCreateWorktreeModal(false)}
         />
+      )}
+      {showWorktreeToRootModal && (
+        <WorktreeToRootModal
+          session={session}
+          onClose={() => setShowWorktreeToRootModal(false)}
+          onComplete={() => onWorktreeSyncComplete(session)}
+          onOfferDeleteSession={() => onDeleteRequest(session)}
+        />
+      )}
+      {showResetRootConfirm && (
+        <ResetRootConfirmModal session={session} onClose={() => setShowResetRootConfirm(false)} />
       )}
       <ConfirmDialog
         open={showDeleteWorktreeConfirm}

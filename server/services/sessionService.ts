@@ -3,7 +3,13 @@ import { accessSync, constants } from "node:fs";
 import { access, mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { Session, SessionRepoInsights, SubagentDetail } from "../types/session.js";
+import type {
+  RootStatus,
+  Session,
+  SessionRepoInsights,
+  SubagentDetail,
+  WorktreeToRootPreview,
+} from "../types/session.js";
 import {
   findJsonlFiles,
   findSubagentFiles,
@@ -22,10 +28,18 @@ import {
 import { summarizeUsage } from "../utils/pricing.js";
 import { getNicknames, setNickname } from "../utils/nicknames.js";
 import {
+  applyFileDiff,
+  checkoutExistingBranch,
+  computeFileDiff,
   deleteLocalBranch,
+  discardWorkingTreeChanges,
   getGitDirs,
+  getRepoRoot,
+  getStatusFiles,
   isLinkedWorktree,
+  listWorktrees,
   removeWorktreeAndBranch,
+  removeWorktreeKeepBranch,
   runGit,
 } from "../utils/git.js";
 
@@ -866,6 +880,181 @@ export async function deleteSessionWorktree(id: string): Promise<void> {
   }
 
   await removeWorktreeAndBranch(cwd);
+}
+
+/** Shared validation for every "worktree → root" function below: resolves the session's worktree
+ *  cwd and its repo root, throwing the same errors `deleteSessionWorktree` already uses for an
+ *  unknown session / missing directory / non-worktree session. */
+async function resolveWorktreeAndRepoRoot(id: string): Promise<{ cwd: string; repoRoot: string }> {
+  if (!isSafeSessionId(id)) {
+    throw new Error(`Invalid session id "${id}"`);
+  }
+
+  const cwd = await findSessionCwd(id);
+  if (!cwd) throw new SessionNotFoundError(id);
+  if (!(await directoryExists(cwd))) {
+    throw new Error(`This session's directory no longer exists ("${cwd}").`);
+  }
+  if (!(await isLinkedWorktree(cwd))) {
+    throw new Error("This session isn't running in a git worktree.");
+  }
+
+  const repoRoot = await getRepoRoot(cwd);
+  if (!repoRoot) {
+    throw new Error(`Could not resolve the repo root for "${cwd}".`);
+  }
+
+  return { cwd, repoRoot };
+}
+
+/**
+ * Read-only snapshot for the "worktree → root" modal: both branches, root's dirty-file list (what
+ * the shared "reset root" step would discard), and a plain filesystem diff between the two working
+ * trees (for "copy" mode's preview). Informational only — `rootHasActiveSession`/
+ * `worktreeHasActiveSession` let the modal warn before the user even picks a mode, but the actual
+ * blocking check happens fresh again in each mutating function below, since this preview can sit
+ * on screen for a while (the user picking a mode, reading the diff, ...) before anything runs.
+ */
+export async function getWorktreeToRootPreview(id: string): Promise<WorktreeToRootPreview> {
+  const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
+
+  const [entries, rootDirtyFiles, fileDiff, sessions] = await Promise.all([
+    listWorktrees(repoRoot),
+    getStatusFiles(repoRoot),
+    computeFileDiff(cwd, repoRoot),
+    listSessions(),
+  ]);
+
+  const resolvedRepoRoot = path.resolve(repoRoot);
+  const resolvedCwd = path.resolve(cwd);
+  const rootBranch = entries.find((e) => path.resolve(e.path) === resolvedRepoRoot)?.branch ?? null;
+  const worktreeBranch = entries.find((e) => path.resolve(e.path) === resolvedCwd)?.branch ?? null;
+
+  return {
+    repoRoot,
+    rootBranch,
+    worktreeBranch,
+    rootDirtyFiles,
+    fileDiff,
+    rootHasActiveSession: sessions.some((s) => s.workingDirectory === repoRoot && s.isActive),
+    worktreeHasActiveSession: sessions.some((s) => s.workingDirectory === cwd && s.isActive),
+  };
+}
+
+/**
+ * Read-only, cheap counterpart to `getWorktreeToRootPreview` — just root's branch and dirty-file
+ * list, skipping the (comparatively expensive) file diff entirely. Backs the standalone "Reset
+ * root" quick action's confirm dialog and the wizard's own final-confirm re-check, neither of
+ * which needs anything more than this to show an accurate "here's what's about to be discarded."
+ */
+export async function getRootStatus(id: string): Promise<RootStatus> {
+  const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
+  const [entries, rootDirtyFiles] = await Promise.all([
+    listWorktrees(repoRoot),
+    getStatusFiles(repoRoot),
+  ]);
+  const resolvedRepoRoot = path.resolve(repoRoot);
+  const rootBranch = entries.find((e) => path.resolve(e.path) === resolvedRepoRoot)?.branch ?? null;
+
+  return { repoRoot, rootBranch, rootDirtyFiles };
+}
+
+/**
+ * First step for both "worktree → root" modes: discards every uncommitted change in the repo's
+ * main checkout so the copy/checkout step that follows starts from a clean, known state. Fresh
+ * active-session check right here (not trusted from an earlier preview fetch) — same
+ * zero-tolerance pattern as deleteSession/continueSession/setSessionNickname above, since this
+ * would otherwise destroy uncommitted work in root. Not actually irreversible, though: returns
+ * the stash SHA `discardWorkingTreeChanges` stores it under (null if root had nothing dirty), so
+ * the caller can tell the user how to get it back.
+ */
+export async function resetRootWorkingTree(id: string): Promise<string | null> {
+  const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
+
+  const sessions = await listSessions();
+  if (sessions.some((s) => s.workingDirectory === repoRoot && s.isActive)) {
+    throw new SessionActiveError(
+      "A session is active in the root project directory — close its terminal before continuing.",
+    );
+  }
+
+  return discardWorkingTreeChanges(repoRoot);
+}
+
+/**
+ * "Copy" mode's second (and last) step: recomputes the file diff fresh against root's *current*
+ * state — never trusts whatever diff the client saw in an earlier preview fetch, since that
+ * decides what gets deleted/overwritten here — and applies it. The worktree itself is never
+ * touched (not deleted, nothing checked out).
+ */
+export async function applyWorktreeCopyToRoot(id: string): Promise<void> {
+  const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
+
+  const sessions = await listSessions();
+  if (sessions.some((s) => s.workingDirectory === repoRoot && s.isActive)) {
+    throw new SessionActiveError(
+      "A session is active in the root project directory — close its terminal before continuing.",
+    );
+  }
+
+  const diff = await computeFileDiff(cwd, repoRoot);
+  await applyFileDiff(cwd, repoRoot, diff);
+}
+
+/**
+ * "Checkout" mode's second (and last) step: removes the linked worktree (unlocked first, its
+ * branch kept alive via `removeWorktreeKeepBranch`) and checks that branch out in root, as one
+ * operation. Deliberately not split into a separate "remove" call followed by a separate
+ * "checkout" call the frontend awaits one after another — the gap between those two git commands
+ * would leave the repo in an unrecoverable, hard-to-describe intermediate state (worktree gone,
+ * root still on its old branch) if the second call never landed (tab closed, network blip), the
+ * exact failure mode `stopSiblingAndResume` below was already written to avoid for a similar
+ * reason. The branch itself is never deleted, so if the checkout fails after the worktree is
+ * already gone, the error says so explicitly — the branch's commits are safe, the checkout just
+ * needs finishing by hand. Returns the branch root was on before the switch (null for a detached
+ * HEAD) alongside the one it's on now, so the caller can show a breadcrumb back — root switches
+ * silently otherwise, and nothing else records what it used to be on.
+ */
+export async function removeWorktreeAndCheckoutRoot(
+  id: string,
+): Promise<{ previousRootBranch: string | null; newBranch: string }> {
+  const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
+
+  const sessions = await listSessions();
+  if (sessions.some((s) => s.workingDirectory === cwd && s.isActive)) {
+    throw new SessionActiveError(
+      "A session is still active in this worktree — close its terminal before removing it.",
+    );
+  }
+  if (sessions.some((s) => s.workingDirectory === repoRoot && s.isActive)) {
+    throw new SessionActiveError(
+      "A session is active in the root project directory — close its terminal before checking " +
+        "out a branch there.",
+    );
+  }
+
+  const resolvedRepoRoot = path.resolve(repoRoot);
+  const entriesBefore = await listWorktrees(repoRoot);
+  const previousRootBranch =
+    entriesBefore.find((e) => path.resolve(e.path) === resolvedRepoRoot)?.branch ?? null;
+
+  const branch = await removeWorktreeKeepBranch(cwd);
+  if (!branch) {
+    throw new Error("Could not determine the worktree's branch before removing it.");
+  }
+
+  try {
+    await checkoutExistingBranch(repoRoot, branch);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `The worktree was removed, but "git checkout ${branch}" failed in ${repoRoot}: ${message} ` +
+        `The branch's commits are safe — finish the checkout by hand from a terminal in ${repoRoot}.`,
+      { cause: err },
+    );
+  }
+
+  return { previousRootBranch, newBranch: branch };
 }
 
 /**
