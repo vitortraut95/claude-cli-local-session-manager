@@ -358,35 +358,27 @@ export function SessionCard({
             </Tooltip>
           )}
 
-          {session.isWorktree &&
-            !session.directoryMissing &&
-            (session.isActive ? (
-              <Tooltip content={t("sessionCard.worktreeToRoot.disabledTooltip")}>
-                <span className="inline-flex shrink-0">
-                  <Button
-                    variant="outline-danger"
-                    size="sm"
-                    disabled
-                    aria-label={t("sessionCard.worktreeToRoot.ariaLabel")}
-                    icon={<GitMerge className="h-3.5 w-3.5" />}
-                  >
-                    {t("sessionCard.worktreeToRootButton")}
-                  </Button>
-                </span>
-              </Tooltip>
-            ) : (
-              <Tooltip content={t("sessionCard.worktreeToRoot.tooltip")}>
-                <Button
-                  variant="outline-danger"
-                  size="sm"
-                  onClick={() => setShowWorktreeToRootModal(true)}
-                  aria-label={t("sessionCard.worktreeToRoot.ariaLabel")}
-                  icon={<GitMerge className="h-3.5 w-3.5" />}
-                >
-                  {t("sessionCard.worktreeToRootButton")}
-                </Button>
-              </Tooltip>
-            ))}
+          {session.isWorktree && !session.directoryMissing && (
+            // Unlike Delete/nickname-edit, this stays clickable even while the session is
+            // active: "copy" mode never touches the worktree (only reads it, writes to root) and
+            // only requires root to be free, so it's server-side safe regardless of this
+            // session's own active state (see applyWorktreeCopyToRoot in sessionService.ts).
+            // "checkout" mode does need the worktree closed first, but the modal's own preview
+            // step already blocks continuing in that specific case
+            // (blockedByActiveSession/worktreeHasActiveSession in WorktreeToRootModal.tsx) — no
+            // need to block opening the modal at all just because copy mode would still work.
+            <Tooltip content={t("sessionCard.worktreeToRoot.tooltip")}>
+              <Button
+                variant="outline-danger"
+                size="sm"
+                onClick={() => setShowWorktreeToRootModal(true)}
+                aria-label={t("sessionCard.worktreeToRoot.ariaLabel")}
+                icon={<GitMerge className="h-3.5 w-3.5" />}
+              >
+                {t("sessionCard.worktreeToRootButton")}
+              </Button>
+            </Tooltip>
+          )}
         </div>
       </div>
 

@@ -531,11 +531,6 @@ export const translations = {
     "Abrir no VS Code",
     "Abrir en VS Code",
   ),
-  "sessionCard.worktreeToRoot.disabledTooltip": dict(
-    "Close this session in its terminal before syncing the worktree into the root folder.",
-    "Encerre esta sessão no terminal antes de sincronizar o worktree com a pasta raiz.",
-    "Cierra esta sesión en su terminal antes de sincronizar el worktree con la carpeta raíz.",
-  ),
   "sessionCard.worktreeToRoot.ariaLabel": dict(
     "Sync worktree into the root folder",
     "Sincronizar worktree com a pasta raiz",
