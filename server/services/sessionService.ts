@@ -131,10 +131,6 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
       prompts,
       directoryMissing,
       missingWorktreeRepoRoot,
-      // Placeholder — listSessions() fills in the real value once it can cross-reference every
-      // other session's workingDirectory, same reason isWorktree is finalized there too.
-      rootSessionId: null,
-      rootSessionTitle: null,
       sizeBytes: fileStat.size,
       subagentCount: subagentFiles.length,
       activeTimeMs,
@@ -255,17 +251,6 @@ export async function listSessions(): Promise<Session[]> {
   const gitDirsList = await Promise.all(uniqueDirs.map((dir) => getGitDirs(dir)));
   const gitDirsByDir = new Map(uniqueDirs.map((dir, i) => [dir, gitDirsList[i]]));
 
-  // For an orphaned worktree session (missingWorktreeRepoRoot set), look for another session
-  // already recorded with that same directory as its own workingDirectory — lets the UI offer a
-  // real `claude --resume` there instead of only "start fresh". Ties broken by most recent.
-  const sessionsByWorkingDir = new Map<string, typeof sessions>();
-  for (const s of sessions) {
-    if (!s.workingDirectory) continue;
-    const list = sessionsByWorkingDir.get(s.workingDirectory) ?? [];
-    list.push(s);
-    sessionsByWorkingDir.set(s.workingDirectory, list);
-  }
-
   return sessions
     .map((session) => {
       const gitDirs = session.workingDirectory ? gitDirsByDir.get(session.workingDirectory) : null;
@@ -286,15 +271,6 @@ export async function listSessions(): Promise<Session[]> {
       // if the directory isn't a git repo right now (deleted/moved since the session ran), null it
       // out so callers (e.g. the "delete branch" checkbox) don't act on a branch that doesn't exist.
       const gitBranch = gitDirs ? session.gitBranch : null;
-      // Just the most recently updated session already recorded at that root directory, if any —
-      // not necessarily related to this session's own work (the root checkout may have plenty of
-      // unrelated history of its own). `rootSessionTitle` lets the UI say exactly which session
-      // it is before the user clicks, rather than silently resuming a surprise unrelated one.
-      const rootSession = session.missingWorktreeRepoRoot
-        ? (sessionsByWorkingDir.get(session.missingWorktreeRepoRoot) ?? [])
-            .slice()
-            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]
-        : undefined;
       return {
         ...session,
         project,
@@ -302,8 +278,6 @@ export async function listSessions(): Promise<Session[]> {
         nickname: nicknames[session.id] ?? null,
         isActive: activeIds.has(session.id),
         isWorktree,
-        rootSessionId: rootSession?.id ?? null,
-        rootSessionTitle: rootSession?.title ?? null,
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

@@ -51,7 +51,7 @@ export function SessionsPage() {
     setNickname,
     openInVSCode,
     openMissingWorktreeRootInVSCode,
-    resumeAtMissingWorktreeRoot,
+    startNewSessionAtMissingWorktreeRoot,
     createWorktree,
     deleteWorktree,
     resumeConflict,
@@ -167,7 +167,7 @@ export function SessionsPage() {
               onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
               onOpenInVSCode={(s) => openInVSCode(s.id)}
               onOpenMissingWorktreeRootInVSCode={(s) => openMissingWorktreeRootInVSCode(s.id)}
-              onResumeAtMissingWorktreeRoot={(s) => resumeAtMissingWorktreeRoot(s)}
+              onStartNewSessionAtMissingWorktreeRoot={(s) => startNewSessionAtMissingWorktreeRoot(s)}
               onDeleteWorktree={(s) => deleteWorktree(s.id)}
               onWorktreeSyncComplete={() => refresh()}
             />

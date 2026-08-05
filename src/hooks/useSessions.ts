@@ -422,19 +422,17 @@ export function useSessions() {
   );
 
   /**
-   * Backs the "Resume at root"/"Start fresh at root" action on an orphaned worktree session's
-   * card (see `Session.missingWorktreeRepoRoot`). If another session is already recorded at that
-   * root directory (`rootSessionId`), this is a real `claude --resume` of that other session —
-   * just defers to the existing `resumeSession` flow (conflict-check and all). Otherwise there's
-   * nothing to resume (the CLI ties a transcript to its exact original directory, which is gone),
-   * so it starts a brand-new conversation there instead, seeded with the old session's recap.
+   * Backs the "New session in this folder" action on an orphaned worktree session's card (see
+   * `Session.missingWorktreeRepoRoot`) — always a brand-new conversation, never a `claude
+   * --resume`: the CLI ties a transcript to its exact original directory, which is gone, so
+   * there's nothing of this session's own to resume. Seeded with the old session's recap so the
+   * new conversation starts with real context instead of a blank slate. Earlier versions of this
+   * action tried to resume some *other*, unrelated session already recorded at that root
+   * directory when one existed — dropped after that surprised a user with a completely unrelated
+   * conversation; a plain, honestly-labeled new session is simpler and never surprising.
    */
-  const resumeAtMissingWorktreeRoot = useCallback(
+  const startNewSessionAtMissingWorktreeRoot = useCallback(
     async (session: Session) => {
-      if (session.rootSessionId) {
-        await resumeSession(session.rootSessionId);
-        return;
-      }
       setPending(session.id, "missing-root-resume");
       try {
         await sessionsApi.startFreshSessionAtMissingWorktreeRoot(session.id);
@@ -445,7 +443,7 @@ export function useSessions() {
         setPending(session.id, null);
       }
     },
-    [resumeSession, showToast, setPending, t],
+    [showToast, setPending, t],
   );
 
   // Only remaining caller is ResumeConflictModal's "create a worktree instead" option
@@ -513,7 +511,7 @@ export function useSessions() {
     setNickname,
     openInVSCode,
     openMissingWorktreeRootInVSCode,
-    resumeAtMissingWorktreeRoot,
+    startNewSessionAtMissingWorktreeRoot,
     createWorktree,
     deleteWorktree,
     resumeConflict,

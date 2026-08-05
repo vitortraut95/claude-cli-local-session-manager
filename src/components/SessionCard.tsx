@@ -47,7 +47,7 @@ type SessionCardProps = {
   onSetNickname: (session: Session, nickname: string) => void;
   onOpenInVSCode: (session: Session) => void;
   onOpenMissingWorktreeRootInVSCode: (session: Session) => void;
-  onResumeAtMissingWorktreeRoot: (session: Session) => Promise<void>;
+  onStartNewSessionAtMissingWorktreeRoot: (session: Session) => Promise<void>;
   onDeleteWorktree: (session: Session) => void;
   onWorktreeSyncComplete: (session: Session) => void;
 };
@@ -64,7 +64,7 @@ export function SessionCard({
   onSetNickname,
   onOpenInVSCode,
   onOpenMissingWorktreeRootInVSCode,
-  onResumeAtMissingWorktreeRoot,
+  onStartNewSessionAtMissingWorktreeRoot,
   onDeleteWorktree,
   onWorktreeSyncComplete,
 }: SessionCardProps) {
@@ -267,22 +267,14 @@ export function SessionCard({
                 >
                   {t("sessionCard.codeButton")}
                 </Button>
-                <Tooltip
-                  content={
-                    session.rootSessionId
-                      ? t("sessionCard.directoryMissing.resumeAtRootTooltip", {
-                          title: session.rootSessionTitle ?? session.rootSessionId,
-                        })
-                      : t("sessionCard.directoryMissing.startFreshTooltip")
-                  }
-                >
+                <Tooltip content={t("sessionCard.directoryMissing.newSessionTooltip")}>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={async () => {
                       setResumingAtRoot(true);
                       try {
-                        await onResumeAtMissingWorktreeRoot(session);
+                        await onStartNewSessionAtMissingWorktreeRoot(session);
                       } finally {
                         setResumingAtRoot(false);
                       }
@@ -296,9 +288,7 @@ export function SessionCard({
                       )
                     }
                   >
-                    {session.rootSessionId
-                      ? t("sessionCard.resumeAtRootButton")
-                      : t("sessionCard.startFreshAtRootButton")}
+                    {t("sessionCard.newSessionAtRootButton")}
                   </Button>
                 </Tooltip>
               </div>

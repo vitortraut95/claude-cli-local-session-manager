@@ -491,31 +491,20 @@ export const translations = {
     "Abrir la raíz del proyecto en VS Code",
   ),
   "sessionCard.codeButton": dict("code .", "code .", "code ."),
-  "sessionCard.directoryMissing.resumeAtRootTooltip": dict(
-    "Not a continuation of this session — this opens a different, already-existing session " +
-      "recorded at the project root: \"{title}\". The CLI can't resume this session's own " +
-      "transcript from a different folder.",
-    "Não é uma continuação desta sessão — isso abre uma sessão diferente, já existente, " +
-      "registrada na raiz do projeto: \"{title}\". O CLI não consegue retomar a transcrição " +
-      "desta sessão a partir de uma pasta diferente.",
-    "No es una continuación de esta sesión — esto abre una sesión diferente, ya existente, " +
-      "registrada en la raíz del proyecto: \"{title}\". El CLI no puede reanudar la " +
-      "transcripción de esta sesión desde una carpeta diferente.",
+  "sessionCard.directoryMissing.newSessionTooltip": dict(
+    "The old transcript can't be resumed from a different folder — this starts a brand-new " +
+      "conversation right here at the root, seeded with a recap of what the old session did.",
+    "A transcrição antiga não pode ser retomada de uma pasta diferente — isso inicia uma " +
+      "conversa totalmente nova aqui na raiz, alimentada com um resumo do que a sessão antiga " +
+      "fez.",
+    "La transcripción antigua no se puede reanudar desde una carpeta diferente — esto inicia " +
+      "una conversación completamente nueva aquí en la raíz, alimentada con un resumen de lo " +
+      "que hizo la sesión antigua.",
   ),
-  "sessionCard.directoryMissing.startFreshTooltip": dict(
-    "The old transcript can't be resumed from a different folder — this starts a new conversation at the root, seeded with a recap of what the old session did.",
-    "A transcrição antiga não pode ser retomada de uma pasta diferente — isso inicia uma conversa nova na raiz, alimentada com um resumo do que a sessão antiga fez.",
-    "La transcripción antigua no se puede reanudar desde una carpeta diferente — esto inicia una conversación nueva en la raíz, alimentada con un resumen de lo que hizo la sesión antigua.",
-  ),
-  "sessionCard.resumeAtRootButton": dict(
-    "Resume other session",
-    "Retomar outra sessão",
-    "Reanudar otra sesión",
-  ),
-  "sessionCard.startFreshAtRootButton": dict(
-    "Start fresh at root",
-    "Começar do zero na raiz",
-    "Empezar de cero en la raíz",
+  "sessionCard.newSessionAtRootButton": dict(
+    "New session in this folder",
+    "Nova sessão nesta pasta",
+    "Nueva sesión en esta carpeta",
   ),
   "sessionCard.worktreeTooltip": dict(
     "Git worktree — {path}",

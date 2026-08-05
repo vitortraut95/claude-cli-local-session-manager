@@ -62,15 +62,6 @@ export type Session = {
    *  `<repoRoot>/.claude/worktrees/<name>` convention, and that repo root still exists on disk —
    *  lets the UI offer to continue work there once the worktree itself is gone. */
   missingWorktreeRepoRoot: string | null;
-  /** id of another existing session already recorded with workingDirectory ===
-   *  missingWorktreeRepoRoot, if any — resuming that one is a real `claude --resume`, preferred
-   *  over starting a fresh conversation. Not necessarily related to this session's own work —
-   *  just whichever session was most recently active at that root directory. */
-  rootSessionId: string | null;
-  /** Title of `rootSessionId`'s session, so the UI can say exactly which (possibly unrelated)
-   *  session "resume at root" would open, instead of a generic label the user can't verify
-   *  before clicking. Null whenever rootSessionId is null. */
-  rootSessionTitle: string | null;
   /** Size of the session's own `.jsonl` file in bytes — powers the "session size" meter. */
   sizeBytes: number;
   /** Number of subagents (via the Agent tool) spawned during this session. */
