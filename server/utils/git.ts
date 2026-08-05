@@ -344,23 +344,41 @@ function excludePathspecArgs(excludePaths: string[]): string[] {
  * discarded" even though it's not user content at all, it's other worktrees managed by this app.
  */
 export async function getStatusFiles(cwd: string, excludePaths: string[] = []): Promise<string[]> {
-  const status = await runGit(["status", "--porcelain", ...excludePathspecArgs(excludePaths)], cwd);
+  // `-z`: NUL-terminated, unquoted paths — without it, git wraps any path containing a byte
+  // >= 0x80 (i.e. any non-ASCII character — accented filenames, extremely common in practice) in
+  // double quotes with octal escapes (`"foto \303\247\303\243o.png"`), which then doesn't match
+  // the real filename on disk and breaks every path-based comparison/copy downstream. A
+  // renamed/copied entry's old path is a second NUL-terminated field with no status prefix (per
+  // `git status`'s own `-z` doc) — skip it, only the new path is kept, since that's what's
+  // actually on disk now.
+  const status = await runGit(
+    ["status", "--porcelain", "-z", ...excludePathspecArgs(excludePaths)],
+    cwd,
+  );
   if (!status) return [];
-  return status.split("\n").map((line) => {
-    const filePath = line.slice(3);
-    const arrowIndex = filePath.indexOf(" -> ");
-    return arrowIndex === -1 ? filePath : filePath.slice(arrowIndex + 4);
-  });
+  const fields = status.split("\0").filter(Boolean);
+  const files: string[] = [];
+  for (let i = 0; i < fields.length; i++) {
+    const entry = fields[i]!;
+    const statusCode = entry.slice(0, 2);
+    files.push(entry.slice(3));
+    if (statusCode.includes("R") || statusCode.includes("C")) i++;
+  }
+  return files;
 }
 
 /**
  * `git ls-files -co --exclude-standard` lists both tracked (`-c`) and untracked-but-not-ignored
  * (`-o --exclude-standard`) files — respects `.gitignore` automatically, so build output and
  * dependencies (node_modules, dist, ...) never show up when comparing two working trees.
+ *
+ * `-z` (NUL-terminated, unquoted) for the same reason `getStatusFiles` uses it — a plain
+ * newline-split would otherwise get git's quoted-octal-escaped form of any accented filename
+ * instead of the real path, breaking every file operation that follows.
  */
 export async function listWorkingTreeFiles(cwd: string): Promise<string[]> {
-  const list = await runGit(["ls-files", "-co", "--exclude-standard"], cwd);
-  return list ? list.split("\n") : [];
+  const list = await runGit(["ls-files", "-co", "--exclude-standard", "-z"], cwd);
+  return list ? list.split("\0").filter(Boolean) : [];
 }
 
 const STASH_MESSAGE = "worktree-to-root: root's pre-sync state";
@@ -379,6 +397,17 @@ const STASH_MESSAGE = "worktree-to-root: root's pre-sync state";
  * `getStatusFiles` — without it, an untracked `.claude/worktrees/<name>` would actually get swept
  * into the stash, which risks corrupting/orphaning whatever other session is still using that
  * nested worktree, not just misreporting it in the UI.
+ *
+ * Whenever `pathspecArgs` isn't empty (there's a nested worktree to exclude), `git stash push`
+ * can exit 1 and print "The following paths are ignored by one of your .gitignore files" for
+ * `.claude` itself — reproduced directly: this fires purely because an explicit `:(exclude)`
+ * pathspec is present at all, on *any* repo where `.claude/` (or wherever worktrees live) is
+ * itself gitignored, regardless of which ignored path triggers it — and the stash is created
+ * successfully despite the non-zero exit (confirmed via `git stash list` right after). Since
+ * there's no git flag that avoids the warning without also force-adding otherwise-ignored files
+ * (which would defeat the whole point above), this specific message is treated as success rather
+ * than rethrown — the `rev-parse` below is the real check: if the stash genuinely didn't happen,
+ * that fails too (no new `refs/stash` to resolve any differently than before).
  */
 export async function discardWorkingTreeChanges(
   cwd: string,
@@ -388,7 +417,12 @@ export async function discardWorkingTreeChanges(
   const dirty = await runGit(["status", "--porcelain", ...pathspecArgs], cwd);
   if (!dirty) return null;
 
-  await runGit(["stash", "push", "--include-untracked", "-m", STASH_MESSAGE, ...pathspecArgs], cwd);
+  try {
+    await runGit(["stash", "push", "--include-untracked", "-m", STASH_MESSAGE, ...pathspecArgs], cwd);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!message.includes("ignored by one of your .gitignore files")) throw err;
+  }
   return await runGit(["rev-parse", "refs/stash"], cwd);
 }
 
@@ -463,14 +497,17 @@ export async function getTouchedPathsSinceMergeBase(
   worktreeDir: string,
   baseRef: string,
 ): Promise<string[]> {
-  const output = await runGit(["diff", "--name-status", baseRef], worktreeDir);
+  // `-z`: same reason as getStatusFiles/listWorkingTreeFiles — without it, any accented filename
+  // comes back quoted/octal-escaped and no longer matches the real path on disk. Each record is
+  // `<status>\0<path>\0`, or `<status>\0<oldPath>\0<newPath>\0` for a rename/copy.
+  const output = await runGit(["diff", "--name-status", "-z", baseRef], worktreeDir);
   if (!output) return [];
+  const fields = output.split("\0").filter(Boolean);
   const paths = new Set<string>();
-  for (const line of output.split("\n")) {
-    const columns = line.split("\t");
-    for (const column of columns.slice(1)) {
-      if (column) paths.add(column);
-    }
+  for (let i = 0; i < fields.length; i++) {
+    const status = fields[i]!;
+    paths.add(fields[++i]!);
+    if (status.startsWith("R") || status.startsWith("C")) paths.add(fields[++i]!);
   }
   return [...paths];
 }
