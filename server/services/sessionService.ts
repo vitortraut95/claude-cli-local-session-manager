@@ -134,6 +134,7 @@ async function buildSession(filePath: string): Promise<Omit<Session, "isActive" 
       // Placeholder — listSessions() fills in the real value once it can cross-reference every
       // other session's workingDirectory, same reason isWorktree is finalized there too.
       rootSessionId: null,
+      rootSessionTitle: null,
       sizeBytes: fileStat.size,
       subagentCount: subagentFiles.length,
       activeTimeMs,
@@ -285,11 +286,15 @@ export async function listSessions(): Promise<Session[]> {
       // if the directory isn't a git repo right now (deleted/moved since the session ran), null it
       // out so callers (e.g. the "delete branch" checkbox) don't act on a branch that doesn't exist.
       const gitBranch = gitDirs ? session.gitBranch : null;
-      const rootSessionId = session.missingWorktreeRepoRoot
-        ? ((sessionsByWorkingDir.get(session.missingWorktreeRepoRoot) ?? [])
+      // Just the most recently updated session already recorded at that root directory, if any —
+      // not necessarily related to this session's own work (the root checkout may have plenty of
+      // unrelated history of its own). `rootSessionTitle` lets the UI say exactly which session
+      // it is before the user clicks, rather than silently resuming a surprise unrelated one.
+      const rootSession = session.missingWorktreeRepoRoot
+        ? (sessionsByWorkingDir.get(session.missingWorktreeRepoRoot) ?? [])
             .slice()
-            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.id ?? null)
-        : null;
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]
+        : undefined;
       return {
         ...session,
         project,
@@ -297,7 +302,8 @@ export async function listSessions(): Promise<Session[]> {
         nickname: nicknames[session.id] ?? null,
         isActive: activeIds.has(session.id),
         isWorktree,
-        rootSessionId,
+        rootSessionId: rootSession?.id ?? null,
+        rootSessionTitle: rootSession?.title ?? null,
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

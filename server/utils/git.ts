@@ -168,7 +168,16 @@ export async function createWorktreeWithBranch(
   branchName: string,
   baseBranchRef: string,
 ): Promise<void> {
-  await runGit(["worktree", "add", "-b", branchName, worktreePath, baseBranchRef], repoRoot);
+  // `baseBranchRef` is a remote-tracking ref (see resolveBaseBranchRef) — git's own
+  // `branch.autoSetupMerge` default would otherwise silently make the new branch track *that*
+  // (e.g. origin/master) instead of its own future same-named remote branch, so `git status`
+  // keeps comparing against the wrong upstream forever (until someone happens to run
+  // `git push -u`). `--no-track` leaves it unset instead, same as a normal `git checkout -b` off
+  // a local branch would.
+  await runGit(
+    ["worktree", "add", "--no-track", "-b", branchName, worktreePath, baseBranchRef],
+    repoRoot,
+  );
 }
 
 /**
@@ -183,7 +192,8 @@ export async function checkoutNewBranch(
   branchName: string,
   baseBranchRef: string,
 ): Promise<void> {
-  await runGit(["checkout", "-b", branchName, baseBranchRef], repoRoot);
+  // See createWorktreeWithBranch's --no-track comment — same remote-tracking-base-ref pitfall.
+  await runGit(["checkout", "--no-track", "-b", branchName, baseBranchRef], repoRoot);
 }
 
 export type WorktreeEntry = { path: string; branch: string | null };

@@ -270,7 +270,9 @@ export function SessionCard({
                 <Tooltip
                   content={
                     session.rootSessionId
-                      ? t("sessionCard.directoryMissing.resumeAtRootTooltip")
+                      ? t("sessionCard.directoryMissing.resumeAtRootTooltip", {
+                          title: session.rootSessionTitle ?? session.rootSessionId,
+                        })
                       : t("sessionCard.directoryMissing.startFreshTooltip")
                   }
                 >

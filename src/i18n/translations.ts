@@ -492,9 +492,15 @@ export const translations = {
   ),
   "sessionCard.codeButton": dict("code .", "code .", "code ."),
   "sessionCard.directoryMissing.resumeAtRootTooltip": dict(
-    "Resume the existing session already recorded at the project root.",
-    "Retoma a sessão existente já registrada na raiz do projeto.",
-    "Reanuda la sesión existente ya registrada en la raíz del proyecto.",
+    "Not a continuation of this session — this opens a different, already-existing session " +
+      "recorded at the project root: \"{title}\". The CLI can't resume this session's own " +
+      "transcript from a different folder.",
+    "Não é uma continuação desta sessão — isso abre uma sessão diferente, já existente, " +
+      "registrada na raiz do projeto: \"{title}\". O CLI não consegue retomar a transcrição " +
+      "desta sessão a partir de uma pasta diferente.",
+    "No es una continuación de esta sesión — esto abre una sesión diferente, ya existente, " +
+      "registrada en la raíz del proyecto: \"{title}\". El CLI no puede reanudar la " +
+      "transcripción de esta sesión desde una carpeta diferente.",
   ),
   "sessionCard.directoryMissing.startFreshTooltip": dict(
     "The old transcript can't be resumed from a different folder — this starts a new conversation at the root, seeded with a recap of what the old session did.",
@@ -502,9 +508,9 @@ export const translations = {
     "La transcripción antigua no se puede reanudar desde una carpeta diferente — esto inicia una conversación nueva en la raíz, alimentada con un resumen de lo que hizo la sesión antigua.",
   ),
   "sessionCard.resumeAtRootButton": dict(
-    "Resume at root",
-    "Retomar na raiz",
-    "Reanudar en la raíz",
+    "Resume other session",
+    "Retomar outra sessão",
+    "Reanudar otra sesión",
   ),
   "sessionCard.startFreshAtRootButton": dict(
     "Start fresh at root",
