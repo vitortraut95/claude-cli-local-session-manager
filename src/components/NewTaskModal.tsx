@@ -325,6 +325,9 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   const trimmedBranch = branchName.trim();
   const trimmedBase = baseBranch.trim();
   const trimmedPrompt = promptText.trim();
+  const finalPromptPreview = [jiraLink.trim() ? `Task: ${jiraLink.trim()}` : null, trimmedPrompt]
+    .filter((part): part is string => Boolean(part))
+    .join("\n\n");
   const canSubmit =
     jiraMcpStatus === "connected" &&
     jiraLink.trim().length > 0 &&
@@ -557,10 +560,12 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
                 rows={5}
                 className={TEXTAREA_CLASSNAME}
               />
-              <span className="text-xs">
-                {t("newTaskModal.finalPromptLabel")} "Task: {jiraLink.trim()} + \n\n +{" "}
-                {promptText.slice(0, 50)}
-                ...."
+              <span className="block whitespace-pre-wrap text-xs">
+                {t("newTaskModal.finalPromptLabel")}{" "}
+                <span className="font-mono text-gray-500 dark:text-gray-400">
+                  "{finalPromptPreview.slice(0, 160)}
+                  {finalPromptPreview.length > 160 ? "…" : ""}"
+                </span>
               </span>
             </div>
 

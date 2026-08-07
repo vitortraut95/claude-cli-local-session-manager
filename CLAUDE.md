@@ -173,11 +173,11 @@ spelunking at the start of a task.
   worked on from a second terminal without two Claude processes fighting over the same working
   tree.
   - **Creation delegates to the CLI's own `-w/--worktree [name]` flag** (`claude --worktree
-    <name>`) rather than driving `git worktree add` by hand — the CLI already creates the linked
+<name>`) rather than driving `git worktree add` by hand — the CLI already creates the linked
     worktree at `<repo>/.claude/worktrees/<name>` on a fresh `worktree-<name>` branch, locks it for
     the session's lifetime, and starts the conversation there in one step. It can't be combined
     with `--resume`: the CLI ties a session's transcript to the exact absolute directory it
-    started in (see `findSessionCwd`'s doc comment), so a *past* session can never be resumed from
+    started in (see `findSessionCwd`'s doc comment), so a _past_ session can never be resumed from
     a different folder, worktree or not — "Create worktree" always starts a brand-new
     conversation, never continues an existing transcript.
   - **`isLinkedWorktree`** (git.ts) tells a linked worktree from a repo's main checkout by
@@ -185,7 +185,7 @@ spelunking at the start of a task.
     `listSessions()` computes this once per unique `workingDirectory` (not per session) to avoid
     redundant `git` spawns when many sessions share a directory.
   - **Deletion unlocks before removing** — the CLI's lock (reason `claude session <name> (pid ...
-    start ...)`) persists after the process exits, so a plain `git worktree remove` fails with
+start ...)`) persists after the process exits, so a plain `git worktree remove` fails with
     "cannot remove a locked working tree" long after Claude closed. `removeWorktreeAndBranch` also
     deletes the `worktree-<name>` branch afterward (best-effort) so a cleaned-up worktree doesn't
     leave an orphan ref behind. No `--force` on the removal itself — uncommitted changes still
@@ -194,7 +194,7 @@ spelunking at the start of a task.
     session's `.jsonl` exists to read `workingDirectory` from — a worktree created but abandoned
     before any prompt was sent (no transcript ever written) has no session card to hang a cleanup
     button off of. Only shows up to a human running `git worktree list` by hand.
-  - **Resuming an inactive session checks the *live* state, not the cached list** —
+  - **Resuming an inactive session checks the _live_ state, not the cached list** —
     `resumeSession` (useSessions.ts) refetches `/sessions` right before continuing, since the
     already-loaded list only reloads on mount/explicit refresh and another terminal could have
     started a session in the same directory since. If the fresh check finds one, it defers to
@@ -225,7 +225,7 @@ spelunking at the start of a task.
     reorder/remove entries, hand-edit the JSON file directly. The prompt and worktree-default fields
     each get their own "Save as default"/"Use as default" link (shown only when the field's
     current value differs from what's stored), same UX for both. Every write is a full-object PUT
-    (the route validates the whole shape), so each save path must include the *stored*, not the
+    (the route validates the whole shape), so each save path must include the _stored_, not the
     in-progress-draft, value for whichever fields it isn't intentionally changing — otherwise saving
     one field (e.g. a new branch type) would silently overwrite another (e.g. an unsaved prompt
     edit) with a draft the user never asked to persist.
@@ -268,63 +268,46 @@ spelunking at the start of a task.
 
 ## to-do's
 
-- **Add resume (terminal) with multi select.** When has selected items has only delete action, add
-  also resume button.
-- **Refresh on focus.** when the web page has focus (react option) run the refresh to avoid seeing
-  unnupdated data.
-- **"Worktree → root" sync — gaps found while dogfooding the real create-worktree →
-  copy-to-root-to-test → clean-up loop** (`WorktreeToRootModal.tsx`, `ResetRootConfirmModal.tsx`,
-  `sessionService.ts`'s `getWorktreeToRootPreview`/`getRootStatus`/`resetRootWorkingTree`/
-  `applyWorktreeCopyToRoot`/`removeWorktreeAndCheckoutRoot`, `git.ts`'s
-  `computeFileDiff`/`applyFileDiff`/`discardWorkingTreeChanges`). The 7 items below were fixed
-  (in this relevance order); the last 2 are still open, deliberately, with why:
-  - ✅ **Fixed — "copy" mode used to break if root had more than one nested worktree checked out
-    at once.** `computeFileDiff` now excludes every entry `listWorktrees(repoRoot)` reports as
-    nested inside `repoRoot`, not just the one being copied (previously only excluded the single
-    `.claude/worktrees/<name>` embedded-repo entry for the worktree actually being synced — a
-    second, unrelated sibling worktree under the same root would still land in `removed` and
-    `applyFileDiff` would try to `rm()` a non-empty directory and throw).
-  - ✅ **Fixed — "copy" mode's diff is now fork-point-aware, not a blind full-tree diff.**
-    `computeFileDiff` computes `git merge-base <rootBranch> <worktreeBranch>` (new
-    `getMergeBase`) and scopes the comparison to only the paths `git diff --name-status
-    <mergeBase>` reports the worktree branch's own history (plus its uncommitted changes) as
-    having touched (new `getTouchedPathsSinceMergeBase`) — root's own unrelated drift since the
-    fork no longer gets misread as "belongs to the worktree" and flagged for deletion. Falls back
-    to the old blind full-tree comparison when either branch is unresolvable (detached HEAD).
-  - ✅ **Fixed — `resetRootWorkingTree`/the standalone reset action are now recoverable.**
-    `discardWorkingTreeChanges` stashes via `git stash push --include-untracked` before clearing
-    (instead of a bare `reset --hard` + `clean -fd`), and returns the resulting stash SHA (null
-    if root had nothing dirty) all the way up through `POST .../reset-root`'s `stashRef` field —
-    surfaced in both the wizard's and the standalone action's success toast as `git stash apply
-    <sha>`.
-  - ✅ **Fixed — added a standalone "Reset root" quick action.** `ResetRootConfirmModal.tsx`
-    (triggered by the new amber toolbar icon next to "Clean up worktree") calls the same
-    `reset-root` endpoint directly, without the full choice → preview → confirm → progress
-    wizard — the loop this feature was actually built for (copy → test → reset → repeat) no
-    longer needs 4 clicks through screens that don't apply just to discard root.
-  - ✅ **Fixed — a "checkout"-synced session's card no longer dead-ends silently.**
-    `WorktreeToRootModal` gets a new terminal "done" stage after a successful checkout-mode run
-    (mode "copy" still closes immediately, nothing dead-ends there) offering "Delete this
-    session" (reuses `SessionCard`'s existing `onDeleteRequest` flow via a new
-    `onOfferDeleteSession` prop) or "Keep the card."
-  - ✅ **Fixed — added a breadcrumb back to root's previous branch.**
-    `removeWorktreeAndCheckoutRoot` captures root's branch (via `listWorktrees`) before touching
-    anything and returns `{ previousRootBranch, newBranch }`; the success toast reads "root
-    switched from `<previousRootBranch>` to `<newBranch>`."
-  - ✅ **Fixed — the "confirm" stage no longer re-fetches the whole preview just to refresh the
-    dirty-files list.** New lightweight `GET .../worktree-to-root/root-status` (`getRootStatus`,
-    `RootStatus` type) returns just `{ repoRoot, rootBranch, rootDirtyFiles }` — used by both the
-    wizard's final-confirm re-check and the standalone "Reset root" modal, neither of which ever
-    needed the full (comparatively expensive) file diff.
-  - **Still open — gitignored junk under root is never touched by "reset root," by design**
-    (that's what keeps `node_modules` alive), **so anything a test run drops on a gitignored
-    path accumulates forever**, invisible to git status. Deliberately NOT turned into a code
-    change yet: an opt-in "deep clean" (`git clean -fdx`) toggle is a real, separate product
-    decision (how is it surfaced, how obviously dangerous does the UI need to make "this can
-    delete `node_modules`" look) — needs a specific choice from a human, not a silent addition.
-  - **Still open — the file copy isn't atomic against a running dev server watching root.** A
-    hot-reloader (nodemon, vite, docker-compose's `yarn dev`, ...) can observe a half-synced
-    state mid-copy and throw/reload spuriously. Left alone deliberately: there's nothing generic
-    to pause/notify without knowing what's actually watching root in a given setup — documenting
-    it here is the honest option until there's a concrete "what should this app do about it" to
-    implement.
+- **Offer '--permission-mode auto' on new task modal.** offer and save in userPreferences the
+  last used way (checked true or false) in the checkbox, add explaining label.
+- **Pre-trust every worktree directory this app creates on the user's behalf, instead of leaving
+  each one to hit the CLI's first-run trust dialog invisibly.** Found by direct reproduction while
+  dogfooding the resume-conflict flow: `claude --worktree "<name>"` — the exact command
+  `createSessionWorktree` (sessionService.ts, only caller: `ResumeConflictModal`'s "create a
+  worktree instead" quick-fix) fires into a detached terminal — fails in about a second with
+  `Error creating worktree: Workspace trust not yet accepted. Run \`claude\` once in this
+  directory and accept the trust dialog, then retry with --worktree.` whenever the *existing*
+  session's own directory hasn't been trust-accepted yet, and creates nothing. The app has no way
+  to detect this: `trySpawnDetached`'s success check only confirms the terminal process itself
+  launched, not that the command inside it did anything — so the UI shows a flat "Worktree
+  criado" success toast regardless. The same trust gate also applies (as an interactive prompt
+  Claude itself shows, not a hard failure) to every freshly-created worktree the "New Task" modal
+  launches a first `claude "<prompt>"` conversation into — combined with Wayland blocking
+  focus-stealing for that terminal window (see the cross-platform notes above), a user has no
+  signal that a just-created task is actually sitting idle at an unanswered keypress rather than
+  working, for as long as they don't happen to check the (possibly backgrounded) window. Fix:
+  `~/.claude.json` stores this exact flag per absolute path at
+  `projects["<path>"].hasTrustDialogAccepted` (confirmed by inspecting the file directly) — since
+  this app is the one creating these worktree directories, and always as a subdirectory of a repo
+  the user is already trusted in, it can write `hasTrustDialogAccepted: true` for the new
+  worktree's absolute path into that same file right after creating it (both in
+  `createWorktreeWithBranch`/`createTaskWorktree` and in `createSessionWorktree`'s `--worktree`
+  path), before ever opening a terminal into it — turning an entire class of invisible
+  hangs/silent no-ops into something that just works.
+- **Make a "reset root" stash traceable after the fact, not just a SHA quoted once in a toast
+  that vanishes.** `discardWorkingTreeChanges` (git.ts) always creates its stash under the same
+  literal message, `"worktree-to-root: root's pre-sync state"` — confirmed while dogfooding the
+  copy-mode → reset → copy-mode-again loop this feature is built for: running it a handful of
+  times in one sitting left `git stash list` with several entries reading identically (`On
+  master: worktree-to-root: root's pre-sync state`, `On feature/TEST-3: worktree-to-root: root's
+  pre-sync state`, ...), distinguishable only by stash index/order — and the *only* place the
+  actual SHA for any one of them is ever surfaced is a single success toast at the moment it's
+  created, which this app doesn't persist anywhere once dismissed. A developer who didn't
+  immediately copy that toast's `git stash apply <sha>` line, or who ran the loop enough times to
+  lose track of which entry was theirs, has no in-app way to recover a specific prior state —
+  only a pile of same-looking stashes to inspect by hand. Fix ideas: fold something
+  distinguishing into the stash message itself (root's branch at the time, or a timestamp) so
+  `git stash list` reads as a real history instead of repeated noise; and/or surface this app's
+  own stash entries (filtered by message prefix) somewhere in the UI — e.g. the "Reset root"
+  quick-action's own dialog — so a forgotten one is still discoverable a week later without
+  memorizing a SHA from a toast.

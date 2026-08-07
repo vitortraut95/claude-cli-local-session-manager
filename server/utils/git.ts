@@ -291,7 +291,20 @@ async function unlockAndRemoveWorktree(
   const branch = await getWorktreeBranch(worktreePath, mainRoot).catch(() => null);
 
   await runGit(["worktree", "unlock", worktreePath], mainRoot).catch(() => undefined);
-  await runGit(["worktree", "remove", worktreePath], mainRoot);
+  try {
+    await runGit(["worktree", "remove", worktreePath], mainRoot);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("contains modified or untracked files")) {
+      throw new Error(
+        `The worktree at "${worktreePath}" still has uncommitted changes, so it wasn't removed ` +
+          `— commit or discard them in the worktree first (or use "copy" mode instead, which ` +
+          `doesn't require the worktree to be clean).`,
+        { cause: err },
+      );
+    }
+    throw err;
+  }
 
   return { branch, mainRoot };
 }

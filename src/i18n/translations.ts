@@ -667,6 +667,26 @@ export const translations = {
     "na branch padrão do repositório, sem sessão ativa ou mudanças pendentes — pode ser removido com segurança (worktree e branch local juntos).",
     "en la rama predeterminada del repositorio, sin sesión activa ni cambios pendientes — se puede eliminar de forma segura (worktree y rama local juntos).",
   ),
+  "cleanupModal.finding.prune.title": dict(
+    'Worktrees deleted manually in "{project}"',
+    'Worktrees excluídos manualmente em "{project}"',
+    'Worktrees eliminados manualmente en "{project}"',
+  ),
+  "cleanupModal.finding.prune.description": dict(
+    "{count} worktree(s) ({branches}) were deleted directly on disk, outside the app — git still keeps their record. This only cleans up that internal record, without deleting anything.",
+    "{count} worktree(s) ({branches}) foram excluídos direto no disco, fora do app — o git ainda mantém o registro deles. Isso só limpa esse registro interno, sem deletar nada.",
+    "{count} worktree(s) ({branches}) se eliminaron directamente en el disco, fuera de la app — git todavía guarda su registro. Esto solo limpia ese registro interno, sin eliminar nada.",
+  ),
+  "cleanupModal.finding.merged.title": dict(
+    'Worktree "{branch}" already merged',
+    'Worktree "{branch}" já mergeada',
+    'Worktree "{branch}" ya fusionada',
+  ),
+  "cleanupModal.finding.merged.description": dict(
+    'Branch "{branch}" is already merged into "{defaultBranch}" and the worktree has no active session or pending changes. The worktree and local branch can be safely removed.',
+    'A branch "{branch}" já está mergeada em "{defaultBranch}" e o worktree não tem sessão ativa nem alterações pendentes. O worktree e a branch local podem ser removidos com segurança.',
+    'La rama "{branch}" ya está fusionada en "{defaultBranch}" y el worktree no tiene sesión activa ni cambios pendientes. El worktree y la rama local se pueden eliminar de forma segura.',
+  ),
   "cleanupModal.loading": dict("Loading...", "Carregando...", "Cargando..."),
   "cleanupModal.loadError": dict(
     "Could not fetch cleanup items.",

@@ -22,12 +22,14 @@ async function withServerErrorMessage<T>(request: () => Promise<T>): Promise<T> 
 export type CleanupFinding = {
   id: string;
   kind: "prune-worktrees" | "remove-merged-worktree";
-  title: string;
-  description: string;
   command: string;
   repoRoot: string;
+  /** Only set for `prune-worktrees`; empty for `remove-merged-worktree`. */
+  staleBranches: string[];
   worktreePath: string | null;
   branch: string | null;
+  /** Only set for `remove-merged-worktree`; null for `prune-worktrees`. */
+  defaultBranch: string | null;
 };
 
 export async function fetchCleanupFindings(): Promise<CleanupFinding[]> {

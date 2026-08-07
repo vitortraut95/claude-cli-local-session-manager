@@ -32,7 +32,14 @@ export function ResumeConflictModal({
   onCancel,
 }: ResumeConflictModalProps) {
   const { t } = useLanguage();
-  const [worktreeName, setWorktreeName] = useState(target.gitBranch ?? "");
+  // The CLI's own `--worktree <name>` flag (see createSessionWorktree in sessionService.ts) uses
+  // `name` to build both a directory name and a `worktree-<name>` branch name — a raw branch name
+  // like "feature/PROJ-123" isn't a valid worktree name (the CLI silently mangles the "/" into a
+  // "+" instead, e.g. producing a confusing "worktree-feature+PROJ-123" branch) — sanitize the
+  // same way taskService.ts's own createTaskWorktree already does for its own worktree dir names.
+  const [worktreeName, setWorktreeName] = useState(
+    (target.gitBranch ?? "").replace(/[^A-Za-z0-9_-]/g, "-"),
+  );
   const [branch, setBranch] = useState(target.gitBranch ?? "");
   const trimmedName = worktreeName.trim();
   const trimmedBranch = branch.trim();

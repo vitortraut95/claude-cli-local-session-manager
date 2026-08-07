@@ -546,7 +546,12 @@ export function SessionCard({
           session={session}
           onClose={() => setShowWorktreeToRootModal(false)}
           onComplete={() => onWorktreeSyncComplete(session)}
-          onOfferDeleteSession={() => onDeleteRequest(session)}
+          // `session` is still the pre-refresh prop here — checkout mode's own success is what
+          // guarantees the worktree is already gone, so isWorktree is corrected by hand rather
+          // than waiting for the parent's list refresh (which only runs once this modal closes)
+          // to catch up. Without this, the delete-confirm dialog offers a stale "clean up
+          // worktree" checkbox for a worktree that no longer exists.
+          onOfferDeleteSession={() => onDeleteRequest({ ...session, isWorktree: false })}
         />
       )}
       {showResetRootConfirm && (

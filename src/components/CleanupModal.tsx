@@ -12,6 +12,30 @@ type CleanupModalProps = {
   onClose: () => void;
 };
 
+/** Renders a finding's title/description from its structured data rather than a pre-rendered
+ *  server-side string — cleanupService.ts only knows English, so building the copy here is what
+ *  lets it participate in the app's i18n instead of always showing up in English regardless of
+ *  the selected language. */
+function findingTitle(finding: CleanupFinding, t: ReturnType<typeof useLanguage>["t"]): string {
+  if (finding.kind === "prune-worktrees") {
+    return t("cleanupModal.finding.prune.title", { project: finding.repoRoot.split("/").pop() ?? finding.repoRoot });
+  }
+  return t("cleanupModal.finding.merged.title", { branch: finding.branch ?? "?" });
+}
+
+function findingDescription(finding: CleanupFinding, t: ReturnType<typeof useLanguage>["t"]): string {
+  if (finding.kind === "prune-worktrees") {
+    return t("cleanupModal.finding.prune.description", {
+      count: finding.staleBranches.length,
+      branches: finding.staleBranches.join(", "),
+    });
+  }
+  return t("cleanupModal.finding.merged.description", {
+    branch: finding.branch ?? "?",
+    defaultBranch: finding.defaultBranch ?? "?",
+  });
+}
+
 /**
  * Lists local, one-click-safe cleanup findings (currently: stale worktree git metadata, and
  * worktrees whose branch is already merged — see cleanupService.ts for exactly what qualifies)
@@ -116,9 +140,11 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
               className="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
             >
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {finding.title}
+                {findingTitle(finding, t)}
               </p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{finding.description}</p>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                {findingDescription(finding, t)}
+              </p>
               <div className="mt-3 flex items-center gap-2">
                 <Button
                   variant="outline"

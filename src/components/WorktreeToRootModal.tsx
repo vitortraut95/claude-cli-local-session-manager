@@ -200,6 +200,14 @@ export function WorktreeToRootModal({
     onClose();
   };
 
+  // Both ways out of the "done" stage (keep the card, or offer to delete it) — the parent's
+  // session-list refresh is deferred to here rather than fired right when "checkout" mode
+  // succeeds, so the "done" stage actually gets to render first (see handleExecute's comment).
+  const finishDone = () => {
+    onComplete();
+    onClose();
+  };
+
   const handleExecute = async () => {
     if (!mode) return;
     setExecuting(true);
@@ -244,10 +252,11 @@ export function WorktreeToRootModal({
           }${stashNote(stashRef)}`,
           "success",
         );
-        onComplete();
-        // Not onClose() here: this session's transcript just became permanently unresumable (its
-        // cwd, the worktree, is gone) — the "done" stage below offers to delete its now-dead card
-        // instead of leaving the modal's success silently imply everything's still normal.
+        // Not onComplete()/onClose() here: onComplete() triggers the parent's session-list
+        // refresh, which flips its `loading` state and unmounts the whole grid (this modal
+        // included) for the duration of the refetch — done from here, the "done" stage below
+        // would get torn down before the user ever saw it. Deferred to the "done" stage's own
+        // exit handlers (both "keep the card" and "delete the session") instead.
         setStage("done");
       }
     } catch (err) {
@@ -286,7 +295,7 @@ export function WorktreeToRootModal({
             : stage === "confirm"
               ? () => setStage("preview")
               : stage === "done"
-                ? handleClose
+                ? finishDone
                 : undefined
       }
       cancelLabel={
@@ -304,7 +313,7 @@ export function WorktreeToRootModal({
             : stage === "done"
               ? () => {
                   onOfferDeleteSession();
-                  onClose();
+                  finishDone();
                 }
               : undefined
       }

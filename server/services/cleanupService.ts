@@ -14,13 +14,18 @@ import {
 export type CleanupFinding = {
   id: string;
   kind: "prune-worktrees" | "remove-merged-worktree";
-  title: string;
-  description: string;
+  /** Structured data the client renders its own (translated) title/description from — this
+   *  service used to build those as hardcoded English prose here, which meant they were the one
+   *  corner of the app the i18n system (see LanguageProvider/translations.ts) could never reach. */
   command: string;
   repoRoot: string;
+  /** Only set for `prune-worktrees`; empty for `remove-merged-worktree`. */
+  staleBranches: string[];
   /** Only set for `remove-merged-worktree`; null for `prune-worktrees`. */
   worktreePath: string | null;
   branch: string | null;
+  /** Only set for `remove-merged-worktree`; null for `prune-worktrees`. */
+  defaultBranch: string | null;
 };
 
 /**
@@ -64,16 +69,12 @@ export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
       findings.push({
         id: `prune:${repoRoot}`,
         kind: "prune-worktrees",
-        title: `Worktrees deleted manually in "${path.basename(repoRoot)}"`,
-        description:
-          `${staleEntries.length} worktree(s) (${staleEntries
-            .map((entry) => entry.branch ?? "?")
-            .join(", ")}) were deleted directly on disk, outside the app — git still keeps their ` +
-          `record. This only cleans up that internal record, without deleting anything.`,
         command: `git worktree prune`,
         repoRoot,
+        staleBranches: staleEntries.map((entry) => entry.branch ?? "?"),
         worktreePath: null,
         branch: null,
+        defaultBranch: null,
       });
     }
 
@@ -95,15 +96,12 @@ export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
       findings.push({
         id: `remove:${entry.path}`,
         kind: "remove-merged-worktree",
-        title: `Worktree "${entry.branch}" already merged`,
-        description:
-          `Branch "${entry.branch}" is already merged into "${defaultBranch}" and the worktree ` +
-          `has no active session or pending changes. The worktree and local branch can be safely ` +
-          `removed.`,
         command: `git worktree remove ${entry.path} && git branch -D ${entry.branch}`,
         repoRoot,
+        staleBranches: [],
         worktreePath: entry.path,
         branch: entry.branch,
+        defaultBranch,
       });
     }
   }
