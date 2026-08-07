@@ -11,6 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useCallback, useState, type ReactNode } from "react";
+import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import { useLanguage } from "../hooks/useLanguage";
 import type { TranslationKey } from "../i18n/translations";
 import { useToast } from "../hooks/useToast";
@@ -115,8 +116,6 @@ export function FileListBox({
   );
 }
 
-const COPY_STASH_FEEDBACK_DURATION_MS = 2500;
-
 /** One "reset root" quick-action's past stashes — see `RootStatus.appStashes`/`listAppStashes`
  *  in git.ts for why these are traceable by message now instead of relying on a toast shown once
  *  at creation time. Exported for reuse by `ResetRootConfirmModal`, same convention as
@@ -124,15 +123,13 @@ const COPY_STASH_FEEDBACK_DURATION_MS = 2500;
 export function StashList({ stashes }: { stashes: RootStatus["appStashes"] }) {
   const { t } = useLanguage();
   const { showToast } = useToast();
-  const [copiedSha, setCopiedSha] = useState<string | null>(null);
+  const { copiedKey: copiedSha, copy } = useCopyFeedback();
 
   if (stashes.length === 0) return null;
 
   const handleCopy = async (sha: string) => {
     try {
-      await navigator.clipboard.writeText(`git stash apply ${sha}`);
-      setCopiedSha(sha);
-      setTimeout(() => setCopiedSha((current) => (current === sha ? null : current)), COPY_STASH_FEEDBACK_DURATION_MS);
+      await copy(`git stash apply ${sha}`, sha);
     } catch {
       showToast(t("worktreeToRootModal.stashList.copyError"), "error");
     }

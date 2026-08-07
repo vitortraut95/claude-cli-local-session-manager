@@ -23,16 +23,9 @@ import {
   startFreshSessionAtMissingWorktreeRoot,
   stopSiblingAndResume,
 } from "../services/sessionService.js";
+import { extractStringField } from "../utils/httpBody.js";
 
 export const sessionsRouter = Router();
-
-function extractStringField(body: unknown, key: string): string {
-  if (typeof body === "object" && body !== null && key in body) {
-    const value = (body as Record<string, unknown>)[key];
-    if (typeof value === "string") return value;
-  }
-  return "";
-}
 
 sessionsRouter.get("/", async (_req, res) => {
   try {

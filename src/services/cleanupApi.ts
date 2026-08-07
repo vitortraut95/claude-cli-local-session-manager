@@ -1,23 +1,9 @@
 import axios from "axios";
+import { withServerErrorMessage } from "../utils/apiClient";
 
 const client = axios.create({
   baseURL: "/cleanup",
 });
-
-type ErrorResponseBody = { error?: unknown };
-
-/** Mirrors sessionsApi's/tasksApi's withServerErrorMessage — surfaces the server's own
- *  `{ error }` message instead of axios's generic "Request failed with status code ..." */
-async function withServerErrorMessage<T>(request: () => Promise<T>): Promise<T> {
-  try {
-    return await request();
-  } catch (err) {
-    if (axios.isAxiosError<ErrorResponseBody>(err) && typeof err.response?.data?.error === "string") {
-      throw new Error(err.response.data.error, { cause: err });
-    }
-    throw err;
-  }
-}
 
 export type CleanupFinding = {
   id: string;

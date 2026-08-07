@@ -10,6 +10,7 @@ import {
   getDefaultBaseBranch,
   getRepoRoot,
   resolveBaseBranchRef,
+  sanitizeWorktreeDirName,
 } from "../utils/git.js";
 
 export type ProjectFolderOption = {
@@ -236,7 +237,7 @@ export async function createTaskWorktree(
     return { worktreePath: repoRoot };
   }
 
-  const worktreeDirName = trimmedBranch.replace(/[^A-Za-z0-9_-]/g, "-");
+  const worktreeDirName = sanitizeWorktreeDirName(trimmedBranch);
   const worktreePath = path.join(repoRoot, ".claude", "worktrees", worktreeDirName);
 
   // Guards against reusing an existing worktree's name/folder even when its branch was already

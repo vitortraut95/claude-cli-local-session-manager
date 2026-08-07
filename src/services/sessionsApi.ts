@@ -6,6 +6,7 @@ import type {
   SubagentDetail,
   WorktreeToRootPreview,
 } from "../types/session";
+import { withServerErrorMessage } from "../utils/apiClient";
 
 const client = axios.create({
   baseURL: "/sessions",
@@ -14,24 +15,6 @@ const client = axios.create({
 export async function fetchSessions(): Promise<Session[]> {
   const { data } = await client.get<Session[]>("/");
   return data;
-}
-
-type ErrorResponseBody = { error?: unknown };
-
-/**
- * Re-throws with the server's specific error message (e.g. "session is active") instead of
- * axios's generic "Request failed with status code 409", so callers' existing
- * `err instanceof Error ? err.message : ...` catch blocks surface something actually useful.
- */
-async function withServerErrorMessage<T>(request: () => Promise<T>): Promise<T> {
-  try {
-    return await request();
-  } catch (err) {
-    if (axios.isAxiosError<ErrorResponseBody>(err) && typeof err.response?.data?.error === "string") {
-      throw new Error(err.response.data.error, { cause: err });
-    }
-    throw err;
-  }
 }
 
 export async function deleteSession(id: string): Promise<void> {

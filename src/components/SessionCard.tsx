@@ -18,6 +18,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useState } from "react";
+import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
@@ -52,8 +53,6 @@ type SessionCardProps = {
   onWorktreeSyncComplete: (session: Session) => void;
 };
 
-const COPIED_FEEDBACK_DURATION_MS = 2500;
-
 export function SessionCard({
   session,
   pendingAction,
@@ -77,7 +76,8 @@ export function SessionCard({
   const isResumingAtMissingWorktreeRoot = pendingAction === "missing-root-resume";
   const isBusy = isDeleting || isContinuing || isSettingNickname;
   const [resumingAtRoot, setResumingAtRoot] = useState(false);
-  const [copiedCommand, setCopiedCommand] = useState(false);
+  const { copiedKey: copiedCommandKey, copy } = useCopyFeedback();
+  const copiedCommand = copiedCommandKey === "resume-command";
   const [showPreview, setShowPreview] = useState(false);
   const [showUsage, setShowUsage] = useState(false);
   const [showSubagents, setShowSubagents] = useState(false);
@@ -94,12 +94,9 @@ export function SessionCard({
       : null;
 
   const handleCopyCommand = async () => {
-    const command = resumeCommand;
     try {
-      await navigator.clipboard.writeText(command);
-      setCopiedCommand(true);
+      await copy(resumeCommand, "resume-command");
       showToast(t("sessionCard.copyCommand.success"), "success");
-      setTimeout(() => setCopiedCommand(false), COPIED_FEEDBACK_DURATION_MS);
     } catch {
       showToast(t("sessionCard.copyCommand.error"), "error");
     }

@@ -44,6 +44,7 @@ import {
   removeWorktreeAndBranch,
   removeWorktreeKeepBranch,
   runGit,
+  sanitizeWorktreeDirName,
 } from "../utils/git.js";
 
 const UNTITLED = "Untitled";
@@ -976,7 +977,7 @@ export async function createSessionWorktree(id: string, requestedName: string): 
   // wrong guess just means this specific write has no effect; it can't ever break the launch below.
   const repoRoot = await getRepoRoot(cwd);
   if (repoRoot) {
-    const worktreeDirName = name.replace(/[^A-Za-z0-9_-]/g, "-");
+    const worktreeDirName = sanitizeWorktreeDirName(name);
     await markWorktreeTrustAccepted(path.join(repoRoot, ".claude", "worktrees", worktreeDirName));
   }
 

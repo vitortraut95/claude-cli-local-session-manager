@@ -36,7 +36,8 @@ export function ResumeConflictModal({
   // `name` to build both a directory name and a `worktree-<name>` branch name — a raw branch name
   // like "feature/PROJ-123" isn't a valid worktree name (the CLI silently mangles the "/" into a
   // "+" instead, e.g. producing a confusing "worktree-feature+PROJ-123" branch) — sanitize the
-  // same way taskService.ts's own createTaskWorktree already does for its own worktree dir names.
+  // same way server/utils/git.ts's `sanitizeWorktreeDirName` already does server-side (no shared
+  // package between the two workspaces to import it from directly).
   const [worktreeName, setWorktreeName] = useState(
     (target.gitBranch ?? "").replace(/[^A-Za-z0-9_-]/g, "-"),
   );

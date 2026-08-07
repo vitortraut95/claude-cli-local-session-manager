@@ -1,4 +1,5 @@
 import axios from "axios";
+import { withServerErrorMessage } from "../utils/apiClient";
 
 const client = axios.create({
   baseURL: "/system",
@@ -54,20 +55,13 @@ export type ClaudeUsageStatus = {
   extraUsage: ClaudeExtraUsage | null;
 };
 
-type ErrorResponseBody = { error?: unknown };
-
 /** `forceRefresh` bypasses the server's own short cache — used by the header widget's manual
  *  refresh button, since a plain mount-time fetch is happy with a slightly stale value. */
 export async function fetchUsageLimits(forceRefresh = false): Promise<ClaudeUsageStatus> {
-  try {
-    const { data } = await client.get<ClaudeUsageStatus>("/usage-limits", {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<ClaudeUsageStatus>("/usage-limits", {
       params: forceRefresh ? { refresh: "1" } : undefined,
-    });
-    return data;
-  } catch (err) {
-    if (axios.isAxiosError<ErrorResponseBody>(err) && typeof err.response?.data?.error === "string") {
-      throw new Error(err.response.data.error, { cause: err });
-    }
-    throw err;
-  }
+    }),
+  );
+  return data;
 }

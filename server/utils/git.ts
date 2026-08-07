@@ -155,6 +155,16 @@ export async function deleteLocalBranch(cwd: string, branch: string): Promise<vo
   await runGit(["branch", "-D", branch], cwd);
 }
 
+/** Turns a branch/task name into a filesystem- and git-worktree-name-safe slug — shared by
+ *  `createTaskWorktree` (taskService.ts, this app's own `git worktree add` path) and
+ *  `createSessionWorktree` (sessionService.ts, which predicts the *same* convention the CLI's
+ *  `--worktree` flag applies before ever invoking it, so the two must stay in lockstep). Also
+ *  mirrored client-side in `ResumeConflictModal.tsx`'s worktree-name prefill — no shared package
+ *  between the two workspaces to centralize that copy into this one. */
+export function sanitizeWorktreeDirName(name: string): string {
+  return name.replace(/[^A-Za-z0-9_-]/g, "-");
+}
+
 /**
  * Creates a new linked worktree at `worktreePath` on a fresh `branchName`, branched off
  * `baseBranchRef` — the "new task" flow's own worktree creation, distinct from

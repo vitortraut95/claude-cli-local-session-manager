@@ -47,12 +47,20 @@ spelunking at the start of a task.
     `UsageDetailsModal`, `Header`, etc.)
   - `src/hooks/` — `useSessions`, `useTheme`, `useToast`, `useUpdate`, `useUrlState`
   - `src/pages/SessionsPage.tsx` — the single page/route
-  - `src/services/` — `sessionsApi.ts` / `systemApi.ts`, thin axios wrappers around the backend
-  - `server/routes/` — `sessions.ts`, `system.ts` (Express routers, thin — error mapping only)
+  - `src/services/` — `sessionsApi.ts` / `tasksApi.ts` / `cleanupApi.ts` / `systemApi.ts`, thin
+    axios wrappers around the backend, all sharing `withServerErrorMessage` from `src/utils/apiClient.ts`
+  - `src/utils/` — cross-component client-side helpers: `apiClient.ts` (the error-unwrapping
+    above), `formatDate.ts`/`formatPath.ts`/`formatUsage.ts`, `sessionInsights.ts`/`sessionSize.ts`
+  - `server/routes/` — `sessions.ts`, `tasks.ts`, `cleanup.ts`, `system.ts` (Express routers, thin
+    — error mapping only), sharing `extractStringField`/`extractBooleanField` from
+    `server/utils/httpBody.ts`
   - `server/services/` — `sessionService.ts` (core logic: list/delete/continue/nickname sessions,
-    active-session detection), `updateService.ts` (self-update via git pull)
-  - `server/utils/` — `claudeProjects.ts` (JSONL parsing), `nicknames.ts` (sidecar file),
-    `pricing.ts` (token cost table)
+    active-session detection), `taskService.ts` ("new task" flow), `cleanupService.ts` (stale-
+    worktree scan), `updateService.ts` (self-update via git pull)
+  - `server/utils/` — `git.ts` (every git call this app makes), `claudeProjects.ts` (JSONL
+    parsing), `claudeTrust.ts` (pre-accepting workspace trust for app-created worktrees),
+    `nicknames.ts` (sidecar file), `httpBody.ts` (the route helpers above), `pricing.ts` (token
+    cost table)
 - **API surface** (see README.md for the full table): `GET /sessions`, `GET
 /sessions/:id/prompts`, `PATCH /sessions/:id/nickname`, `DELETE /sessions/:id`, `POST
 /sessions/:id/continue`, `POST /sessions/:id/worktree`, `DELETE /sessions/:id/worktree`, `POST

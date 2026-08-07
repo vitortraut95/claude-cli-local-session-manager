@@ -12,24 +12,9 @@ import {
   launchTaskTerminal,
   resolveBaseBranch,
 } from "../services/taskService.js";
+import { extractBooleanField, extractStringField } from "../utils/httpBody.js";
 
 export const tasksRouter = Router();
-
-function extractStringField(body: unknown, key: string): string {
-  if (typeof body === "object" && body !== null && key in body) {
-    const value = (body as Record<string, unknown>)[key];
-    if (typeof value === "string") return value;
-  }
-  return "";
-}
-
-function extractBooleanField(body: unknown, key: string, defaultValue: boolean): boolean {
-  if (typeof body === "object" && body !== null && key in body) {
-    const value = (body as Record<string, unknown>)[key];
-    if (typeof value === "boolean") return value;
-  }
-  return defaultValue;
-}
 
 function isValidPreferences(body: unknown): body is UserPreferences {
   if (typeof body !== "object" || body === null) return false;
