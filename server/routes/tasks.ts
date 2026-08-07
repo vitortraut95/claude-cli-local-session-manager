@@ -39,6 +39,7 @@ function isValidPreferences(body: unknown): body is UserPreferences {
     Array.isArray(candidate.branchTypes) &&
     candidate.branchTypes.every((item) => typeof item === "string") &&
     typeof candidate.useWorktreeByDefault === "boolean" &&
+    typeof candidate.useAutoPermissionModeByDefault === "boolean" &&
     (candidate.language === null ||
       candidate.language === "en" ||
       candidate.language === "pt" ||
@@ -70,7 +71,8 @@ tasksRouter.put("/preferences", async (req, res) => {
     if (!isValidPreferences(req.body)) {
       throw new Error(
         "Malformed preferences payload — expected { defaultPrompt: string, branchTypes: string[], " +
-          "useWorktreeByDefault: boolean, language: \"en\"|\"pt\"|\"es\"|null, hasSeenOnboarding: boolean }.",
+          "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
+          "language: \"en\"|\"pt\"|\"es\"|null, hasSeenOnboarding: boolean }.",
       );
     }
     await saveUserPreferences(req.body);
@@ -133,6 +135,7 @@ tasksRouter.post("/launch", async (req, res) => {
     await launchTaskTerminal(
       extractStringField(req.body, "worktreePath"),
       extractStringField(req.body, "prompt"),
+      extractBooleanField(req.body, "permissionModeAuto", false),
     );
     res.json({ success: true });
   } catch (err) {

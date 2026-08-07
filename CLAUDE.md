@@ -180,6 +180,20 @@ spelunking at the start of a task.
     started in (see `findSessionCwd`'s doc comment), so a _past_ session can never be resumed from
     a different folder, worktree or not — "Create worktree" always starts a brand-new
     conversation, never continues an existing transcript.
+  - **Every worktree this app creates gets its trust pre-accepted** (`markWorktreeTrustAccepted`,
+    `server/utils/claudeTrust.ts`) — writes `hasTrustDialogAccepted: true` for the new worktree's
+    absolute path into the CLI's own `~/.claude.json` (`projects["<path>"]`), atomically (temp
+    file + rename), right after creating it and before ever opening a terminal into it. Found by
+    direct reproduction: `claude --worktree <name>` fails in about a second with "Workspace trust
+    not yet accepted" and creates nothing when run from an as-yet-untrusted directory — with no
+    way for this app to detect that from a detached, fire-and-forget terminal spawn, so the UI
+    would show a plain success toast regardless. Called from both `createWorktreeWithBranch`
+    (the "New task" modal's own git-based creation) and `createSessionWorktree` just below (which
+    predicts the CLI's own `<repoRoot>/.claude/worktrees/<name>` convention for the worktree it's
+    about to ask the CLI to create, confirmed by direct reproduction) — every worktree this app
+    ever creates is a git-managed subdirectory of a repo the user is already trusted in, never an
+    arbitrary folder, so pre-accepting trust on the app's behalf is a narrow, scoped exception,
+    not a blanket "trust everything" change.
   - **`isLinkedWorktree`** (git.ts) tells a linked worktree from a repo's main checkout by
     comparing `git rev-parse --git-dir` vs. `--git-common-dir` (equal only for the main checkout).
     `listSessions()` computes this once per unique `workingDirectory` (not per session) to avoid
@@ -206,6 +220,20 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
     partial failure can't leave the directory checked out to the wrong branch with nothing running
     in it. This can discard whatever the other terminal hadn't saved/committed; the client-side
     confirmation copy says so plainly rather than hiding it behind a generic "Continue?" dialog.
+- **"Worktree → root" sync's "reset root" step** (shared by both wizard modes and the standalone
+  quick action — `discardWorkingTreeChanges`/`listAppStashes` in `git.ts`, `RootStatus.appStashes`)
+  stashes root's uncommitted changes rather than discarding them outright, but a plain `git stash
+  push -m "worktree-to-root: root's pre-sync state"` on every run leaves `git stash list` with
+  several entries reading identically after a few resets in one sitting — confirmed while
+  dogfooding the copy → reset → repeat loop this feature is built for — with the only place the
+  actual SHA for any one of them ever surfaced being a success toast at the moment it was created.
+  Fixed two ways: the stash message now embeds the branch root was on and a timestamp, and
+  `getRootStatus` (backing both `ResetRootConfirmModal` and the wizard's own confirm step) returns
+  every stash this feature has ever created here (`listAppStashes`, filtered by message — note the
+  `.includes` not `.startsWith`, since git prepends its own `"On <branch>: "` to whatever message a
+  stash is pushed with) so a forgotten reset stays recoverable (`StashList` in
+  `WorktreeToRootModal.tsx`, with a one-click "copy `git stash apply <sha>`" per entry) without
+  the user needing to remember a SHA from a vanished toast.
 - **"New task" modal** (`Header.tsx` → `NewTaskModal.tsx`, `server/services/taskService.ts`,
   `server/routes/tasks.ts`) lets you paste a Jira link, pick/type a project folder, and get a
   brand-new isolated worktree + branch with a terminal already running `claude "<prompt>"` — the
@@ -216,13 +244,24 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
   button or a successful create actually resets the form.
   - **Everything the modal remembers lives in one gitignored `userPreferences.json`** at the repo
     root (`server/services/preferencesService.ts`, `GET`/`PUT /tasks/preferences`) — `defaultPrompt`,
-    `branchTypes` (the "Branch type" select's options, first entry = the default selection), and
-    `useWorktreeByDefault` (the "don't use worktree" checkbox's default state). Created lazily on
-    first save; a fresh clone (or a missing/malformed file) just falls back to hardcoded defaults —
+    `branchTypes` (the "Branch type" select's options, first entry = the default selection),
+    `useWorktreeByDefault` (the "don't use worktree" checkbox's default state), and
+    `useAutoPermissionModeByDefault` (the "--permission-mode auto" checkbox's default state).
+    Created lazily on first save; a fresh clone (or a missing/malformed file) just falls back to
+    hardcoded defaults —
     `getUserPreferences()` never throws over it. A custom ("Other") branch type that's actually used to
     create a task gets appended to `branchTypes` automatically (best-effort PUT right after the
     "launch" step succeeds) — no separate "manage branch types" UI, it just remembers itself; to
-    reorder/remove entries, hand-edit the JSON file directly. The prompt and worktree-default fields
+    reorder/remove entries, hand-edit the JSON file directly. `useAutoPermissionModeByDefault` is
+    remembered the same "no separate save step" way, right alongside it — unlike the prompt/
+    worktree-default fields (see below), there's no meaningfully different "draft" value worth
+    preserving across an accidental close for a single checkbox, so it's just always whatever it
+    was last left at. That checkbox appends the CLI's own `--permission-mode auto` flag to the
+    launched `claude` command (`launchTaskTerminal` in `taskService.ts`) — relevant specifically
+    for this app's own terminal-launching flows: a backgrounded/unfocused terminal window
+    (Wayland blocks this app from stealing focus for one it spawns, see above) can't be answered
+    until the user happens to notice it, so a session that never needs to ask doesn't get stuck
+    waiting on a permission prompt nobody saw. The prompt and worktree-default fields
     each get their own "Save as default"/"Use as default" link (shown only when the field's
     current value differs from what's stored), same UX for both. Every write is a full-object PUT
     (the route validates the whole shape), so each save path must include the _stored_, not the
@@ -267,47 +306,3 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
   everything else in this app) with a 30s server-side cache and a manual click-to-refresh.
 
 ## to-do's
-
-- **Offer '--permission-mode auto' on new task modal.** offer and save in userPreferences the
-  last used way (checked true or false) in the checkbox, add explaining label.
-- **Pre-trust every worktree directory this app creates on the user's behalf, instead of leaving
-  each one to hit the CLI's first-run trust dialog invisibly.** Found by direct reproduction while
-  dogfooding the resume-conflict flow: `claude --worktree "<name>"` — the exact command
-  `createSessionWorktree` (sessionService.ts, only caller: `ResumeConflictModal`'s "create a
-  worktree instead" quick-fix) fires into a detached terminal — fails in about a second with
-  `Error creating worktree: Workspace trust not yet accepted. Run \`claude\` once in this
-  directory and accept the trust dialog, then retry with --worktree.` whenever the *existing*
-  session's own directory hasn't been trust-accepted yet, and creates nothing. The app has no way
-  to detect this: `trySpawnDetached`'s success check only confirms the terminal process itself
-  launched, not that the command inside it did anything — so the UI shows a flat "Worktree
-  criado" success toast regardless. The same trust gate also applies (as an interactive prompt
-  Claude itself shows, not a hard failure) to every freshly-created worktree the "New Task" modal
-  launches a first `claude "<prompt>"` conversation into — combined with Wayland blocking
-  focus-stealing for that terminal window (see the cross-platform notes above), a user has no
-  signal that a just-created task is actually sitting idle at an unanswered keypress rather than
-  working, for as long as they don't happen to check the (possibly backgrounded) window. Fix:
-  `~/.claude.json` stores this exact flag per absolute path at
-  `projects["<path>"].hasTrustDialogAccepted` (confirmed by inspecting the file directly) — since
-  this app is the one creating these worktree directories, and always as a subdirectory of a repo
-  the user is already trusted in, it can write `hasTrustDialogAccepted: true` for the new
-  worktree's absolute path into that same file right after creating it (both in
-  `createWorktreeWithBranch`/`createTaskWorktree` and in `createSessionWorktree`'s `--worktree`
-  path), before ever opening a terminal into it — turning an entire class of invisible
-  hangs/silent no-ops into something that just works.
-- **Make a "reset root" stash traceable after the fact, not just a SHA quoted once in a toast
-  that vanishes.** `discardWorkingTreeChanges` (git.ts) always creates its stash under the same
-  literal message, `"worktree-to-root: root's pre-sync state"` — confirmed while dogfooding the
-  copy-mode → reset → copy-mode-again loop this feature is built for: running it a handful of
-  times in one sitting left `git stash list` with several entries reading identically (`On
-  master: worktree-to-root: root's pre-sync state`, `On feature/TEST-3: worktree-to-root: root's
-  pre-sync state`, ...), distinguishable only by stash index/order — and the *only* place the
-  actual SHA for any one of them is ever surfaced is a single success toast at the moment it's
-  created, which this app doesn't persist anywhere once dismissed. A developer who didn't
-  immediately copy that toast's `git stash apply <sha>` line, or who ran the loop enough times to
-  lose track of which entry was theirs, has no in-app way to recover a specific prior state —
-  only a pile of same-looking stashes to inspect by hand. Fix ideas: fold something
-  distinguishing into the stash message itself (root's branch at the time, or a timestamp) so
-  `git stash list` reads as a real history instead of repeated noise; and/or surface this app's
-  own stash entries (filtered by message prefix) somewhere in the UI — e.g. the "Reset root"
-  quick-action's own dialog — so a forgotten one is still discoverable a week later without
-  memorizing a SHA from a toast.

@@ -37,6 +37,9 @@ export type UserPreferences = {
   defaultPrompt: string;
   branchTypes: string[];
   useWorktreeByDefault: boolean;
+  /** Mirrors NewTaskModal's "--permission-mode auto" checkbox — remembered as whatever it was
+   *  last left at, no separate "save as default" step. */
+  useAutoPermissionModeByDefault: boolean;
   /** Null means "never explicitly chosen" — callers fall back to the browser's own language in
    *  that case rather than this ever defaulting to a fixed language. */
   language: Language | null;
@@ -140,6 +143,12 @@ export async function createTaskWorktree(
 
 /** Opens a terminal in `worktreePath` running `claude <prompt>` (see server-side
  *  launchTaskTerminal for why a positional arg, not a temp file/stdin). */
-export async function launchTaskTerminal(worktreePath: string, prompt: string): Promise<void> {
-  await withServerErrorMessage(() => client.post("/launch", { worktreePath, prompt }));
+export async function launchTaskTerminal(
+  worktreePath: string,
+  prompt: string,
+  permissionModeAuto: boolean,
+): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.post("/launch", { worktreePath, prompt, permissionModeAuto }),
+  );
 }

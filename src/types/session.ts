@@ -107,4 +107,8 @@ export type RootStatus = {
   repoRoot: string;
   rootBranch: string | null;
   rootDirtyFiles: string[];
+  /** Every stash `discardWorkingTreeChanges` (the "reset root" step, shared by both wizard modes
+   *  and the standalone quick action) has ever created here, newest first — so a previous reset
+   *  stays recoverable without the user needing to remember a SHA from a toast that's long gone. */
+  appStashes: { sha: string; message: string }[];
 };

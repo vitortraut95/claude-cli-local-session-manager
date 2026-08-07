@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
 import { directoryExists, launchInTerminal, listSessions, posixShellQuote } from "./sessionService.js";
+import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import {
   branchExists,
   checkoutNewBranch,
@@ -246,6 +247,9 @@ export async function createTaskWorktree(
   }
 
   await createWorktreeWithBranch(repoRoot, worktreePath, trimmedBranch, trimmedRef);
+  // Best-effort, non-blocking — see markWorktreeTrustAccepted's own doc comment for why this
+  // specific directory is safe to pre-trust and what silently fails without it.
+  await markWorktreeTrustAccepted(worktreePath);
   return { worktreePath };
 }
 
@@ -253,12 +257,27 @@ export async function createTaskWorktree(
  * Opens a terminal in `worktreePath` running `claude <prompt>` — passing the composed prompt as a
  * positional argument starts an interactive session with it already sent as the first message, so
  * no temp file or stdin piping is needed. The final step of the "new task" flow.
+ *
+ * `permissionModeAuto` appends the CLI's own `--permission-mode auto` flag — the modal's
+ * checkbox for reducing how often the launched session stops to ask for a permission approval.
+ * Relevant specifically for this app's own terminal-launching flows: a backgrounded/unfocused
+ * terminal window (Wayland blocks this app from stealing focus for one it spawns, see CLAUDE.md)
+ * can't be answered until the user happens to notice it, so a session that never needs to ask
+ * doesn't get stuck waiting on a prompt nobody saw.
  */
-export async function launchTaskTerminal(worktreePath: string, prompt: string): Promise<void> {
+export async function launchTaskTerminal(
+  worktreePath: string,
+  prompt: string,
+  permissionModeAuto: boolean,
+): Promise<void> {
   const trimmedWorktreePath = worktreePath.trim();
   const trimmedPrompt = prompt.trim();
   if (!trimmedWorktreePath) throw new Error("A worktree path is required.");
   if (!trimmedPrompt) throw new Error("A prompt is required to start Claude.");
 
-  await launchInTerminal(`claude ${posixShellQuote(trimmedPrompt)}`, trimmedWorktreePath);
+  const permissionFlag = permissionModeAuto ? "--permission-mode auto " : "";
+  await launchInTerminal(
+    `claude ${permissionFlag}${posixShellQuote(trimmedPrompt)}`,
+    trimmedWorktreePath,
+  );
 }

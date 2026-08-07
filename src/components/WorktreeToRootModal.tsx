@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  Check,
   CheckCircle2,
   Circle,
   Code2,
@@ -110,6 +111,71 @@ export function FileListBox({
           </ul>
         )}
       </div>
+    </div>
+  );
+}
+
+const COPY_STASH_FEEDBACK_DURATION_MS = 2500;
+
+/** One "reset root" quick-action's past stashes — see `RootStatus.appStashes`/`listAppStashes`
+ *  in git.ts for why these are traceable by message now instead of relying on a toast shown once
+ *  at creation time. Exported for reuse by `ResetRootConfirmModal`, same convention as
+ *  `FileListBox` above. */
+export function StashList({ stashes }: { stashes: RootStatus["appStashes"] }) {
+  const { t } = useLanguage();
+  const { showToast } = useToast();
+  const [copiedSha, setCopiedSha] = useState<string | null>(null);
+
+  if (stashes.length === 0) return null;
+
+  const handleCopy = async (sha: string) => {
+    try {
+      await navigator.clipboard.writeText(`git stash apply ${sha}`);
+      setCopiedSha(sha);
+      setTimeout(() => setCopiedSha((current) => (current === sha ? null : current)), COPY_STASH_FEEDBACK_DURATION_MS);
+    } catch {
+      showToast(t("worktreeToRootModal.stashList.copyError"), "error");
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+        {t("worktreeToRootModal.stashList.title")}
+      </p>
+      <ul className="flex flex-col gap-1 rounded-md border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-950">
+        {stashes.map((stash) => (
+          <li key={stash.sha} className="flex items-center gap-2">
+            <span
+              className="min-w-0 flex-1 truncate font-mono text-xs text-gray-600 dark:text-gray-300"
+              title={stash.message}
+            >
+              {stash.message}
+            </span>
+            <Tooltip
+              content={
+                copiedSha === stash.sha
+                  ? t("worktreeToRootModal.stashList.copiedTooltip")
+                  : t("worktreeToRootModal.stashList.copyTooltip")
+              }
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleCopy(stash.sha)}
+                aria-label={t("worktreeToRootModal.stashList.copyTooltip")}
+                icon={
+                  copiedSha === stash.sha ? (
+                    <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )
+                }
+              />
+            </Tooltip>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

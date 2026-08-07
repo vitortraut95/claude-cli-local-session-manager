@@ -160,6 +160,11 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   const [useWorktreeDefault, setUseWorktreeDefault] = useState(true);
   const [savingWorktreeDefault, setSavingWorktreeDefault] = useState(false);
 
+  // No separate "draft vs. saved default" split like skipWorktree/promptText above — this is
+  // just remembered as whatever it was last left at (see handleCreate), so there's nothing to
+  // preserve across an accidental close that the loaded preference itself doesn't already cover.
+  const [permissionModeAuto, setPermissionModeAuto] = useState(false);
+
   const [creating, setCreating] = useState(false);
   // Empty while idle — the static "what will happen" explanation renders instead. Populated with
   // all four steps (each "pending") right when a create attempt starts, so the modal always shows
@@ -215,6 +220,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
         setPrefixChoice(loadedBranchTypes[0] ?? "feature");
         setUseWorktreeDefault(prefs.useWorktreeByDefault);
         setSkipWorktree(!prefs.useWorktreeByDefault);
+        setPermissionModeAuto(prefs.useAutoPermissionModeByDefault);
       })
       .catch(() => {
         if (!cancelled) setDefaultPromptLoaded("");
@@ -385,7 +391,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
       updateStep("worktree", "done");
 
       updateStep("launch", "doing");
-      await tasksApi.launchTaskTerminal(worktreePath, composedPrompt);
+      await tasksApi.launchTaskTerminal(worktreePath, composedPrompt, permissionModeAuto);
       updateStep("launch", "done");
 
       // A custom ("Outro") branch type that was actually used becomes a normal option from now on
@@ -402,6 +408,12 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
           // Still usable for the rest of this session even if persisting it failed.
         });
       }
+
+      // Remembered as whatever it was last left at — no separate "save as default" step, same
+      // best-effort/non-blocking treatment as the branch-type auto-remember above.
+      tasksApi.updatePreferences({ useAutoPermissionModeByDefault: permissionModeAuto }).catch(() => {
+        // Still usable for the rest of this session even if persisting it failed.
+      });
 
       showToast(t("newTaskModal.terminalOpened"), "success");
       resetForm();
@@ -659,6 +671,21 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
                   {t("newTaskModal.skipWorktreeWarning")}
                 </p>
               )}
+            </div>
+
+            <div>
+              <label className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={permissionModeAuto}
+                  onChange={(event) => setPermissionModeAuto(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+                />
+                {t("newTaskModal.permissionModeAutoLabel")}
+              </label>
+              <p className="mt-1 pl-6 text-xs text-gray-500 dark:text-gray-400">
+                {t("newTaskModal.permissionModeAutoExplanation")}
+              </p>
             </div>
 
             {steps.length > 0 ? (

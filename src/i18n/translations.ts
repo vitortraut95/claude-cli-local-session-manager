@@ -872,6 +872,16 @@ export const translations = {
     "Sem um worktree, a nova branch é trocada diretamente na pasta principal do projeto — isso pode causar conflitos se outro terminal ou sessão já estiver ativo ali.",
     "Sin un worktree, la nueva rama se cambia directamente en la carpeta principal del proyecto — esto puede causar conflictos si otra terminal o sesión ya está activa ahí.",
   ),
+  "newTaskModal.permissionModeAutoLabel": dict(
+    "Skip permission prompts (--permission-mode auto)",
+    "Pular confirmações de permissão (--permission-mode auto)",
+    "Omitir confirmaciones de permiso (--permission-mode auto)",
+  ),
+  "newTaskModal.permissionModeAutoExplanation": dict(
+    "Starts the session with Claude Code's own \"auto\" permission mode, so it stops asking for approval before most actions. Useful here specifically because a background terminal window can't be brought to front on some setups (see the app's own notes on this) — if it's sitting at an unanswered prompt you never saw, this avoids that entirely. Remembered as whatever you last left it at.",
+    "Inicia a sessão no modo de permissão \"auto\" do próprio Claude Code, então ele para de pedir aprovação antes da maioria das ações. Útil aqui especificamente porque a janela do terminal em segundo plano não pode ser trazida para frente em algumas configurações — se ela estiver parada num prompt que você nunca viu, isso evita esse problema por completo. Fica lembrado como você deixou da última vez.",
+    "Inicia la sesión en el modo de permiso \"auto\" propio de Claude Code, así deja de pedir aprobación antes de la mayoría de las acciones. Útil aquí específicamente porque la ventana de terminal en segundo plano no se puede traer al frente en algunas configuraciones — si está esperando en un aviso que nunca viste, esto evita ese problema por completo. Se recuerda como lo dejaste la última vez.",
+  ),
   "newTaskModal.progressLabel": dict("Progress:", "Progresso:", "Progreso:"),
   "newTaskModal.whatWillHappen": dict(
     'What will happen when you click "Create and open terminal":',
@@ -1422,6 +1432,22 @@ export const translations = {
     "Failed: {message}",
     "Falhou: {message}",
     "Falló: {message}",
+  ),
+  "worktreeToRootModal.stashList.title": dict(
+    "Previous resets, still recoverable:",
+    "Resets anteriores, ainda recuperáveis:",
+    "Restablecimientos anteriores, aún recuperables:",
+  ),
+  "worktreeToRootModal.stashList.copyTooltip": dict(
+    "Copy \"git stash apply\" for this one",
+    "Copiar \"git stash apply\" para este",
+    "Copiar \"git stash apply\" para este",
+  ),
+  "worktreeToRootModal.stashList.copiedTooltip": dict("Copied!", "Copiado!", "¡Copiado!"),
+  "worktreeToRootModal.stashList.copyError": dict(
+    "Could not copy to clipboard.",
+    "Não foi possível copiar.",
+    "No se pudo copiar.",
   ),
 
   "resetRootConfirmModal.title": dict("Reset root", "Resetar raiz", "Restablecer raíz"),

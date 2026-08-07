@@ -27,6 +27,7 @@ import {
 } from "../utils/claudeProjects.js";
 import { summarizeUsage } from "../utils/pricing.js";
 import { getNicknames, setNickname } from "../utils/nicknames.js";
+import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import {
   applyFileDiff,
   checkoutExistingBranch,
@@ -37,6 +38,7 @@ import {
   getRepoRoot,
   getStatusFiles,
   isLinkedWorktree,
+  listAppStashes,
   listWorktrees,
   nestedWorktreeRelativePaths,
   removeWorktreeAndBranch,
@@ -965,6 +967,19 @@ export async function createSessionWorktree(id: string, requestedName: string): 
     throw new Error(`This session's original directory no longer exists ("${cwd}").`);
   }
 
+  // Best-effort, ahead of the launch below rather than after: the CLI's own `--worktree` flag
+  // (see markWorktreeTrustAccepted's doc comment) checks *this* directory's trust before it ever
+  // creates the new one, so pre-trusting only the destination wouldn't help this specific call —
+  // but pre-trusting the destination now means a *later* worktree op sourced from it (e.g.
+  // another resume-conflict, chained off this one) won't hit the same wall. Predicts the CLI's
+  // own `<repoRoot>/.claude/worktrees/<name>` convention (confirmed by direct reproduction); a
+  // wrong guess just means this specific write has no effect; it can't ever break the launch below.
+  const repoRoot = await getRepoRoot(cwd);
+  if (repoRoot) {
+    const worktreeDirName = name.replace(/[^A-Za-z0-9_-]/g, "-");
+    await markWorktreeTrustAccepted(path.join(repoRoot, ".claude", "worktrees", worktreeDirName));
+  }
+
   await launchInTerminal(`claude --worktree ${posixShellQuote(name)}`, cwd);
 }
 
@@ -1069,11 +1084,14 @@ export async function getRootStatus(id: string): Promise<RootStatus> {
   const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
   const entries = await listWorktrees(repoRoot);
   const excludePaths = nestedWorktreeRelativePaths(repoRoot, entries);
-  const rootDirtyFiles = await getStatusFiles(repoRoot, excludePaths);
+  const [rootDirtyFiles, appStashes] = await Promise.all([
+    getStatusFiles(repoRoot, excludePaths),
+    listAppStashes(repoRoot),
+  ]);
   const resolvedRepoRoot = path.resolve(repoRoot);
   const rootBranch = entries.find((e) => path.resolve(e.path) === resolvedRepoRoot)?.branch ?? null;
 
-  return { repoRoot, rootBranch, rootDirtyFiles };
+  return { repoRoot, rootBranch, rootDirtyFiles, appStashes };
 }
 
 /**

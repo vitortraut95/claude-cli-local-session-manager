@@ -8,6 +8,11 @@ export type UserPreferences = {
   defaultPrompt: string;
   branchTypes: string[];
   useWorktreeByDefault: boolean;
+  /** Mirrors the "new task" modal's own "--permission-mode auto" checkbox — remembered
+   *  automatically as whatever it was last left at (no separate "save as default" step, unlike
+   *  defaultPrompt/useWorktreeByDefault), since there's no meaningfully different "draft" value
+   *  to preserve across an accidental close the way a half-written prompt is. */
+  useAutoPermissionModeByDefault: boolean;
   /** Null means "never explicitly chosen" — the frontend falls back to the browser's own
    *  language in that case rather than this ever defaulting to a fixed language server-side. */
   language: Language | null;
@@ -22,6 +27,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   defaultPrompt: "",
   branchTypes: ["feature", "fix", "hotfix", "env"],
   useWorktreeByDefault: true,
+  useAutoPermissionModeByDefault: false,
   language: null,
   hasSeenOnboarding: false,
 };
@@ -58,6 +64,10 @@ export async function getUserPreferences(): Promise<UserPreferences> {
         typeof parsed.useWorktreeByDefault === "boolean"
           ? parsed.useWorktreeByDefault
           : DEFAULT_PREFERENCES.useWorktreeByDefault,
+      useAutoPermissionModeByDefault:
+        typeof parsed.useAutoPermissionModeByDefault === "boolean"
+          ? parsed.useAutoPermissionModeByDefault
+          : DEFAULT_PREFERENCES.useAutoPermissionModeByDefault,
       language: isLanguage(parsed.language) ? parsed.language : DEFAULT_PREFERENCES.language,
       hasSeenOnboarding:
         typeof parsed.hasSeenOnboarding === "boolean"

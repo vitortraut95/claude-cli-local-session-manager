@@ -404,7 +404,24 @@ export async function listWorkingTreeFiles(cwd: string): Promise<string[]> {
   return list ? list.split("\0").filter(Boolean) : [];
 }
 
-const STASH_MESSAGE = "worktree-to-root: root's pre-sync state";
+/** Shared between `discardWorkingTreeChanges` (which appends distinguishing detail after this)
+ *  and `listAppStashes` (which filters `git stash list` by it) — the one thing every stash this
+ *  feature creates has in common, regardless of which branch/run produced it. */
+const STASH_MESSAGE_PREFIX = "worktree-to-root: root's pre-sync state";
+
+/** Best-effort "what was HEAD pointing at" label for the stash message below — `git rev-parse
+ *  --abbrev-ref HEAD` returns the literal string "HEAD" for a detached HEAD, which reads
+ *  confusingly next to "was on"; anything else (missing repo, race with a concurrent checkout)
+ *  just falls back to a plain "unknown" rather than failing the whole discard over a cosmetic
+ *  label. */
+async function currentBranchLabel(cwd: string): Promise<string> {
+  try {
+    const branch = await runGit(["rev-parse", "--abbrev-ref", "HEAD"], cwd);
+    return branch === "HEAD" ? "detached HEAD" : branch;
+  } catch {
+    return "unknown";
+  }
+}
 
 /**
  * Discards every uncommitted change in `cwd` — tracked modifications and untracked files/dirs,
@@ -431,6 +448,14 @@ const STASH_MESSAGE = "worktree-to-root: root's pre-sync state";
  * (which would defeat the whole point above), this specific message is treated as success rather
  * than rethrown — the `rev-parse` below is the real check: if the stash genuinely didn't happen,
  * that fails too (no new `refs/stash` to resolve any differently than before).
+ *
+ * The stash message embeds the branch root was on and a timestamp, not just the fixed
+ * `STASH_MESSAGE_PREFIX` — confirmed while dogfooding the copy → reset → repeat loop this
+ * feature is built for: running it a handful of times in one sitting used to leave `git stash
+ * list` with several entries reading identically, distinguishable only by index/order, with the
+ * *only* place the actual SHA for any one of them ever appeared being a success toast at the
+ * moment it was created. `listAppStashes` below surfaces the same entries later by their
+ * (now-distinguishing) message instead.
  */
 export async function discardWorkingTreeChanges(
   cwd: string,
@@ -440,13 +465,47 @@ export async function discardWorkingTreeChanges(
   const dirty = await runGit(["status", "--porcelain", ...pathspecArgs], cwd);
   if (!dirty) return null;
 
+  const branch = await currentBranchLabel(cwd);
+  const message = `${STASH_MESSAGE_PREFIX} (was on ${branch}, ${new Date().toISOString()})`;
+
   try {
-    await runGit(["stash", "push", "--include-untracked", "-m", STASH_MESSAGE, ...pathspecArgs], cwd);
+    await runGit(["stash", "push", "--include-untracked", "-m", message, ...pathspecArgs], cwd);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (!message.includes("ignored by one of your .gitignore files")) throw err;
+    const errMessage = err instanceof Error ? err.message : String(err);
+    if (!errMessage.includes("ignored by one of your .gitignore files")) throw err;
   }
   return await runGit(["rev-parse", "refs/stash"], cwd);
+}
+
+export type AppStash = { sha: string; message: string };
+
+/**
+ * Every stash entry `discardWorkingTreeChanges` has ever created in `cwd`, newest first (git's
+ * own `stash list` order) — lets the UI show what's recoverable without the user needing to
+ * remember a SHA from a toast that's long gone, or run `git stash list` by hand and guess which
+ * entries are this feature's own vs. something they stashed themselves for an unrelated reason.
+ * Filters by `STASH_MESSAGE_PREFIX` for exactly that reason: a plain `git stash list` mixes both
+ * together with no way to tell them apart.
+ *
+ * `%H` (full commit SHA), not `%gd` (`stash@{N}`) — the latter is a *position*, not an identity:
+ * it silently points at a different stash once an older entry is dropped/applied, while the SHA
+ * stays valid for `git stash apply <sha>` regardless of what else happens to the stash list
+ * afterward.
+ */
+export async function listAppStashes(cwd: string): Promise<AppStash[]> {
+  const output = await runGit(["stash", "list", "--format=%H%x09%s"], cwd).catch(() => "");
+  if (!output) return [];
+  return output
+    .split("\n")
+    .map((line) => {
+      const [sha, ...rest] = line.split("\t");
+      return { sha: sha ?? "", message: rest.join("\t") };
+    })
+    // `.includes`, not `.startsWith` — git prepends its own "On <branch>: " to whatever `-m`
+    // message a stash was created with (confirmed directly: `git stash list` for one of these
+    // reads "On master: worktree-to-root: root's pre-sync state (...)"), so the prefix we control
+    // never actually sits at the start of the final message.
+    .filter((entry) => entry.sha && entry.message.includes(STASH_MESSAGE_PREFIX));
 }
 
 /**

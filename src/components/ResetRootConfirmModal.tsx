@@ -4,7 +4,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import * as sessionsApi from "../services/sessionsApi";
 import type { RootStatus, Session } from "../types/session";
-import { FileListBox } from "./WorktreeToRootModal";
+import { FileListBox, StashList } from "./WorktreeToRootModal";
 import { Modal } from "./Modal";
 
 type ResetRootConfirmModalProps = {
@@ -134,6 +134,7 @@ export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModa
               files={status.rootDirtyFiles}
               tone={status.rootDirtyFiles.length > 0 ? "danger" : "neutral"}
             />
+            <StashList stashes={status.appStashes} />
           </>
         )}
       </div>
