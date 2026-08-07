@@ -742,37 +742,6 @@ export const translations = {
     "Abrir terminal e iniciar o Claude",
     "Abrir terminal e iniciar Claude",
   ),
-  "newTaskModal.jira.checking": dict(
-    "Checking Jira MCP connection…",
-    "Verificando a conexão do MCP do Jira…",
-    "Verificando la conexión del MCP de Jira…",
-  ),
-  "newTaskModal.jira.connectedNoServer": dict(
-    "Jira MCP connected.",
-    "MCP do Jira conectado.",
-    "MCP de Jira conectado.",
-  ),
-  "newTaskModal.jira.connectedWithServer": dict(
-    "Jira MCP connected ({serverName}).",
-    "MCP do Jira conectado ({serverName}).",
-    "MCP de Jira conectado ({serverName}).",
-  ),
-  "newTaskModal.jira.foundNotConnected": dict(
-    'MCP "{serverName}" found but not connected — connect it (e.g. "claude mcp login") before creating the task.',
-    'MCP "{serverName}" encontrado mas não conectado — conecte-o (ex.: "claude mcp login") antes de criar a tarefa.',
-    'Se encontró el MCP "{serverName}" pero no está conectado — conéctalo (por ej. "claude mcp login") antes de crear la tarea.',
-  ),
-  "newTaskModal.jira.notConfigured": dict(
-    "No Jira/Atlassian MCP configured — connect one before creating the task.",
-    "Nenhum MCP do Jira/Atlassian configurado — conecte um antes de criar a tarefa.",
-    "No hay ningún MCP de Jira/Atlassian configurado — conecta uno antes de crear la tarea.",
-  ),
-  "newTaskModal.jira.checkError": dict(
-    "Could not check the Jira MCP status.",
-    "Não foi possível verificar o status do MCP do Jira.",
-    "No se pudo verificar el estado del MCP de Jira.",
-  ),
-  "newTaskModal.jira.checkAgain": dict("Check again", "Verificar novamente", "Verificar de nuevo"),
   "newTaskModal.jiraLinkLabel": dict(
     "Task link (Jira)",
     "Link da tarefa (Jira)",

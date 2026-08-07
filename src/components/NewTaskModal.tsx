@@ -82,45 +82,6 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
     if (open) jiraLinkInputRef.current?.focus();
   }, [open]);
 
-  // "checking" is also the initial value (rather than e.g. "disconnected") so the modal never
-  // flashes a false warning before the first check has even run.
-  const [jiraMcpStatus, setJiraMcpStatus] = useState<
-    "checking" | "connected" | "disconnected" | "error"
-  >("checking");
-  const [jiraMcpServerName, setJiraMcpServerName] = useState<string | null>(null);
-  const [jiraMcpError, setJiraMcpError] = useState<string | null>(null);
-
-  const checkJiraMcp = useCallback((forceRefresh = false) => {
-    setJiraMcpStatus("checking");
-    setJiraMcpError(null);
-    tasksApi
-      .fetchJiraMcpStatus(forceRefresh)
-      .then((status) => {
-        setJiraMcpServerName(status.serverName);
-        setJiraMcpStatus(status.connected ? "connected" : "disconnected");
-      })
-      .catch((err) => {
-        setJiraMcpStatus("error");
-        setJiraMcpError(
-          err instanceof Error ? err.message : t("newTaskModal.jira.checkError"),
-        );
-      });
-  }, [t]);
-
-  // Checks every time the modal opens (not just once on mount) — the CLI's `claude mcp login`
-  // flow happens in a separate terminal, so this is the only way the modal would ever notice the
-  // user connected it since the last time. Server-side response is cached for 4h though (see
-  // `getJiraMcpStatus` in taskService.ts), since `claude mcp list` is a real subprocess spawn and
-  // the connection state rarely changes between opens — the "Check again" button below passes
-  // `forceRefresh` to bypass that cache on demand. Deferred via a 0ms timer (rather than calling
-  // checkJiraMcp directly) so its setState calls happen in a callback, not synchronously in the
-  // effect body itself.
-  useEffect(() => {
-    if (!open) return;
-    const timer = setTimeout(() => checkJiraMcp(), 0);
-    return () => clearTimeout(timer);
-  }, [open, checkJiraMcp]);
-
   const [jiraLink, setJiraLink] = useState("");
   const jiraId = useMemo(() => extractJiraId(jiraLink), [jiraLink]);
 
@@ -174,9 +135,8 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
   // Re-fetched every time the modal opens (not just once on mount) — a project folder typed by
   // hand into "Outro" during task creation only becomes a known option once its new session's
   // `.jsonl` exists, so re-running this on open is the only way a just-used repo shows up in the
-  // dropdown next time without a full page reload. Deferred via a 0ms timer (same as
-  // `checkJiraMcp` below) so its setState calls happen in a callback, not synchronously in the
-  // effect body itself.
+  // dropdown next time without a full page reload. Deferred via a 0ms timer so its setState calls
+  // happen in a callback, not synchronously in the effect body itself.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -335,7 +295,6 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
     .filter((part): part is string => Boolean(part))
     .join("\n\n");
   const canSubmit =
-    jiraMcpStatus === "connected" &&
     jiraLink.trim().length > 0 &&
     trimmedFolder.length > 0 &&
     trimmedBranch.length > 0 &&
@@ -457,42 +416,6 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
       size="xl"
     >
       <div className="flex flex-col gap-4">
-        <div
-          className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-sm ${
-            jiraMcpStatus === "connected"
-              ? "border-green-200 bg-green-50 text-green-700 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-400"
-              : jiraMcpStatus === "checking"
-                ? "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400"
-                : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-400"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            {jiraMcpStatus === "checking" && <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
-            {jiraMcpStatus === "connected" && <CheckCircle2 className="h-4 w-4 shrink-0" />}
-            {(jiraMcpStatus === "disconnected" || jiraMcpStatus === "error") && (
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-            )}
-            <span>
-              {jiraMcpStatus === "checking" && t("newTaskModal.jira.checking")}
-              {jiraMcpStatus === "connected" &&
-                (jiraMcpServerName
-                  ? t("newTaskModal.jira.connectedWithServer", { serverName: jiraMcpServerName })
-                  : t("newTaskModal.jira.connectedNoServer"))}
-              {jiraMcpStatus === "disconnected" &&
-                (jiraMcpServerName
-                  ? t("newTaskModal.jira.foundNotConnected", { serverName: jiraMcpServerName })
-                  : t("newTaskModal.jira.notConfigured"))}
-              {jiraMcpStatus === "error" &&
-                (jiraMcpError ?? t("newTaskModal.jira.checkError"))}
-            </span>
-          </div>
-          {jiraMcpStatus !== "checking" && (
-            <Button variant="link" size="none" onClick={() => checkJiraMcp(true)} className="shrink-0">
-              {t("newTaskModal.jira.checkAgain")}
-            </Button>
-          )}
-        </div>
-
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
             {t("newTaskModal.jiraLinkLabel")}

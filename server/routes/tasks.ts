@@ -6,7 +6,6 @@ import {
 } from "../services/preferencesService.js";
 import {
   createTaskWorktree,
-  getJiraMcpStatus,
   getKnownProjectFolders,
   getRepoInfo,
   launchTaskTerminal,
@@ -67,15 +66,6 @@ tasksRouter.put("/preferences", async (req, res) => {
       success: false,
       error: err instanceof Error ? err.message : String(err),
     });
-  }
-});
-
-tasksRouter.get("/jira-mcp-status", async (req, res) => {
-  try {
-    const status = await getJiraMcpStatus(req.query.refresh === "1");
-    res.json(status);
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 

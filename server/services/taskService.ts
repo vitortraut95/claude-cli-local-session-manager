@@ -1,6 +1,4 @@
-import { execFile } from "node:child_process";
 import path from "node:path";
-import { promisify } from "node:util";
 import { directoryExists, launchInTerminal, listSessions, posixShellQuote } from "./sessionService.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import {
@@ -55,88 +53,6 @@ export async function getKnownProjectFolders(): Promise<ProjectFolderOption[]> {
   return [...options]
     .map((folderPath) => ({ path: folderPath, label: path.basename(folderPath) }))
     .sort((a, b) => a.label.localeCompare(b.label));
-}
-
-const execFileAsync = promisify(execFile);
-
-/** Matches an MCP server entry's name against anything Jira-flavored — configured server names
- *  vary per user/org (e.g. "claude.ai Atlassian Rovo", "jira", "atlassian-mcp"), so this can't be
- *  an exact match. */
-const JIRA_MCP_NAME_PATTERN = /jira|atlassian/i;
-
-/**
- * `claude mcp list` prints one line per configured server, formatted as
- * `<name>: <url-or-command> - <status>` (status is `✔ Connected`, `! Needs authentication`, or
- * `⏸ Pending approval`) after a "Checking MCP server health…" banner line. Splits on the *first*
- * ": " rather than a bare ":" since the URL/command half almost always contains its own colons
- * (`https://...`).
- */
-function parseMcpListLine(line: string): { name: string; status: string } | null {
-  const sepIndex = line.indexOf(": ");
-  if (sepIndex === -1) return null;
-  return { name: line.slice(0, sepIndex).trim(), status: line.slice(sepIndex + 2).trim() };
-}
-
-export type JiraMcpStatus = {
-  connected: boolean;
-  /** Name of the matching server found (connected or not); null when none was configured at all. */
-  serverName: string | null;
-};
-
-/** 4 hours — `claude mcp login` happens in a separate terminal this app can't observe, so there's
- *  no way to invalidate the cache on the actual change; this just bounds how stale the modal's
- *  auto-check can be. The modal's manual "Check again" button (`forceRefresh`) bypasses it. */
-const JIRA_MCP_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
-
-let jiraMcpCache: { status: JiraMcpStatus; fetchedAt: number } | null = null;
-
-/**
- * Shells out to `claude mcp list` (the CLI's own health-checked server list — there's no faster
- * "just tell me if Jira is connected" command) and looks for any configured server whose name
- * looks Jira/Atlassian-flavored. This is what the "new task" flow blocks on: since the whole point
- * of pasting a Jira link is for the launched `claude` session to actually be able to look the
- * ticket up, starting the task without that connected would just leave Claude unable to do the
- * first thing the prompt asks of it.
- *
- * Cached for `JIRA_MCP_CACHE_TTL_MS` since the modal re-checks on every open — `forceRefresh` (the
- * modal's manual "Check again" button) bypasses that.
- */
-export async function getJiraMcpStatus(forceRefresh = false): Promise<JiraMcpStatus> {
-  if (!forceRefresh && jiraMcpCache && Date.now() - jiraMcpCache.fetchedAt < JIRA_MCP_CACHE_TTL_MS) {
-    return jiraMcpCache.status;
-  }
-
-  let stdout: string;
-  try {
-    ({ stdout } = await execFileAsync("claude", ["mcp", "list"], { timeout: 30_000 }));
-  } catch (err) {
-    if ((err as { code?: string } | null)?.code === "ENOENT") {
-      throw new Error(`The "claude" command wasn't found on PATH.`, { cause: err });
-    }
-    throw new Error(
-      `Could not check MCP servers ("claude mcp list" failed): ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-      { cause: err },
-    );
-  }
-
-  const matches = stdout
-    .split("\n")
-    .map(parseMcpListLine)
-    .filter((entry): entry is { name: string; status: string } => entry !== null)
-    .filter((entry) => JIRA_MCP_NAME_PATTERN.test(entry.name));
-
-  const [firstMatch] = matches;
-  const status: JiraMcpStatus = firstMatch
-    ? {
-        connected: matches.some((entry) => entry.status.includes("✔")),
-        serverName: (matches.find((entry) => entry.status.includes("✔")) ?? firstMatch).name,
-      }
-    : { connected: false, serverName: null };
-
-  jiraMcpCache = { status, fetchedAt: Date.now() };
-  return status;
 }
 
 export type RepoInfo = {

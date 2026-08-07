@@ -295,12 +295,6 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
     produce a `commands = [...]` value invalid enough that Warp refused to load the tab config at
     all ("TOML parse error ... invalid basic string"). Single-line test prompts never exposed
     this.
-  - **Blocks on the Jira MCP being connected** (`getJiraMcpStatus` in `taskService.ts`) — shells
-    out to `claude mcp list` (the CLI's own health-checked list; there's no faster "just check
-    Jira" command) and looks for any configured server name matching `/jira|atlassian/i`, since
-    the configured name varies per user/org. Re-checked every time the modal opens, plus a manual
-    "Check again" button, since `claude mcp login` happens in a separate terminal this app
-    has no way to observe.
 - **Claude usage-limits badge** (`Header.tsx` → `UsageLimitsBadge.tsx`, `useUsageLimits.ts`,
   `server/services/usageService.ts`) reads the OAuth access token out of
   `~/.claude/.credentials.json` and calls the same undocumented account-usage endpoint

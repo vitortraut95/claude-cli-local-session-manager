@@ -64,24 +64,6 @@ export async function updatePreferences(partial: Partial<UserPreferences>): Prom
   await savePreferences({ ...current, ...partial });
 }
 
-export type JiraMcpStatus = {
-  connected: boolean;
-  serverName: string | null;
-};
-
-/** Checked when the "new task" modal opens (and on demand via its "Check again" button) —
- *  the launched `claude` session needs a connected Jira/Atlassian MCP server to actually look up
- *  the pasted ticket, so creation is blocked until this comes back connected. The server caches
- *  this for 4 hours; `forceRefresh` (the modal's manual "Check again" button) bypasses that. */
-export async function fetchJiraMcpStatus(forceRefresh = false): Promise<JiraMcpStatus> {
-  const { data } = await withServerErrorMessage(() =>
-    client.get<JiraMcpStatus>("/jira-mcp-status", {
-      params: forceRefresh ? { refresh: "1" } : undefined,
-    }),
-  );
-  return data;
-}
-
 export type RepoInfo = {
   repoRoot: string;
   defaultBaseBranch: string;
