@@ -25,7 +25,7 @@ const PREFERENCES_PATH = path.join(REPO_ROOT, "userPreferences.json");
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   defaultPrompt: "",
-  branchTypes: ["feature", "fix", "hotfix", "env"],
+  branchTypes: ["feature", "fix"],
   useWorktreeByDefault: true,
   useAutoPermissionModeByDefault: false,
   language: null,

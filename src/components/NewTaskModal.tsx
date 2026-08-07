@@ -28,7 +28,7 @@ const OTHER_FOLDER_VALUE = "__other__";
 const OTHER_PREFIX_VALUE = "__other__";
 // Just the pre-load fallback shown before userPreferences.json's own `branchTypes` arrives (see
 // the preferences-fetch effect below) — the real, user-editable list lives in that file.
-const FALLBACK_BRANCH_TYPES = ["feature", "fix", "hotfix", "env"];
+const FALLBACK_BRANCH_TYPES = ["feature", "fix"];
 
 /** Matches a Jira-style ticket key both in a bare form ("PROJ-123") and inside a full browse URL
  *  ("https://company.atlassian.net/browse/PROJ-123?foo=bar"). */
@@ -394,24 +394,34 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
       await tasksApi.launchTaskTerminal(worktreePath, composedPrompt, permissionModeAuto);
       updateStep("launch", "done");
 
+      // Both auto-remembered fields below are folded into one `updatePreferences` call — each
+      // call does its own fetch-current-then-merge-then-PUT round trip (see tasksApi.ts), so two
+      // separate fire-and-forget calls here would race: whichever's PUT lands second would
+      // overwrite the other's change with the branchTypes/permissionModeAuto value from *its*
+      // own (now-stale) fetch. Reproduced directly: a custom branch type used to silently vanish
+      // on the very next task-creation because of exactly this race.
+      const preferencesUpdate: Partial<tasksApi.UserPreferences> = {
+        useAutoPermissionModeByDefault: permissionModeAuto,
+      };
+
       // A custom ("Outro") branch type that was actually used becomes a normal option from now on
-      // — no separate "manage branch types" step, it just remembers itself. Best-effort: a failure
-      // here doesn't undo the task that was just successfully created.
+      // — no separate "manage branch types" step, it just remembers itself. Prepended, not
+      // appended: the most recently added type is the one most likely wanted again next time, so
+      // it becomes the new default selection (branchTypes[0]) instead of landing at the end of
+      // the list.
       if (
         prefixChoice === OTHER_PREFIX_VALUE &&
         effectivePrefix &&
         !branchTypes.includes(effectivePrefix)
       ) {
-        const updatedBranchTypes = [...branchTypes, effectivePrefix];
+        const updatedBranchTypes = [effectivePrefix, ...branchTypes];
         setBranchTypes(updatedBranchTypes);
-        tasksApi.updatePreferences({ branchTypes: updatedBranchTypes }).catch(() => {
-          // Still usable for the rest of this session even if persisting it failed.
-        });
+        preferencesUpdate.branchTypes = updatedBranchTypes;
       }
 
-      // Remembered as whatever it was last left at — no separate "save as default" step, same
-      // best-effort/non-blocking treatment as the branch-type auto-remember above.
-      tasksApi.updatePreferences({ useAutoPermissionModeByDefault: permissionModeAuto }).catch(() => {
+      // Best-effort/non-blocking — a failure here doesn't undo the task that was just
+      // successfully created.
+      tasksApi.updatePreferences(preferencesUpdate).catch(() => {
         // Still usable for the rest of this session even if persisting it failed.
       });
 

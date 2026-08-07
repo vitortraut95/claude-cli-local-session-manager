@@ -249,9 +249,11 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
     `useAutoPermissionModeByDefault` (the "--permission-mode auto" checkbox's default state).
     Created lazily on first save; a fresh clone (or a missing/malformed file) just falls back to
     hardcoded defaults —
-    `getUserPreferences()` never throws over it. A custom ("Other") branch type that's actually used to
-    create a task gets appended to `branchTypes` automatically (best-effort PUT right after the
-    "launch" step succeeds) — no separate "manage branch types" UI, it just remembers itself; to
+    `getUserPreferences()` never throws over it. Hardcoded defaults are just `["feature", "fix"]` —
+    a custom ("Other") branch type that's actually used to create a task gets *prepended* to
+    `branchTypes` automatically (best-effort PUT right after the "launch" step succeeds), becoming
+    the new default selection (`branchTypes[0]`) rather than landing at the end of the list — no
+    separate "manage branch types" UI, it just remembers itself; to
     reorder/remove entries, hand-edit the JSON file directly. `useAutoPermissionModeByDefault` is
     remembered the same "no separate save step" way, right alongside it — unlike the prompt/
     worktree-default fields (see below), there's no meaningfully different "draft" value worth
