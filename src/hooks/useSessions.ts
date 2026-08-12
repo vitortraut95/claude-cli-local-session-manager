@@ -35,7 +35,6 @@ export function useSessions() {
   const [projectFilter, setProjectFilterRaw] = useUrlParam("project", "");
   const [updatedFrom, setUpdatedFromRaw] = useUrlParam("updated_from", "");
   const [updatedTo, setUpdatedToRaw] = useUrlParam("updated_to", "");
-  const [worktreeOnlyRaw, setWorktreeOnlyRaw] = useUrlParam("worktree_only", "");
   const [pageRaw, setPageRaw] = useUrlParam("page", "1");
   const [perPageRaw, setPerPageRaw] = useUrlParam("per_page", String(DEFAULT_PER_PAGE));
   const [pendingActions, setPendingActions] = useState<Record<string, PendingAction>>({});
@@ -71,16 +70,6 @@ export function useSessions() {
       setPageRaw("1");
     },
     [setUpdatedFromRaw, setUpdatedToRaw, setPageRaw],
-  );
-
-  const worktreeOnly = worktreeOnlyRaw === "1";
-
-  const setWorktreeOnly = useCallback(
-    (value: boolean) => {
-      setWorktreeOnlyRaw(value ? "1" : "");
-      setPageRaw("1");
-    },
-    [setWorktreeOnlyRaw, setPageRaw],
   );
 
   const setPerPage = useCallback(
@@ -152,16 +141,15 @@ export function useSessions() {
           ...session.prompts,
         ].some((field) => field.toLowerCase().includes(query));
       const matchesProject = !projectFilter || session.project === projectFilter;
-      const matchesWorktreeOnly = !worktreeOnly || session.isWorktree;
       const updatedAtTime = new Date(session.updatedAt).getTime();
       const matchesUpdatedAt =
         (fromTime === null || updatedAtTime >= fromTime) &&
         (toTime === null || updatedAtTime <= toTime);
-      return matchesQuery && matchesProject && matchesWorktreeOnly && matchesUpdatedAt;
+      return matchesQuery && matchesProject && matchesUpdatedAt;
     });
 
     return [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [sessions, searchQuery, projectFilter, worktreeOnly, updatedFrom, updatedTo]);
+  }, [sessions, searchQuery, projectFilter, updatedFrom, updatedTo]);
 
   const pageCount = Math.max(1, Math.ceil(filteredSessions.length / perPage));
   // Clamp for display without writing back to the URL — a stale `page` param
@@ -494,8 +482,6 @@ export function useSessions() {
     projects,
     projectFilter,
     setProjectFilter,
-    worktreeOnly,
-    setWorktreeOnly,
     updatedFrom,
     updatedTo,
     setUpdatedRange,

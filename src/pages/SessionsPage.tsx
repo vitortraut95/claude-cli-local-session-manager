@@ -12,7 +12,6 @@ import { ProjectFilter } from "../components/ProjectFilter";
 import { ResumeConflictModal } from "../components/ResumeConflictModal";
 import { SearchBar } from "../components/SearchBar";
 import { SessionCard } from "../components/SessionCard";
-import { WorktreeFilter } from "../components/WorktreeFilter";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSessions } from "../hooks/useSessions";
 import type { Session } from "../types/session";
@@ -29,8 +28,6 @@ export function SessionsPage() {
     projects,
     projectFilter,
     setProjectFilter,
-    worktreeOnly,
-    setWorktreeOnly,
     updatedFrom,
     updatedTo,
     setUpdatedRange,
@@ -101,7 +98,6 @@ export function SessionsPage() {
   const hasActiveFilter =
     searchQuery.trim().length > 0 ||
     projectFilter.length > 0 ||
-    worktreeOnly ||
     updatedFrom.length > 0 ||
     updatedTo.length > 0;
 
@@ -183,11 +179,10 @@ export function SessionsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <Header />
+      <Header onSessionCreated={refresh} />
       <main className="px-4 py-6 sm:px-6">
         <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center max-w-375 mx-auto">
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
-          <WorktreeFilter value={worktreeOnly} onChange={setWorktreeOnly} />
           <ProjectFilter projects={projects} value={projectFilter} onChange={setProjectFilter} />
           <DateRangeFilter from={updatedFrom} to={updatedTo} onChange={setUpdatedRange} />
 

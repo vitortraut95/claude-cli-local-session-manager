@@ -15,7 +15,13 @@ import { Tooltip } from "./Tooltip";
 import { UpdateButton } from "./UpdateButton";
 import { UsageLimitsBadge } from "./UsageLimitsBadge";
 
-export function Header() {
+type HeaderProps = {
+  /** Fired after a new task is successfully created via the "New Task" modal, so the page's
+   *  session list can pick up the newly created session/worktree. */
+  onSessionCreated?: () => void;
+};
+
+export function Header({ onSessionCreated }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { status: updateStatus, checking, updating, applyUpdate } = useUpdate();
   const {
@@ -106,7 +112,11 @@ export function Header() {
         </div>
       </div>
 
-      <NewTaskModal open={showNewTaskModal} onClose={() => setShowNewTaskModal(false)} />
+      <NewTaskModal
+        open={showNewTaskModal}
+        onClose={() => setShowNewTaskModal(false)}
+        onTaskCreated={onSessionCreated}
+      />
       <CleanupModal open={showCleanupModal} onClose={() => setShowCleanupModal(false)} />
       <OnboardingModal open={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </header>

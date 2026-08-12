@@ -22,6 +22,9 @@ import { Select } from "./Select";
 type NewTaskModalProps = {
   open: boolean;
   onClose: () => void;
+  /** Fired right after a successful launch so the page's session list picks up the new
+   *  worktree/session as soon as it exists — not called on a failed/aborted create. */
+  onTaskCreated?: () => void;
 };
 
 const OTHER_FOLDER_VALUE = "__other__";
@@ -73,7 +76,7 @@ function getStepLabelKey(key: StepKey, useWorktree: boolean): TranslationKey {
  * `open` going false and true again. `resetForm` (used by the Clear button and after a
  * successful create) is the only thing that intentionally wipes it.
  */
-export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
+export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps) {
   const { showToast } = useToast();
   const { t } = useLanguage();
 
@@ -387,6 +390,7 @@ export function NewTaskModal({ open, onClose }: NewTaskModalProps) {
       showToast(t("newTaskModal.terminalOpened"), "success");
       resetForm();
       onClose();
+      onTaskCreated?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : t("newTaskModal.unexpectedFailure");
       setSteps((current) =>
