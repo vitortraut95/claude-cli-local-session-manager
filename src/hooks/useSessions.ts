@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as sessionsApi from "../services/sessionsApi";
 import type { Session } from "../types/session";
 import { useLanguage } from "./useLanguage";
@@ -108,6 +108,28 @@ export function useSessions() {
     setError(null);
     void loadSessions();
   }, [loadSessions]);
+
+  // "New task" launches the terminal fire-and-forget — `claude` itself only writes the new
+  // session's `.jsonl` once it actually starts and processes the first prompt, which can take a
+  // few seconds after the terminal opens. A single immediate refresh right after create almost
+  // always misses it, so `refreshSoon` (used as the New Task modal's onTaskCreated callback)
+  // follows up with a few staggered retries instead of one-shot continuous polling — cleared on
+  // unmount/re-call so a second task created shortly after doesn't pile up overlapping retries.
+  const refreshRetryTimeoutsRef = useRef<number[]>([]);
+
+  useEffect(() => {
+    return () => {
+      refreshRetryTimeoutsRef.current.forEach(clearTimeout);
+    };
+  }, []);
+
+  const refreshSoon = useCallback(() => {
+    refresh();
+    refreshRetryTimeoutsRef.current.forEach(clearTimeout);
+    refreshRetryTimeoutsRef.current = [2000, 5000, 10000].map((delay) =>
+      window.setTimeout(refresh, delay),
+    );
+  }, [refresh]);
 
   useEffect(() => {
     // loadSessions only touches state after its internal `await`, but the rule's
@@ -491,6 +513,7 @@ export function useSessions() {
     clearSelection,
     selectAllOnPage,
     refresh,
+    refreshSoon,
     removeSession,
     removeSessions,
     resumeSession,
