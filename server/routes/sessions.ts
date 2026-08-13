@@ -6,6 +6,7 @@ import {
   deleteSession,
   deleteSessionBranch,
   deleteSessionWorktree,
+  getSessionPrUrl,
   getSessionPrompts,
   getSessionRepoInsights,
   getRootStatus,
@@ -122,6 +123,24 @@ sessionsRouter.get("/:id/insights", async (req, res) => {
   try {
     const insights = await getSessionRepoInsights(req.params.id);
     res.json({ insights });
+  } catch (err) {
+    if (err instanceof SessionNotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+sessionsRouter.get("/:id/pr-url", async (req, res) => {
+  try {
+    const branch = typeof req.query.branch === "string" ? req.query.branch : "";
+    const url = await getSessionPrUrl(req.params.id, branch);
+    if (!url) {
+      res.status(404).json({ error: "No PR link could be built for this session." });
+      return;
+    }
+    res.json({ url });
   } catch (err) {
     if (err instanceof SessionNotFoundError) {
       res.status(404).json({ error: err.message });

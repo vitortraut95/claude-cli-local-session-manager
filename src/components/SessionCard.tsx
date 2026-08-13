@@ -5,9 +5,11 @@ import {
   Code2,
   Copy,
   DollarSign,
+  Factory,
   Folder,
   GitFork,
   GitMerge,
+  GitPullRequest,
   Lightbulb,
   Loader2,
   MessageSquare,
@@ -22,6 +24,7 @@ import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
+import * as sessionsApi from "../services/sessionsApi";
 import type { Session } from "../types/session";
 import { Button } from "./Button";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -37,6 +40,7 @@ import { UsageDetailsModal } from "./UsageDetailsModal";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
+import { getJenkinsBranchJobUrl } from "../utils/jenkins";
 
 type SessionCardProps = {
   session: Session;
@@ -86,12 +90,14 @@ export function SessionCard({
   const [showDeleteWorktreeConfirm, setShowDeleteWorktreeConfirm] = useState(false);
   const [showWorktreeToRootModal, setShowWorktreeToRootModal] = useState(false);
   const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
+  const [openingPrUrl, setOpeningPrUrl] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
   const worktreePathParts =
     session.isWorktree && session.workingDirectory
       ? formatWorktreePath(session.workingDirectory)
       : null;
+  const jenkinsUrl = session.gitBranch ? getJenkinsBranchJobUrl(session.gitBranch) : null;
 
   const handleCopyCommand = async () => {
     try {
@@ -99,6 +105,25 @@ export function SessionCard({
       showToast(t("sessionCard.copyCommand.success"), "success");
     } catch {
       showToast(t("sessionCard.copyCommand.error"), "error");
+    }
+  };
+
+  const handleOpenJenkins = () => {
+    if (jenkinsUrl) window.open(jenkinsUrl, "_blank", "noopener,noreferrer");
+  };
+
+  // Fetched on click rather than eagerly for every card — this is a git call (origin remote →
+  // host + repo slug) on the server, only worth paying for when the user actually wants the link.
+  const handleOpenPr = async () => {
+    if (!session.gitBranch) return;
+    setOpeningPrUrl(true);
+    try {
+      const url = await sessionsApi.fetchPrUrl(session.id, session.gitBranch);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t("sessionCard.openPr.error"), "error");
+    } finally {
+      setOpeningPrUrl(false);
     }
   };
 
@@ -440,6 +465,31 @@ export function SessionCard({
             color="amber"
             onClick={() => setShowResetRootConfirm(true)}
             icon={<RotateCcw className="h-4 w-4" />}
+          />
+        )}
+        {jenkinsUrl && (
+          <ToolbarIconButton
+            tooltip={t("sessionCard.openJenkinsTooltip")}
+            ariaLabel={t("sessionCard.openJenkinsAriaLabel")}
+            color="neutral"
+            onClick={handleOpenJenkins}
+            icon={<Factory className="h-4 w-4" />}
+          />
+        )}
+        {session.gitBranch && !session.directoryMissing && (
+          <ToolbarIconButton
+            tooltip={t("sessionCard.openPrTooltip")}
+            ariaLabel={t("sessionCard.openPrAriaLabel")}
+            color="blue"
+            disabled={openingPrUrl}
+            onClick={() => void handleOpenPr()}
+            icon={
+              openingPrUrl ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <GitPullRequest className="h-4 w-4" />
+              )
+            }
           />
         )}
         {session.isWorktree && (

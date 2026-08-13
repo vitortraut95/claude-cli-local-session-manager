@@ -35,6 +35,7 @@ import {
   deleteLocalBranch,
   discardWorkingTreeChanges,
   getGitDirs,
+  getGitHostInfo,
   getRepoRoot,
   getStatusFiles,
   isLinkedWorktree,
@@ -411,6 +412,38 @@ export async function getSessionRepoInsights(id: string): Promise<SessionRepoIns
     .map((meta) => meta.description!);
 
   return { hasClaudeMd, exploreTopics };
+}
+
+/**
+ * Builds a PR/compare URL for a session's branch, for an "Open PR" button — no API token needed,
+ * since the caller just opens this in the user's own browser, which already carries that
+ * provider's own session. `branch` comes from the client (the session's own `gitBranch` field),
+ * same convention as `deleteSessionBranch`/`stopSiblingAndResume` — returns null (not a throw)
+ * whenever a PR link can't be built: no known working directory, or `origin` isn't a recognized
+ * github.com/bitbucket.org remote (see `getGitHostInfo`).
+ *
+ * - GitHub's compare page pre-fills the "Create pull request" form against the repo's default
+ *   branch when only one ref is given, so this doesn't need to know the base branch at all.
+ * - Bitbucket has no exact equivalent — `pull-requests/new?source=<branch>` opens the "create
+ *   pull request" form for that branch, and if one's already open for it, Bitbucket itself shows
+ *   a banner linking to the existing PR rather than this app trying to look up its number (that
+ *   would need the Bitbucket API and its own credentials — see CLAUDE.md's Jenkins-integration
+ *   to-do for the same tradeoff on a different provider).
+ */
+export async function getSessionPrUrl(id: string, branch: string): Promise<string | null> {
+  const trimmedBranch = branch.trim();
+  if (!trimmedBranch) return null;
+
+  const cwd = await findSessionCwd(id);
+  if (!cwd) throw new SessionNotFoundError(id);
+
+  const hostInfo = await getGitHostInfo(cwd);
+  if (!hostInfo) return null;
+
+  const encodedBranch = encodeURIComponent(trimmedBranch);
+  return hostInfo.host === "github"
+    ? `https://github.com/${hostInfo.slug}/compare/${trimmedBranch}?expand=1`
+    : `https://bitbucket.org/${hostInfo.slug}/pull-requests/new?source=${encodedBranch}&t=1`;
 }
 
 /**

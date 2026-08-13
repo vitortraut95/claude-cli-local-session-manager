@@ -310,3 +310,46 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
   everything else in this app) with a 30s server-side cache and a manual click-to-refresh.
 
 ## to-do's
+
+- **Future idea: deeper Jenkins integration for `env/*` branches.** "New task" branches created
+  with the `env/` prefix (this convention is per-repo, not universal — the concrete case so far
+  is `hg-led-mainsite`, a Jenkins multibranch job) get their own pipeline run, and its console
+  output ends with one `Success! Your site should be available at http://...` line per
+  language/locale (e.g. `mx-env-led-54351-mainsite-hostgator`, `br-env-...`) — copying these into
+  the Jira card is a recurring manual chore. Two catches worth remembering if this gets built:
+  Jenkins doesn't auto-trigger on the very first push to a brand-new `env/` branch (only a second
+  push or a manual "Build Now" click starts it), and a full run takes ~15-30min. A real
+  integration would:
+  - **Trigger the build via the Jenkins REST API** (`POST
+    .../job/<job>/job/<url-encoded-branch>/build`) right after the worktree's branch is pushed,
+    instead of relying on the user to notice and click "Build Now" or make a throwaway second
+    commit — this is the part that actually fixes the annoying first-push gap, not just a
+    convenience on top of it.
+  - **Poll for completion and scrape the console log** — `.../lastBuild/api/json` for
+    build/result status, `.../lastSuccessfulBuild/consoleText` for the log — and extract every
+    line matching `Success! Your site should be available at http://`, presented somewhere easy
+    to copy into Jira (e.g. a small panel/toast listing all the links found).
+  - **Needs real Jenkins credentials (username + API token)**, which is a new class of secret
+    this app has never had to store — contrast with the usage-limits badge (`usageService.ts`),
+    which only ever *reads* a credential the Claude CLI already wrote to disk and never persists
+    one of its own. Wherever this token lives (a new local config file, env var, etc.), treat it
+    with the same discipline as that badge's access token: read into memory, used once, never
+    logged or echoed back to the client.
+  - Given the ~15-30min pipeline runtime, "check build status/log" should be an on-demand action
+    (a button the user clicks when they remember), not a background poll — consistent with this
+    app's no-polling design everywhere else (see `useSessions.ts`'s module doc).
+  - The Jenkins job base URL + job name would need to be configurable per project (right now
+    there's no per-external-project settings surface — `userPreferences.json` is one global file
+    for the whole app, used by the New Task modal's own defaults) since the job name is specific
+    to each repo, not derivable from anything git already exposes.
+  - Two cheaper, credential-free steps worth shipping first, since they only build a URL and open
+    it in the user's own already-authenticated browser (no Jenkins/host API call at all): an
+    "Open Jenkins" button for `env/*`-branched sessions, and an "Open PR" button that resolves
+    `origin`'s remote URL to a host + `owner/repo` slug (this app manages both GitHub- and
+    Bitbucket-hosted projects — `hg-led-mainsite`'s own remote is `bitbucket.org`, not
+    `github.com`) and opens the matching compare/create-PR page:
+    `https://github.com/<owner>/<repo>/compare/<branch>?expand=1` for GitHub, or
+    `https://bitbucket.org/<workspace>/<repo>/pull-requests/new?source=<branch>` for Bitbucket —
+    Bitbucket has no direct "jump straight to the existing PR for this branch" URL the way
+    GitHub's compare page effectively has, so this lands on the create-PR form, and Bitbucket
+    itself shows a banner linking to the existing PR when one's already open for that branch.

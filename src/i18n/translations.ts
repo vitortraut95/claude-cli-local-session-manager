@@ -638,6 +638,31 @@ export const translations = {
     "Resetar pasta raiz",
     "Restablecer carpeta raíz",
   ),
+  "sessionCard.openJenkinsTooltip": dict(
+    "Open this branch's Jenkins pipeline",
+    "Abrir a pipeline do Jenkins desta branch",
+    "Abrir el pipeline de Jenkins de esta rama",
+  ),
+  "sessionCard.openJenkinsAriaLabel": dict(
+    "Open Jenkins pipeline",
+    "Abrir pipeline do Jenkins",
+    "Abrir pipeline de Jenkins",
+  ),
+  "sessionCard.openPrTooltip": dict(
+    "Open this branch's compare/PR page (GitHub or Bitbucket)",
+    "Abrir a página de comparação/PR desta branch (GitHub ou Bitbucket)",
+    "Abrir la página de comparación/PR de esta rama (GitHub o Bitbucket)",
+  ),
+  "sessionCard.openPrAriaLabel": dict(
+    "Open PR page",
+    "Abrir página de PR",
+    "Abrir página de PR",
+  ),
+  "sessionCard.openPr.error": dict(
+    "Couldn't open a PR link for this session.",
+    "Não foi possível abrir um link de PR para esta sessão.",
+    "No se pudo abrir un enlace de PR para esta sesión.",
+  ),
   "sessionCard.cleanupWorktree.disabledTooltip": dict(
     "Close this session in its terminal before cleaning up the worktree.",
     "Encerre esta sessão no terminal antes de limpar o worktree.",

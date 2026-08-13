@@ -92,6 +92,18 @@ export async function fetchSessionRepoInsights(id: string): Promise<SessionRepoI
   return data.insights;
 }
 
+/** PR/compare URL for `branch` on GitHub or Bitbucket — see server-side getSessionPrUrl. `branch`
+ *  is passed from the caller's own `session.gitBranch` rather than re-derived server-side, same
+ *  convention as `deleteBranch`/`stopAndCheckoutResume` above. Throws (via withServerErrorMessage)
+ *  when the session's repo isn't a recognized remote — the caller decides how to surface that
+ *  (a toast, in SessionCard's case) rather than this returning a silent null. */
+export async function fetchPrUrl(id: string, branch: string): Promise<string> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ url: string }>(`/${encodeURIComponent(id)}/pr-url`, { params: { branch } }),
+  );
+  return data.url;
+}
+
 /** Read-only snapshot for the "worktree → root" modal — branches, root's dirty files, and a plain
  *  file diff between the worktree and root. Cheap enough to call again right before the final
  *  destructive confirm, to re-check root's dirty-file list hasn't changed since the modal opened. */

@@ -76,6 +76,42 @@ export async function getRepoRoot(cwd: string): Promise<string | null> {
   return dirs ? path.dirname(dirs.commonGitDir) : null;
 }
 
+export type GitHostInfo = { host: "github" | "bitbucket"; slug: string };
+
+/** Matches `origin`'s remote URL in either SSH (`git@<host>:owner/repo.git`) or HTTPS
+ *  (`https://<host>/owner/repo.git`) form and captures the `owner/repo` slug. Deliberately only
+ *  the two hosts this app's projects actually use (github.com, bitbucket.org) — no GitHub
+ *  Enterprise / self-hosted Bitbucket Server support today. */
+const REMOTE_URL_PATTERNS: { host: GitHostInfo["host"]; pattern: RegExp }[] = [
+  { host: "github", pattern: /^git@github\.com:([^/]+\/[^/]+?)(?:\.git)?$/ },
+  { host: "github", pattern: /^https:\/\/github\.com\/([^/]+\/[^/]+?)(?:\.git)?$/ },
+  { host: "bitbucket", pattern: /^git@bitbucket\.org:([^/]+\/[^/]+?)(?:\.git)?$/ },
+  { host: "bitbucket", pattern: /^https:\/\/[^/@]+@bitbucket\.org\/([^/]+\/[^/]+?)(?:\.git)?$/ },
+  { host: "bitbucket", pattern: /^https:\/\/bitbucket\.org\/([^/]+\/[^/]+?)(?:\.git)?$/ },
+];
+
+/**
+ * Resolves `cwd`'s `origin` remote to a hosting provider + `owner/repo` slug, for building a
+ * PR/compare URL without needing an API token — the caller just opens the result in the user's
+ * own browser, which already carries that provider's own session. Returns null (rather than
+ * throwing) for anything that isn't a recognized github.com/bitbucket.org origin: no remote
+ * configured, an unrecognized host, or a malformed URL — the "Open PR" button just doesn't
+ * render in that case.
+ */
+export async function getGitHostInfo(cwd: string): Promise<GitHostInfo | null> {
+  let remoteUrl: string;
+  try {
+    remoteUrl = await runGit(["remote", "get-url", "origin"], cwd);
+  } catch {
+    return null;
+  }
+  for (const { host, pattern } of REMOTE_URL_PATTERNS) {
+    const match = pattern.exec(remoteUrl);
+    if (match?.[1]) return { host, slug: match[1] };
+  }
+  return null;
+}
+
 export async function branchExists(cwd: string, branch: string): Promise<boolean> {
   try {
     await runGit(["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`], cwd);
