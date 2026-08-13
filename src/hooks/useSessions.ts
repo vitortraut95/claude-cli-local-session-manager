@@ -109,12 +109,15 @@ export function useSessions() {
     void loadSessions();
   }, [loadSessions]);
 
-  // "New task" launches the terminal fire-and-forget — `claude` itself only writes the new
-  // session's `.jsonl` once it actually starts and processes the first prompt, which can take a
-  // few seconds after the terminal opens. A single immediate refresh right after create almost
-  // always misses it, so `refreshSoon` (used as the New Task modal's onTaskCreated callback)
-  // follows up with a few staggered retries instead of one-shot continuous polling — cleared on
-  // unmount/re-call so a second task created shortly after doesn't pile up overlapping retries.
+  // "New task"/resume launch their terminal fire-and-forget — `claude` itself only writes the
+  // session's `.jsonl` (or its active-session pid file) once it actually starts, which can take a
+  // few seconds. A single immediate refresh right after almost always misses it, so `refreshSoon`
+  // follows up with a couple of staggered retries instead of one-shot continuous polling —
+  // cleared on unmount/re-call so a second task/resume shortly after doesn't pile up overlapping
+  // retries. Uses `loadSessions` directly rather than `refresh`: `refresh` flips `loading` to
+  // true, which blanks the whole list behind <LoadingState /> — fine for an explicit "Refresh
+  // sessions" click, but distracting as a flicker repeated 3-4 times in a row here. `loadSessions`
+  // swaps the data in once it arrives without ever blanking the page in between.
   const refreshRetryTimeoutsRef = useRef<number[]>([]);
 
   useEffect(() => {
@@ -124,12 +127,12 @@ export function useSessions() {
   }, []);
 
   const refreshSoon = useCallback(() => {
-    refresh();
+    void loadSessions();
     refreshRetryTimeoutsRef.current.forEach(clearTimeout);
-    refreshRetryTimeoutsRef.current = [2000, 5000, 10000].map((delay) =>
-      window.setTimeout(refresh, delay),
+    refreshRetryTimeoutsRef.current = [5000, 12000].map((delay) =>
+      window.setTimeout(() => void loadSessions(), delay),
     );
-  }, [refresh]);
+  }, [loadSessions]);
 
   useEffect(() => {
     // loadSessions only touches state after its internal `await`, but the rule's
