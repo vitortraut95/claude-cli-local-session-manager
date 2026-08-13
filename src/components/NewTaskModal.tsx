@@ -224,9 +224,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           if (!baseBranchTouched) setBaseBranch(info.defaultBaseBranch);
         })
         .catch((err) => {
-          setRepoError(
-            err instanceof Error ? err.message : t("newTaskModal.repoInfoError"),
-          );
+          setRepoError(err instanceof Error ? err.message : t("newTaskModal.repoInfoError"));
         })
         .finally(() => setLoadingRepoInfo(false));
     }, 400);
@@ -260,10 +258,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       setDefaultPromptLoaded(promptText);
       showToast(t("newTaskModal.promptSaved"), "success");
     } catch (err) {
-      showToast(
-        err instanceof Error ? err.message : t("newTaskModal.promptSaveError"),
-        "error",
-      );
+      showToast(err instanceof Error ? err.message : t("newTaskModal.promptSaveError"), "error");
     } finally {
       setSavingDefaultPrompt(false);
     }
@@ -297,13 +292,10 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   const finalPromptPreview = [jiraLink.trim() ? `Task: ${jiraLink.trim()}` : null, trimmedPrompt]
     .filter((part): part is string => Boolean(part))
     .join("\n\n");
-  const canSubmit =
-    jiraLink.trim().length > 0 &&
-    trimmedFolder.length > 0 &&
-    trimmedBranch.length > 0 &&
-    trimmedBase.length > 0 &&
-    trimmedPrompt.length > 0 &&
-    !creating;
+  // Every other field is always visible now (no more link-gated reveal — see the render below),
+  // but the Jira link is the only one still required to submit: it's the one piece of information
+  // the rest of the form can't reasonably default/infer on its own.
+  const canSubmit = jiraLink.trim().length > 0 && !creating;
 
   const updateStep = (key: StepKey, status: StepStatus, error?: string) => {
     setSteps((current) =>
@@ -434,281 +426,270 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           />
         </div>
 
-        {jiraLink.trim().length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {t("newTaskModal.pasteLinkHint")}
-          </p>
-        ) : (
-          <>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                {t("newTaskModal.projectLabel")}
-              </label>
-              {projects.length > 0 && (
-                <Select
-                  icon={<Folder className="h-4 w-4" />}
-                  value={folderChoice}
-                  onChange={(event) => setFolderChoice(event.target.value)}
-                  disabled={loadingProjects}
-                >
-                  <option value="" disabled>
-                    {loadingProjects ? t("newTaskModal.loadingProjects") : t("newTaskModal.selectProject")}
-                  </option>
-                  {projects.map((project) => (
-                    <option key={project.path} value={project.path}>
-                      {project.label}
-                    </option>
-                  ))}
-                  <option value={OTHER_FOLDER_VALUE}>{t("newTaskModal.otherFolder")}</option>
-                </Select>
-              )}
-              {(folderChoice === OTHER_FOLDER_VALUE || projects.length === 0) && (
-                <Input
-                  type="text"
-                  icon={<Folder className="h-4 w-4" />}
-                  value={customFolderPath}
-                  onChange={(event) => setCustomFolderPath(event.target.value)}
-                  placeholder="/absolute/path/to/the/project"
-                  className={projects.length > 0 ? "mt-2" : ""}
-                />
-              )}
-              {loadingRepoInfo && (
-                <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-                  <Loader2 className="h-3 w-3 animate-spin" /> {t("newTaskModal.readingRepoInfo")}
-                </p>
-              )}
-              {repoError && (
-                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{repoError}</p>
-              )}
-            </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+            {t("newTaskModal.projectLabel")}
+          </label>
+          {projects.length > 0 && (
+            <Select
+              icon={<Folder className="h-4 w-4" />}
+              value={folderChoice}
+              onChange={(event) => setFolderChoice(event.target.value)}
+              disabled={loadingProjects}
+            >
+              <option value="" disabled>
+                {loadingProjects
+                  ? t("newTaskModal.loadingProjects")
+                  : t("newTaskModal.selectProject")}
+              </option>
+              {projects.map((project) => (
+                <option key={project.path} value={project.path}>
+                  {project.label}
+                </option>
+              ))}
+              <option value={OTHER_FOLDER_VALUE}>{t("newTaskModal.otherFolder")}</option>
+            </Select>
+          )}
+          {(folderChoice === OTHER_FOLDER_VALUE || projects.length === 0) && (
+            <Input
+              type="text"
+              icon={<Folder className="h-4 w-4" />}
+              value={customFolderPath}
+              onChange={(event) => setCustomFolderPath(event.target.value)}
+              placeholder="/absolute/path/to/the/project"
+              className={projects.length > 0 ? "mt-2" : ""}
+            />
+          )}
+          {loadingRepoInfo && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+              <Loader2 className="h-3 w-3 animate-spin" /> {t("newTaskModal.readingRepoInfo")}
+            </p>
+          )}
+          {repoError && (
+            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{repoError}</p>
+          )}
+        </div>
 
-            <div>
-              <div className="mb-1 flex items-center justify-between">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  {t("newTaskModal.promptLabel")}
-                </label>
-                {promptDirty && (
-                  <Button
-                    variant="link"
-                    size="none"
-                    onClick={handleSaveDefaultPrompt}
-                    disabled={savingDefaultPrompt}
-                  >
-                    {savingDefaultPrompt ? t("newTaskModal.saving") : t("newTaskModal.saveAsDefault")}
-                  </Button>
-                )}
-              </div>
-              <textarea
-                value={promptText}
-                onChange={(event) => setPromptText(event.target.value)}
-                placeholder={
-                  loadingPrompt
-                    ? t("newTaskModal.loadingDefaultPrompt")
-                    : t("newTaskModal.promptPlaceholder")
-                }
-                rows={5}
-                className={TEXTAREA_CLASSNAME}
-              />
-              <span className="block whitespace-pre-wrap text-xs">
-                {t("newTaskModal.finalPromptLabel")}{" "}
-                <span className="font-mono text-gray-500 dark:text-gray-400">
-                  "{finalPromptPreview.slice(0, 160)}
-                  {finalPromptPreview.length > 160 ? "…" : ""}"
-                </span>
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                  {t("newTaskModal.baseBranchLabel")}
-                </label>
-                <Input
-                  type="text"
-                  value={baseBranch}
-                  onChange={(event) => {
-                    setBaseBranch(event.target.value);
-                    setBaseBranchTouched(true);
-                  }}
-                  placeholder="master/main/other"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                  {t("newTaskModal.branchTypeLabel")}
-                </label>
-                <Select
-                  value={prefixChoice}
-                  onChange={(event) => setPrefixChoice(event.target.value)}
-                >
-                  {branchTypes.map((prefix) => (
-                    <option key={prefix} value={prefix}>
-                      {prefix}
-                    </option>
-                  ))}
-                  <option value={OTHER_PREFIX_VALUE}>{t("newTaskModal.otherBranchType")}</option>
-                </Select>
-                {prefixChoice === OTHER_PREFIX_VALUE && (
-                  <Input
-                    type="text"
-                    value={customPrefix}
-                    onChange={(event) => setCustomPrefix(event.target.value)}
-                    placeholder={t("newTaskModal.customPrefixPlaceholder")}
-                    className="mt-2"
-                  />
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                  {t("newTaskModal.branchNameLabel")}
-                </label>
-                <Input
-                  type="text"
-                  icon={<GitBranch className="h-4 w-4" />}
-                  value={branchSuffix}
-                  onChange={(event) => setBranchSuffixManual(event.target.value)}
-                  placeholder="PROJ-123"
-                />
-                {branchName && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-                    {t("newTaskModal.branchPreview")}
-                    <span className="font-mono text-gray-600 dark:text-gray-300">{branchName}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <label className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  <input
-                    type="checkbox"
-                    checked={skipWorktree}
-                    onChange={(event) => setSkipWorktree(event.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
-                  />
-                  {t("newTaskModal.skipWorktreeLabel")}
-                </label>
-                {worktreeDefaultDirty && (
-                  <Button
-                    variant="link"
-                    size="none"
-                    onClick={handleSaveWorktreeDefault}
-                    disabled={savingWorktreeDefault}
-                    className="shrink-0"
-                  >
-                    {savingWorktreeDefault ? t("newTaskModal.saving") : t("newTaskModal.useAsDefault")}
-                  </Button>
-                )}
-              </div>
-              {skipWorktree && (
-                <p className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-400">
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  {t("newTaskModal.skipWorktreeWarning")}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <input
-                  type="checkbox"
-                  checked={permissionModeAuto}
-                  onChange={(event) => setPermissionModeAuto(event.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
-                />
-                {t("newTaskModal.permissionModeAutoLabel")}
-              </label>
-              <p className="mt-1 pl-6 text-xs text-gray-500 dark:text-gray-400">
-                {t("newTaskModal.permissionModeAutoExplanation")}
-              </p>
-            </div>
-
-            {steps.length > 0 ? (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/50">
-                <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {t("newTaskModal.progressLabel")}
-                </p>
-                <ol className="space-y-2">
-                  {steps.map((step) => (
-                    <li key={step.key} className="flex items-start gap-2">
-                      {step.status === "pending" && (
-                        <Circle className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
-                      )}
-                      {step.status === "doing" && (
-                        <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-gray-500 dark:text-gray-400" />
-                      )}
-                      {step.status === "done" && (
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-500" />
-                      )}
-                      {step.status === "error" && (
-                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-500" />
-                      )}
-                      <div>
-                        <p
-                          className={`text-sm ${
-                            step.status === "pending"
-                              ? "text-gray-400 dark:text-gray-500"
-                              : "text-gray-700 dark:text-gray-300"
-                          }`}
-                        >
-                          {step.label}
-                        </p>
-                        {step.status === "error" && step.error && (
-                          <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">
-                            {step.error}
-                          </p>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
-                <p className="mb-2 font-medium text-gray-700 dark:text-gray-300">
-                  {t("newTaskModal.whatWillHappen")}
-                </p>
-                <ol className="list-decimal space-y-1 pl-5">
-                  <li>
-                    {t("newTaskModal.explain.repo.pre")}{" "}
-                    <span className="font-mono text-gray-800 dark:text-gray-200">
-                      {trimmedFolder || t("newTaskModal.explain.folderPlaceholder")}
-                    </span>{" "}
-                    {t("newTaskModal.explain.repo.post")}
-                  </li>
-                  <li>
-                    {t("newTaskModal.explain.base.pre")}{" "}
-                    <span className="font-mono text-gray-800 dark:text-gray-200">
-                      {trimmedBase || t("newTaskModal.explain.basePlaceholder")}
-                    </span>{" "}
-                    {t("newTaskModal.explain.base.post")}
-                  </li>
-                  <li>
-                    {t("newTaskModal.explain.branch.pre")}{" "}
-                    <span className="font-mono text-gray-800 dark:text-gray-200">
-                      {trimmedBranch || t("newTaskModal.explain.branchPlaceholder")}
-                    </span>{" "}
-                    {t("newTaskModal.explain.branch.post")}
-                  </li>
-                  <li>
-                    {skipWorktree
-                      ? t("newTaskModal.explain.worktree.skip")
-                      : t("newTaskModal.explain.worktree.create")}
-                  </li>
-                  <li>
-                    {t("newTaskModal.explain.launch.pre")}{" "}
-                    {skipWorktree
-                      ? t("newTaskModal.explain.launch.inProjectFolder")
-                      : t("newTaskModal.explain.launch.insideWorktree")}{" "}
-                    {t("newTaskModal.explain.launch.and")}{" "}
-                    <code>claude</code> {t("newTaskModal.explain.launch.post")}
-                  </li>
-                </ol>
-              </div>
+        <div>
+          <div className="mb-1 flex items-center justify-between">
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              {t("newTaskModal.promptLabel")}
+            </label>
+            {promptDirty && (
+              <Button
+                variant="link"
+                size="none"
+                onClick={handleSaveDefaultPrompt}
+                disabled={savingDefaultPrompt}
+              >
+                {savingDefaultPrompt ? t("newTaskModal.saving") : t("newTaskModal.saveAsDefault")}
+              </Button>
             )}
-          </>
+          </div>
+          <textarea
+            value={promptText}
+            onChange={(event) => setPromptText(event.target.value)}
+            placeholder={
+              loadingPrompt
+                ? t("newTaskModal.loadingDefaultPrompt")
+                : t("newTaskModal.promptPlaceholder")
+            }
+            rows={5}
+            className={TEXTAREA_CLASSNAME}
+          />
+          <span className="block whitespace-pre-wrap text-xs">
+            {t("newTaskModal.finalPromptLabel")}{" "}
+            <span className="font-mono text-gray-500 dark:text-gray-400">
+              "{finalPromptPreview.slice(0, 160)}
+              {finalPromptPreview.length > 160 ? "…" : ""}"
+            </span>
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+              {t("newTaskModal.baseBranchLabel")}
+            </label>
+            <Input
+              type="text"
+              value={baseBranch}
+              onChange={(event) => {
+                setBaseBranch(event.target.value);
+                setBaseBranchTouched(true);
+              }}
+              placeholder="master/main/other"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+              {t("newTaskModal.branchTypeLabel")}
+            </label>
+            <Select value={prefixChoice} onChange={(event) => setPrefixChoice(event.target.value)}>
+              {branchTypes.map((prefix) => (
+                <option key={prefix} value={prefix}>
+                  {prefix}
+                </option>
+              ))}
+              <option value={OTHER_PREFIX_VALUE}>{t("newTaskModal.otherBranchType")}</option>
+            </Select>
+            {prefixChoice === OTHER_PREFIX_VALUE && (
+              <Input
+                type="text"
+                value={customPrefix}
+                onChange={(event) => setCustomPrefix(event.target.value)}
+                placeholder={t("newTaskModal.customPrefixPlaceholder")}
+                className="mt-2"
+              />
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+              {t("newTaskModal.branchNameLabel")}
+            </label>
+            <Input
+              type="text"
+              icon={<GitBranch className="h-4 w-4" />}
+              value={branchSuffix}
+              onChange={(event) => setBranchSuffixManual(event.target.value)}
+              placeholder="PROJ-123"
+            />
+            {branchName && (
+              <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+                {t("newTaskModal.branchPreview")}
+                <span className="font-mono text-gray-600 dark:text-gray-300">{branchName}</span>
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between gap-2">
+            <label className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <input
+                type="checkbox"
+                checked={skipWorktree}
+                onChange={(event) => setSkipWorktree(event.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+              />
+              {t("newTaskModal.skipWorktreeLabel")}
+            </label>
+            {worktreeDefaultDirty && (
+              <Button
+                variant="link"
+                size="none"
+                onClick={handleSaveWorktreeDefault}
+                disabled={savingWorktreeDefault}
+                className="shrink-0"
+              >
+                {savingWorktreeDefault ? t("newTaskModal.saving") : t("newTaskModal.useAsDefault")}
+              </Button>
+            )}
+          </div>
+          {skipWorktree && (
+            <p className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-400">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {t("newTaskModal.skipWorktreeWarning")}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <input
+              type="checkbox"
+              checked={permissionModeAuto}
+              onChange={(event) => setPermissionModeAuto(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+            />
+            {t("newTaskModal.permissionModeAutoLabel")}
+          </label>
+          <p className="mt-1 pl-6 text-xs text-gray-500 dark:text-gray-400">
+            {t("newTaskModal.permissionModeAutoExplanation")}
+          </p>
+        </div>
+
+        {steps.length > 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/50">
+            <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              {t("newTaskModal.progressLabel")}
+            </p>
+            <ol className="space-y-2">
+              {steps.map((step) => (
+                <li key={step.key} className="flex items-start gap-2">
+                  {step.status === "pending" && (
+                    <Circle className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
+                  )}
+                  {step.status === "doing" && (
+                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-gray-500 dark:text-gray-400" />
+                  )}
+                  {step.status === "done" && (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-500" />
+                  )}
+                  {step.status === "error" && (
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-500" />
+                  )}
+                  <div>
+                    <p
+                      className={`text-sm ${
+                        step.status === "pending"
+                          ? "text-gray-400 dark:text-gray-500"
+                          : "text-gray-700 dark:text-gray-300"
+                      }`}
+                    >
+                      {step.label}
+                    </p>
+                    {step.status === "error" && step.error && (
+                      <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">{step.error}</p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
+            <p className="mb-2 font-medium text-gray-700 dark:text-gray-300">
+              {t("newTaskModal.whatWillHappen")}
+            </p>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>
+                {t("newTaskModal.explain.repo.pre")}{" "}
+                <span className="font-mono text-gray-800 dark:text-gray-200">
+                  {trimmedFolder || t("newTaskModal.explain.folderPlaceholder")}
+                </span>{" "}
+                {t("newTaskModal.explain.repo.post")}
+              </li>
+              <li>
+                {t("newTaskModal.explain.base.pre")}{" "}
+                <span className="font-mono text-gray-800 dark:text-gray-200">
+                  {trimmedBase || t("newTaskModal.explain.basePlaceholder")}
+                </span>{" "}
+                {t("newTaskModal.explain.base.post")}
+              </li>
+              <li>
+                {t("newTaskModal.explain.branch.pre")}{" "}
+                <span className="font-mono text-gray-800 dark:text-gray-200">
+                  {trimmedBranch || t("newTaskModal.explain.branchPlaceholder")}
+                </span>{" "}
+                {t("newTaskModal.explain.branch.post")}
+              </li>
+              <li>
+                {skipWorktree
+                  ? t("newTaskModal.explain.worktree.skip")
+                  : t("newTaskModal.explain.worktree.create")}
+              </li>
+              <li>
+                {t("newTaskModal.explain.launch.pre")}{" "}
+                {skipWorktree
+                  ? t("newTaskModal.explain.launch.inProjectFolder")
+                  : t("newTaskModal.explain.launch.insideWorktree")}{" "}
+                {t("newTaskModal.explain.launch.and")} <code>claude</code>{" "}
+                {t("newTaskModal.explain.launch.post")}
+              </li>
+            </ol>
+          </div>
         )}
       </div>
     </Modal>

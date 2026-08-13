@@ -822,11 +822,6 @@ export const translations = {
     "Link da tarefa (Jira)",
     "Enlace de la tarea (Jira)",
   ),
-  "newTaskModal.pasteLinkHint": dict(
-    "Paste the task link to continue filling in the rest of the setup.",
-    "Cole o link da tarefa para continuar preenchendo o restante da configuração.",
-    "Pega el enlace de la tarea para continuar completando el resto de la configuración.",
-  ),
   "newTaskModal.projectLabel": dict("Project (folder)", "Projeto (pasta)", "Proyecto (carpeta)"),
   "newTaskModal.loadingProjects": dict(
     "Loading projects…",
