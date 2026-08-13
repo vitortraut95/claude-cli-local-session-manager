@@ -376,13 +376,18 @@ export function useSessions() {
         // terminal window may open behind this one — this toast is the only reliable signal
         // that it actually opened.
         showToast(t("useSessions.terminalOpened"), "success");
+        // Same fire-and-forget gap as the New Task modal: the resumed `claude` process needs a
+        // moment to start and write its active-session pid file, so the card's "active" status
+        // wouldn't otherwise update until a manual refresh. refreshSoon() re-fetches now and a
+        // few more times over the following seconds to pick that up once it lands.
+        refreshSoon();
       } catch (err) {
         showToast(err instanceof Error ? err.message : t("useSessions.resumeError"), "error");
       } finally {
         setPending(id, null);
       }
     },
-    [showToast, setPending, t],
+    [showToast, setPending, t, refreshSoon],
   );
 
   const stopAndCheckoutResume = useCallback(
@@ -392,13 +397,16 @@ export function useSessions() {
         await sessionsApi.stopAndCheckoutResume(targetId, siblingId, branch);
         showToast(t("useSessions.stoppedAndResumed"), "success");
         setResumeConflict(null);
+        // Same fire-and-forget gap as resumeSession above — the newly-resumed terminal takes a
+        // moment to become "active", and the sibling's own status just changed too.
+        refreshSoon();
       } catch (err) {
         showToast(err instanceof Error ? err.message : t("useSessions.switchSessionsError"), "error");
       } finally {
         setPending(targetId, null);
       }
     },
-    [showToast, setPending, t],
+    [showToast, setPending, t, refreshSoon],
   );
 
   const openInVSCode = useCallback(
