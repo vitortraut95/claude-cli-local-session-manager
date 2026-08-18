@@ -11,7 +11,6 @@ import { NewTaskModal } from "./NewTaskModal";
 import { OnboardingModal } from "./OnboardingModal";
 import { Select } from "./Select";
 import { ThemeToggle } from "./ThemeToggle";
-import { Tooltip } from "./Tooltip";
 import { UpdateButton } from "./UpdateButton";
 import { UsageLimitsBadge } from "./UsageLimitsBadge";
 
@@ -74,15 +73,13 @@ export function Header({ onSessionCreated }: HeaderProps) {
           >
             {t("header.cleanup")}
           </Button>
-          <Tooltip content={t("header.help")}>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setShowOnboarding(true)}
-              aria-label={t("header.help")}
-              icon={<HelpCircle className="h-4 w-4" />}
-            />
-          </Tooltip>
+          <Button
+            variant="outline"
+            onClick={() => setShowOnboarding(true)}
+            icon={<HelpCircle className="h-4 w-4" />}
+          >
+            {t("header.help")}
+          </Button>
           <Select
             icon={<Globe className="h-3.5 w-3.5" />}
             value={language}

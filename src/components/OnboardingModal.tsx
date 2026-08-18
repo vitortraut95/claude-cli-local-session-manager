@@ -6,6 +6,7 @@ import {
   HelpCircle,
   RefreshCw,
   Rocket,
+  Scissors,
   Trash2,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -58,6 +59,11 @@ const STEPS: Step[] = [
   {
     titleKey: "onboarding.step7.title",
     bodyKey: "onboarding.step7.body",
+    icon: <Scissors className="h-4 w-4 shrink-0 text-violet-500 dark:text-violet-400" />,
+  },
+  {
+    titleKey: "onboarding.step8.title",
+    bodyKey: "onboarding.step8.body",
     icon: <AlertTriangle className="h-4 w-4 shrink-0 text-orange-500 dark:text-orange-400" />,
   },
 ];

@@ -1,41 +1,30 @@
-# Claude CLI Local Session Manager!
+# Claude CLI Local Session Manager
 
 Local web app for managing [Claude CLI](https://claude.com/claude-code) sessions. Reads the
-`*.jsonl` files `claude` writes to `~/.claude/projects`, lists them, and lets you resume, delete,
-search, or nickname them. Everything runs on your machine — no external server involved.
+`*.jsonl` files `claude` writes to `~/.claude/projects` and lets you browse, resume, organize,
+and clean them up. Everything runs on your machine — no external server involved.
 
 **Primary support: Linux.** Experimental (not smoke-tested) Windows/macOS launch scripts are
 included — see below.
 
 ## Features
 
-- List all sessions with title, project, last-updated time, and estimated token cost — title
-  falls back through the CLI's own `ai-title` / conversation-summary entries, then its
-  auto-generated "what we did / what's next" away-summary recap, then the (truncated) first
-  prompt, in that order
-- "Active time" next to the last-updated time — actual time Claude spent processing the session
-  (summed from the CLI's own per-turn duration entries), a more honest signal than the file's
-  mtime alone
-- Resume a session in a new terminal (`claude --resume <id>`), Warp preferred if installed
-- Delete sessions individually or in bulk
-- Full-text search across every prompt in a session
-- Local nicknames (shown alongside the real session title, doesn't rename anything Claude/Warp show)
-- Active-session indicator, with delete/continue/bulk-select blocked while a session is in use
-- Warning badge when a session's original working directory no longer exists, with the full path
-  shown on hover (also available as a tooltip on the project name)
-- Subagent token usage (spawned via the `Agent` tool) is folded into the session's total cost
-  instead of silently disappearing, with a "N subagents" badge and its own cost line in the usage
-  modal; clicking the badge opens a detail view of each subagent (type, task description, its
-  final result text, duration, and cost)
-- Session-size meter along the bottom of each card (green → amber → red as the `.jsonl` file
-  grows), hinting when it's worth running `/compact` or starting a fresh session
-- Insights panel (lightbulb icon in the card's action toolbar) with token-saving tips:
-  session-level (large size, low cache-hit rate, subagents eating a big share of cost) and
-  repo-level (missing CLAUDE.md, topics worth documenting there based on what Explore subagents
-  had to look up)
-- Card action toolbar (insights, usage/cost, prompt preview) as one row of standardized,
-  color-coded icons, with the active/inactive status stacked above the select checkbox as the
-  card's only floating element
+- **Session list** — title, project, branch, last-updated/active time, estimated token cost, and
+  a session-size meter (green → amber → red)
+- **Resume** any session in a new terminal (`claude --resume`), Warp preferred if installed
+- **Compact & continue** — when a session's `.jsonl` gets large, draft a summary (editable) and
+  start a fresh, lighter session in the same folder, linked back to the original
+- **New task** — paste a Jira link + instructions, pick a project, and it opens a terminal
+  already running Claude with that prompt — optionally in an isolated git worktree
+- **Worktree → root** — copy a worktree's files into the project root to test locally, or move
+  the branch there for real once it's ready to push
+- Full-text search across every prompt, plus project/date filters
+- Local nicknames, bulk delete, active-session protection (won't let two terminals fight over
+  the same session)
+- Subagent cost breakdown, insights panel (token-saving tips), Claude usage-limits badge
+- One-click "Open in VS Code", "Open Jenkins" (for `env/*` branches), and "Open PR" buttons
+- Self-update button (`git pull` + rebuild) from the header
+- pt/en/es language switcher
 
 ## Prerequisites
 
@@ -117,18 +106,21 @@ ln -sf "$PWD/start-mac.command" ~/Desktop/"Claude Session Manager.command"
 └── src/                   # React SPA (workspace root)
 ```
 
-Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
+Yarn workspaces monorepo: the root is the frontend, `server/` is the backend. See `CLAUDE.md` for
+the full architecture/API surface and the "why" behind non-obvious decisions.
 
 ## API
 
-| Method | Route                    | Description                                      |
-| ------ | ------------------------ | ------------------------------------------------ |
-| GET    | `/sessions`              | List every session found in `~/.claude/projects` |
-| GET    | `/sessions/:id/prompts`  | Full, untruncated list of prompts for a session  |
-| PATCH  | `/sessions/:id/nickname` | Set or clear a session's local nickname          |
-| DELETE | `/sessions/:id`          | Delete the session's `.jsonl` file               |
-| POST   | `/sessions/:id/continue` | Open a terminal running `claude --resume <id>`   |
-| POST   | `/sessions/:id/vscode`   | Open the session's working directory in VS Code  |
+| Method | Route                          | Description                                       |
+| ------ | ------------------------------ | -------------------------------------------------- |
+| GET    | `/sessions`                    | List every session found in `~/.claude/projects`  |
+| GET    | `/sessions/:id/prompts`        | Full, untruncated list of prompts for a session   |
+| PATCH  | `/sessions/:id/nickname`       | Set or clear a session's local nickname           |
+| DELETE | `/sessions/:id`                | Delete the session's `.jsonl` file                |
+| POST   | `/sessions/:id/continue`       | Open a terminal running `claude --resume <id>`    |
+| POST   | `/sessions/:id/vscode`         | Open the session's working directory in VS Code  |
+| POST   | `/sessions/:id/compact-summary`  | Draft a summary for "Compact & continue"        |
+| POST   | `/sessions/:id/compact-continue` | Launch the lighter pt2 session from that draft  |
 
 ## Scripts
 
@@ -137,3 +129,19 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 - `yarn lint` — lint frontend and backend
 - `yarn typecheck` — type-check both workspaces
 - `yarn preview` — serve the frontend production build
+
+## Changelog
+
+Newest first — one line per notable feature, not every commit.
+
+| Date       | Feature                                                                 |
+| ---------- | ------------------------------------------------------------------------ |
+| 2026-08-18 | "Compact & continue" — summarize a large session into a lighter pt2, linked badges |
+| 2026-08-13 | "Open Jenkins" / "Open PR" buttons on session cards                     |
+| 2026-08-07 | Worktree flow hardening (active-session copy mode, orphaned-worktree recovery) |
+| 2026-08-04 | Onboarding modal + pt/en/es language switcher                           |
+| 2026-07-30 | Git worktree support, "New Task" modal, Claude usage-limits badge       |
+| 2026-07-29 | "Open in VS Code" button                                                |
+| 2026-07-27 | Session-size meter, insights panel, subagent cost breakdown             |
+| 2026-07-24 | Active/inactive indicator, token cost, bulk delete, prompt preview      |
+| 2026-07-23 | First version — list, resume, delete, search, nicknames, theme toggle   |

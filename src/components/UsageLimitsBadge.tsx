@@ -98,8 +98,8 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
   const tooltipContent = (
     <div className="flex flex-col gap-2 text-left">
       <p className="font-semibold">{t("usageLimitsBadge.title")}</p>
-      {error && <p className="text-red-300">{error}</p>}
-      {!error && limits.length === 0 && !loading && <p>{t("usageLimitsBadge.noLimits")}</p>}
+      {limits.length === 0 && !loading && <p>{t("usageLimitsBadge.noLimits")}</p>}
+      {error && <p className="text-xs text-red-300">{error}</p>}
       {limits.map((limit) => {
         const resetText = formatResetsAt(limit.resetsAt, t);
         return (

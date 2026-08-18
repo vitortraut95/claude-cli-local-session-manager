@@ -289,7 +289,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   const trimmedBranch = branchName.trim();
   const trimmedBase = baseBranch.trim();
   const trimmedPrompt = promptText.trim();
-  const finalPromptPreview = [jiraLink.trim() ? `Task: ${jiraLink.trim()}` : null, trimmedPrompt]
+  const finalPromptPreview = [jiraLink.trim() ? `${t("newTaskModal.taskPrefix")}: ${jiraLink.trim()}` : null, trimmedPrompt]
     .filter((part): part is string => Boolean(part))
     .join("\n\n");
   // Every other field is always visible now (no more link-gated reveal — see the render below),
@@ -322,7 +322,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       })),
     );
 
-    const composedPrompt = [jiraLink.trim() ? `Task: ${jiraLink.trim()}` : null, trimmedPrompt]
+    const composedPrompt = [jiraLink.trim() ? `${t("newTaskModal.taskPrefix")}: ${jiraLink.trim()}` : null, trimmedPrompt]
       .filter((part): part is string => Boolean(part))
       .join("\n\n");
 

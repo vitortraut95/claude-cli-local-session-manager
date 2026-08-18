@@ -18,13 +18,13 @@ function sleep(ms: number): Promise<void> {
  * the API process mid-update — polls landing in that brief gap fail transiently and just get
  * retried, rather than aborting the whole wait.
  */
-async function waitForUpdateJob(): Promise<UpdateJobStatus> {
+async function waitForUpdateJob(timeoutMessage: string): Promise<UpdateJobStatus> {
   const deadline = Date.now() + JOB_POLL_TIMEOUT_MS;
   let job: UpdateJobStatus = { state: "idle" };
 
   while (job.state === "idle" || job.state === "running") {
     if (Date.now() > deadline) {
-      throw new Error("Timed out waiting for the update to finish.");
+      throw new Error(timeoutMessage);
     }
     await sleep(JOB_POLL_INTERVAL_MS);
     try {
@@ -93,7 +93,7 @@ export function useUpdate() {
     setUpdating(true);
     try {
       await systemApi.applyUpdate();
-      const job = await waitForUpdateJob();
+      const job = await waitForUpdateJob(t("useUpdate.timeoutError"));
       if (job.state === "error") throw new Error(job.message);
       showToast(t("useUpdate.updateSuccess"), "success");
     } catch (err) {

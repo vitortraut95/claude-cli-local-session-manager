@@ -64,7 +64,8 @@ spelunking at the start of a task.
 - **API surface** (see README.md for the full table): `GET /sessions`, `GET
 /sessions/:id/prompts`, `PATCH /sessions/:id/nickname`, `DELETE /sessions/:id`, `POST
 /sessions/:id/continue`, `POST /sessions/:id/worktree`, `DELETE /sessions/:id/worktree`, `POST
-/sessions/:id/checkout-and-resume`, plus `/system/update*` routes for the self-update feature.
+/sessions/:id/checkout-and-resume`, `POST /sessions/:id/compact-summary`, `POST
+/sessions/:id/compact-continue`, plus `/system/update*` routes for the self-update feature.
 - **Session data model** — `src/types/session.ts` and `server/types/session.ts` define the _same_
   `Session` type independently (no shared package between the two workspaces) — a shape change
   needs both files edited, there's nothing that enforces they match:
@@ -308,8 +309,65 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
   header, and only the computed percentages/timestamps cross into the response; never log or
   return the raw credentials file. Fetched once on mount (no polling, same philosophy as
   everything else in this app) with a 30s server-side cache and a manual click-to-refresh.
+- **"Compact & continue"** (`SessionCard.tsx`'s scissors icon, `SessionSizeGateModal.tsx`,
+  `CompactContinueModal.tsx` → `server/utils/claudeCli.ts`, `server/utils/sessionContinuations.ts`,
+  `getCompactionDraft`/`startCompactedContinuation` in `sessionService.ts`) exists because `/compact`
+  run inside a Claude session never shrinks that session's `.jsonl` — it's append-only, so the size
+  meter keeps climbing regardless. The only real lever is starting a fresh, lighter session seeded
+  with a summary of the old one.
+  - **Draft summary comes from a real headless turn**: `claude --resume <id> --print
+    --permission-mode plan "<instruction>"` (`runClaudeHeadlessSummary`), not just the CLI's own
+    `away_summary` recap — `plan` mode lets the model read around the repo for a better-grounded
+    summary while guaranteeing it can't edit anything, safe to fire from the backend unattended.
+    **`--tools ""` was tried first and is broken** — confirmed by direct reproduction: it's a
+    variadic flag (`--tools <tools...>`) that swallows the prompt string following it as another
+    tool name, leaving no actual prompt and producing a confusing "No deferred tool marker found"
+    error. Falls back to the recap, then the title, then the first message if the headless call
+    fails/times out — same cascade `resolveTitle` already uses elsewhere.
+  - **The new ("pt2") session's id is chosen up front** via the CLI's own `--session-id <uuid>`
+    flag, generated server-side right before linking and launching — avoids the "discover the new
+    session's id after the fact by matching directory + timestamp" problem earlier designs in this
+    file solve for (see the worktree section above); here there's just nothing to discover.
+  - **The link lives in its own sidecar**, `~/.claude-session-manager/session-continuations.json`
+    (`sessionContinuations.ts`, same pattern as `nicknames.ts`): `{ [newSessionId]: { continuesFrom:
+    oldSessionId, createdAt } }`. The reverse edge (`continuedBySessionId`) isn't stored — it's
+    derived by scanning for the one entry whose `continuesFrom` matches, so there's nothing to keep
+    in sync. `listSessions()` decorates both directions the same way it decorates `nickname`.
+  - **`SessionSizeGateModal`** intercepts "Retomar (terminal)" client-side (`resumeSession` in
+    `useSessions.ts`) once `sessionSizeStatus(sizeBytes) !== "healthy"`, offering "continue anyway"
+    (re-calls with `skipSizeGate: true`) or "compact instead" — the Resume button itself stays
+    always-enabled, same as the pre-existing active-session-conflict check right above it.
+  - **Continuation badges** (violet, both cards) resolve the *other* side's title from
+    `useSessions.ts`'s `allSessions` (the full unfiltered/unpaginated list — the linked session
+    might not be on the current page) and, on click, jump to it by setting the search query to its
+    id and clearing project/date filters; on hover, they set `highlightedSessionId` so the other
+    card (if visible on the current page) gets a violet ring — purely a `SessionsPage.tsx`-level
+    state, no new sort/grouping logic.
 
 ## to-do's
+
+- **Backend error messages bypass the pt/en/es translation system entirely.** Confirmed while
+  auditing i18n coverage: `withServerErrorMessage` (`src/utils/apiClient.ts`) re-throws the
+  server's `{error: "<message>"}` body verbatim as `Error.message`, and every caller does
+  `showToast(err instanceof Error ? err.message : t(...))` — so any time a request actually fails
+  server-side, the toast is raw English no matter what language is selected, while every
+  *client-side* fallback message right next to it is properly translated. Scope: ~73
+  `throw new Error(...)` call sites across `server/services/{taskService,usageService,
+  cleanupService,sessionService,updateService}.ts`, `server/utils/{repoRoot,git}.ts`,
+  `server/routes/{tasks,cleanup}.ts`, plus the `SessionNotFoundError`/`SessionActiveError` message
+  strings in `sessionService.ts` — too much to do in one pass, hence documenting it here instead of
+  fixing it inline.
+  - **Likely approach**: have the server attach a stable machine-readable code alongside the
+    English message (e.g. `{error: "...", code: "SESSION_ACTIVE"}`), and teach
+    `withServerErrorMessage` to look the code up in `translations.ts` client-side, falling back to
+    the raw English message for any code that doesn't have a translation yet (or wasn't sent by an
+    older/unversioned route) — no changes needed to how routes report unexpected 500s. Translating
+    server-side instead (client sends its language, server picks the string) would need the same
+    `dict(en, pt, es)` data duplicated or shared into `server/`, and there's no shared package
+    between the two workspaces today (see the `Session` type duplication note above) — the code
+    lookup approach avoids that.
+  - **Do it incrementally, by file** (`sessionService.ts` first — it's the most user-facing one),
+    not all 73 sites at once.
 
 - **Future idea: deeper Jenkins integration for `env/*` branches.** "New task" branches created
   with the `env/` prefix (this convention is per-repo, not universal — the concrete case so far

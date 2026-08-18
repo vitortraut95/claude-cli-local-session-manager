@@ -124,7 +124,17 @@ export async function getClaudeUsageStatus(forceRefresh = false): Promise<Claude
     throw new Error(`Could not fetch usage (HTTP ${response.status}).`);
   }
 
-  const data = (await response.json()) as RawUsageResponse;
+  // A 200 response with an empty or non-JSON body has been observed for accounts with nothing
+  // to report yet (e.g. never made a request in the current 5h/7d window) — treated as "no usage
+  // data yet" (empty limits) rather than letting `response.json()`'s parse failure bubble up as a
+  // raw, scary "Unexpected end of JSON input" error toast.
+  const rawBody = await response.text();
+  let data: RawUsageResponse;
+  try {
+    data = rawBody.trim() ? (JSON.parse(rawBody) as RawUsageResponse) : {};
+  } catch {
+    data = {};
+  }
 
   const limits: ClaudeUsageLimit[] = (data.limits ?? []).flatMap((limit) => {
     if (typeof limit.kind !== "string" || typeof limit.group !== "string" || typeof limit.percent !== "number") {

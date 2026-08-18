@@ -1,6 +1,7 @@
 import { Loader2, X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useLanguage } from "../hooks/useLanguage";
 import { Button } from "./Button";
 
 type ModalSize = "sm" | "md" | "lg" | "xl" | "xxl";
@@ -47,8 +48,8 @@ export function Modal({
   onClose,
   onConfirm,
   onCancel,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   isConfirmLoading = false,
   isConfirmDisabled = false,
   confirmVariant = "primary",
@@ -57,6 +58,10 @@ export function Modal({
   onSecondary,
   secondaryLabel,
 }: ModalProps) {
+  const { t } = useLanguage();
+  const resolvedConfirmLabel = confirmLabel ?? t("modal.confirmDefault");
+  const resolvedCancelLabel = cancelLabel ?? t("modal.cancelDefault");
+
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -89,7 +94,7 @@ export function Modal({
               {title}
             </h2>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label={t("modal.closeAriaLabel")}>
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -108,7 +113,7 @@ export function Modal({
             <div className="flex gap-2">
               {onCancel && (
                 <Button variant="outline" onClick={onCancel} disabled={isConfirmLoading}>
-                  {cancelLabel}
+                  {resolvedCancelLabel}
                 </Button>
               )}
               {onConfirm && (
@@ -118,7 +123,7 @@ export function Modal({
                   disabled={isConfirmLoading || isConfirmDisabled}
                   icon={isConfirmLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                 >
-                  {confirmLabel}
+                  {resolvedConfirmLabel}
                 </Button>
               )}
             </div>

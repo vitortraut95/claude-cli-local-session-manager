@@ -30,9 +30,9 @@ function dict(en: string, pt: string, es: string): Dict {
 /**
  * Hand-rolled instead of a library (react-i18next/i18next) on purpose — this app has no other
  * cross-cutting library dependency (theme/toast/usage are all small hand-rolled hooks), only 3
- * languages, and no plural/ICU-message needs. Covers the Header and the onboarding modal only for
- * now — the rest of the app's text (SessionCard, other modals, filters, toasts) is a deliberate
- * follow-up, not translated yet.
+ * languages, and no plural/ICU-message needs. Covers essentially every user-visible string in the
+ * app now (SessionCard, every modal, filters, toasts included) — a hardcoded string found outside
+ * this file is very likely a gap, not a deliberate exception.
  */
 export const translations = {
   "header.subtitle": dict(
@@ -192,11 +192,38 @@ export const translations = {
   ),
 
   "onboarding.step7.title": dict(
-    "7. If a worktree folder disappears",
-    "7. Se a pasta do worktree desaparecer",
-    "7. Si la carpeta del worktree desaparece",
+    "7. Session too big? Compact & continue",
+    "7. Sessão grande demais? Compactar e continuar",
+    "7. ¿Sesión demasiado grande? Compactar y continuar",
   ),
   "onboarding.step7.body": dict(
+    "Running /compact inside Claude doesn't shrink a session's .jsonl file — it's append-only, " +
+      "so the size meter just keeps climbing regardless. Once a card turns amber/red, click the " +
+      'scissors icon (or "Compact & continue" if it\'s offered when you try to resume) to draft a ' +
+      "summary of the session — review or edit it — then start a brand-new, lighter session in " +
+      "the same folder, seeded with that summary and linked back to the original (shown as a " +
+      "small badge on both cards).",
+    "Rodar /compact dentro do Claude não diminui o arquivo .jsonl da sessão — ele só recebe " +
+      "novas linhas, então o medidor de tamanho continua subindo do mesmo jeito. Quando um card " +
+      "ficar âmbar/vermelho, clique no ícone de tesoura (ou em \"Compactar e continuar\", se for " +
+      "oferecido ao tentar retomar) pra gerar um rascunho de resumo da sessão — revise ou edite — " +
+      "e então uma sessão nova e mais leve é iniciada na mesma pasta, alimentada com esse resumo " +
+      "e linkada à original (aparece como uma etiqueta pequena nos dois cards).",
+    "Ejecutar /compact dentro de Claude no reduce el archivo .jsonl de la sesión — solo recibe " +
+      "líneas nuevas, así que el medidor de tamaño sigue subiendo igual. Cuando una tarjeta se " +
+      "ponga ámbar/roja, haz clic en el ícono de tijeras (o en \"Compactar y continuar\", si se " +
+      "ofrece al intentar reanudar) para generar un borrador de resumen de la sesión — revísalo o " +
+      "edítalo — y luego se inicia una sesión nueva y más ligera en la misma carpeta, alimentada " +
+      "con ese resumen y enlazada a la original (aparece como una etiqueta pequeña en ambas " +
+      "tarjetas).",
+  ),
+
+  "onboarding.step8.title": dict(
+    "8. If a worktree folder disappears",
+    "8. Se a pasta do worktree desaparecer",
+    "8. Si la carpeta del worktree desaparece",
+  ),
+  "onboarding.step8.body": dict(
     'After a checkout, that session\'s card shows "Original folder missing" — expected, since ' +
       "the worktree was removed on purpose. If the project's root folder still exists, the card " +
       "offers to open it in VS Code, or to continue working there: resuming an existing session " +
@@ -215,6 +242,16 @@ export const translations = {
   ),
   "confirmDialog.confirm": dict("Confirm", "Confirmar", "Confirmar"),
   "confirmDialog.cancel": dict("Cancel", "Cancelar", "Cancelar"),
+
+  "modal.closeAriaLabel": dict("Close", "Fechar", "Cerrar"),
+  "modal.confirmDefault": dict("Confirm", "Confirmar", "Confirmar"),
+  "modal.cancelDefault": dict("Cancel", "Cancelar", "Cancelar"),
+
+  "toast.closeAriaLabel": dict(
+    "Close notification",
+    "Fechar notificação",
+    "Cerrar notificación",
+  ),
 
   "nicknameModal.title": dict("Local nickname", "Apelido local", "Apodo local"),
   "nicknameModal.save": dict("Save", "Salvar", "Guardar"),
@@ -822,6 +859,7 @@ export const translations = {
     "Link da tarefa (Jira)",
     "Enlace de la tarea (Jira)",
   ),
+  "newTaskModal.taskPrefix": dict("Task", "Tarefa", "Tarea"),
   "newTaskModal.projectLabel": dict("Project (folder)", "Projeto (pasta)", "Proyecto (carpeta)"),
   "newTaskModal.loadingProjects": dict(
     "Loading projects…",
@@ -1157,6 +1195,11 @@ export const translations = {
     "Não foi possível atualizar o aplicativo.",
     "No se pudo actualizar la aplicación.",
   ),
+  "useUpdate.timeoutError": dict(
+    "Timed out waiting for the update to finish.",
+    "Tempo esgotado esperando a atualização terminar.",
+    "Se agotó el tiempo esperando que la actualización terminara.",
+  ),
   "useUsageLimits.fetchError": dict(
     "Could not fetch usage limits.",
     "Não foi possível buscar os limites de uso.",
@@ -1222,9 +1265,9 @@ export const translations = {
     "Límites de uso de Claude",
   ),
   "usageLimitsBadge.noLimits": dict(
-    "No limits reported.",
-    "Nenhum limite reportado.",
-    "No se reportaron límites.",
+    "No usage recorded yet — use Claude a bit, then click to refresh.",
+    "Nenhum uso registrado ainda — use o Claude um pouco e depois clique para atualizar.",
+    "Todavía no hay uso registrado — usa Claude un poco y luego haz clic para actualizar.",
   ),
   "usageLimitsBadge.extraUsage": dict(
     "Extra usage: {usedCredits} / {monthlyLimit} {currency}",

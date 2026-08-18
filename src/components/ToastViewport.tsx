@@ -1,4 +1,5 @@
 import { CheckCircle2, X, XCircle } from "lucide-react";
+import { useLanguage } from "../hooks/useLanguage";
 import { Button } from "./Button";
 import type { ToastItem } from "../hooks/useToast";
 
@@ -8,6 +9,7 @@ type ToastViewportProps = {
 };
 
 export function ToastViewport({ toasts, onDismiss }: ToastViewportProps) {
+  const { t } = useLanguage();
   if (toasts.length === 0) return null;
 
   return (
@@ -33,7 +35,7 @@ export function ToastViewport({ toasts, onDismiss }: ToastViewportProps) {
             size="icon"
             onClick={() => onDismiss(toast.id)}
             className="text-current/60 hover:bg-black/5 dark:hover:bg-white/10"
-            aria-label="Close notification"
+            aria-label={t("toast.closeAriaLabel")}
           >
             <X className="h-4 w-4" />
           </Button>
