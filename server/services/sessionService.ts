@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { accessSync, constants } from "node:fs";
 import { access, mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -27,6 +28,12 @@ import {
 } from "../utils/claudeProjects.js";
 import { summarizeUsage } from "../utils/pricing.js";
 import { getNicknames, setNickname } from "../utils/nicknames.js";
+import {
+  findContinuedBy,
+  getContinuations,
+  linkContinuation,
+} from "../utils/sessionContinuations.js";
+import { runClaudeHeadlessSummary } from "../utils/claudeCli.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import {
   applyFileDiff,
@@ -88,7 +95,12 @@ function repoRootFromMissingWorktreePath(cwd: string): string | null {
   return index === -1 ? null : cwd.slice(0, index);
 }
 
-async function buildSession(filePath: string): Promise<Omit<Session, "isActive" | "nickname"> | null> {
+type BuiltSession = Omit<
+  Session,
+  "isActive" | "nickname" | "continuesFromSessionId" | "continuedBySessionId"
+>;
+
+async function buildSession(filePath: string): Promise<BuiltSession | null> {
   try {
     const [head, fileStat, prompts, rawUsage, subagentFiles, activeTimeMs, recap] =
       await Promise.all([
@@ -239,15 +251,14 @@ function waitForProcessExit(pid: number, timeoutMs: number): Promise<void> {
 
 export async function listSessions(): Promise<Session[]> {
   const files = await findJsonlFiles(getClaudeProjectsDir());
-  const [built, activeIds, nicknames] = await Promise.all([
+  const [built, activeIds, nicknames, continuations] = await Promise.all([
     Promise.all(files.map(buildSession)),
     getActiveResumeSessionIds(),
     getNicknames(),
+    getContinuations(),
   ]);
 
-  const sessions = built.filter(
-    (session): session is Omit<Session, "isActive" | "nickname"> => session !== null,
-  );
+  const sessions = built.filter((session): session is BuiltSession => session !== null);
 
   // Many sessions share the same workingDirectory — run `git rev-parse` once per unique
   // directory rather than once per session (buildSession itself only sets a false placeholder).
@@ -282,6 +293,8 @@ export async function listSessions(): Promise<Session[]> {
         nickname: nicknames[session.id] ?? null,
         isActive: activeIds.has(session.id),
         isWorktree,
+        continuesFromSessionId: continuations[session.id]?.continuesFrom ?? null,
+        continuedBySessionId: findContinuedBy(continuations, session.id),
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -335,6 +348,134 @@ export async function getSessionPrompts(id: string): Promise<string[]> {
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
   return readFullSessionPrompts(filePath);
+}
+
+export type CompactionDraft = {
+  oldSessionId: string;
+  oldTitle: string;
+  gitBranch: string | null;
+  /** Untruncated first user message — where a "New task"-launched session's Jira link and
+   *  instructions live (see taskService.ts's `launchTaskTerminal`). Included verbatim in the
+   *  pt2 prompt below whenever it isn't already covered by the generated summary. */
+  firstPrompt: string | null;
+  summary: string;
+};
+
+const COMPACT_SUMMARY_INSTRUCTION =
+  "Summarize this session for continuation in a brand-new, lighter session: what was done, key " +
+  "decisions made, the current state of the code, and what's left to do. Be specific — name " +
+  "files, branches, and decisions. Reply with only the summary, no extra commentary.";
+
+/**
+ * Generates the draft shown in the "Compact & continue" modal before anything is launched. The
+ * summary itself comes from a real, non-interactive turn against the session's own transcript
+ * (`runClaudeHeadlessSummary`) — grounded in the whole conversation, not just its most recent
+ * away-summary — falling back down the same chain `resolveTitle` uses (recap, then title, then
+ * the first message) if that call fails, times out, or the session has no known `cwd` to run it
+ * in. Never throws over the summary step itself; only a missing/invalid session id is fatal.
+ */
+export async function getCompactionDraft(id: string): Promise<CompactionDraft> {
+  if (!isSafeSessionId(id)) {
+    throw new Error(`Invalid session id "${id}"`);
+  }
+  const filePath = await findSessionFilePath(id);
+  if (!filePath) throw new SessionNotFoundError(id);
+
+  const [head, recap, prompts] = await Promise.all([
+    readSessionHead(filePath),
+    readSessionRecap(filePath),
+    readFullSessionPrompts(filePath),
+  ]);
+  const oldTitle = resolveTitle(head, recap);
+  const firstPrompt = prompts[0] ?? null;
+
+  const headlessSummary = head.cwd
+    ? await runClaudeHeadlessSummary(id, head.cwd, COMPACT_SUMMARY_INSTRUCTION)
+    : null;
+  const summary = headlessSummary ?? recap ?? head.aiTitle ?? head.summaryTitle ?? head.firstUserText ?? "";
+
+  return { oldSessionId: id, oldTitle, gitBranch: head.gitBranch, firstPrompt, summary };
+}
+
+/** Composes the pt2 session's opening message — old session's title/id/branch for traceability,
+ *  the original task text (if any, and if the summary doesn't already subsume it), then the
+ *  (possibly user-edited) summary, so the new conversation starts with as close to the old one's
+ *  full context as a single message can carry. */
+function composeContinuationPrompt(draft: CompactionDraft, summary: string): string {
+  const branchSuffix = draft.gitBranch ? `, branch: ${draft.gitBranch}` : "";
+  const parts = [
+    `Continuing the previous session "${draft.oldTitle}" (id: ${draft.oldSessionId}${branchSuffix}).`,
+  ];
+
+  const trimmedFirstPrompt = draft.firstPrompt?.trim();
+  const trimmedSummary = summary.trim();
+  if (trimmedFirstPrompt && trimmedFirstPrompt !== trimmedSummary) {
+    parts.push(`Original task:\n${trimmedFirstPrompt}`);
+  }
+  if (trimmedSummary) {
+    parts.push(`Summary of work already done:\n${trimmedSummary}`);
+  }
+  parts.push("Continue from here.");
+  return parts.join("\n\n");
+}
+
+/**
+ * Launches a brand-new (never `--resume`d) session in the old session's own working directory,
+ * seeded with `composeContinuationPrompt`'s summary, and links it back to `id` in
+ * `session-continuations.json` — *before* opening the terminal, since `--session-id` lets this
+ * app choose the new session's id up front instead of having to discover it after the fact (see
+ * sessionContinuations.ts's own doc comment for why that matters). `summary` is the modal's
+ * (possibly user-edited) draft text, not re-generated here.
+ */
+export async function startCompactedContinuation(
+  id: string,
+  summary: string,
+): Promise<{ newSessionId: string }> {
+  if (!isSafeSessionId(id)) {
+    throw new Error(`Invalid session id "${id}"`);
+  }
+
+  const activeIds = await getActiveResumeSessionIds();
+  if (activeIds.has(id)) {
+    throw new SessionActiveError(`Session "${id}" is already open in a terminal.`);
+  }
+
+  const filePath = await findSessionFilePath(id);
+  if (!filePath) throw new SessionNotFoundError(id);
+
+  const [head, recap, prompts] = await Promise.all([
+    readSessionHead(filePath),
+    readSessionRecap(filePath),
+    readFullSessionPrompts(filePath),
+  ]);
+  if (!head.cwd) {
+    throw new Error("This session has no known working directory to continue in.");
+  }
+  if (!(await directoryExists(head.cwd))) {
+    throw new Error(
+      `This session's original directory no longer exists ("${head.cwd}"). Recreate the folder ` +
+        `(or a symlink) at the old path before continuing there.`,
+    );
+  }
+
+  const draft: CompactionDraft = {
+    oldSessionId: id,
+    oldTitle: resolveTitle(head, recap),
+    gitBranch: head.gitBranch,
+    firstPrompt: prompts[0] ?? null,
+    summary,
+  };
+  const prompt = composeContinuationPrompt(draft, summary);
+  const newSessionId = randomUUID();
+  const displayName = cleanTitle(`${draft.oldTitle} (pt2)`);
+
+  await linkContinuation(newSessionId, id);
+  await launchInTerminal(
+    `claude --session-id ${newSessionId} --name ${posixShellQuote(displayName)} ${posixShellQuote(prompt)}`,
+    head.cwd,
+  );
+
+  return { newSessionId };
 }
 
 /** `agent-<id>.jsonl` and its sibling `agent-<id>.meta.json` share a directory and id. */

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Tooltip } from "./Tooltip";
 
-export type ToolbarIconButtonColor = "neutral" | "amber" | "green" | "blue" | "red";
+export type ToolbarIconButtonColor = "neutral" | "amber" | "green" | "blue" | "red" | "violet";
 
 const COLOR_CLASSES: Record<ToolbarIconButtonColor, string> = {
   neutral:
@@ -12,6 +12,8 @@ const COLOR_CLASSES: Record<ToolbarIconButtonColor, string> = {
     "text-green-600 hover:bg-green-50 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-950/40",
   blue: "text-blue-500 hover:bg-blue-50 hover:text-blue-600 dark:text-blue-400 dark:hover:bg-blue-950/40",
   red: "text-red-500 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-950/40",
+  violet:
+    "text-violet-500 hover:bg-violet-50 hover:text-violet-600 dark:text-violet-400 dark:hover:bg-violet-950/40",
 };
 
 type ToolbarIconButtonProps = {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as sessionsApi from "../services/sessionsApi";
 import type { Session } from "../types/session";
+import { sessionSizeStatus } from "../utils/sessionSize";
 import { useLanguage } from "./useLanguage";
 import { useUrlParam } from "./useUrlState";
 import { useToast } from "./useToast";
@@ -344,6 +345,13 @@ export function useSessions() {
 
   const clearResumeConflict = useCallback(() => setResumeConflict(null), []);
 
+  // Shown instead of resuming directly once a fresh size check (see resumeSession below) finds
+  // the session's `.jsonl` past the "healthy" threshold — offers "continue anyway" (re-calls
+  // resumeSession with the gate skipped) or "compact & continue" (SessionsPage opens
+  // CompactContinueModal for it) instead of just resuming into a large session unprompted.
+  const [sizeGateSession, setSizeGateSession] = useState<Session | null>(null);
+  const clearSizeGate = useCallback(() => setSizeGateSession(null), []);
+
   /**
    * Refetches the session list right before resuming rather than trusting whatever's already
    * in `sessions` state — that list only reloads on mount or an explicit refresh (see
@@ -354,9 +362,12 @@ export function useSessions() {
    * caller as a modal) instead of either silently double-opening it or refusing outright. The
    * Resume button itself is never disabled for this (see SessionCard's continueDisabledReason) —
    * this check is what makes that safe.
+   *
+   * `skipSizeGate` is set when this is a re-call from the size-gate modal's own "continue anyway"
+   * button — without it, a large session would just show the same gate again instead of resuming.
    */
   const resumeSession = useCallback(
-    async (id: string) => {
+    async (id: string, opts?: { skipSizeGate?: boolean }) => {
       setPending(id, "continue");
       try {
         const fresh = await sessionsApi.fetchSessions();
@@ -371,6 +382,11 @@ export function useSessions() {
 
         if (target && sibling) {
           setResumeConflict({ target, sibling });
+          return;
+        }
+
+        if (target && !opts?.skipSizeGate && sessionSizeStatus(target.sizeBytes) !== "healthy") {
+          setSizeGateSession(target);
           return;
         }
 
@@ -501,6 +517,9 @@ export function useSessions() {
 
   return {
     sessions: paginatedSessions,
+    // Full, unfiltered/unpaginated list — used to resolve a "Compact & continue" link's *other*
+    // side (title, etc.) even when that other session isn't on the current page/filter view.
+    allSessions: sessions,
     totalCount: sessions.length,
     filteredCount: filteredSessions.length,
     page: currentPage,
@@ -537,5 +556,7 @@ export function useSessions() {
     resumeConflict,
     clearResumeConflict,
     stopAndCheckoutResume,
+    sizeGateSession,
+    clearSizeGate,
   };
 }

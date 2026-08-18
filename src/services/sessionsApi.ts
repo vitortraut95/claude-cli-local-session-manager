@@ -25,6 +25,38 @@ export async function continueSession(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/continue`));
 }
 
+export type CompactionDraft = {
+  oldSessionId: string;
+  oldTitle: string;
+  gitBranch: string | null;
+  firstPrompt: string | null;
+  summary: string;
+};
+
+/** Generates (server-side, via a headless `claude --resume ... --print`) the draft summary shown
+ *  in the "Compact & continue" modal before anything is launched — see CompactContinueModal. */
+export async function fetchCompactionDraft(id: string): Promise<CompactionDraft> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ draft: CompactionDraft }>(`/${encodeURIComponent(id)}/compact-summary`),
+  );
+  return data.draft;
+}
+
+/** Launches the pt2 session seeded with `summary` (the modal's, possibly user-edited, draft
+ *  text) and links it back to `id` — see server-side startCompactedContinuation. */
+export async function startCompactContinuation(
+  id: string,
+  summary: string,
+): Promise<{ newSessionId: string }> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ success: true; newSessionId: string }>(
+      `/${encodeURIComponent(id)}/compact-continue`,
+      { summary },
+    ),
+  );
+  return { newSessionId: data.newSessionId };
+}
+
 export async function openInVSCode(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/vscode`));
 }

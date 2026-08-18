@@ -1649,6 +1649,163 @@ export const translations = {
     "Detener y continuar",
   ),
   "resumeConflictModal.cancel": dict("Cancel", "Cancelar", "Cancelar"),
+
+  "sessionCard.compactContinue.tooltip": dict(
+    "Compact & continue — summarize this session and start a lighter pt2, linked back to it",
+    "Compactar e continuar — resume esta sessão e inicia uma pt2 mais leve, linkada a ela",
+    "Compactar y continuar — resume esta sesión e inicia una pt2 más ligera, enlazada a ella",
+  ),
+  "sessionCard.compactContinue.disabledTooltip": dict(
+    "Can't compact an active session — stop its terminal first",
+    "Não é possível compactar uma sessão ativa — pare o terminal dela primeiro",
+    "No se puede compactar una sesión activa — detén su terminal primero",
+  ),
+  "sessionCard.compactContinue.ariaLabel": dict(
+    "Compact & continue",
+    "Compactar e continuar",
+    "Compactar y continuar",
+  ),
+  "sessionCard.continuesFrom.label": dict(
+    "Compacted from: {title}",
+    "Compactada a partir de: {title}",
+    "Compactada a partir de: {title}",
+  ),
+  "sessionCard.continuesFrom.ariaLabel": dict(
+    "Jump to the session this was compacted from: {title}",
+    "Ir para a sessão que originou esta compactação: {title}",
+    "Ir a la sesión que originó esta compactación: {title}",
+  ),
+  "sessionCard.continuedBy.label": dict(
+    "Continued in: {title}",
+    "Continuada em: {title}",
+    "Continuada en: {title}",
+  ),
+  "sessionCard.continuedBy.ariaLabel": dict(
+    "Jump to the pt2 session this was compacted into: {title}",
+    "Ir para a sessão pt2 gerada a partir desta: {title}",
+    "Ir a la sesión pt2 generada a partir de esta: {title}",
+  ),
+
+  "compactContinueModal.title": dict(
+    "Compact & continue",
+    "Compactar e continuar",
+    "Compactar y continuar",
+  ),
+  "compactContinueModal.step.summary": dict(
+    "Generate a summary from this session",
+    "Gerar um resumo a partir desta sessão",
+    "Generar un resumen a partir de esta sesión",
+  ),
+  "compactContinueModal.step.launch": dict(
+    "Start the pt2 session",
+    "Iniciar a sessão pt2",
+    "Iniciar la sesión pt2",
+  ),
+  "compactContinueModal.cancel": dict("Cancel", "Cancelar", "Cancelar"),
+  "compactContinueModal.generateButton": dict(
+    "Generate summary",
+    "Gerar resumo",
+    "Generar resumen",
+  ),
+  "compactContinueModal.launchButton": dict(
+    "Start pt2 session",
+    "Iniciar sessão pt2",
+    "Iniciar sesión pt2",
+  ),
+  "compactContinueModal.whatWillHappen": dict("What this does", "O que isso faz", "Qué hace esto"),
+  "compactContinueModal.explain.summary": dict(
+    "Asks Claude (non-interactively, in a read-only mode that can't edit anything) to summarize this session: what was done, decisions made, and what's left.",
+    "Pede ao Claude (de forma não interativa, em um modo somente leitura que não pode editar nada) para resumir esta sessão: o que foi feito, decisões tomadas e o que falta.",
+    "Le pide a Claude (de forma no interactiva, en un modo de solo lectura que no puede editar nada) que resuma esta sesión: qué se hizo, decisiones tomadas y qué falta.",
+  ),
+  "compactContinueModal.explain.review": dict(
+    "Shows you that draft so you can review or edit it before anything is created.",
+    "Mostra esse rascunho para você revisar ou editar antes de qualquer coisa ser criada.",
+    "Muestra ese borrador para que lo revises o edites antes de crear nada.",
+  ),
+  "compactContinueModal.explain.launch": dict(
+    "Starts a brand-new, lighter session in the same folder, seeded with that summary and linked back to this one.",
+    "Inicia uma sessão nova e mais leve na mesma pasta, iniciada com esse resumo e linkada a esta sessão.",
+    "Inicia una sesión nueva y más ligera en la misma carpeta, iniciada con ese resumen y enlazada a esta sesión.",
+  ),
+  "compactContinueModal.continuingFrom": dict(
+    "Continuing from:",
+    "Continuando a partir de:",
+    "Continuando a partir de:",
+  ),
+  "compactContinueModal.summaryLabel": dict(
+    "Summary (edit before starting pt2)",
+    "Resumo (edite antes de iniciar a pt2)",
+    "Resumen (edita antes de iniciar la pt2)",
+  ),
+  "compactContinueModal.summaryHint": dict(
+    "This becomes the first message of the new session — add anything the summary missed.",
+    "Isso se torna a primeira mensagem da nova sessão — adicione qualquer coisa que o resumo tenha deixado de fora.",
+    "Esto se convierte en el primer mensaje de la nueva sesión — agrega cualquier cosa que el resumen no haya cubierto.",
+  ),
+  "compactContinueModal.progressLabel": dict("Progress", "Andamento", "Progreso"),
+  "compactContinueModal.unexpectedFailure": dict(
+    "Unexpected failure",
+    "Falha inesperada",
+    "Fallo inesperado",
+  ),
+  "compactContinueModal.generateFailed": dict(
+    "Couldn't generate a summary: {message}",
+    "Não foi possível gerar o resumo: {message}",
+    "No se pudo generar el resumen: {message}",
+  ),
+  "compactContinueModal.launchFailed": dict(
+    "Couldn't start the pt2 session: {message}",
+    "Não foi possível iniciar a sessão pt2: {message}",
+    "No se pudo iniciar la sesión pt2: {message}",
+  ),
+  "compactContinueModal.launched": dict(
+    "pt2 session started — check your taskbar for the new terminal",
+    "Sessão pt2 iniciada — confira a barra de tarefas pelo novo terminal",
+    "Sesión pt2 iniciada — revisa la barra de tareas por la nueva terminal",
+  ),
+
+  "sizeGateModal.title": dict(
+    "This session is large",
+    "Esta sessão está grande",
+    "Esta sesión es grande",
+  ),
+  "sizeGateModal.body": dict(
+    "This session's file is {size}. You can continue in it as-is, or start a lighter follow-up first.",
+    "O arquivo desta sessão está com {size}. Você pode continuar nela do jeito que está, ou iniciar uma continuação mais leve primeiro.",
+    "El archivo de esta sesión pesa {size}. Puedes continuar en ella tal como está, o iniciar antes una continuación más ligera.",
+  ),
+  "sizeGateModal.compact.title": dict(
+    "Compact & continue",
+    "Compactar e continuar",
+    "Compactar y continuar",
+  ),
+  "sizeGateModal.compact.body": dict(
+    "Summarizes this session and opens a new, lighter pt2 in the same folder, linked back to this one.",
+    "Resume esta sessão e abre uma pt2 nova e mais leve na mesma pasta, linkada a esta.",
+    "Resume esta sesión y abre una pt2 nueva y más ligera en la misma carpeta, enlazada a esta.",
+  ),
+  "sizeGateModal.compact.button": dict(
+    "Compact & continue instead",
+    "Compactar e continuar em vez disso",
+    "Compactar y continuar en su lugar",
+  ),
+  "sizeGateModal.continueAnyway.title": dict(
+    "Continue in this session anyway",
+    "Continuar nesta sessão mesmo assim",
+    "Continuar en esta sesión de todos modos",
+  ),
+  "sizeGateModal.continueAnyway.body": dict(
+    "Opens a terminal resuming this exact session, large file and all.",
+    "Abre um terminal retomando esta sessão exata, com o arquivo grande e tudo.",
+    "Abre una terminal reanudando esta sesión exacta, con el archivo grande y todo.",
+  ),
+  "sizeGateModal.continueAnyway.button": dict(
+    "Continue anyway",
+    "Continuar mesmo assim",
+    "Continuar de todos modos",
+  ),
+  "sizeGateModal.cancel": dict("Cancel", "Cancelar", "Cancelar"),
 } satisfies Record<string, Dict>;
 
 export type TranslationKey = keyof typeof translations;

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../components/Button";
+import { CompactContinueModal } from "../components/CompactContinueModal";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DateRangeFilter } from "../components/DateRangeFilter";
 import { EmptyState } from "../components/EmptyState";
@@ -12,6 +13,7 @@ import { ProjectFilter } from "../components/ProjectFilter";
 import { ResumeConflictModal } from "../components/ResumeConflictModal";
 import { SearchBar } from "../components/SearchBar";
 import { SessionCard } from "../components/SessionCard";
+import { SessionSizeGateModal } from "../components/SessionSizeGateModal";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSessions } from "../hooks/useSessions";
 import type { Session } from "../types/session";
@@ -20,6 +22,7 @@ import { RefreshCw, Trash2, X } from "lucide-react";
 export function SessionsPage() {
   const {
     sessions,
+    allSessions,
     filteredCount,
     loading,
     error,
@@ -55,9 +58,15 @@ export function SessionsPage() {
     resumeConflict,
     clearResumeConflict,
     stopAndCheckoutResume,
+    sizeGateSession,
+    clearSizeGate,
   } = useSessions();
   const { t } = useLanguage();
   const [sessionPendingDeletion, setSessionPendingDeletion] = useState<Session | null>(null);
+  // Set from the size-gate modal's "compact instead" option — a separate instance from the one
+  // SessionCard opens for its own always-visible button, since this one needs to target whichever
+  // session just triggered the gate rather than "whichever card's button was clicked".
+  const [compactGateSession, setCompactGateSession] = useState<Session | null>(null);
   // Only meaningful while sessionPendingDeletion.isWorktree is true — reset to the recommended
   // default each time a new deletion is requested (handleDeleteRequest), same as NicknameModal
   // re-initializing on open, so a previous session's unchecked choice can't leak into the next one.
@@ -67,6 +76,28 @@ export function SessionsPage() {
   // than deleting a worktree folder, so it should be an explicit opt-in each time.
   const [cleanupBranchOnDelete, setCleanupBranchOnDelete] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+  // Resolves a "Compact & continue" link's *other* side (see Session.continuesFromSessionId/
+  // continuedBySessionId) regardless of the current page/filter/search — the linked session might
+  // not be in `sessions` (the current page) at all.
+  const sessionsById = useMemo(
+    () => new Map(allSessions.map((session) => [session.id, session])),
+    [allSessions],
+  );
+
+  // Set while hovering a card's "continues from"/"continued by" badge — the *other* card (if
+  // visible on the current page) renders a highlight ring, see SessionCard's `isHighlighted`.
+  const [highlightedSessionId, setHighlightedSessionId] = useState<string | null>(null);
+
+  // Backs a continuation badge's click: jumps straight to the other session by searching for its
+  // id (unique, so this always isolates exactly one card) and clearing whatever project/date
+  // filters might otherwise be hiding it — the two sessions aren't guaranteed to share a project
+  // filter value if one was moved/renamed, though in practice they almost always do.
+  const handleJumpToSession = (id: string) => {
+    setSearchQuery(id);
+    setProjectFilter("");
+    setUpdatedRange("", "");
+  };
 
   const handleDeleteRequest = (session: Session) => {
     setSessionPendingDeletion(session);
@@ -167,6 +198,20 @@ export function SessionsPage() {
               onStartNewSessionAtMissingWorktreeRoot={(s) => startNewSessionAtMissingWorktreeRoot(s)}
               onDeleteWorktree={(s) => deleteWorktree(s.id)}
               onWorktreeSyncComplete={() => refresh()}
+              onCompactContinueLaunched={() => refreshSoon()}
+              linkedFromSession={
+                session.continuesFromSessionId
+                  ? sessionsById.get(session.continuesFromSessionId) ?? null
+                  : null
+              }
+              linkedBySession={
+                session.continuedBySessionId
+                  ? sessionsById.get(session.continuedBySessionId) ?? null
+                  : null
+              }
+              onJumpToSession={handleJumpToSession}
+              isHighlighted={highlightedSessionId === session.id}
+              onHoverLinkedSession={setHighlightedSessionId}
             />
           ))}
         </div>
@@ -264,6 +309,30 @@ export function SessionsPage() {
             stopAndCheckoutResume(resumeConflict.target.id, resumeConflict.sibling.id, branch)
           }
           onCancel={clearResumeConflict}
+        />
+      )}
+
+      {sizeGateSession && (
+        <SessionSizeGateModal
+          session={sizeGateSession}
+          isContinuing={pendingActions[sizeGateSession.id] === "continue"}
+          onContinueAnyway={() => {
+            void resumeSession(sizeGateSession.id, { skipSizeGate: true });
+            clearSizeGate();
+          }}
+          onCompactInstead={() => {
+            setCompactGateSession(sizeGateSession);
+            clearSizeGate();
+          }}
+          onCancel={clearSizeGate}
+        />
+      )}
+
+      {compactGateSession && (
+        <CompactContinueModal
+          session={compactGateSession}
+          onClose={() => setCompactGateSession(null)}
+          onLaunched={() => refreshSoon()}
         />
       )}
     </div>

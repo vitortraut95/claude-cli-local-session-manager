@@ -27,8 +27,8 @@ export function sessionSizeStatus(bytes: number): SessionSizeStatus {
 
 const STATUS_MESSAGES: Record<SessionSizeStatus, string> = {
   healthy: "Healthy size for resuming.",
-  caution: "Getting large — consider running /compact soon.",
-  critical: "Very large — run /compact or start a fresh session for better results.",
+  caution: "Getting large — try \"Compact & continue\" to start a lighter follow-up soon.",
+  critical: "Very large — use \"Compact & continue\" to start a fresh, lighter session with a summary of this one.",
 };
 
 export function sessionSizeMessage(bytes: number): string {
