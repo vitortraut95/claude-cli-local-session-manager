@@ -20,6 +20,7 @@ import type { RootStatus, Session, WorktreeToRootPreview } from "../types/sessio
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { Tooltip } from "./Tooltip";
+import { resolveApiErrorMessage } from "../utils/apiClient";
 
 type WorktreeToRootModalProps = {
   session: Session;
@@ -219,7 +220,7 @@ export function WorktreeToRootModal({
       .then(() => showToast(t("worktreeToRootModal.toast.openingVSCode"), "success"))
       .catch((err) => {
         showToast(
-          err instanceof Error ? err.message : t("worktreeToRootModal.toast.openVSCodeError"),
+          resolveApiErrorMessage(err, t, "worktreeToRootModal.toast.openVSCodeError"),
           "error",
         );
       })
@@ -234,7 +235,7 @@ export function WorktreeToRootModal({
       .then(setPreview)
       .catch((err) => {
         setPreviewError(
-          err instanceof Error ? err.message : t("worktreeToRootModal.preview.errorFallback"),
+          resolveApiErrorMessage(err, t, "worktreeToRootModal.preview.errorFallback"),
         );
       })
       .finally(() => setLoadingPreview(false));
@@ -323,7 +324,7 @@ export function WorktreeToRootModal({
         setStage("done");
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("worktreeToRootModal.toast.unexpectedFailure");
+      const message = resolveApiErrorMessage(err, t, "worktreeToRootModal.toast.unexpectedFailure");
       setSteps((current) =>
         current.map((step) =>
           step.status === "doing" ? { ...step, status: "error", error: message } : step,

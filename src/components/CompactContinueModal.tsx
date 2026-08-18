@@ -7,6 +7,7 @@ import * as sessionsApi from "../services/sessionsApi";
 import type { CompactionDraft } from "../services/sessionsApi";
 import type { Session } from "../types/session";
 import { Modal } from "./Modal";
+import { resolveApiErrorMessage } from "../utils/apiClient";
 
 type CompactContinueModalProps = {
   session: Session;
@@ -67,7 +68,7 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
       setSummaryText(fetched.summary);
       updateStep("summary", "done");
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("compactContinueModal.unexpectedFailure");
+      const message = resolveApiErrorMessage(err, t, "compactContinueModal.unexpectedFailure");
       updateStep("summary", "error", message);
       showToast(t("compactContinueModal.generateFailed", { message }), "error");
     } finally {
@@ -86,7 +87,7 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
       onLaunched();
       onClose();
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("compactContinueModal.unexpectedFailure");
+      const message = resolveApiErrorMessage(err, t, "compactContinueModal.unexpectedFailure");
       updateStep("launch", "error", message);
       showToast(t("compactContinueModal.launchFailed", { message }), "error");
     } finally {

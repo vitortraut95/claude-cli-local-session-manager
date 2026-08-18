@@ -18,6 +18,7 @@ import { Button } from "./Button";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
 import { Select } from "./Select";
+import { resolveApiErrorMessage } from "../utils/apiClient";
 
 type NewTaskModalProps = {
   open: boolean;
@@ -224,7 +225,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           if (!baseBranchTouched) setBaseBranch(info.defaultBaseBranch);
         })
         .catch((err) => {
-          setRepoError(err instanceof Error ? err.message : t("newTaskModal.repoInfoError"));
+          setRepoError(resolveApiErrorMessage(err, t, "newTaskModal.repoInfoError"));
         })
         .finally(() => setLoadingRepoInfo(false));
     }, 400);
@@ -258,7 +259,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       setDefaultPromptLoaded(promptText);
       showToast(t("newTaskModal.promptSaved"), "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t("newTaskModal.promptSaveError"), "error");
+      showToast(resolveApiErrorMessage(err, t, "newTaskModal.promptSaveError"), "error");
     } finally {
       setSavingDefaultPrompt(false);
     }
@@ -277,7 +278,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       showToast(t("newTaskModal.worktreePrefSaved"), "success");
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : t("newTaskModal.worktreePrefSaveError"),
+        resolveApiErrorMessage(err, t, "newTaskModal.worktreePrefSaveError"),
         "error",
       );
     } finally {
@@ -384,7 +385,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       onClose();
       onTaskCreated?.();
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("newTaskModal.unexpectedFailure");
+      const message = resolveApiErrorMessage(err, t, "newTaskModal.unexpectedFailure");
       setSteps((current) =>
         current.map((step) =>
           step.status === "doing" ? { ...step, status: "error", error: message } : step,

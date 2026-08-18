@@ -346,28 +346,45 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
 
 ## to-do's
 
-- **Backend error messages bypass the pt/en/es translation system entirely.** Confirmed while
-  auditing i18n coverage: `withServerErrorMessage` (`src/utils/apiClient.ts`) re-throws the
-  server's `{error: "<message>"}` body verbatim as `Error.message`, and every caller does
-  `showToast(err instanceof Error ? err.message : t(...))` — so any time a request actually fails
-  server-side, the toast is raw English no matter what language is selected, while every
-  *client-side* fallback message right next to it is properly translated. Scope: ~73
-  `throw new Error(...)` call sites across `server/services/{taskService,usageService,
-  cleanupService,sessionService,updateService}.ts`, `server/utils/{repoRoot,git}.ts`,
-  `server/routes/{tasks,cleanup}.ts`, plus the `SessionNotFoundError`/`SessionActiveError` message
-  strings in `sessionService.ts` — too much to do in one pass, hence documenting it here instead of
-  fixing it inline.
-  - **Likely approach**: have the server attach a stable machine-readable code alongside the
-    English message (e.g. `{error: "...", code: "SESSION_ACTIVE"}`), and teach
-    `withServerErrorMessage` to look the code up in `translations.ts` client-side, falling back to
-    the raw English message for any code that doesn't have a translation yet (or wasn't sent by an
-    older/unversioned route) — no changes needed to how routes report unexpected 500s. Translating
-    server-side instead (client sends its language, server picks the string) would need the same
-    `dict(en, pt, es)` data duplicated or shared into `server/`, and there's no shared package
-    between the two workspaces today (see the `Session` type duplication note above) — the code
-    lookup approach avoids that.
-  - **Do it incrementally, by file** (`sessionService.ts` first — it's the most user-facing one),
-    not all 73 sites at once.
+- **Backend error messages bypass the pt/en/es translation system — in progress, converting one
+  file at a time.** The gap: `withServerErrorMessage` (`src/utils/apiClient.ts`) used to re-throw
+  the server's `{error: "<message>"}` body verbatim as `Error.message`, and every caller did
+  `showToast(err instanceof Error ? err.message : t(...))` — so any time a request actually failed
+  server-side, the toast was raw English no matter what language was selected, while every
+  *client-side* fallback message right next to it was properly translated.
+  - **The mechanism is now built and in use**: `server/utils/httpError.ts`'s `AppError` class
+    carries a stable machine-readable `code` alongside the English `message`; `sendErrorResponse`
+    (same file) includes it in the JSON error body; `resolveApiErrorMessage`
+    (`src/utils/apiClient.ts`) looks the code up in its own `SERVER_ERROR_CODE_KEYS` map and
+    returns a translated string, falling back to the raw English message for any code that isn't
+    in the map yet (or wasn't sent at all, from a not-yet-converted route) — every one of the ~28
+    frontend call sites that used to do `err instanceof Error ? err.message : t(fallbackKey)` now
+    calls `resolveApiErrorMessage(err, t, fallbackKey)` instead, so a backend file's throw sites
+    getting converted is the *only* remaining work per file — no more frontend-side changes needed.
+    Verified end-to-end with `npx tsx` importing `resolveApiErrorMessage` + `translations.ts`
+    directly (a real code translates; an unrecognized code and a plain `Error` both still fall
+    back correctly).
+  - **Converted so far**: `SessionNotFoundError` → `SESSION_NOT_FOUND`, `SessionActiveError` →
+    `SESSION_ACTIVE` (both in `sessionService.ts`, used throughout `sessions.ts`'s routes — these
+    two classes alone cover the large majority of what users actually hit: deleting/resuming/
+    renaming a session that's active elsewhere, or one that no longer exists), the repeated
+    "Invalid session id" throws → `INVALID_SESSION_ID` (`invalidSessionIdError` helper, same
+    file), and the `/sessions/:id/pr-url` route's "no PR link" 404 → `NO_PR_LINK`. `sessions.ts`
+    itself was also refactored: every route's repeated `if (err instanceof X) {...}` chain is now
+    one `sendErrorResponse(res, err, notFoundOrActive)` call.
+  - **Not converted yet** (still raw English `throw new Error(...)`, falls back gracefully — no
+    codes sent, `resolveApiErrorMessage` just shows the English message like before):
+    - `sessionService.ts`'s own ~35 *other*, one-off messages (terminal-launch failures, missing
+      working directories, worktree-specific checks, ...) — each would need its own distinct code
+      (unlike the three shared classes above, these aren't reused across many call sites, so
+      there's less leverage per conversion).
+    - `server/services/taskService.ts`, `usageService.ts`, `cleanupService.ts`, `updateService.ts`
+    - `server/utils/repoRoot.ts`, `git.ts`
+    - `server/routes/tasks.ts`, `cleanup.ts` (their own throws, not the ones re-thrown from
+      `sessionService.ts`)
+  - Pick the next file by how often a user is likely to actually hit its error paths, same
+    reasoning that put `sessionService.ts`'s shared classes first — `taskService.ts` (New Task
+    modal) is probably next, then `usageService.ts`.
 
 - **Future idea: deeper Jenkins integration for `env/*` branches.** "New task" branches created
   with the `env/` prefix (this convention is per-repo, not universal — the concrete case so far

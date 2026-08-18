@@ -243,6 +243,26 @@ export const translations = {
   "confirmDialog.confirm": dict("Confirm", "Confirmar", "Confirmar"),
   "confirmDialog.cancel": dict("Cancel", "Cancelar", "Cancelar"),
 
+  // Translated server error messages — see server/utils/httpError.ts's AppError and
+  // resolveApiErrorMessage in src/utils/apiClient.ts. Deliberately generic (they can't carry the
+  // specific id/path a given failure mentioned in its raw English message, since only the code
+  // crosses into this lookup) — still far better than always-English for the common cases.
+  "apiError.sessionNotFound": dict(
+    "Session not found.",
+    "Sessão não encontrada.",
+    "Sesión no encontrada.",
+  ),
+  "apiError.sessionActive": dict(
+    "This session (or its folder) is already open in another terminal.",
+    "Esta sessão (ou a pasta dela) já está aberta em outro terminal.",
+    "Esta sesión (o su carpeta) ya está abierta en otra terminal.",
+  ),
+  "apiError.invalidSessionId": dict(
+    "Invalid session id.",
+    "Id de sessão inválido.",
+    "Id de sesión inválido.",
+  ),
+
   "modal.closeAriaLabel": dict("Close", "Fechar", "Cerrar"),
   "modal.confirmDefault": dict("Confirm", "Confirmar", "Confirmar"),
   "modal.cancelDefault": dict("Cancel", "Cancelar", "Cancelar"),

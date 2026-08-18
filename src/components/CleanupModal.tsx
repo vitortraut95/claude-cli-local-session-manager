@@ -6,6 +6,7 @@ import * as cleanupApi from "../services/cleanupApi";
 import type { CleanupFinding } from "../services/cleanupApi";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
+import { resolveApiErrorMessage } from "../utils/apiClient";
 
 type CleanupModalProps = {
   open: boolean;
@@ -69,7 +70,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
         .catch((err) => {
           if (!cancelled) {
             setLoadError(
-              err instanceof Error ? err.message : t("cleanupModal.loadError"),
+              resolveApiErrorMessage(err, t, "cleanupModal.loadError"),
             );
           }
         })
@@ -91,7 +92,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
       showToast(t("cleanupModal.resolved"), "success");
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : t("cleanupModal.runError"),
+        resolveApiErrorMessage(err, t, "cleanupModal.runError"),
         "error",
       );
     } finally {

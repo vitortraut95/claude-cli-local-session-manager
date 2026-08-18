@@ -45,6 +45,7 @@ import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
 import { getJenkinsBranchJobUrl } from "../utils/jenkins";
+import { resolveApiErrorMessage } from "../utils/apiClient";
 
 type SessionCardProps = {
   session: Session;
@@ -149,7 +150,7 @@ export function SessionCard({
       const url = await sessionsApi.fetchPrUrl(session.id, session.gitBranch);
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t("sessionCard.openPr.error"), "error");
+      showToast(resolveApiErrorMessage(err, t, "sessionCard.openPr.error"), "error");
     } finally {
       setOpeningPrUrl(false);
     }

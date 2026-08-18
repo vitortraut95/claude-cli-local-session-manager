@@ -5,6 +5,7 @@ import { sessionSizeStatus } from "../utils/sessionSize";
 import { useLanguage } from "./useLanguage";
 import { useUrlParam } from "./useUrlState";
 import { useToast } from "./useToast";
+import { resolveApiErrorMessage } from "../utils/apiClient";
 
 export type PendingAction =
   | "delete"
@@ -94,7 +95,7 @@ export function useSessions() {
       setSessions(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("useSessions.loadError"));
+      setError(resolveApiErrorMessage(err, t, "useSessions.loadError"));
     } finally {
       setLoading(false);
     }
@@ -246,7 +247,7 @@ export function useSessions() {
             showToast(t("useSessions.worktreeDeleted"), "success");
           } catch (err) {
             showToast(
-              err instanceof Error ? err.message : t("useSessions.cleanupWorktreeError"),
+              resolveApiErrorMessage(err, t, "useSessions.cleanupWorktreeError"),
               "error",
             );
           }
@@ -256,7 +257,7 @@ export function useSessions() {
             showToast(t("useSessions.branchDeleted", { branch: branchName }), "success");
           } catch (err) {
             showToast(
-              err instanceof Error ? err.message : t("useSessions.deleteBranchError"),
+              resolveApiErrorMessage(err, t, "useSessions.deleteBranchError"),
               "error",
             );
           }
@@ -265,7 +266,7 @@ export function useSessions() {
         setSessions((current) => current.filter((session) => session.id !== id));
         showToast(t("useSessions.sessionDeleted"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : t("useSessions.deleteSessionError"), "error");
+        showToast(resolveApiErrorMessage(err, t, "useSessions.deleteSessionError"), "error");
       } finally {
         setPending(id, null);
       }
@@ -330,7 +331,7 @@ export function useSessions() {
           "success",
         );
       } catch (err) {
-        showToast(err instanceof Error ? err.message : t("useSessions.saveNicknameError"), "error");
+        showToast(resolveApiErrorMessage(err, t, "useSessions.saveNicknameError"), "error");
       } finally {
         setPending(id, null);
       }
@@ -401,7 +402,7 @@ export function useSessions() {
         // few more times over the following seconds to pick that up once it lands.
         refreshSoon();
       } catch (err) {
-        showToast(err instanceof Error ? err.message : t("useSessions.resumeError"), "error");
+        showToast(resolveApiErrorMessage(err, t, "useSessions.resumeError"), "error");
       } finally {
         setPending(id, null);
       }
@@ -420,7 +421,7 @@ export function useSessions() {
         // moment to become "active", and the sibling's own status just changed too.
         refreshSoon();
       } catch (err) {
-        showToast(err instanceof Error ? err.message : t("useSessions.switchSessionsError"), "error");
+        showToast(resolveApiErrorMessage(err, t, "useSessions.switchSessionsError"), "error");
       } finally {
         setPending(targetId, null);
       }
@@ -435,7 +436,7 @@ export function useSessions() {
         await sessionsApi.openInVSCode(id);
         showToast(t("useSessions.openingVSCode"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : t("useSessions.openVSCodeError"), "error");
+        showToast(resolveApiErrorMessage(err, t, "useSessions.openVSCodeError"), "error");
       } finally {
         setPending(id, null);
       }
@@ -450,7 +451,7 @@ export function useSessions() {
         await sessionsApi.openMissingWorktreeRootInVSCode(id);
         showToast(t("useSessions.openingRootVSCode"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : t("useSessions.openVSCodeError"), "error");
+        showToast(resolveApiErrorMessage(err, t, "useSessions.openVSCodeError"), "error");
       } finally {
         setPending(id, null);
       }
@@ -475,7 +476,7 @@ export function useSessions() {
         await sessionsApi.startFreshSessionAtMissingWorktreeRoot(session.id);
         showToast(t("useSessions.newTerminalAtRoot"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : t("useSessions.startSessionError"), "error");
+        showToast(resolveApiErrorMessage(err, t, "useSessions.startSessionError"), "error");
       } finally {
         setPending(session.id, null);
       }
@@ -492,7 +493,7 @@ export function useSessions() {
         await sessionsApi.createWorktree(id, name);
         showToast(t("useSessions.worktreeCreated"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : t("useSessions.createWorktreeError"), "error");
+        showToast(resolveApiErrorMessage(err, t, "useSessions.createWorktreeError"), "error");
       } finally {
         setPending(id, null);
       }
@@ -507,7 +508,7 @@ export function useSessions() {
         await sessionsApi.deleteWorktree(id);
         showToast(t("useSessions.worktreeDeleted"), "success");
       } catch (err) {
-        showToast(err instanceof Error ? err.message : t("useSessions.deleteWorktreeError"), "error");
+        showToast(resolveApiErrorMessage(err, t, "useSessions.deleteWorktreeError"), "error");
       } finally {
         setPending(id, null);
       }

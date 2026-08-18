@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as systemApi from "../services/systemApi";
 import type { ClaudeUsageStatus } from "../services/systemApi";
 import { useLanguage } from "./useLanguage";
+import { resolveApiErrorMessage } from "../utils/apiClient";
 
 /**
  * Fetches once on mount only (no polling — same "refetch on mount or explicit refresh" philosophy
@@ -31,7 +32,7 @@ export function useUsageLimits() {
       }
     } catch (err) {
       if (mountedRef.current) {
-        setError(err instanceof Error ? err.message : t("useUsageLimits.fetchError"));
+        setError(resolveApiErrorMessage(err, t, "useUsageLimits.fetchError"));
       }
     } finally {
       if (mountedRef.current) setLoading(false);

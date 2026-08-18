@@ -3,6 +3,7 @@ import * as systemApi from "../services/systemApi";
 import type { UpdateJobStatus, UpdateStatus } from "../services/systemApi";
 import { useLanguage } from "./useLanguage";
 import { useToast } from "./useToast";
+import { resolveApiErrorMessage } from "../utils/apiClient";
 
 const JOB_POLL_INTERVAL_MS = 1000;
 const JOB_POLL_TIMEOUT_MS = 5 * 60 * 1000;
@@ -97,7 +98,7 @@ export function useUpdate() {
       if (job.state === "error") throw new Error(job.message);
       showToast(t("useUpdate.updateSuccess"), "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t("useUpdate.updateError"), "error");
+      showToast(resolveApiErrorMessage(err, t, "useUpdate.updateError"), "error");
     } finally {
       if (mountedRef.current) setUpdating(false);
       await refreshStatus(true);

@@ -6,6 +6,7 @@ import * as sessionsApi from "../services/sessionsApi";
 import type { RootStatus, Session } from "../types/session";
 import { FileListBox, StashList } from "./WorktreeToRootModal";
 import { Modal } from "./Modal";
+import { resolveApiErrorMessage } from "../utils/apiClient";
 
 type ResetRootConfirmModalProps = {
   session: Session;
@@ -43,7 +44,7 @@ export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModa
         .catch((err) => {
           if (!cancelled) {
             setStatusError(
-              err instanceof Error ? err.message : t("resetRootConfirmModal.statusErrorFallback"),
+              resolveApiErrorMessage(err, t, "resetRootConfirmModal.statusErrorFallback"),
             );
           }
         })
@@ -76,7 +77,7 @@ export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModa
       onClose();
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : t("resetRootConfirmModal.toast.resetErrorFallback"),
+        resolveApiErrorMessage(err, t, "resetRootConfirmModal.toast.resetErrorFallback"),
         "error",
       );
     } finally {

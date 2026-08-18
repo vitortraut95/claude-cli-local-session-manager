@@ -35,6 +35,7 @@ import {
 } from "../utils/sessionContinuations.js";
 import { runClaudeHeadlessSummary } from "../utils/claudeCli.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
+import { AppError } from "../utils/httpError.js";
 import {
   applyFileDiff,
   checkoutExistingBranch,
@@ -325,18 +326,24 @@ async function findSessionCwd(id: string): Promise<string | null> {
   return head.cwd;
 }
 
-export class SessionNotFoundError extends Error {
+export class SessionNotFoundError extends AppError {
   constructor(id: string) {
-    super(`Session "${id}" not found`);
+    super("SESSION_NOT_FOUND", `Session "${id}" not found`);
     this.name = "SessionNotFoundError";
   }
 }
 
-export class SessionActiveError extends Error {
+export class SessionActiveError extends AppError {
   constructor(message: string) {
-    super(message);
+    super("SESSION_ACTIVE", message);
     this.name = "SessionActiveError";
   }
+}
+
+/** Shared by every `isSafeSessionId` guard below — same code regardless of which function's
+ *  check failed, so the frontend only needs one translated message for all of them. */
+function invalidSessionIdError(id: string): AppError {
+  return new AppError("INVALID_SESSION_ID", `Invalid session id "${id}"`);
 }
 
 /**
@@ -376,7 +383,7 @@ const COMPACT_SUMMARY_INSTRUCTION =
  */
 export async function getCompactionDraft(id: string): Promise<CompactionDraft> {
   if (!isSafeSessionId(id)) {
-    throw new Error(`Invalid session id "${id}"`);
+    throw invalidSessionIdError(id);
   }
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
@@ -432,7 +439,7 @@ export async function startCompactedContinuation(
   summary: string,
 ): Promise<{ newSessionId: string }> {
   if (!isSafeSessionId(id)) {
-    throw new Error(`Invalid session id "${id}"`);
+    throw invalidSessionIdError(id);
   }
 
   const activeIds = await getActiveResumeSessionIds();
@@ -616,7 +623,7 @@ export async function deleteSession(id: string): Promise<void> {
  */
 export async function deleteSessionBranch(id: string, branch: string): Promise<void> {
   if (!isSafeSessionId(id)) {
-    throw new Error(`Invalid session id "${id}"`);
+    throw invalidSessionIdError(id);
   }
   const trimmedBranch = branch.trim();
   if (!trimmedBranch) {
@@ -640,7 +647,7 @@ export async function deleteSessionBranch(id: string, branch: string): Promise<v
  */
 export async function setSessionNickname(id: string, nickname: string): Promise<void> {
   if (!isSafeSessionId(id)) {
-    throw new Error(`Invalid session id "${id}"`);
+    throw invalidSessionIdError(id);
   }
 
   const activeIds = await getActiveResumeSessionIds();
@@ -956,7 +963,7 @@ async function openDirInVSCode(dir: string): Promise<void> {
  */
 export async function openInVSCode(id: string): Promise<void> {
   if (!isSafeSessionId(id)) {
-    throw new Error(`Invalid session id "${id}"`);
+    throw invalidSessionIdError(id);
   }
 
   const cwd = await findSessionCwd(id);
@@ -991,7 +998,7 @@ async function resolveMissingWorktreeRepoRoot(
   id: string,
 ): Promise<{ head: SessionHead; filePath: string; repoRoot: string }> {
   if (!isSafeSessionId(id)) {
-    throw new Error(`Invalid session id "${id}"`);
+    throw invalidSessionIdError(id);
   }
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
@@ -1092,7 +1099,7 @@ export async function launchInTerminal(command: string, cwd?: string): Promise<v
  */
 export async function continueSession(id: string): Promise<void> {
   if (!isSafeSessionId(id)) {
-    throw new Error(`Invalid session id "${id}"`);
+    throw invalidSessionIdError(id);
   }
 
   const activeIds = await getActiveResumeSessionIds();
@@ -1129,7 +1136,7 @@ export async function continueSession(id: string): Promise<void> {
  */
 export async function createSessionWorktree(id: string, requestedName: string): Promise<void> {
   if (!isSafeSessionId(id)) {
-    throw new Error(`Invalid session id "${id}"`);
+    throw invalidSessionIdError(id);
   }
   const name = requestedName.trim();
   if (!name) {
@@ -1166,7 +1173,7 @@ export async function createSessionWorktree(id: string, requestedName: string): 
  */
 export async function deleteSessionWorktree(id: string): Promise<void> {
   if (!isSafeSessionId(id)) {
-    throw new Error(`Invalid session id "${id}"`);
+    throw invalidSessionIdError(id);
   }
 
   const cwd = await findSessionCwd(id);
@@ -1194,7 +1201,7 @@ export async function deleteSessionWorktree(id: string): Promise<void> {
  *  unknown session / missing directory / non-worktree session. */
 async function resolveWorktreeAndRepoRoot(id: string): Promise<{ cwd: string; repoRoot: string }> {
   if (!isSafeSessionId(id)) {
-    throw new Error(`Invalid session id "${id}"`);
+    throw invalidSessionIdError(id);
   }
 
   const cwd = await findSessionCwd(id);
@@ -1391,9 +1398,8 @@ export async function stopSiblingAndResume(
   siblingSessionId: string,
   requestedBranch: string,
 ): Promise<void> {
-  if (!isSafeSessionId(id) || !isSafeSessionId(siblingSessionId)) {
-    throw new Error("Invalid session id.");
-  }
+  if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
+  if (!isSafeSessionId(siblingSessionId)) throw invalidSessionIdError(siblingSessionId);
   const branch = requestedBranch.trim();
   if (!branch) {
     throw new Error("A branch name is required to check out.");
