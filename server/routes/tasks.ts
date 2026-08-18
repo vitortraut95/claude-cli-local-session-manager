@@ -12,6 +12,7 @@ import {
   resolveBaseBranch,
 } from "../services/taskService.js";
 import { extractBooleanField, extractStringField } from "../utils/httpBody.js";
+import { AppError, errorCode } from "../utils/httpError.js";
 
 export const tasksRouter = Router();
 
@@ -37,7 +38,7 @@ tasksRouter.get("/projects", async (_req, res) => {
     const projects = await getKnownProjectFolders();
     res.json({ projects });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -46,14 +47,15 @@ tasksRouter.get("/preferences", async (_req, res) => {
     const preferences = await getUserPreferences();
     res.json(preferences);
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
 tasksRouter.put("/preferences", async (req, res) => {
   try {
     if (!isValidPreferences(req.body)) {
-      throw new Error(
+      throw new AppError(
+        "MALFORMED_PREFERENCES",
         "Malformed preferences payload — expected { defaultPrompt: string, branchTypes: string[], " +
           "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
           "language: \"en\"|\"pt\"|\"es\"|null, hasSeenOnboarding: boolean }.",
@@ -65,6 +67,7 @@ tasksRouter.put("/preferences", async (req, res) => {
     res.status(400).json({
       success: false,
       error: err instanceof Error ? err.message : String(err),
+      code: errorCode(err),
     });
   }
 });
@@ -75,7 +78,7 @@ tasksRouter.get("/repo-info", async (req, res) => {
     const info = await getRepoInfo(folderPath);
     res.json(info);
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -87,7 +90,7 @@ tasksRouter.post("/resolve-base-branch", async (req, res) => {
     );
     res.json(result);
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -101,7 +104,7 @@ tasksRouter.post("/worktree", async (req, res) => {
     );
     res.json(result);
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -117,6 +120,7 @@ tasksRouter.post("/launch", async (req, res) => {
     res.status(400).json({
       success: false,
       error: err instanceof Error ? err.message : String(err),
+      code: errorCode(err),
     });
   }
 });

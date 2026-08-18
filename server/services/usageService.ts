@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { AppError } from "../utils/httpError.js";
 
 type RawLimit = {
   kind?: string;
@@ -70,19 +71,25 @@ async function readAccessToken(): Promise<string> {
   try {
     raw = await readFile(getCredentialsPath(), "utf-8");
   } catch {
-    throw new Error(`Could not find Claude's login credentials — run "claude" and sign in first.`);
+    throw new AppError(
+      "USAGE_NO_CREDENTIALS",
+      `Could not find Claude's login credentials — run "claude" and sign in first.`,
+    );
   }
 
   let parsed: { claudeAiOauth?: { accessToken?: string } };
   try {
     parsed = JSON.parse(raw) as { claudeAiOauth?: { accessToken?: string } };
   } catch {
-    throw new Error("Claude's credentials file is unreadable.");
+    throw new AppError("USAGE_CREDENTIALS_UNREADABLE", "Claude's credentials file is unreadable.");
   }
 
   const token = parsed.claudeAiOauth?.accessToken;
   if (!token) {
-    throw new Error(`No Claude login token found — run "claude" and sign in first.`);
+    throw new AppError(
+      "USAGE_NO_TOKEN",
+      `No Claude login token found — run "claude" and sign in first.`,
+    );
   }
   return token;
 }
@@ -111,7 +118,8 @@ export async function getClaudeUsageStatus(forceRefresh = false): Promise<Claude
       },
     });
   } catch (err) {
-    throw new Error(
+    throw new AppError(
+      "USAGE_ENDPOINT_UNREACHABLE",
       `Could not reach Anthropic's usage endpoint: ${err instanceof Error ? err.message : String(err)}`,
       { cause: err },
     );
@@ -119,9 +127,12 @@ export async function getClaudeUsageStatus(forceRefresh = false): Promise<Claude
 
   if (!response.ok) {
     if (response.status === 401) {
-      throw new Error(`Claude's login token has expired — run "claude" once to refresh it.`);
+      throw new AppError(
+        "USAGE_TOKEN_EXPIRED",
+        `Claude's login token has expired — run "claude" once to refresh it.`,
+      );
     }
-    throw new Error(`Could not fetch usage (HTTP ${response.status}).`);
+    throw new AppError("USAGE_FETCH_FAILED", `Could not fetch usage (HTTP ${response.status}).`);
   }
 
   // A 200 response with an empty or non-JSON body has been observed for accounts with nothing

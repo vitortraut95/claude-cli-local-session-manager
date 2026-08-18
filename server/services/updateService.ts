@@ -3,12 +3,13 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { AppError } from "../utils/httpError.js";
 
 const execFileAsync = promisify(execFile);
 
-export class UpdateBlockedError extends Error {
+export class UpdateBlockedError extends AppError {
   constructor(message: string) {
-    super(message);
+    super("UPDATE_BLOCKED", message);
     this.name = "UpdateBlockedError";
   }
 }
@@ -60,7 +61,11 @@ export async function getUpdateStatus(): Promise<UpdateStatus> {
   try {
     await git(["fetch", "--quiet"], repoRoot);
   } catch (err) {
-    throw new Error(`Could not reach the remote repository: ${errorMessage(err)}`, { cause: err });
+    throw new AppError(
+      "UPDATE_FETCH_FAILED",
+      `Could not reach the remote repository: ${errorMessage(err)}`,
+      { cause: err },
+    );
   }
 
   const tracking = await getUpstream(repoRoot);
@@ -71,7 +76,10 @@ export async function getUpdateStatus(): Promise<UpdateStatus> {
   const counts = await git(["rev-list", "--left-right", "--count", `HEAD...${tracking}`], repoRoot);
   const [aheadStr, behindStr] = counts.split(/\s+/);
   if (aheadStr === undefined || behindStr === undefined) {
-    throw new Error(`Unexpected "git rev-list --left-right --count" output: "${counts}"`);
+    throw new AppError(
+      "UPDATE_UNEXPECTED_GIT_OUTPUT",
+      `Unexpected "git rev-list --left-right --count" output: "${counts}"`,
+    );
   }
   const ahead = Number(aheadStr);
   const behind = Number(behindStr);

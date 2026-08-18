@@ -346,6 +346,30 @@ function invalidSessionIdError(id: string): AppError {
   return new AppError("INVALID_SESSION_ID", `Invalid session id "${id}"`);
 }
 
+/** Shared by every function below that resolves a session's `cwd` and finds the directory gone —
+ *  several call sites add their own extra sentence of context (what recreating the folder would
+ *  let you do next), so this only covers the common first sentence; call sites that want the
+ *  extra context construct their own `AppError` with the same code instead of calling this. */
+function sessionDirectoryMissingError(cwd: string): AppError {
+  return new AppError(
+    "SESSION_DIRECTORY_MISSING",
+    `This session's original directory no longer exists ("${cwd}").`,
+  );
+}
+
+/** Shared by every "worktree-only" action below (worktree → root, delete worktree, ...) once
+ *  `isLinkedWorktree` comes back false for the session's own directory. */
+function notAWorktreeSessionError(): AppError {
+  return new AppError("NOT_A_WORKTREE_SESSION", "This session isn't running in a git worktree.");
+}
+
+/** Reuses `taskService.ts`'s own "a branch name is required" code — same underlying meaning
+ *  (an empty/missing branch name), just triggered from a session-management action instead of
+ *  the "new task" form. */
+function branchNameRequiredError(): AppError {
+  return new AppError("TASK_BRANCH_NAME_REQUIRED", "A branch name is required.");
+}
+
 /**
  * Fetched on demand when the prompt-preview modal opens for a single session, rather than
  * embedded in `listSessions()` — see `readFullSessionPrompts` for why (it's untruncated, unlike
@@ -456,10 +480,14 @@ export async function startCompactedContinuation(
     readFullSessionPrompts(filePath),
   ]);
   if (!head.cwd) {
-    throw new Error("This session has no known working directory to continue in.");
+    throw new AppError(
+      "SESSION_NO_WORKING_DIRECTORY",
+      "This session has no known working directory to continue in.",
+    );
   }
   if (!(await directoryExists(head.cwd))) {
-    throw new Error(
+    throw new AppError(
+      "SESSION_DIRECTORY_MISSING",
       `This session's original directory no longer exists ("${head.cwd}"). Recreate the folder ` +
         `(or a symlink) at the old path before continuing there.`,
     );
@@ -627,13 +655,13 @@ export async function deleteSessionBranch(id: string, branch: string): Promise<v
   }
   const trimmedBranch = branch.trim();
   if (!trimmedBranch) {
-    throw new Error("A branch name is required.");
+    throw branchNameRequiredError();
   }
 
   const cwd = await findSessionCwd(id);
   if (!cwd) throw new SessionNotFoundError(id);
   if (!(await directoryExists(cwd))) {
-    throw new Error(`This session's original directory no longer exists ("${cwd}").`);
+    throw sessionDirectoryMissingError(cwd);
   }
 
   await deleteLocalBranch(cwd, trimmedBranch);
@@ -944,11 +972,12 @@ async function launchWindowsTerminal(resumeCommand: string, cwd?: string): Promi
  */
 async function openDirInVSCode(dir: string): Promise<void> {
   if (!(await directoryExists(dir))) {
-    throw new Error(`This directory no longer exists ("${dir}").`);
+    throw new AppError("DIRECTORY_MISSING", `This directory no longer exists ("${dir}").`);
   }
 
   if (!(await trySpawnDetached("code", ["--new-window", dir]))) {
-    throw new Error(
+    throw new AppError(
+      "VSCODE_COMMAND_NOT_FOUND",
       `Could not open VS Code — the "code" command wasn't found on PATH. In VS Code, run ` +
         `"Shell Command: Install 'code' command in PATH" from the Command Palette.`,
     );
@@ -968,12 +997,16 @@ export async function openInVSCode(id: string): Promise<void> {
 
   const cwd = await findSessionCwd(id);
   if (!cwd) {
-    throw new Error("This session has no known working directory to open.");
+    throw new AppError(
+      "SESSION_NO_WORKING_DIRECTORY",
+      "This session has no known working directory to open.",
+    );
   }
   try {
     await openDirInVSCode(cwd);
   } catch {
-    throw new Error(
+    throw new AppError(
+      "SESSION_DIRECTORY_MISSING",
       `This session's original directory no longer exists ("${cwd}"). Recreate the folder ` +
         `(or a symlink) at the old path before opening it in VS Code.`,
     );
@@ -1005,14 +1038,20 @@ async function resolveMissingWorktreeRepoRoot(
 
   const head = await readSessionHead(filePath);
   if (!head.cwd) {
-    throw new Error("This session has no known working directory.");
+    throw new AppError("SESSION_NO_WORKING_DIRECTORY", "This session has no known working directory.");
   }
   const repoRoot = repoRootFromMissingWorktreePath(head.cwd);
   if (!repoRoot) {
-    throw new Error("This session's directory doesn't look like one of this app's own worktrees.");
+    throw new AppError(
+      "NOT_APP_WORKTREE",
+      "This session's directory doesn't look like one of this app's own worktrees.",
+    );
   }
   if (!(await directoryExists(repoRoot))) {
-    throw new Error(`The project's root folder no longer exists either ("${repoRoot}").`);
+    throw new AppError(
+      "PROJECT_ROOT_MISSING",
+      `The project's root folder no longer exists either ("${repoRoot}").`,
+    );
   }
   return { head, filePath, repoRoot };
 }
@@ -1070,12 +1109,18 @@ export async function launchInTerminal(command: string, cwd?: string): Promise<v
 
   if (process.platform === "darwin") {
     if (await launchMacTerminal(command, cwd)) return;
-    throw new Error("Could not open Terminal.app (osascript failed to launch).");
+    throw new AppError(
+      "TERMINAL_LAUNCH_FAILED",
+      "Could not open Terminal.app (osascript failed to launch).",
+    );
   }
 
   if (process.platform === "win32") {
     if (await launchWindowsTerminal(command, cwd)) return;
-    throw new Error("Could not open a terminal (tried: Windows Terminal, cmd.exe).");
+    throw new AppError(
+      "TERMINAL_LAUNCH_FAILED",
+      "Could not open a terminal (tried: Windows Terminal, cmd.exe).",
+    );
   }
 
   // Warp tabs stay open on their own after the command finishes, but the other emulators close
@@ -1087,7 +1132,8 @@ export async function launchInTerminal(command: string, cwd?: string): Promise<v
     if (started) return;
   }
 
-  throw new Error(
+  throw new AppError(
+    "TERMINAL_LAUNCH_FAILED",
     `No terminal emulator found (tried: ${TERMINAL_LAUNCHERS.map((l) => l.bin).join(", ")}).`,
   );
 }
@@ -1109,7 +1155,8 @@ export async function continueSession(id: string): Promise<void> {
 
   const cwd = await findSessionCwd(id);
   if (cwd && !(await directoryExists(cwd))) {
-    throw new Error(
+    throw new AppError(
+      "SESSION_DIRECTORY_MISSING",
       `This session's original directory no longer exists ("${cwd}"). Since the Claude CLI ` +
         `resolves sessions by working directory, it can't be resumed from here — recreate the ` +
         `folder (or a symlink) at the old path pointing to the project's current location.`,
@@ -1140,13 +1187,13 @@ export async function createSessionWorktree(id: string, requestedName: string): 
   }
   const name = requestedName.trim();
   if (!name) {
-    throw new Error("A worktree name is required.");
+    throw new AppError("WORKTREE_NAME_REQUIRED", "A worktree name is required.");
   }
 
   const cwd = await findSessionCwd(id);
   if (!cwd) throw new SessionNotFoundError(id);
   if (!(await directoryExists(cwd))) {
-    throw new Error(`This session's original directory no longer exists ("${cwd}").`);
+    throw sessionDirectoryMissingError(cwd);
   }
 
   // Best-effort, ahead of the launch below rather than after: the CLI's own `--worktree` flag
@@ -1179,10 +1226,10 @@ export async function deleteSessionWorktree(id: string): Promise<void> {
   const cwd = await findSessionCwd(id);
   if (!cwd) throw new SessionNotFoundError(id);
   if (!(await directoryExists(cwd))) {
-    throw new Error(`This session's directory no longer exists ("${cwd}").`);
+    throw sessionDirectoryMissingError(cwd);
   }
   if (!(await isLinkedWorktree(cwd))) {
-    throw new Error("This session isn't running in a git worktree.");
+    throw notAWorktreeSessionError();
   }
 
   const sessions = await listSessions();
@@ -1207,15 +1254,15 @@ async function resolveWorktreeAndRepoRoot(id: string): Promise<{ cwd: string; re
   const cwd = await findSessionCwd(id);
   if (!cwd) throw new SessionNotFoundError(id);
   if (!(await directoryExists(cwd))) {
-    throw new Error(`This session's directory no longer exists ("${cwd}").`);
+    throw sessionDirectoryMissingError(cwd);
   }
   if (!(await isLinkedWorktree(cwd))) {
-    throw new Error("This session isn't running in a git worktree.");
+    throw notAWorktreeSessionError();
   }
 
   const repoRoot = await getRepoRoot(cwd);
   if (!repoRoot) {
-    throw new Error(`Could not resolve the repo root for "${cwd}".`);
+    throw new AppError("REPO_ROOT_UNRESOLVED", `Could not resolve the repo root for "${cwd}".`);
   }
 
   return { cwd, repoRoot };
@@ -1363,14 +1410,18 @@ export async function removeWorktreeAndCheckoutRoot(
 
   const branch = await removeWorktreeKeepBranch(cwd);
   if (!branch) {
-    throw new Error("Could not determine the worktree's branch before removing it.");
+    throw new AppError(
+      "WORKTREE_BRANCH_UNKNOWN",
+      "Could not determine the worktree's branch before removing it.",
+    );
   }
 
   try {
     await checkoutExistingBranch(repoRoot, branch);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    throw new Error(
+    throw new AppError(
+      "WORKTREE_TO_ROOT_CHECKOUT_FAILED",
       `The worktree was removed, but "git checkout ${branch}" failed in ${repoRoot}: ${message} ` +
         `The branch's commits are safe — finish the checkout by hand from a terminal in ${repoRoot}.`,
       { cause: err },
@@ -1402,13 +1453,13 @@ export async function stopSiblingAndResume(
   if (!isSafeSessionId(siblingSessionId)) throw invalidSessionIdError(siblingSessionId);
   const branch = requestedBranch.trim();
   if (!branch) {
-    throw new Error("A branch name is required to check out.");
+    throw branchNameRequiredError();
   }
 
   const cwd = await findSessionCwd(id);
   if (!cwd) throw new SessionNotFoundError(id);
   if (!(await directoryExists(cwd))) {
-    throw new Error(`This session's original directory no longer exists ("${cwd}").`);
+    throw sessionDirectoryMissingError(cwd);
   }
 
   const pid = await findActiveSessionPid(siblingSessionId);

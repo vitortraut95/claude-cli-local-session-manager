@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { copyFile, lstat, mkdir, readFile, readlink, rm, symlink } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { AppError } from "./httpError.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -35,6 +36,9 @@ export async function runGit(args: string[], cwd: string): Promise<string> {
     const stderr = (err as { stderr?: string } | null)?.stderr?.trim();
     const fallback = err instanceof Error ? err.message : String(err);
     const message = stderr && stderr.length > 0 ? extractGitErrorLine(stderr) : fallback;
+    // Deliberately no `code` here (see CLAUDE.md's i18n to-do) — this is git's own stderr text,
+    // not this app's copy, so there's no fixed set of messages to map to translated strings the
+    // way there is for the throws below. Falls back to the raw (English) text either way.
     throw new Error(message, { cause: err });
   }
 }
@@ -181,7 +185,10 @@ export async function resolveBaseBranchRef(cwd: string, baseBranch: string): Pro
 
   if (await branchExists(cwd, baseBranch)) return baseBranch;
 
-  throw new Error(`Base branch "${baseBranch}" was not found locally or on origin.`);
+  throw new AppError(
+    "TASK_BASE_BRANCH_NOT_FOUND",
+    `Base branch "${baseBranch}" was not found locally or on origin.`,
+  );
 }
 
 /** Deletes a local branch (`git branch -D`) in `cwd` — used when a session is deleted and the
@@ -331,7 +338,7 @@ async function unlockAndRemoveWorktree(
 ): Promise<{ branch: string | null; mainRoot: string }> {
   const dirs = await getGitDirs(worktreePath);
   if (!dirs) {
-    throw new Error(`"${worktreePath}" is no longer a git worktree.`);
+    throw new AppError("NOT_A_GIT_WORKTREE", `"${worktreePath}" is no longer a git worktree.`);
   }
   const mainRoot = path.dirname(dirs.commonGitDir);
   const branch = await getWorktreeBranch(worktreePath, mainRoot).catch(() => null);
@@ -342,7 +349,8 @@ async function unlockAndRemoveWorktree(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes("contains modified or untracked files")) {
-      throw new Error(
+      throw new AppError(
+        "WORKTREE_UNCOMMITTED_CHANGES",
         `The worktree at "${worktreePath}" still has uncommitted changes, so it wasn't removed ` +
           `— commit or discard them in the worktree first (or use "copy" mode instead, which ` +
           `doesn't require the worktree to be clean).`,

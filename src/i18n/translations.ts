@@ -262,6 +262,225 @@ export const translations = {
     "Id de sessão inválido.",
     "Id de sesión inválido.",
   ),
+  "apiError.taskFolderRequired": dict(
+    "A project folder is required.",
+    "É necessário informar a pasta do projeto.",
+    "Se requiere una carpeta de proyecto.",
+  ),
+  "apiError.taskFolderNotFound": dict(
+    "That folder doesn't exist.",
+    "Essa pasta não existe.",
+    "Esa carpeta no existe.",
+  ),
+  "apiError.taskNotGitRepo": dict(
+    "That folder isn't inside a git repository.",
+    "Essa pasta não está dentro de um repositório git.",
+    "Esa carpeta no está dentro de un repositorio git.",
+  ),
+  "apiError.taskBaseBranchRequired": dict(
+    "A source branch is required.",
+    "É necessário informar a branch de origem.",
+    "Se requiere una rama de origen.",
+  ),
+  "apiError.taskBranchNameRequired": dict(
+    "A branch name is required.",
+    "É necessário informar o nome da branch.",
+    "Se requiere un nombre de rama.",
+  ),
+  "apiError.taskInvalidBranchName": dict(
+    'Not a valid branch name (letters, numbers, "-", "_", "." and "/" only, must start with a ' +
+      "letter or number).",
+    'Nome de branch inválido (apenas letras, números, "-", "_", "." e "/", precisa começar com ' +
+      "letra ou número).",
+    'Nombre de rama inválido (solo letras, números, "-", "_", "." y "/", debe empezar con letra ' +
+      "o número).",
+  ),
+  "apiError.taskBaseBranchRefRequired": dict(
+    "A resolved base branch is required.",
+    "É necessário resolver a branch base primeiro.",
+    "Se requiere una rama base resuelta.",
+  ),
+  "apiError.taskBranchExists": dict(
+    "That branch already exists.",
+    "Essa branch já existe.",
+    "Esa rama ya existe.",
+  ),
+  "apiError.taskWorktreeExists": dict(
+    "A worktree with that name already exists.",
+    "Já existe um worktree com esse nome.",
+    "Ya existe un worktree con ese nombre.",
+  ),
+  "apiError.taskWorktreePathRequired": dict(
+    "A worktree path is required.",
+    "É necessário informar o caminho do worktree.",
+    "Se requiere una ruta de worktree.",
+  ),
+  "apiError.taskPromptRequired": dict(
+    "A prompt is required to start Claude.",
+    "É necessário um prompt para iniciar o Claude.",
+    "Se requiere un prompt para iniciar Claude.",
+  ),
+  "apiError.malformedPreferences": dict(
+    "Malformed preferences payload.",
+    "Payload de preferências malformado.",
+    "Payload de preferencias con formato incorrecto.",
+  ),
+  "apiError.usageNoCredentials": dict(
+    'Could not find Claude\'s login credentials — run "claude" and sign in first.',
+    'Não foi possível encontrar as credenciais de login do Claude — rode "claude" e faça login primeiro.',
+    'No se pudieron encontrar las credenciales de inicio de sesión de Claude — ejecuta "claude" e ' +
+      "inicia sesión primero.",
+  ),
+  "apiError.usageCredentialsUnreadable": dict(
+    "Claude's credentials file is unreadable.",
+    "O arquivo de credenciais do Claude está ilegível.",
+    "El archivo de credenciales de Claude no se puede leer.",
+  ),
+  "apiError.usageNoToken": dict(
+    'No Claude login token found — run "claude" and sign in first.',
+    'Nenhum token de login do Claude encontrado — rode "claude" e faça login primeiro.',
+    'No se encontró un token de inicio de sesión de Claude — ejecuta "claude" e inicia sesión ' +
+      "primero.",
+  ),
+  "apiError.usageEndpointUnreachable": dict(
+    "Could not reach Anthropic's usage endpoint.",
+    "Não foi possível acessar o endpoint de uso da Anthropic.",
+    "No se pudo acceder al endpoint de uso de Anthropic.",
+  ),
+  "apiError.usageTokenExpired": dict(
+    'Claude\'s login token has expired — run "claude" once to refresh it.',
+    'O token de login do Claude expirou — rode "claude" uma vez para renová-lo.',
+    'El token de inicio de sesión de Claude venció — ejecuta "claude" una vez para renovarlo.',
+  ),
+  "apiError.usageFetchFailed": dict(
+    "Could not fetch usage data.",
+    "Não foi possível buscar os dados de uso.",
+    "No se pudieron obtener los datos de uso.",
+  ),
+  "apiError.updateBlocked": dict(
+    "The project has uncommitted changes — commit or stash them before updating.",
+    "O projeto tem alterações não commitadas — commite ou dê stash nelas antes de atualizar.",
+    "El proyecto tiene cambios sin confirmar — haz commit o stash antes de actualizar.",
+  ),
+  "apiError.updateFetchFailed": dict(
+    "Could not reach the remote repository.",
+    "Não foi possível acessar o repositório remoto.",
+    "No se pudo acceder al repositorio remoto.",
+  ),
+  "apiError.updateUnexpectedGitOutput": dict(
+    "Unexpected output while checking for updates.",
+    "Saída inesperada ao verificar atualizações.",
+    "Salida inesperada al comprobar actualizaciones.",
+  ),
+  "apiError.cleanupMissingTarget": dict(
+    "Missing worktree path or branch for this cleanup item.",
+    "Faltam o caminho do worktree ou a branch para este item de limpeza.",
+    "Falta la ruta del worktree o la rama para este elemento de limpieza.",
+  ),
+  "apiError.cleanupTargetGone": dict(
+    "That folder no longer exists — refresh the list.",
+    "Essa pasta não existe mais — atualize a lista.",
+    "Esa carpeta ya no existe — actualiza la lista.",
+  ),
+  "apiError.cleanupBranchNotMerged": dict(
+    "That branch is no longer merged into the default branch — cancelled for safety.",
+    "Essa branch não está mais mergeada na branch padrão — cancelado por segurança.",
+    "Esa rama ya no está fusionada con la rama predeterminada — cancelado por seguridad.",
+  ),
+  "apiError.cleanupUncommittedChanges": dict(
+    "That folder now has uncommitted changes — cancelled for safety.",
+    "Essa pasta agora tem alterações não commitadas — cancelado por segurança.",
+    "Esa carpeta ahora tiene cambios sin confirmar — cancelado por seguridad.",
+  ),
+  "apiError.malformedCleanupFinding": dict(
+    "Malformed cleanup finding.",
+    "Item de limpeza malformado.",
+    "Elemento de limpieza con formato incorrecto.",
+  ),
+  "apiError.taskBaseBranchNotFound": dict(
+    "That base branch wasn't found locally or on origin.",
+    "Essa branch base não foi encontrada localmente nem no origin.",
+    "Esa rama base no se encontró localmente ni en origin.",
+  ),
+  "apiError.notAGitWorktree": dict(
+    "That folder is no longer a git worktree.",
+    "Essa pasta não é mais um worktree do git.",
+    "Esa carpeta ya no es un worktree de git.",
+  ),
+  "apiError.sessionNoWorkingDirectory": dict(
+    "This session has no known working directory.",
+    "Esta sessão não tem um diretório de trabalho conhecido.",
+    "Esta sesión no tiene un directorio de trabajo conocido.",
+  ),
+  "apiError.sessionDirectoryMissing": dict(
+    "This session's original directory no longer exists. Recreate the folder (or a symlink) at " +
+      "the old path to continue working with it.",
+    "O diretório original desta sessão não existe mais. Recrie a pasta (ou um link simbólico) no " +
+      "caminho antigo para continuar trabalhando com ela.",
+    "El directorio original de esta sesión ya no existe. Recrea la carpeta (o un enlace " +
+      "simbólico) en la ruta anterior para seguir trabajando con ella.",
+  ),
+  "apiError.directoryMissing": dict(
+    "That directory no longer exists.",
+    "Essa pasta não existe mais.",
+    "Esa carpeta ya no existe.",
+  ),
+  "apiError.vscodeCommandNotFound": dict(
+    'Could not open VS Code — the "code" command wasn\'t found on PATH.',
+    'Não foi possível abrir o VS Code — o comando "code" não foi encontrado no PATH.',
+    'No se pudo abrir VS Code — el comando "code" no se encontró en el PATH.',
+  ),
+  "apiError.notAppWorktree": dict(
+    "This session's directory doesn't look like one of this app's own worktrees.",
+    "O diretório desta sessão não parece ser um worktree criado por este app.",
+    "El directorio de esta sesión no parece ser un worktree creado por esta app.",
+  ),
+  "apiError.projectRootMissing": dict(
+    "The project's root folder no longer exists either.",
+    "A pasta raiz do projeto também não existe mais.",
+    "La carpeta raíz del proyecto tampoco existe.",
+  ),
+  "apiError.terminalLaunchFailed": dict(
+    "Could not open a terminal.",
+    "Não foi possível abrir um terminal.",
+    "No se pudo abrir una terminal.",
+  ),
+  "apiError.worktreeNameRequired": dict(
+    "A worktree name is required.",
+    "É necessário informar o nome do worktree.",
+    "Se requiere un nombre de worktree.",
+  ),
+  "apiError.notAWorktreeSession": dict(
+    "This session isn't running in a git worktree.",
+    "Esta sessão não está rodando em um worktree do git.",
+    "Esta sesión no se está ejecutando en un worktree de git.",
+  ),
+  "apiError.repoRootUnresolved": dict(
+    "Could not resolve the repo root for this session's directory.",
+    "Não foi possível resolver a raiz do repositório para o diretório desta sessão.",
+    "No se pudo resolver la raíz del repositorio para el directorio de esta sesión.",
+  ),
+  "apiError.worktreeBranchUnknown": dict(
+    "Could not determine the worktree's branch before removing it.",
+    "Não foi possível determinar a branch do worktree antes de removê-lo.",
+    "No se pudo determinar la rama del worktree antes de eliminarlo.",
+  ),
+  "apiError.worktreeToRootCheckoutFailed": dict(
+    "The worktree was removed, but checking out its branch in the root folder failed — the " +
+      "branch's commits are safe, finish the checkout by hand from a terminal there.",
+    "O worktree foi removido, mas o checkout da branch na pasta raiz falhou — os commits da " +
+      "branch estão seguros, finalize o checkout manualmente por um terminal ali.",
+    "El worktree fue eliminado, pero el checkout de su rama en la carpeta raíz falló — los " +
+      "commits de la rama están seguros, termina el checkout manualmente desde una terminal ahí.",
+  ),
+  "apiError.worktreeUncommittedChanges": dict(
+    "That worktree still has uncommitted changes, so it wasn't removed — commit or discard them " +
+      'first (or use "copy" mode instead, which doesn\'t require the worktree to be clean).',
+    'Esse worktree ainda tem alterações não commitadas, então não foi removido — commite ou ' +
+      'descarte elas primeiro (ou use o modo "copiar", que não exige que o worktree esteja limpo).',
+    'Ese worktree todavía tiene cambios sin confirmar, así que no se eliminó — haz commit o ' +
+      'descártalos primero (o usa el modo "copiar", que no requiere que el worktree esté limpio).',
+  ),
 
   "modal.closeAriaLabel": dict("Close", "Fechar", "Cerrar"),
   "modal.confirmDefault": dict("Confirm", "Confirmar", "Confirmar"),

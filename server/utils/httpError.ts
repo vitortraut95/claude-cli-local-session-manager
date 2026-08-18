@@ -12,10 +12,18 @@ export class AppError extends Error {
   constructor(
     public readonly code: string,
     message: string,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = "AppError";
   }
+}
+
+/** `err instanceof AppError ? err.code : undefined` — for routes that already pick their own
+ *  fixed status per endpoint (rather than branching on the error's type via `sendErrorResponse`
+ *  below) and just need `code` folded into the JSON body they were already building. */
+export function errorCode(err: unknown): string | undefined {
+  return err instanceof AppError ? err.code : undefined;
 }
 
 /**

@@ -346,45 +346,56 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
 
 ## to-do's
 
-- **Backend error messages bypass the pt/en/es translation system — in progress, converting one
-  file at a time.** The gap: `withServerErrorMessage` (`src/utils/apiClient.ts`) used to re-throw
-  the server's `{error: "<message>"}` body verbatim as `Error.message`, and every caller did
+- **Backend error messages bypass the pt/en/es translation system — nearly done, one file left.**
+  The gap: `withServerErrorMessage` (`src/utils/apiClient.ts`) used to re-throw the server's
+  `{error: "<message>"}` body verbatim as `Error.message`, and every caller did
   `showToast(err instanceof Error ? err.message : t(...))` — so any time a request actually failed
   server-side, the toast was raw English no matter what language was selected, while every
   *client-side* fallback message right next to it was properly translated.
-  - **The mechanism is now built and in use**: `server/utils/httpError.ts`'s `AppError` class
-    carries a stable machine-readable `code` alongside the English `message`; `sendErrorResponse`
-    (same file) includes it in the JSON error body; `resolveApiErrorMessage`
+  - **The mechanism**: `server/utils/httpError.ts`'s `AppError` class carries a stable
+    machine-readable `code` alongside the English `message` (and accepts the same
+    `ErrorOptions`/`cause` a plain `Error` does); `sendErrorResponse` (same file) includes it in
+    the JSON error body for routes that branch their HTTP status on the error's type, and
+    `errorCode(err)` (same file) is the one-liner for routes that already pick a fixed status and
+    just need `code` folded into the body they were already building. `resolveApiErrorMessage`
     (`src/utils/apiClient.ts`) looks the code up in its own `SERVER_ERROR_CODE_KEYS` map and
     returns a translated string, falling back to the raw English message for any code that isn't
-    in the map yet (or wasn't sent at all, from a not-yet-converted route) — every one of the ~28
-    frontend call sites that used to do `err instanceof Error ? err.message : t(fallbackKey)` now
-    calls `resolveApiErrorMessage(err, t, fallbackKey)` instead, so a backend file's throw sites
-    getting converted is the *only* remaining work per file — no more frontend-side changes needed.
-    Verified end-to-end with `npx tsx` importing `resolveApiErrorMessage` + `translations.ts`
-    directly (a real code translates; an unrecognized code and a plain `Error` both still fall
-    back correctly).
-  - **Converted so far**: `SessionNotFoundError` → `SESSION_NOT_FOUND`, `SessionActiveError` →
-    `SESSION_ACTIVE` (both in `sessionService.ts`, used throughout `sessions.ts`'s routes — these
-    two classes alone cover the large majority of what users actually hit: deleting/resuming/
-    renaming a session that's active elsewhere, or one that no longer exists), the repeated
-    "Invalid session id" throws → `INVALID_SESSION_ID` (`invalidSessionIdError` helper, same
-    file), and the `/sessions/:id/pr-url` route's "no PR link" 404 → `NO_PR_LINK`. `sessions.ts`
-    itself was also refactored: every route's repeated `if (err instanceof X) {...}` chain is now
-    one `sendErrorResponse(res, err, notFoundOrActive)` call.
-  - **Not converted yet** (still raw English `throw new Error(...)`, falls back gracefully — no
-    codes sent, `resolveApiErrorMessage` just shows the English message like before):
-    - `sessionService.ts`'s own ~35 *other*, one-off messages (terminal-launch failures, missing
-      working directories, worktree-specific checks, ...) — each would need its own distinct code
-      (unlike the three shared classes above, these aren't reused across many call sites, so
-      there's less leverage per conversion).
-    - `server/services/taskService.ts`, `usageService.ts`, `cleanupService.ts`, `updateService.ts`
-    - `server/utils/repoRoot.ts`, `git.ts`
-    - `server/routes/tasks.ts`, `cleanup.ts` (their own throws, not the ones re-thrown from
-      `sessionService.ts`)
-  - Pick the next file by how often a user is likely to actually hit its error paths, same
-    reasoning that put `sessionService.ts`'s shared classes first — `taskService.ts` (New Task
-    modal) is probably next, then `usageService.ts`.
+    in the map yet (or wasn't sent at all, from a not-yet-converted throw site) — every frontend
+    call site that used to do `err instanceof Error ? err.message : t(fallbackKey)` now calls
+    `resolveApiErrorMessage(err, t, fallbackKey)` instead, so this part is a one-time change, done
+    for good. Verified end-to-end with `npx tsx` importing `resolveApiErrorMessage` +
+    `translations.ts` directly (a real code translates; an unrecognized code and a plain `Error`
+    both still fall back correctly), and against the real running dev server via `curl` (confirmed
+    `DELETE /sessions/<bad-id>` actually returns `{code: "SESSION_NOT_FOUND"}` in the response body).
+  - **Fully converted, every `throw new Error(...)` now an `AppError` with a code**:
+    `sessionService.ts` (all ~50 sites — `SessionNotFoundError`/`SessionActiveError` themselves now
+    extend `AppError`), `taskService.ts`, `usageService.ts`, `cleanupService.ts`, `updateService.ts`
+    (`UpdateBlockedError` now extends `AppError` too), and the routes that call all of the above
+    (`sessions.ts` — also refactored to replace every repeated `if (err instanceof X) {...}` chain
+    with one `sendErrorResponse(res, err, notFoundOrActive)` call — `tasks.ts`, `cleanup.ts`,
+    `system.ts`). `git.ts`'s own throws (not `runGit`'s, see below) are converted too:
+    `TASK_BASE_BRANCH_NOT_FOUND`, `NOT_A_GIT_WORKTREE`, `WORKTREE_UNCOMMITTED_CHANGES`.
+  - **Two throws deliberately left as plain, uncoded `Error`s** (fall back to raw English forever,
+    on purpose — not oversights):
+    - `git.ts`'s `runGit()` — it throws git's own stderr text, not this app's copy; there's no
+      fixed set of messages to map to translated strings the way there is for every throw above.
+    - `repoRoot.ts`'s `findRepoRoot()` — throws at *module load time* computing the top-level
+      `REPO_ROOT` constant, long before any HTTP request/response exists. A developer sees this
+      directly in the server's own startup log, never through the web UI, so there's nothing for
+      `resolveApiErrorMessage` to ever intercept.
+  - **What's left — the only remaining file**: `server/scripts/run-update.mjs`'s 2 throws (`git
+    pull failed`, `yarn install failed`) — these **are** user-facing: `startUpdate()`'s job result
+    flows through `UpdateJobStatus`'s `{state: "error", message}` shape
+    (`server/services/updateService.ts` / `src/services/systemApi.ts`, kept in sync by hand like
+    `Session`) to `useUpdate.ts`'s `applyUpdate` → `throw new Error(job.message)` → the same
+    `resolveApiErrorMessage` toast everything else uses. `run-update.mjs` is deliberately plain
+    JS (see its own doc comment — must run via a bare `node` invocation, no tsx/dist dependency),
+    so it can't `import { AppError }` from a `.ts` file; the fix is to add `code?: string` to
+    `UpdateJobStatus`'s `"error"` variant (both copies), have `run-update.mjs` write it as a plain
+    string alongside `message` (`{state: "error", message, code: "UPDATE_GIT_PULL_FAILED"}` etc.,
+    no class needed), and have `waitForUpdateJob`/`applyUpdate` in `useUpdate.ts` attach
+    `job.code` onto the thrown `Error` (`Object.assign(new Error(job.message), {code: job.code})`)
+    before it reaches `resolveApiErrorMessage`. Once that's done, this to-do is fully closed.
 
 - **Future idea: deeper Jenkins integration for `env/*` branches.** "New task" branches created
   with the `env/` prefix (this convention is per-repo, not universal — the concrete case so far

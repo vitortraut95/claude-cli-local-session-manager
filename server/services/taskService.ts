@@ -10,11 +10,24 @@ import {
   resolveBaseBranchRef,
   sanitizeWorktreeDirName,
 } from "../utils/git.js";
+import { AppError } from "../utils/httpError.js";
 
 export type ProjectFolderOption = {
   path: string;
   label: string;
 };
+
+// Shared by every "new task" step below — the same three checks (folder given, folder exists,
+// folder's actually a git repo) repeat across getRepoInfo/resolveBaseBranch/createTaskWorktree.
+function folderRequiredError(): AppError {
+  return new AppError("TASK_FOLDER_REQUIRED", "A project folder is required.");
+}
+function folderNotFoundError(folder: string): AppError {
+  return new AppError("TASK_FOLDER_NOT_FOUND", `Folder "${folder}" does not exist.`);
+}
+function notGitRepoError(folder: string): AppError {
+  return new AppError("TASK_NOT_GIT_REPO", `"${folder}" is not inside a git repository.`);
+}
 
 /**
  * Folder choices for the "new task" form's project select — derived from existing sessions' own
@@ -63,13 +76,13 @@ export type RepoInfo = {
 /** Used by the "new task" form to prefill the source-branch field once a folder is chosen/typed. */
 export async function getRepoInfo(folderPath: string): Promise<RepoInfo> {
   const trimmed = folderPath.trim();
-  if (!trimmed) throw new Error("A project folder is required.");
+  if (!trimmed) throw folderRequiredError();
   if (!(await directoryExists(trimmed))) {
-    throw new Error(`Folder "${trimmed}" does not exist.`);
+    throw folderNotFoundError(trimmed);
   }
 
   const repoRoot = await getRepoRoot(trimmed);
-  if (!repoRoot) throw new Error(`"${trimmed}" is not inside a git repository.`);
+  if (!repoRoot) throw notGitRepoError(trimmed);
 
   const defaultBaseBranch = await getDefaultBaseBranch(repoRoot);
   return { repoRoot, defaultBaseBranch };
@@ -94,11 +107,11 @@ export async function resolveBaseBranch(
 ): Promise<{ baseBranchRef: string }> {
   const trimmedFolder = folderPath.trim();
   const trimmedBase = baseBranch.trim();
-  if (!trimmedFolder) throw new Error("A project folder is required.");
-  if (!trimmedBase) throw new Error("A source branch is required.");
+  if (!trimmedFolder) throw folderRequiredError();
+  if (!trimmedBase) throw new AppError("TASK_BASE_BRANCH_REQUIRED", "A source branch is required.");
 
   const repoRoot = await getRepoRoot(trimmedFolder);
-  if (!repoRoot) throw new Error(`"${trimmedFolder}" is not inside a git repository.`);
+  if (!repoRoot) throw notGitRepoError(trimmedFolder);
 
   const baseBranchRef = await resolveBaseBranchRef(repoRoot, trimmedBase);
   return { baseBranchRef };
@@ -128,24 +141,25 @@ export async function createTaskWorktree(
   const trimmedBranch = branchName.trim();
   const trimmedRef = baseBranchRef.trim();
 
-  if (!trimmedFolder) throw new Error("A project folder is required.");
-  if (!trimmedBranch) throw new Error("A branch name is required.");
+  if (!trimmedFolder) throw folderRequiredError();
+  if (!trimmedBranch) throw new AppError("TASK_BRANCH_NAME_REQUIRED", "A branch name is required.");
   if (!SAFE_BRANCH_NAME.test(trimmedBranch)) {
-    throw new Error(
+    throw new AppError(
+      "TASK_INVALID_BRANCH_NAME",
       `"${trimmedBranch}" isn't a valid branch name (letters, numbers, "-", "_", "." and "/" ` +
         `only, must start with a letter or number).`,
     );
   }
-  if (!trimmedRef) throw new Error("A resolved base branch is required.");
+  if (!trimmedRef) throw new AppError("TASK_BASE_BRANCH_REF_REQUIRED", "A resolved base branch is required.");
 
   if (!(await directoryExists(trimmedFolder))) {
-    throw new Error(`Folder "${trimmedFolder}" does not exist.`);
+    throw folderNotFoundError(trimmedFolder);
   }
   const repoRoot = await getRepoRoot(trimmedFolder);
-  if (!repoRoot) throw new Error(`"${trimmedFolder}" is not inside a git repository.`);
+  if (!repoRoot) throw notGitRepoError(trimmedFolder);
 
   if (await branchExists(repoRoot, trimmedBranch)) {
-    throw new Error(`Branch "${trimmedBranch}" already exists.`);
+    throw new AppError("TASK_BRANCH_EXISTS", `Branch "${trimmedBranch}" already exists.`);
   }
 
   if (!useWorktree) {
@@ -160,7 +174,7 @@ export async function createTaskWorktree(
   // deleted (or never existed) — the `branchExists` check above wouldn't catch that case, and
   // `git worktree add` would otherwise fail with a much less clear "already exists" error.
   if (await directoryExists(worktreePath)) {
-    throw new Error(`A worktree named "${worktreeDirName}" already exists.`);
+    throw new AppError("TASK_WORKTREE_EXISTS", `A worktree named "${worktreeDirName}" already exists.`);
   }
 
   await createWorktreeWithBranch(repoRoot, worktreePath, trimmedBranch, trimmedRef);
@@ -189,8 +203,8 @@ export async function launchTaskTerminal(
 ): Promise<void> {
   const trimmedWorktreePath = worktreePath.trim();
   const trimmedPrompt = prompt.trim();
-  if (!trimmedWorktreePath) throw new Error("A worktree path is required.");
-  if (!trimmedPrompt) throw new Error("A prompt is required to start Claude.");
+  if (!trimmedWorktreePath) throw new AppError("TASK_WORKTREE_PATH_REQUIRED", "A worktree path is required.");
+  if (!trimmedPrompt) throw new AppError("TASK_PROMPT_REQUIRED", "A prompt is required to start Claude.");
 
   const permissionFlag = permissionModeAuto ? "--permission-mode auto " : "";
   await launchInTerminal(

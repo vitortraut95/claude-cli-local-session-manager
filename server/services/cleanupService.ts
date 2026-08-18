@@ -10,6 +10,7 @@ import {
   removeWorktreeAndBranch,
   type WorktreeEntry,
 } from "../utils/git.js";
+import { AppError } from "../utils/httpError.js";
 
 export type CleanupFinding = {
   id: string;
@@ -122,21 +123,28 @@ export async function executeCleanupFinding(finding: CleanupFinding): Promise<vo
 
   const { worktreePath, branch, repoRoot } = finding;
   if (!worktreePath || !branch) {
-    throw new Error("Missing worktree path or branch for this cleanup item.");
+    throw new AppError(
+      "CLEANUP_MISSING_TARGET",
+      "Missing worktree path or branch for this cleanup item.",
+    );
   }
 
   if (!(await directoryExists(worktreePath))) {
-    throw new Error(`"${worktreePath}" no longer exists — refresh the list.`);
+    throw new AppError("CLEANUP_TARGET_GONE", `"${worktreePath}" no longer exists — refresh the list.`);
   }
 
   const defaultBranch = await getDefaultBaseBranch(repoRoot);
   if (!(await isBranchMerged(repoRoot, branch, defaultBranch))) {
-    throw new Error(
+    throw new AppError(
+      "CLEANUP_BRANCH_NOT_MERGED",
       `Branch "${branch}" is no longer merged into "${defaultBranch}" — cancelled for safety.`,
     );
   }
   if (await hasUncommittedChanges(worktreePath)) {
-    throw new Error(`"${worktreePath}" now has uncommitted changes — cancelled for safety.`);
+    throw new AppError(
+      "CLEANUP_UNCOMMITTED_CHANGES",
+      `"${worktreePath}" now has uncommitted changes — cancelled for safety.`,
+    );
   }
 
   const sessions = await listSessions();
@@ -145,7 +153,10 @@ export async function executeCleanupFinding(finding: CleanupFinding): Promise<vo
     (s) => s.isActive && s.workingDirectory && path.resolve(s.workingDirectory) === target,
   );
   if (isActive) {
-    throw new Error(`A session is active in "${worktreePath}" right now — cancelled for safety.`);
+    throw new AppError(
+      "SESSION_ACTIVE",
+      `A session is active in "${worktreePath}" right now — cancelled for safety.`,
+    );
   }
 
   await removeWorktreeAndBranch(worktreePath);
