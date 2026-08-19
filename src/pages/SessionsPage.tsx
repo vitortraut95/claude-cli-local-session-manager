@@ -195,18 +195,20 @@ export function SessionsPage() {
               onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
               onOpenInVSCode={(s) => openInVSCode(s.id)}
               onOpenMissingWorktreeRootInVSCode={(s) => openMissingWorktreeRootInVSCode(s.id)}
-              onStartNewSessionAtMissingWorktreeRoot={(s) => startNewSessionAtMissingWorktreeRoot(s)}
+              onStartNewSessionAtMissingWorktreeRoot={(s) =>
+                startNewSessionAtMissingWorktreeRoot(s)
+              }
               onDeleteWorktree={(s) => deleteWorktree(s.id)}
               onWorktreeSyncComplete={() => refresh()}
               onCompactContinueLaunched={() => refreshSoon()}
               linkedFromSession={
                 session.continuesFromSessionId
-                  ? sessionsById.get(session.continuesFromSessionId) ?? null
+                  ? (sessionsById.get(session.continuesFromSessionId) ?? null)
                   : null
               }
               linkedBySession={
                 session.continuedBySessionId
-                  ? sessionsById.get(session.continuedBySessionId) ?? null
+                  ? (sessionsById.get(session.continuedBySessionId) ?? null)
                   : null
               }
               onJumpToSession={handleJumpToSession}
@@ -224,7 +226,7 @@ export function SessionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
+    <div className="min-h-screen bg-marrom-50 dark:bg-stone-950">
       <Header onSessionCreated={refreshSoon} />
       <main className="px-4 py-6 sm:px-6">
         <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center max-w-375 mx-auto">

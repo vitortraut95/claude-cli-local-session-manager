@@ -81,7 +81,7 @@ export function Modal({
       <div
         role="dialog"
         aria-modal="true"
-        className={`flex max-h-[98dvh] w-full ${SIZE_CLASSES[size]} flex-col rounded-xl bg-white shadow-xl dark:bg-stone-900`}
+        className={`flex max-h-[98dvh] w-full ${SIZE_CLASSES[size]} flex-col rounded-xl bg-white shadow-xl dark:bg-stone-700`}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 border-b border-stone-100 px-8 py-4 dark:border-stone-800">

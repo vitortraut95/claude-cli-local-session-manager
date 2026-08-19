@@ -55,7 +55,9 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
   const [busy, setBusy] = useState(false);
 
   const updateStep = (key: StepKey, status: StepStatus, error?: string) => {
-    setSteps((current) => current.map((step) => (step.key === key ? { ...step, status, error } : step)));
+    setSteps((current) =>
+      current.map((step) => (step.key === key ? { ...step, status, error } : step)),
+    );
   };
 
   const handleGenerate = async () => {
@@ -115,8 +117,8 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
     >
       <div className="flex flex-col gap-4">
         {!draft && (
-          <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-400">
-            <p className="mb-2 font-medium text-stone-700 dark:text-stone-300">
+          <div className="rounded-lg border border-stone-200 bg-marrom-50 p-3 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-100">
+            <p className="mb-2 font-medium text-stone-700 dark:text-stone-100">
               {t("compactContinueModal.whatWillHappen")}
             </p>
             <ol className="list-decimal space-y-1 pl-5">
@@ -129,10 +131,12 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
 
         {draft && (
           <div className="flex flex-col gap-3">
-            <div className="rounded-lg border border-stone-200 p-3 text-xs text-stone-500 dark:border-stone-800 dark:text-stone-400">
+            <div className="rounded-lg border border-stone-200 p-3 text-xs text-stone-500 dark:border-stone-800 dark:text-stone-100">
               <p>
                 {t("compactContinueModal.continuingFrom")}{" "}
-                <span className="font-medium text-stone-700 dark:text-stone-300">{draft.oldTitle}</span>
+                <span className="font-medium text-stone-700 dark:text-stone-100">
+                  {draft.oldTitle}
+                </span>
               </p>
               <p className="mt-0.5 font-mono">
                 id: {draft.oldSessionId}
@@ -140,7 +144,7 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
               </p>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">
+              <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-100">
                 {t("compactContinueModal.summaryLabel")}
               </label>
               <textarea
@@ -150,7 +154,7 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
                 disabled={busy}
                 className={TEXTAREA_CLASSNAME}
               />
-              <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">
+              <p className="mt-1 text-xs text-stone-400 dark:text-stone-100">
                 {t("compactContinueModal.summaryHint")}
               </p>
             </div>
@@ -158,18 +162,18 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
         )}
 
         {steps.length > 0 && (
-          <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 dark:border-stone-800 dark:bg-stone-800/50">
-            <p className="mb-2 text-sm font-medium text-stone-700 dark:text-stone-300">
+          <div className="rounded-lg border border-stone-200 bg-marrom-50 p-3 dark:border-stone-800 dark:bg-stone-800/50">
+            <p className="mb-2 text-sm font-medium text-stone-700 dark:text-stone-100">
               {t("compactContinueModal.progressLabel")}
             </p>
             <ol className="space-y-2">
               {steps.map((step) => (
                 <li key={step.key} className="flex items-start gap-2">
                   {step.status === "pending" && (
-                    <Circle className="mt-0.5 h-4 w-4 shrink-0 text-stone-300 dark:text-stone-600" />
+                    <Circle className="mt-0.5 h-4 w-4 shrink-0 text-stone-300 dark:text-stone-100" />
                   )}
                   {step.status === "doing" && (
-                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-stone-500 dark:text-stone-400" />
+                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-stone-500 dark:text-stone-100" />
                   )}
                   {step.status === "done" && (
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-500" />
@@ -181,8 +185,8 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
                     <p
                       className={`text-sm ${
                         step.status === "pending"
-                          ? "text-stone-400 dark:text-stone-500"
-                          : "text-stone-700 dark:text-stone-300"
+                          ? "text-stone-400 dark:text-stone-100"
+                          : "text-stone-700 dark:text-stone-100"
                       }`}
                     >
                       {step.label}

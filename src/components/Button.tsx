@@ -13,11 +13,10 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary:
-    "bg-marrom-900 text-white hover:bg-marrom-800 dark:bg-marrom-600 dark:hover:bg-marrom-700",
-  danger: "bg-vinho-900 text-white hover:bg-vinho-800 dark:bg-vinho-600 dark:hover:bg-vinho-700",
+  primary: "bg-marrom-600 text-white hover:bg-marrom-700",
+  danger: "bg-vinho-600 text-white hover:bg-vinho-700",
   outline:
-    "border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 dark:hover:bg-stone-800",
+    "border border-stone-300 bg-white text-stone-700 hover:bg-marrom-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 dark:hover:bg-stone-800",
   ghost:
     "text-stone-600 hover:bg-stone-100 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200",
   link: "text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200",

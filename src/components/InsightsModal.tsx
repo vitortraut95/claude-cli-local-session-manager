@@ -51,7 +51,7 @@ export function InsightsModal({ session, open, onClose }: InsightsModalProps) {
       size="lg"
     >
       {!ready ? (
-        <p className="text-sm text-stone-500 dark:text-stone-400">{t("insightsModal.loading")}</p>
+        <p className="text-sm text-stone-500 dark:text-stone-100">{t("insightsModal.loading")}</p>
       ) : (
         <>
           {loadError && (
@@ -60,15 +60,15 @@ export function InsightsModal({ session, open, onClose }: InsightsModalProps) {
             </p>
           )}
           {insights.length === 0 ? (
-            <p className="text-sm text-stone-500 dark:text-stone-400">{t("insightsModal.empty")}</p>
+            <p className="text-sm text-stone-500 dark:text-stone-100">{t("insightsModal.empty")}</p>
           ) : (
             <ul className="flex flex-col gap-2">
               {insights.map((insight, index) => (
                 <li
                   key={index}
-                  className="rounded-lg border border-stone-100 bg-stone-50 p-3 text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-300"
+                  className="rounded-lg border border-stone-100 bg-marrom-50 p-3 text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-100"
                 >
-                  <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
+                  <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-100">
                     {SCOPE_LABEL[insight.scope]}
                   </span>
                   {insight.message}

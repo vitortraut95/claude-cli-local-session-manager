@@ -36,12 +36,12 @@ function SubagentResult({ text }: { text: string }) {
 
   return (
     <div>
-      <p className="whitespace-pre-wrap text-xs text-stone-600 dark:text-stone-400">{shown}</p>
+      <p className="whitespace-pre-wrap text-xs text-stone-600 dark:text-stone-100">{shown}</p>
       {isLong && (
         <button
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
-          className="mt-1 text-xs font-medium text-stone-500 hover:underline dark:text-stone-400"
+          className="mt-1 text-xs font-medium text-stone-500 hover:underline dark:text-stone-100"
         >
           {expanded ? t("subagentsModal.showLess") : t("subagentsModal.showMore")}
         </button>
@@ -55,12 +55,12 @@ function SubagentCard({ agent }: { agent: SubagentDetail }) {
   const { t } = useLanguage();
 
   return (
-    <li className="rounded-lg border border-stone-100 bg-stone-50 p-3 dark:border-stone-800 dark:bg-stone-800/50">
+    <li className="rounded-lg border border-stone-100 bg-marrom-50 p-3 dark:border-stone-800 dark:bg-stone-800/50">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="rounded bg-stone-200 px-1.5 py-0.5 font-mono text-[10px] font-medium text-stone-700 dark:bg-stone-700 dark:text-stone-300">
+        <span className="rounded bg-stone-200 px-1.5 py-0.5 font-mono text-[10px] font-medium text-stone-700 dark:bg-stone-700 dark:text-stone-100">
           {agent.agentType ?? t("subagentsModal.unknownType")}
         </span>
-        <span className="text-xs text-stone-500 dark:text-stone-400">
+        <span className="text-xs text-stone-500 dark:text-stone-100">
           {duration && `${duration} · `}
           {agent.usage.totalCostUsd === null
             ? t("subagentsModal.unknownPricing")
@@ -107,7 +107,7 @@ export function SubagentsModal({ session, open, onClose }: SubagentsModalProps) 
     >
       {loadError ? (
         <div className="flex flex-col gap-2">
-          <p className="text-sm text-stone-500 dark:text-stone-400">
+          <p className="text-sm text-stone-500 dark:text-stone-100">
             {t("subagentsModal.loadError")}
           </p>
           <Button variant="outline" size="sm" onClick={() => setLoadError(false)}>
@@ -115,9 +115,9 @@ export function SubagentsModal({ session, open, onClose }: SubagentsModalProps) 
           </Button>
         </div>
       ) : subagents === null ? (
-        <p className="text-sm text-stone-500 dark:text-stone-400">{t("subagentsModal.loading")}</p>
+        <p className="text-sm text-stone-500 dark:text-stone-100">{t("subagentsModal.loading")}</p>
       ) : subagents.length === 0 ? (
-        <p className="text-sm text-stone-500 dark:text-stone-400">{t("subagentsModal.empty")}</p>
+        <p className="text-sm text-stone-500 dark:text-stone-100">{t("subagentsModal.empty")}</p>
       ) : (
         <ol className="flex flex-col gap-3">
           {subagents.map((agent) => (

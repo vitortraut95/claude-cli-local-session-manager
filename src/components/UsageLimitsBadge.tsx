@@ -78,7 +78,7 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
       ? "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-400"
       : urgency === "warning"
         ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/50 dark:text-amber-400"
-        : "border-stone-200 bg-stone-50 text-stone-600 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-400";
+        : "border-stone-200 bg-marrom-50 text-stone-600 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-400";
 
   const compactText =
     limits.length > 0
@@ -131,7 +131,9 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
         onClick={onRefresh}
         aria-label={t("usageLimitsBadge.title")}
         className={`border ${colorClass}`}
-        icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gauge className="h-4 w-4" />}
+        icon={
+          loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gauge className="h-4 w-4" />
+        }
       >
         {compactText}
       </Button>

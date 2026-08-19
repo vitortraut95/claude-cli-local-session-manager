@@ -217,7 +217,7 @@ export function SessionCard({
 
   return (
     <div
-      className={`relative flex flex-col gap-2 justify-between rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-stone-900 ${
+      className={`relative flex flex-col gap-2 justify-between rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-stone-700 ${
         selected
           ? "border-stone-900 ring-2 ring-stone-900/20 dark:border-stone-100 dark:ring-stone-100/20"
           : isHighlighted
@@ -234,7 +234,9 @@ export function SessionCard({
           checked={selected}
           onChange={() => onToggleSelect(session.id)}
           disabled={isBusy || session.isActive}
-          aria-label={selected ? t("sessionCard.checkbox.deselect") : t("sessionCard.checkbox.select")}
+          aria-label={
+            selected ? t("sessionCard.checkbox.deselect") : t("sessionCard.checkbox.select")
+          }
           className="h-4 w-4 shrink-0 accent-oliva-600 disabled:cursor-not-allowed disabled:opacity-40 dark:accent-oliva-300"
         />
         <Tooltip
@@ -245,7 +247,11 @@ export function SessionCard({
           }
         >
           <span
-            aria-label={session.isActive ? t("sessionCard.status.activeLabel") : t("sessionCard.status.inactiveLabel")}
+            aria-label={
+              session.isActive
+                ? t("sessionCard.status.activeLabel")
+                : t("sessionCard.status.inactiveLabel")
+            }
             className={`h-3 w-3 rounded-full border-2 border-white shadow dark:border-stone-900 ${
               session.isActive ? "bg-green-500 animate-pulse" : "bg-red-400"
             }`}
@@ -263,7 +269,7 @@ export function SessionCard({
           </h2>
           {session.nickname && (
             <span
-              className="line-clamp-1 text-xs italic text-stone-500 dark:text-stone-400"
+              className="line-clamp-1 text-xs italic text-stone-300 dark:text-stone-100"
               title={t("sessionCard.nickname.localOnly")}
             >
               {session.nickname}
@@ -277,7 +283,11 @@ export function SessionCard({
             <span className="inline-flex shrink-0">{nicknameButton}</span>
           </Tooltip>
         ) : (
-          <Tooltip content={session.nickname ? t("sessionCard.nickname.edit") : t("sessionCard.nickname.add")}>
+          <Tooltip
+            content={
+              session.nickname ? t("sessionCard.nickname.edit") : t("sessionCard.nickname.add")
+            }
+          >
             {nicknameButton}
           </Tooltip>
         )}
@@ -291,7 +301,9 @@ export function SessionCard({
               onClick={() => onJumpToSession(linkedFromSession.id)}
               onMouseEnter={() => onHoverLinkedSession(linkedFromSession.id)}
               onMouseLeave={() => onHoverLinkedSession(null)}
-              aria-label={t("sessionCard.continuesFrom.ariaLabel", { title: linkedFromSession.title })}
+              aria-label={t("sessionCard.continuesFrom.ariaLabel", {
+                title: linkedFromSession.title,
+              })}
               className="flex min-w-0 items-center gap-1 self-start text-left text-xs text-violet-600 hover:underline dark:text-violet-400"
             >
               <CornerUpLeft className="h-3.5 w-3.5 shrink-0" />
@@ -335,7 +347,7 @@ export function SessionCard({
           </div>
 
           {session.missingWorktreeRepoRoot && (
-            <div className="flex flex-col gap-1.5 pl-0.5 font-normal text-stone-600 dark:text-stone-400">
+            <div className="flex flex-col gap-1.5 pl-0.5 font-normal text-stone-600 dark:text-stone-100">
               <span className="break-all">
                 {t("sessionCard.directoryMissing.removedWorktree")}{" "}
                 <span className="font-mono">{session.missingWorktreeRepoRoot}</span>
@@ -396,7 +408,7 @@ export function SessionCard({
                 : (session.workingDirectory ?? session.project)
             }
           >
-            <span className="flex min-w-0 items-center gap-1 text-sm text-stone-600 dark:text-stone-400">
+            <span className="flex min-w-0 items-center gap-1 text-sm text-stone-600 dark:text-stone-100">
               {session.isWorktree ? (
                 <GitFork className="h-3.5 w-3.5 shrink-0 text-violet-500 dark:text-violet-400" />
               ) : (
@@ -404,7 +416,7 @@ export function SessionCard({
               )}
               {worktreePathParts ? (
                 <span className="flex min-w-0 flex-col break-all">
-                  <span className="text-xs text-stone-500 dark:text-stone-500">
+                  <span className="text-xs text-stone-300 dark:text-stone-100">
                     {worktreePathParts.prefix}
                   </span>
                   <span>
@@ -470,7 +482,7 @@ export function SessionCard({
             <button
               type="button"
               onClick={() => setShowSubagents(true)}
-              className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 hover:underline dark:text-stone-400 dark:hover:text-stone-200"
+              className="flex items-center gap-1 text-xs text-stone-300 hover:text-stone-700 hover:underline dark:text-stone-100 dark:hover:text-stone-200"
             >
               <Bot className="h-3.5 w-3.5" />
               {session.subagentCount === 1
@@ -479,14 +491,14 @@ export function SessionCard({
             </button>
           </Tooltip>
         ) : (
-          <span className="flex items-center gap-1 text-xs text-stone-500 dark:text-stone-400">
+          <span className="flex items-center gap-1 text-xs text-stone-300 dark:text-stone-100">
             <Bot className="h-3.5 w-3.5" />
             {t("sessionCard.subagentCount.none")}
           </span>
         )}
       </div>
 
-      <p className="flex items-center gap-1 text-xs text-stone-600 dark:text-stone-400">
+      <p className="flex items-center gap-1 text-xs text-stone-600 dark:text-stone-100">
         {t("sessionCard.updatedPrefix")} {formatUpdatedAt(session.updatedAt)}
         {session.activeTimeMs > 0 && (
           <Tooltip content={t("sessionCard.activeTimeTooltip")}>
@@ -596,7 +608,7 @@ export function SessionCard({
         )}
       </div>
 
-      <div className="flex items-center gap-1 text-sm text-stone-600 border-t border-stone-100 pt-3 dark:text-stone-400 dark:border-stone-800">
+      <div className="flex items-center gap-1 text-sm text-stone-600 border-t border-stone-100 pt-3 dark:text-stone-100 dark:border-stone-800">
         <span
           className="inline-flex items-center gap-1 font-mono text-[10px]"
           title={t("sessionCard.resumeCommandTitle")}

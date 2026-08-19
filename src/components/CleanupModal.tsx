@@ -19,12 +19,17 @@ type CleanupModalProps = {
  *  the selected language. */
 function findingTitle(finding: CleanupFinding, t: ReturnType<typeof useLanguage>["t"]): string {
   if (finding.kind === "prune-worktrees") {
-    return t("cleanupModal.finding.prune.title", { project: finding.repoRoot.split("/").pop() ?? finding.repoRoot });
+    return t("cleanupModal.finding.prune.title", {
+      project: finding.repoRoot.split("/").pop() ?? finding.repoRoot,
+    });
   }
   return t("cleanupModal.finding.merged.title", { branch: finding.branch ?? "?" });
 }
 
-function findingDescription(finding: CleanupFinding, t: ReturnType<typeof useLanguage>["t"]): string {
+function findingDescription(
+  finding: CleanupFinding,
+  t: ReturnType<typeof useLanguage>["t"],
+): string {
   if (finding.kind === "prune-worktrees") {
     return t("cleanupModal.finding.prune.description", {
       count: finding.staleBranches.length,
@@ -69,9 +74,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
         })
         .catch((err) => {
           if (!cancelled) {
-            setLoadError(
-              resolveApiErrorMessage(err, t, "cleanupModal.loadError"),
-            );
+            setLoadError(resolveApiErrorMessage(err, t, "cleanupModal.loadError"));
           }
         })
         .finally(() => {
@@ -91,10 +94,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
       setFindings((current) => current.filter((item) => item.id !== finding.id));
       showToast(t("cleanupModal.resolved"), "success");
     } catch (err) {
-      showToast(
-        resolveApiErrorMessage(err, t, "cleanupModal.runError"),
-        "error",
-      );
+      showToast(resolveApiErrorMessage(err, t, "cleanupModal.runError"), "error");
     } finally {
       setExecutingId(null);
     }
@@ -109,7 +109,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
       cancelLabel={t("cleanupModal.close")}
       size="xl"
     >
-      <div className="flex flex-col gap-2 mb-4 rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-400">
+      <div className="flex flex-col gap-2 mb-4 rounded-lg border border-stone-200 bg-marrom-50 p-3 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-100">
         <p>
           <strong>{t("cleanupModal.howItWorks.label")}</strong> {t("cleanupModal.howItWorks.body")}
         </p>
@@ -126,13 +126,13 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
       </div>
 
       {loading ? (
-        <p className="flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400">
+        <p className="flex items-center gap-2 text-sm text-stone-500 dark:text-stone-100">
           <Loader2 className="h-4 w-4 animate-spin" /> {t("cleanupModal.loading")}
         </p>
       ) : loadError ? (
         <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
       ) : findings.length === 0 ? (
-        <p className="text-sm text-stone-500 dark:text-stone-400">{t("cleanupModal.empty")}</p>
+        <p className="text-sm text-stone-500 dark:text-stone-100">{t("cleanupModal.empty")}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {findings.map((finding) => (
@@ -143,7 +143,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
               <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
                 {findingTitle(finding, t)}
               </p>
-              <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
+              <p className="mt-1 text-sm text-stone-600 dark:text-stone-100">
                 {findingDescription(finding, t)}
               </p>
               <div className="mt-3 flex items-center gap-2">
@@ -161,7 +161,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
                   {t("cleanupModal.run")}
                 </Button>
               </div>
-              <p className="mt-2 break-all font-mono text-xs text-stone-400 dark:text-stone-500">
+              <p className="mt-2 break-all font-mono text-xs text-stone-400 dark:text-stone-100">
                 {finding.command}
               </p>
             </li>

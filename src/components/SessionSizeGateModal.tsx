@@ -30,7 +30,7 @@ export function SessionSizeGateModal({
 
   return (
     <Modal open title={t("sizeGateModal.title")} onClose={onCancel} size="md">
-      <p className="flex items-start gap-2 text-sm text-stone-600 dark:text-stone-400">
+      <p className="flex items-start gap-2 text-sm text-stone-600 dark:text-stone-100">
         <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
         {t("sizeGateModal.body", { size: formatBytes(session.sizeBytes) })}
       </p>
@@ -40,7 +40,7 @@ export function SessionSizeGateModal({
           <Scissors className="h-4 w-4 shrink-0" />
           {t("sizeGateModal.compact.title")}
         </p>
-        <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+        <p className="mt-1 text-xs text-stone-500 dark:text-stone-100">
           {t("sizeGateModal.compact.body")}
         </p>
         <div className="mt-2">
@@ -51,11 +51,11 @@ export function SessionSizeGateModal({
       </div>
 
       <div className="mt-3 rounded-lg border border-stone-200 p-3 dark:border-stone-800">
-        <p className="flex items-center gap-1.5 text-sm font-medium text-stone-700 dark:text-stone-300">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-stone-700 dark:text-stone-100">
           <Play className="h-4 w-4 shrink-0" />
           {t("sizeGateModal.continueAnyway.title")}
         </p>
-        <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+        <p className="mt-1 text-xs text-stone-500 dark:text-stone-100">
           {t("sizeGateModal.continueAnyway.body")}
         </p>
         <div className="mt-2">

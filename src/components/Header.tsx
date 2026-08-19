@@ -48,7 +48,7 @@ export function Header({ onSessionCreated }: HeaderProps) {
   }, [loaded, hasSeenOnboarding, markOnboardingSeen]);
 
   return (
-    <header className="border-b border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
+    <header className="border-b border-stone-200 bg-white dark:border-marrom-800 dark:bg-marrom-900">
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-center gap-3 sm:justify-start">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-stone-900 dark:bg-stone-700">

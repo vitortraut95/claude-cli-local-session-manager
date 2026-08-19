@@ -26,7 +26,7 @@ export function SessionSizeMeter({ sizeBytes }: SessionSizeMeterProps) {
 
   return (
     <Tooltip content={t("sessionSizeMeter.tooltip", { size: formatBytes(sizeBytes), message })}>
-      <div className="flex w-full flex-col gap-1 rounded-b-xl bg-stone-50 px-3 py-1.5 dark:bg-stone-800/50">
+      <div className="flex w-full flex-col gap-1 rounded-b-xl bg-marrom-50 px-3 py-1.5 dark:bg-stone-800/50">
         <span className="flex items-center gap-1 text-[10px] text-stone-500 dark:text-stone-400">
           {status === "healthy" ? (
             <CircleCheck className="h-3 w-3 shrink-0" />

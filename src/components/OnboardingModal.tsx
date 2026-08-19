@@ -85,12 +85,12 @@ export function OnboardingModal({ open, onClose }: OnboardingModalProps) {
       size="lg"
       icon={
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
-          <HelpCircle className="h-5 w-5 text-stone-600 dark:text-stone-400" />
+          <HelpCircle className="h-5 w-5 text-stone-600 dark:text-stone-100" />
         </div>
       }
     >
       <div className="flex flex-col gap-4">
-        <p className="text-sm text-stone-600 dark:text-stone-400">{t("onboarding.intro")}</p>
+        <p className="text-sm text-stone-600 dark:text-stone-100">{t("onboarding.intro")}</p>
         <ol className="flex flex-col gap-3">
           {STEPS.map((step) => (
             <li key={step.titleKey} className="flex gap-2 rounded-lg border border-stone-200 p-3 dark:border-stone-800">
@@ -99,7 +99,7 @@ export function OnboardingModal({ open, onClose }: OnboardingModalProps) {
                 <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
                   {t(step.titleKey)}
                 </p>
-                <p className="text-sm text-stone-600 dark:text-stone-400">{t(step.bodyKey)}</p>
+                <p className="text-sm text-stone-600 dark:text-stone-100">{t(step.bodyKey)}</p>
               </div>
             </li>
           ))}
