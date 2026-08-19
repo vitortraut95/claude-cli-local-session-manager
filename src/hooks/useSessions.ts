@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as sessionsApi from "../services/sessionsApi";
 import type { Session } from "../types/session";
-import { sessionSizeStatus } from "../utils/sessionSize";
+import { isSessionFullyRed } from "../utils/sessionSize";
 import { useLanguage } from "./useLanguage";
 import { useUrlParam } from "./useUrlState";
 import { useToast } from "./useToast";
@@ -347,9 +347,11 @@ export function useSessions() {
   const clearResumeConflict = useCallback(() => setResumeConflict(null), []);
 
   // Shown instead of resuming directly once a fresh size check (see resumeSession below) finds
-  // the session's `.jsonl` past the "healthy" threshold — offers "continue anyway" (re-calls
-  // resumeSession with the gate skipped) or "compact & continue" (SessionsPage opens
-  // CompactContinueModal for it) instead of just resuming into a large session unprompted.
+  // the session's `.jsonl` "fully red" (past the size meter's saturation point, currently 15 MB)
+  // — offers "continue anyway" (re-calls resumeSession with the gate skipped) or "compact &
+  // continue" (SessionsPage opens CompactContinueModal for it) instead of just resuming into a
+  // large session unprompted. Deliberately doesn't fire at the earlier amber "caution"/early-red
+  // "critical" statuses — those are just meter coloring, not disruptive enough to interrupt Resume.
   const [sizeGateSession, setSizeGateSession] = useState<Session | null>(null);
   const clearSizeGate = useCallback(() => setSizeGateSession(null), []);
 
@@ -386,7 +388,7 @@ export function useSessions() {
           return;
         }
 
-        if (target && !opts?.skipSizeGate && sessionSizeStatus(target.sizeBytes) !== "healthy") {
+        if (target && !opts?.skipSizeGate && isSessionFullyRed(target.sizeBytes)) {
           setSizeGateSession(target);
           return;
         }

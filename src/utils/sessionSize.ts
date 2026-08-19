@@ -10,7 +10,7 @@ const MB = 1024 * KB;
 const HEALTHY_MAX_BYTES = 2 * MB;
 const CAUTION_MAX_BYTES = 8 * MB;
 /** Sizes at or beyond this are treated as "fully red" — the bar doesn't keep growing forever. */
-const CRITICAL_REFERENCE_BYTES = 20 * MB;
+const CRITICAL_REFERENCE_BYTES = 15 * MB;
 
 export function formatBytes(bytes: number): string {
   if (bytes < MB) return `${Math.max(1, Math.round(bytes / KB))} KB`;
@@ -33,6 +33,16 @@ const STATUS_MESSAGES: Record<SessionSizeStatus, string> = {
 
 export function sessionSizeMessage(bytes: number): string {
   return STATUS_MESSAGES[sessionSizeStatus(bytes)];
+}
+
+/**
+ * True once the size meter is "fully red" (`sessionSizeFraction` has saturated at 1) — the
+ * resume-time size gate (`useSessions.ts`) only interrupts at this point, not at the earlier
+ * amber/early-red "caution"/"critical" statuses, so a session has to actually be huge before
+ * resuming gets interrupted.
+ */
+export function isSessionFullyRed(bytes: number): boolean {
+  return bytes >= CRITICAL_REFERENCE_BYTES;
 }
 
 /**
