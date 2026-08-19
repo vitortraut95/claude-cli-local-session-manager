@@ -126,7 +126,9 @@ export function SessionCard({
     session.isWorktree && session.workingDirectory
       ? formatWorktreePath(session.workingDirectory)
       : null;
-  const jenkinsUrl = session.gitBranch ? getJenkinsBranchJobUrl(session.gitBranch) : null;
+  const jenkinsUrl = session.gitBranch
+    ? getJenkinsBranchJobUrl(session.gitBranch, session.project)
+    : null;
 
   const handleCopyCommand = async () => {
     try {
