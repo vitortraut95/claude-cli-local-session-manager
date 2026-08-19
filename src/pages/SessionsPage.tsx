@@ -144,7 +144,7 @@ export function SessionsPage() {
     return (
       <>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
             {t("sessionsPage.showingRange", {
               start: rangeStart,
               end: rangeEnd,
@@ -157,8 +157,8 @@ export function SessionsPage() {
         </div>
 
         {selectedIds.size > 0 && (
-          <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-stone-300 bg-white px-4 py-2 shadow-sm dark:border-stone-700 dark:bg-stone-900">
+            <span className="text-sm font-medium text-stone-700 dark:text-stone-300">
               {t("sessionsPage.selectedCount", { count: selectedIds.size })}
             </span>
             <div className="flex items-center gap-2">
@@ -171,7 +171,7 @@ export function SessionsPage() {
                 {t("sessionsPage.clearSelection")}
               </Button>
               <Button
-                variant="outline-danger"
+                variant="danger"
                 size="sm"
                 onClick={() => setShowBulkDeleteConfirm(true)}
                 icon={<Trash2 className="h-3.5 w-3.5" />}
@@ -224,7 +224,7 @@ export function SessionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
       <Header onSessionCreated={refreshSoon} />
       <main className="px-4 py-6 sm:px-6">
         <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center max-w-375 mx-auto">
@@ -255,23 +255,23 @@ export function SessionsPage() {
         onCancel={() => setSessionPendingDeletion(null)}
       >
         {sessionPendingDeletion?.isWorktree && (
-          <label className="mt-3 flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <label className="mt-3 flex items-start gap-2 text-sm text-stone-600 dark:text-stone-400">
             <input
               type="checkbox"
               checked={cleanupWorktreeOnDelete}
               onChange={(event) => setCleanupWorktreeOnDelete(event.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-oliva-600 dark:accent-oliva-300"
             />
             {t("sessionsPage.deleteConfirm.cleanupWorktree")}
           </label>
         )}
         {!sessionPendingDeletion?.isWorktree && sessionPendingDeletion?.gitBranch && (
-          <label className="mt-3 flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <label className="mt-3 flex items-start gap-2 text-sm text-stone-600 dark:text-stone-400">
             <input
               type="checkbox"
               checked={cleanupBranchOnDelete}
               onChange={(event) => setCleanupBranchOnDelete(event.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-oliva-600 dark:accent-oliva-300"
             />
             {t("sessionsPage.deleteConfirm.cleanupBranch", {
               branch: sessionPendingDeletion.gitBranch,

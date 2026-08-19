@@ -4,6 +4,50 @@
    following the OS's prefers-color-scheme. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Brand palette: a warm neutral ("stone", overriding Tailwind's default stone scale) for
+   backgrounds/text/borders, plus 3 accent colors used only for actions:
+   marrom = primary/main actions, oliva = positive actions, vinho = negative/destructive actions.
+   600 is each accent's exact hex; the rest are it mixed toward white/black via native
+   color-mix() — extra steps (700/800 and 400/500) exist so a hover state can move one step
+   instead of jumping straight from the base to the lightest/darkest end. */
+@theme {
+  --color-stone-50: color-mix(in oklch, #f5f1e8 92%, white);
+  --color-stone-100: #f5f1e8;
+  --color-stone-200: color-mix(in oklch, #f5f1e8 55%, #8c8474);
+  --color-stone-300: color-mix(in oklch, #f5f1e8 25%, #8c8474);
+  --color-stone-400: color-mix(in oklch, #8c8474 70%, #f5f1e8);
+  --color-stone-500: #8c8474;
+  --color-stone-600: color-mix(in oklch, #8c8474 60%, #211f19);
+  --color-stone-700: color-mix(in oklch, #8c8474 35%, #211f19);
+  --color-stone-800: color-mix(in oklch, #8c8474 15%, #211f19);
+  --color-stone-900: #211f19;
+  --color-stone-950: color-mix(in oklch, #211f19 85%, black);
+
+  --color-marrom-300: color-mix(in oklch, #3a2318 32%, white);
+  --color-marrom-400: color-mix(in oklch, #3a2318 50%, white);
+  --color-marrom-500: color-mix(in oklch, #3a2318 70%, white);
+  --color-marrom-600: #3a2318;
+  --color-marrom-700: color-mix(in oklch, #3a2318 85%, black);
+  --color-marrom-800: color-mix(in oklch, #3a2318 70%, black);
+  --color-marrom-900: color-mix(in oklch, #3a2318 55%, black);
+
+  --color-oliva-300: color-mix(in oklch, #2e3d0c 32%, white);
+  --color-oliva-400: color-mix(in oklch, #2e3d0c 50%, white);
+  --color-oliva-500: color-mix(in oklch, #2e3d0c 70%, white);
+  --color-oliva-600: #2e3d0c;
+  --color-oliva-700: color-mix(in oklch, #2e3d0c 85%, black);
+  --color-oliva-800: color-mix(in oklch, #2e3d0c 70%, black);
+  --color-oliva-900: color-mix(in oklch, #2e3d0c 55%, black);
+
+  --color-vinho-300: color-mix(in oklch, #6e122c 32%, white);
+  --color-vinho-400: color-mix(in oklch, #6e122c 50%, white);
+  --color-vinho-500: color-mix(in oklch, #6e122c 70%, white);
+  --color-vinho-600: #6e122c;
+  --color-vinho-700: color-mix(in oklch, #6e122c 85%, black);
+  --color-vinho-800: color-mix(in oklch, #6e122c 70%, black);
+  --color-vinho-900: color-mix(in oklch, #6e122c 55%, black);
+}
+
 :root {
   color-scheme: light;
 }

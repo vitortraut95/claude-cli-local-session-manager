@@ -78,7 +78,7 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
       ? "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-400"
       : urgency === "warning"
         ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/50 dark:text-amber-400"
-        : "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400";
+        : "border-stone-200 bg-stone-50 text-stone-600 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-400";
 
   const compactText =
     limits.length > 0
@@ -107,12 +107,12 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
             <p>
               {fullLabel(limit.kind, t)}: <strong>{Math.round(limit.percent)}%</strong>
             </p>
-            {resetText && <p className="text-gray-300">{resetText}</p>}
+            {resetText && <p className="text-stone-300">{resetText}</p>}
           </div>
         );
       })}
       {showExtraUsage && extraUsage && (
-        <p className="border-t border-gray-600 pt-1 text-gray-300">
+        <p className="border-t border-stone-600 pt-1 text-stone-300">
           {t("usageLimitsBadge.extraUsage", {
             usedCredits: extraUsage.usedCredits,
             monthlyLimit: extraUsage.monthlyLimit,
@@ -120,7 +120,7 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
           })}
         </p>
       )}
-      <p className="text-gray-400">{t("usageLimitsBadge.clickToRefresh")}</p>
+      <p className="text-stone-400">{t("usageLimitsBadge.clickToRefresh")}</p>
     </div>
   );
 

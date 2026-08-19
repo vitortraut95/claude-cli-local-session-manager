@@ -41,12 +41,12 @@ export function ConfirmDialog({
       confirmVariant="danger"
       size="sm"
       icon={
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/50">
-          <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-vinho-600/10 dark:bg-vinho-900/40">
+          <AlertTriangle className="h-5 w-5 text-vinho-600 dark:text-vinho-300" />
         </div>
       }
     >
-      <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+      <p className="text-sm text-stone-500 dark:text-stone-400">{message}</p>
       {children}
     </Modal>
   );

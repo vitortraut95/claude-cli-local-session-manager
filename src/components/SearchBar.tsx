@@ -25,7 +25,7 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
               size="none"
               onClick={() => onChange("")}
               aria-label={t("searchBar.clearLabel")}
-              className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+              className="text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
             >
               <X className="h-4 w-4" />
             </Button>

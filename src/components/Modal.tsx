@@ -75,20 +75,20 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600/80 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-600/80 px-4"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className={`flex max-h-[98dvh] w-full ${SIZE_CLASSES[size]} flex-col rounded-xl bg-white shadow-xl dark:bg-gray-900`}
+        className={`flex max-h-[98dvh] w-full ${SIZE_CLASSES[size]} flex-col rounded-xl bg-white shadow-xl dark:bg-stone-900`}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-8 py-4 dark:border-gray-800">
+        <div className="flex items-center justify-between gap-3 border-b border-stone-100 px-8 py-4 dark:border-stone-800">
           <div className="flex items-start gap-3">
             {icon}
             <h2
-              className="line-clamp-1 text-base font-semibold text-gray-900 dark:text-gray-100"
+              className="line-clamp-1 text-base font-semibold text-stone-900 dark:text-stone-100"
               title={title}
             >
               {title}
@@ -102,7 +102,7 @@ export function Modal({
         <div className="overflow-y-auto px-8 py-4">{children}</div>
 
         {(onConfirm ?? onCancel) && (
-          <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-8 py-4 dark:border-gray-800">
+          <div className="flex items-center justify-between gap-2 border-t border-stone-100 px-8 py-4 dark:border-stone-800">
             <div>
               {onSecondary && (
                 <Button variant="ghost" onClick={onSecondary} disabled={isConfirmLoading}>

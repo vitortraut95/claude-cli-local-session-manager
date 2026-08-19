@@ -91,20 +91,20 @@ export function FileListBox({
       <div className="flex items-center justify-between gap-2">
         <p
           className={`text-xs font-medium ${
-            tone === "danger" ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+            tone === "danger" ? "text-red-600 dark:text-red-400" : "text-stone-500 dark:text-stone-400"
           }`}
         >
           {title} ({files.length})
         </p>
         {titleAction}
       </div>
-      <div className="max-h-40 overflow-y-auto rounded-md border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-950">
+      <div className="max-h-40 overflow-y-auto rounded-md border border-stone-200 bg-white p-2 dark:border-stone-800 dark:bg-stone-950">
         {files.length === 0 ? (
-          <p className="text-xs text-gray-400 dark:text-gray-600">
+          <p className="text-xs text-stone-400 dark:text-stone-600">
             {t("worktreeToRootModal.fileListBox.none")}
           </p>
         ) : (
-          <ul className="space-y-0.5 font-mono text-xs break-all text-gray-700 dark:text-gray-300">
+          <ul className="space-y-0.5 font-mono text-xs break-all text-stone-700 dark:text-stone-300">
             {files.map((file) => (
               <li key={file} title={file}>
                 {file}
@@ -138,14 +138,14 @@ export function StashList({ stashes }: { stashes: RootStatus["appStashes"] }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+      <p className="text-xs font-medium text-stone-500 dark:text-stone-400">
         {t("worktreeToRootModal.stashList.title")}
       </p>
-      <ul className="flex flex-col gap-1 rounded-md border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-950">
+      <ul className="flex flex-col gap-1 rounded-md border border-stone-200 bg-white p-2 dark:border-stone-800 dark:bg-stone-950">
         {stashes.map((stash) => (
           <li key={stash.sha} className="flex items-center gap-2">
             <span
-              className="min-w-0 flex-1 truncate font-mono text-xs text-gray-600 dark:text-gray-300"
+              className="min-w-0 flex-1 truncate font-mono text-xs text-stone-600 dark:text-stone-300"
               title={stash.message}
             >
               {stash.message}
@@ -396,31 +396,31 @@ export function WorktreeToRootModal({
     >
       {stage === "choice" && (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
             {t("worktreeToRootModal.choice.intro")}
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <button
               type="button"
               onClick={() => chooseMode("copy")}
-              className="flex flex-col gap-2 rounded-lg border border-gray-200 p-4 text-left hover:border-gray-400 dark:border-gray-800 dark:hover:border-gray-600"
+              className="flex flex-col gap-2 rounded-lg border border-stone-200 p-4 text-left hover:border-stone-400 dark:border-stone-800 dark:hover:border-stone-600"
             >
-              <span className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
+              <span className="flex items-center gap-2 font-medium text-stone-900 dark:text-stone-100">
                 <Copy className="h-4 w-4 shrink-0" /> {t("worktreeToRootModal.choice.copyTitle")}
               </span>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-stone-600 dark:text-stone-400">
                 {t("worktreeToRootModal.choice.copyBody")}
               </span>
             </button>
             <button
               type="button"
               onClick={() => chooseMode("checkout")}
-              className="flex flex-col gap-2 rounded-lg border border-gray-200 p-4 text-left hover:border-gray-400 dark:border-gray-800 dark:hover:border-gray-600"
+              className="flex flex-col gap-2 rounded-lg border border-stone-200 p-4 text-left hover:border-stone-400 dark:border-stone-800 dark:hover:border-stone-600"
             >
-              <span className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
+              <span className="flex items-center gap-2 font-medium text-stone-900 dark:text-stone-100">
                 <GitBranch className="h-4 w-4 shrink-0" /> {t("worktreeToRootModal.choice.checkoutTitle")}
               </span>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-stone-600 dark:text-stone-400">
                 {t("worktreeToRootModal.choice.checkoutBody")}
               </span>
             </button>
@@ -431,14 +431,14 @@ export function WorktreeToRootModal({
       {stage === "preview" && (
         <div className="flex flex-col gap-4">
           {loadingPreview && (
-            <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <p className="flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400">
               <Loader2 className="h-4 w-4 animate-spin" /> {t("worktreeToRootModal.preview.loading")}
             </p>
           )}
           {previewError && <p className="text-sm text-red-600 dark:text-red-400">{previewError}</p>}
           {preview && !loadingPreview && (
             <>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-800 dark:bg-gray-800/50">
+              <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm dark:border-stone-800 dark:bg-stone-800/50">
                 <p>
                   {t("worktreeToRootModal.preview.rootFolderLabel")} (
                   <span className="font-mono break-all">{preview.repoRoot}</span>){" "}
@@ -544,7 +544,7 @@ export function WorktreeToRootModal({
             </span>
           </p>
           {loadingConfirmStatus && (
-            <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <p className="flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400">
               <Loader2 className="h-4 w-4 animate-spin" /> {t("worktreeToRootModal.confirm.doubleChecking")}
             </p>
           )}
@@ -568,7 +568,7 @@ export function WorktreeToRootModal({
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
             {t("worktreeToRootModal.done.message")}
           </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-stone-600 dark:text-stone-400">
             {t("worktreeToRootModal.done.explanation")}
           </p>
         </div>
@@ -579,10 +579,10 @@ export function WorktreeToRootModal({
           {steps.map((step) => (
             <li key={step.key} className="flex items-start gap-2">
               {step.status === "pending" && (
-                <Circle className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
+                <Circle className="mt-0.5 h-4 w-4 shrink-0 text-stone-300 dark:text-stone-600" />
               )}
               {step.status === "doing" && (
-                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-gray-500 dark:text-gray-400" />
+                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-stone-500 dark:text-stone-400" />
               )}
               {step.status === "done" && (
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-500" />
@@ -594,8 +594,8 @@ export function WorktreeToRootModal({
                 <p
                   className={`text-sm ${
                     step.status === "pending"
-                      ? "text-gray-400 dark:text-gray-500"
-                      : "text-gray-700 dark:text-gray-300"
+                      ? "text-stone-400 dark:text-stone-500"
+                      : "text-stone-700 dark:text-stone-300"
                   }`}
                 >
                   {step.label}

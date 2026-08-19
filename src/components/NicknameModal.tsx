@@ -30,7 +30,7 @@ export function NicknameModal({ currentNickname, onSave, onCancel }: NicknameMod
       cancelLabel={t("nicknameModal.cancel")}
       size="sm"
     >
-      <p className="text-sm text-gray-500 dark:text-gray-400">{t("nicknameModal.description")}</p>
+      <p className="text-sm text-stone-500 dark:text-stone-400">{t("nicknameModal.description")}</p>
 
       <Input
         type="text"

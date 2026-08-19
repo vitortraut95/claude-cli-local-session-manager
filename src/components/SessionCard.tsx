@@ -201,7 +201,7 @@ export function SessionCard({
 
   const deleteButton = (
     <Button
-      variant="outline-danger"
+      variant="danger"
       size="sm"
       onClick={() => onDeleteRequest(session)}
       disabled={isBusy || session.isActive}
@@ -215,12 +215,12 @@ export function SessionCard({
 
   return (
     <div
-      className={`relative flex flex-col gap-2 justify-between rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-900 ${
+      className={`relative flex flex-col gap-2 justify-between rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-stone-900 ${
         selected
-          ? "border-gray-900 ring-2 ring-gray-900/20 dark:border-gray-100 dark:ring-gray-100/20"
+          ? "border-stone-900 ring-2 ring-stone-900/20 dark:border-stone-100 dark:ring-stone-100/20"
           : isHighlighted
             ? "border-violet-400 ring-2 ring-violet-400/50 dark:border-violet-500 dark:ring-violet-500/40"
-            : "border-gray-200 dark:border-gray-800"
+            : "border-stone-200 dark:border-stone-800"
       }`}
     >
       {/* The only floating element on the card: active/inactive status stacked directly above
@@ -233,7 +233,7 @@ export function SessionCard({
           onChange={() => onToggleSelect(session.id)}
           disabled={isBusy || session.isActive}
           aria-label={selected ? t("sessionCard.checkbox.deselect") : t("sessionCard.checkbox.select")}
-          className="h-4 w-4 shrink-0 accent-gray-900 disabled:cursor-not-allowed disabled:opacity-40 dark:accent-gray-100"
+          className="h-4 w-4 shrink-0 accent-oliva-600 disabled:cursor-not-allowed disabled:opacity-40 dark:accent-oliva-300"
         />
         <Tooltip
           content={
@@ -244,7 +244,7 @@ export function SessionCard({
         >
           <span
             aria-label={session.isActive ? t("sessionCard.status.activeLabel") : t("sessionCard.status.inactiveLabel")}
-            className={`h-3 w-3 rounded-full border-2 border-white shadow dark:border-gray-900 ${
+            className={`h-3 w-3 rounded-full border-2 border-white shadow dark:border-stone-900 ${
               session.isActive ? "bg-green-500 animate-pulse" : "bg-red-400"
             }`}
           />
@@ -254,14 +254,14 @@ export function SessionCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2
-            className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
+            className="line-clamp-2 text-base font-semibold text-stone-900 dark:text-stone-100"
             title={session.title}
           >
             {session.title}
           </h2>
           {session.nickname && (
             <span
-              className="line-clamp-1 text-xs italic text-gray-500 dark:text-gray-400"
+              className="line-clamp-1 text-xs italic text-stone-500 dark:text-stone-400"
               title={t("sessionCard.nickname.localOnly")}
             >
               {session.nickname}
@@ -333,7 +333,7 @@ export function SessionCard({
           </div>
 
           {session.missingWorktreeRepoRoot && (
-            <div className="flex flex-col gap-1.5 pl-0.5 font-normal text-gray-600 dark:text-gray-400">
+            <div className="flex flex-col gap-1.5 pl-0.5 font-normal text-stone-600 dark:text-stone-400">
               <span className="break-all">
                 {t("sessionCard.directoryMissing.removedWorktree")}{" "}
                 <span className="font-mono">{session.missingWorktreeRepoRoot}</span>
@@ -394,7 +394,7 @@ export function SessionCard({
                 : (session.workingDirectory ?? session.project)
             }
           >
-            <span className="flex min-w-0 items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
+            <span className="flex min-w-0 items-center gap-1 text-sm text-stone-600 dark:text-stone-400">
               {session.isWorktree ? (
                 <GitFork className="h-3.5 w-3.5 shrink-0 text-violet-500 dark:text-violet-400" />
               ) : (
@@ -402,7 +402,7 @@ export function SessionCard({
               )}
               {worktreePathParts ? (
                 <span className="flex min-w-0 flex-col break-all">
-                  <span className="text-xs text-gray-500 dark:text-gray-500">
+                  <span className="text-xs text-stone-500 dark:text-stone-500">
                     {worktreePathParts.prefix}
                   </span>
                   <span>
@@ -449,7 +449,7 @@ export function SessionCard({
             // need to block opening the modal at all just because copy mode would still work.
             <Tooltip content={t("sessionCard.worktreeToRoot.tooltip")}>
               <Button
-                variant="outline-danger"
+                variant="danger"
                 size="sm"
                 onClick={() => setShowWorktreeToRootModal(true)}
                 aria-label={t("sessionCard.worktreeToRoot.ariaLabel")}
@@ -468,7 +468,7 @@ export function SessionCard({
             <button
               type="button"
               onClick={() => setShowSubagents(true)}
-              className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 hover:underline dark:text-gray-400 dark:hover:text-gray-200"
+              className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 hover:underline dark:text-stone-400 dark:hover:text-stone-200"
             >
               <Bot className="h-3.5 w-3.5" />
               {session.subagentCount === 1
@@ -477,14 +477,14 @@ export function SessionCard({
             </button>
           </Tooltip>
         ) : (
-          <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1 text-xs text-stone-500 dark:text-stone-400">
             <Bot className="h-3.5 w-3.5" />
             {t("sessionCard.subagentCount.none")}
           </span>
         )}
       </div>
 
-      <p className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+      <p className="flex items-center gap-1 text-xs text-stone-600 dark:text-stone-400">
         {t("sessionCard.updatedPrefix")} {formatUpdatedAt(session.updatedAt)}
         {session.activeTimeMs > 0 && (
           <Tooltip content={t("sessionCard.activeTimeTooltip")}>
@@ -498,7 +498,7 @@ export function SessionCard({
 
       {/* Card action toolbar — one standardized-size icon per action, colored by kind so they
           stay easy to tell apart at a glance as more get added here over time. */}
-      <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 pt-3 dark:border-gray-800">
+      <div className="flex flex-wrap items-center gap-4 border-t border-stone-100 pt-3 dark:border-stone-800">
         <ToolbarIconButton
           tooltip={t("sessionCard.insightsTooltip")}
           ariaLabel={t("sessionCard.insightsAriaLabel")}
@@ -594,7 +594,7 @@ export function SessionCard({
         )}
       </div>
 
-      <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
+      <div className="flex items-center gap-1 text-sm text-stone-600 border-t border-stone-100 pt-3 dark:text-stone-400 dark:border-stone-800">
         <span
           className="inline-flex items-center gap-1 font-mono text-[10px]"
           title={t("sessionCard.resumeCommandTitle")}
@@ -624,7 +624,7 @@ export function SessionCard({
         </Tooltip>
       </div>
 
-      <div className="flex gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
+      <div className="flex gap-2 border-t border-stone-100 pt-3 dark:border-stone-800">
         {continueDisabledReason !== null ? (
           // Native `disabled` buttons don't reliably fire hover events, so the tooltip needs a
           // separate, non-disabled wrapper — same pattern Radix's own docs recommend for

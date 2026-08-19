@@ -5,7 +5,7 @@ export type ToolbarIconButtonColor = "neutral" | "amber" | "green" | "blue" | "r
 
 const COLOR_CLASSES: Record<ToolbarIconButtonColor, string> = {
   neutral:
-    "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200",
+    "text-stone-500 hover:bg-stone-100 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200",
   amber:
     "text-amber-500 hover:bg-amber-50 hover:text-amber-600 dark:text-amber-400 dark:hover:bg-amber-950/40",
   green:

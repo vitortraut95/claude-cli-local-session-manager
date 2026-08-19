@@ -112,16 +112,16 @@ export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModa
           </span>
         </p>
         {loadingStatus && (
-          <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <p className="flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400">
             <Loader2 className="h-4 w-4 animate-spin" /> {t("resetRootConfirmModal.loading")}
           </p>
         )}
         {statusError && <p className="text-sm text-red-600 dark:text-red-400">{statusError}</p>}
         {status && !loadingStatus && (
           <>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-stone-600 dark:text-stone-400">
               {t("resetRootConfirmModal.branchPrefix")}{" "}
-              <span className="font-mono font-medium text-gray-800 dark:text-gray-200">
+              <span className="font-mono font-medium text-stone-800 dark:text-stone-200">
                 {status.rootBranch ?? t("resetRootConfirmModal.detachedHead")}
               </span>
               .

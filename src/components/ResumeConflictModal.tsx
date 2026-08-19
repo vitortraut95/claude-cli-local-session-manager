@@ -59,24 +59,24 @@ export function ResumeConflictModal({
       onClose={onCancel}
       size="md"
     >
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm text-stone-500 dark:text-stone-400">
         {isSelfConflict ? (
           t("resumeConflictModal.intro.selfConflict")
         ) : (
           <>
-            <span className="font-medium text-gray-700 dark:text-gray-300">{siblingLabel}</span>{" "}
+            <span className="font-medium text-stone-700 dark:text-stone-300">{siblingLabel}</span>{" "}
             {t("resumeConflictModal.intro.otherConflictSuffix")}
           </>
         )}{" "}
         {t("resumeConflictModal.intro.pickOption")}
       </p>
 
-      <div className="mt-4 rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-        <p className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
+      <div className="mt-4 rounded-lg border border-stone-200 p-3 dark:border-stone-800">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-stone-800 dark:text-stone-200">
           <GitFork className="h-4 w-4 shrink-0 text-violet-500 dark:text-violet-400" />
           {t("resumeConflictModal.worktree.title")}
         </p>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
           {t("resumeConflictModal.worktree.bodyPrefix")} <code>claude</code>{" "}
           {t("resumeConflictModal.worktree.bodyMiddle")}{" "}
           {isSelfConflict
@@ -112,7 +112,7 @@ export function ResumeConflictModal({
             ? t("resumeConflictModal.stop.titleSelf")
             : t("resumeConflictModal.stop.titleOther")}
         </p>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
           {isSelfConflict ? (
             t("resumeConflictModal.stop.bodySelf")
           ) : (

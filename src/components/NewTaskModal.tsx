@@ -44,10 +44,10 @@ function extractJiraId(link: string): string | null {
 }
 
 const TEXTAREA_CLASSNAME =
-  "w-full rounded-lg border border-gray-300 bg-white p-3 text-sm text-gray-900 placeholder:text-gray-400 " +
-  "focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-gray-700 " +
-  "dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-gray-600 " +
-  "dark:focus:ring-gray-100/10";
+  "w-full rounded-lg border border-stone-300 bg-white p-3 text-sm text-stone-900 placeholder:text-stone-400 " +
+  "focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:border-stone-700 " +
+  "dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-stone-600 " +
+  "dark:focus:ring-stone-100/10";
 
 type StepStatus = "pending" | "doing" | "done" | "error";
 type StepKey = "repo" | "base" | "worktree" | "launch";
@@ -414,7 +414,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     >
       <div className="flex flex-col gap-4">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+          <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">
             {t("newTaskModal.jiraLinkLabel")}
           </label>
           <Input
@@ -428,7 +428,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+          <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">
             {t("newTaskModal.projectLabel")}
           </label>
           {projects.length > 0 && (
@@ -462,7 +462,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
             />
           )}
           {loadingRepoInfo && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+            <p className="mt-1 flex items-center gap-1 text-xs text-stone-400 dark:text-stone-500">
               <Loader2 className="h-3 w-3 animate-spin" /> {t("newTaskModal.readingRepoInfo")}
             </p>
           )}
@@ -473,7 +473,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
 
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            <label className="text-xs font-medium text-stone-500 dark:text-stone-400">
               {t("newTaskModal.promptLabel")}
             </label>
             {promptDirty && (
@@ -500,7 +500,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           />
           <span className="block whitespace-pre-wrap text-xs">
             {t("newTaskModal.finalPromptLabel")}{" "}
-            <span className="font-mono text-gray-500 dark:text-gray-400">
+            <span className="font-mono text-stone-500 dark:text-stone-400">
               "{finalPromptPreview.slice(0, 160)}
               {finalPromptPreview.length > 160 ? "…" : ""}"
             </span>
@@ -509,7 +509,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+            <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">
               {t("newTaskModal.baseBranchLabel")}
             </label>
             <Input
@@ -523,7 +523,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+            <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">
               {t("newTaskModal.branchTypeLabel")}
             </label>
             <Select value={prefixChoice} onChange={(event) => setPrefixChoice(event.target.value)}>
@@ -546,7 +546,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+            <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-400">
               {t("newTaskModal.branchNameLabel")}
             </label>
             <Input
@@ -557,9 +557,9 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
               placeholder="PROJ-123"
             />
             {branchName && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+              <p className="mt-1 flex items-center gap-1 text-xs text-stone-400 dark:text-stone-500">
                 {t("newTaskModal.branchPreview")}
-                <span className="font-mono text-gray-600 dark:text-gray-300">{branchName}</span>
+                <span className="font-mono text-stone-600 dark:text-stone-300">{branchName}</span>
               </p>
             )}
           </div>
@@ -567,12 +567,12 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
 
         <div>
           <div className="flex items-center justify-between gap-2">
-            <label className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <label className="flex items-start gap-2 text-sm text-stone-600 dark:text-stone-400">
               <input
                 type="checkbox"
                 checked={skipWorktree}
                 onChange={(event) => setSkipWorktree(event.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-oliva-600 dark:accent-oliva-300"
               />
               {t("newTaskModal.skipWorktreeLabel")}
             </label>
@@ -597,33 +597,33 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         </div>
 
         <div>
-          <label className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <label className="flex items-start gap-2 text-sm text-stone-600 dark:text-stone-400">
             <input
               type="checkbox"
               checked={permissionModeAuto}
               onChange={(event) => setPermissionModeAuto(event.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-oliva-600 dark:accent-oliva-300"
             />
             {t("newTaskModal.permissionModeAutoLabel")}
           </label>
-          <p className="mt-1 pl-6 text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-1 pl-6 text-xs text-stone-500 dark:text-stone-400">
             {t("newTaskModal.permissionModeAutoExplanation")}
           </p>
         </div>
 
         {steps.length > 0 ? (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/50">
-            <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 dark:border-stone-800 dark:bg-stone-800/50">
+            <p className="mb-2 text-sm font-medium text-stone-700 dark:text-stone-300">
               {t("newTaskModal.progressLabel")}
             </p>
             <ol className="space-y-2">
               {steps.map((step) => (
                 <li key={step.key} className="flex items-start gap-2">
                   {step.status === "pending" && (
-                    <Circle className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
+                    <Circle className="mt-0.5 h-4 w-4 shrink-0 text-stone-300 dark:text-stone-600" />
                   )}
                   {step.status === "doing" && (
-                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-gray-500 dark:text-gray-400" />
+                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-stone-500 dark:text-stone-400" />
                   )}
                   {step.status === "done" && (
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-500" />
@@ -635,8 +635,8 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
                     <p
                       className={`text-sm ${
                         step.status === "pending"
-                          ? "text-gray-400 dark:text-gray-500"
-                          : "text-gray-700 dark:text-gray-300"
+                          ? "text-stone-400 dark:text-stone-500"
+                          : "text-stone-700 dark:text-stone-300"
                       }`}
                     >
                       {step.label}
@@ -650,28 +650,28 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
             </ol>
           </div>
         ) : (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
-            <p className="mb-2 font-medium text-gray-700 dark:text-gray-300">
+          <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-400">
+            <p className="mb-2 font-medium text-stone-700 dark:text-stone-300">
               {t("newTaskModal.whatWillHappen")}
             </p>
             <ol className="list-decimal space-y-1 pl-5">
               <li>
                 {t("newTaskModal.explain.repo.pre")}{" "}
-                <span className="font-mono text-gray-800 dark:text-gray-200">
+                <span className="font-mono text-stone-800 dark:text-stone-200">
                   {trimmedFolder || t("newTaskModal.explain.folderPlaceholder")}
                 </span>{" "}
                 {t("newTaskModal.explain.repo.post")}
               </li>
               <li>
                 {t("newTaskModal.explain.base.pre")}{" "}
-                <span className="font-mono text-gray-800 dark:text-gray-200">
+                <span className="font-mono text-stone-800 dark:text-stone-200">
                   {trimmedBase || t("newTaskModal.explain.basePlaceholder")}
                 </span>{" "}
                 {t("newTaskModal.explain.base.post")}
               </li>
               <li>
                 {t("newTaskModal.explain.branch.pre")}{" "}
-                <span className="font-mono text-gray-800 dark:text-gray-200">
+                <span className="font-mono text-stone-800 dark:text-stone-200">
                   {trimmedBranch || t("newTaskModal.explain.branchPlaceholder")}
                 </span>{" "}
                 {t("newTaskModal.explain.branch.post")}

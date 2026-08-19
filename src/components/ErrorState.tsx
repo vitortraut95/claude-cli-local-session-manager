@@ -17,7 +17,7 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
       </p>
       <p className="mt-1 max-w-sm text-sm text-red-600 dark:text-red-400">{message}</p>
       <Button
-        variant="outline-danger"
+        variant="danger"
         onClick={onRetry}
         icon={<RefreshCw className="h-4 w-4" />}
         className="mt-4"
