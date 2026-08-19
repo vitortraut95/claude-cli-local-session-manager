@@ -1,8 +1,8 @@
-// Exploratory/personal integration for one specific pipeline (see CLAUDE.md's Jenkins to-do) —
-// hardcoded rather than a preference for now, since only one project/job is in play. Revisit if
-// this ever needs to cover more than one env/*-branched repo.
+// Exploratory/personal integration for HostGator's Jenkins (see CLAUDE.md's Jenkins to-do). The
+// multibranch job name matches the repo's own folder name 1:1 (e.g. "hg-led-blog",
+// "hg-led-mainsite") one level below "job/", so `session.project` — already the repo folder's
+// basename — is exactly the job name; no per-project config needed.
 const JENKINS_BASE_URL = "https://jenkins.hostgator.com.br";
-const JENKINS_JOB_NAME = "hg-led-mainsite";
 const ENV_BRANCH_PREFIX = "env/";
 
 /**
@@ -12,8 +12,8 @@ const ENV_BRANCH_PREFIX = "env/";
  * for anything that isn't an `env/`-prefixed branch, so the "Open Jenkins" button only renders
  * where this convention actually applies.
  */
-export function getJenkinsBranchJobUrl(branch: string): string | null {
+export function getJenkinsBranchJobUrl(branch: string, project: string): string | null {
   if (!branch.startsWith(ENV_BRANCH_PREFIX)) return null;
   const doubleEncodedBranch = encodeURIComponent(encodeURIComponent(branch));
-  return `${JENKINS_BASE_URL}/job/${JENKINS_JOB_NAME}/job/${doubleEncodedBranch}/`;
+  return `${JENKINS_BASE_URL}/job/${project}/job/${doubleEncodedBranch}/`;
 }
