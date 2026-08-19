@@ -48,17 +48,17 @@ export function Header({ onSessionCreated }: HeaderProps) {
   }, [loaded, hasSeenOnboarding, markOnboardingSeen]);
 
   return (
-    <header className="border-b border-stone-200 bg-white dark:border-marrom-800 dark:bg-marrom-900">
+    <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-center gap-3 sm:justify-start">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-stone-900 dark:bg-stone-700">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-900 dark:bg-gray-700">
             <Bot className="h-5 w-5 text-white" />
           </div>
           <div className="min-w-0">
-            <h1 className="font-semibold text-stone-900 dark:text-stone-100 sm:text-lg">
+            <h1 className="font-semibold text-gray-900 dark:text-gray-100 sm:text-lg">
               Claude CLI Local Session Manager
             </h1>
-            <p className="text-sm text-stone-500 dark:text-stone-400">{t("header.subtitle")}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t("header.subtitle")}</p>
           </div>
         </div>
 
@@ -66,10 +66,18 @@ export function Header({ onSessionCreated }: HeaderProps) {
           <Button onClick={() => setShowNewTaskModal(true)} icon={<Plus className="h-4 w-4" />}>
             {t("header.newTask")}
           </Button>
-          <Button onClick={() => setShowCleanupModal(true)} icon={<Sparkles className="h-4 w-4" />}>
+          <Button
+            variant="outline"
+            onClick={() => setShowCleanupModal(true)}
+            icon={<Sparkles className="h-4 w-4" />}
+          >
             {t("header.cleanup")}
           </Button>
-          <Button onClick={() => setShowOnboarding(true)} icon={<HelpCircle className="h-4 w-4" />}>
+          <Button
+            variant="outline"
+            onClick={() => setShowOnboarding(true)}
+            icon={<HelpCircle className="h-4 w-4" />}
+          >
             {t("header.help")}
           </Button>
           <Select

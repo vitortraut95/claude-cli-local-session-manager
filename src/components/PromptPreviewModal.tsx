@@ -42,13 +42,11 @@ export function PromptPreviewModal({ session, open, onClose }: PromptPreviewModa
   return (
     <Modal open={open} title={session.title} onClose={onClose} size="lg">
       {displayPrompts === null ? (
-        <p className="text-sm text-stone-500 dark:text-stone-100">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           {t("promptPreviewModal.loading")}
         </p>
       ) : displayPrompts.length === 0 ? (
-        <p className="text-sm text-stone-500 dark:text-stone-100">
-          {t("promptPreviewModal.empty")}
-        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t("promptPreviewModal.empty")}</p>
       ) : (
         <>
           {loadError && (
@@ -60,9 +58,9 @@ export function PromptPreviewModal({ session, open, onClose }: PromptPreviewModa
             {displayPrompts.map((prompt, index) => (
               <li
                 key={index}
-                className="rounded-lg border border-stone-100 bg-marrom-50 p-3 text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-100"
+                className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-300"
               >
-                <span className="mb-1 block text-xs font-medium text-stone-400 dark:text-stone-100">
+                <span className="mb-1 block text-xs font-medium text-gray-400 dark:text-gray-500">
                   #{index + 1}
                 </span>
                 <p className="whitespace-pre-wrap">{prompt}</p>

@@ -21,7 +21,7 @@ export function DateRangeFilter({ from, to, onChange }: DateRangeFilterProps) {
         icon={<Calendar className="h-4 w-4" />}
         className="sm:w-40"
       />
-      <span className="text-sm text-stone-400 dark:text-stone-500">{t("dateRangeFilter.to")}</span>
+      <span className="text-sm text-gray-400 dark:text-gray-500">{t("dateRangeFilter.to")}</span>
       <Input
         type="date"
         value={to}

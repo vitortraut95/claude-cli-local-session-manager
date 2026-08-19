@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-export type ButtonVariant = "primary" | "danger" | "outline" | "ghost" | "link" | "unstyled";
+export type ButtonVariant = "primary" | "danger" | "outline" | "outline-danger" | "ghost" | "link" | "unstyled";
 
 export type ButtonSize = "sm" | "md" | "icon" | "none";
 
@@ -13,13 +13,15 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: "bg-marrom-600 text-white hover:bg-marrom-700",
-  danger: "bg-vinho-600 text-white hover:bg-vinho-700",
+  primary: "bg-gray-900 text-white hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600",
+  danger: "bg-red-600 text-white hover:bg-red-700",
   outline:
-    "border border-stone-300 bg-white text-stone-700 hover:bg-marrom-50 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300 dark:hover:bg-stone-800",
+    "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800",
+  "outline-danger":
+    "border border-red-200 bg-white text-red-600 hover:bg-red-50 dark:border-red-900/60 dark:bg-gray-900 dark:text-red-400 dark:hover:bg-red-950/50",
   ghost:
-    "text-stone-600 hover:bg-stone-100 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200",
-  link: "text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200",
+    "text-gray-600 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200",
+  link: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200",
   // No color classes — spacing/typography from `size` still applies. Escape hatch for one-off
   // buttons whose coloring doesn't fit the standard palette (e.g. status-driven or `text-current`
   // based colors) and would otherwise fight a variant's own color classes for precedence.
@@ -34,16 +36,7 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  {
-    variant = "primary",
-    size = "md",
-    icon,
-    fullWidth = false,
-    className = "",
-    children,
-    type = "button",
-    ...rest
-  },
+  { variant = "primary", size = "md", icon, fullWidth = false, className = "", children, type = "button", ...rest },
   ref,
 ) {
   return (

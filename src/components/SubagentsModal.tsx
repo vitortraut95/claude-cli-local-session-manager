@@ -36,12 +36,12 @@ function SubagentResult({ text }: { text: string }) {
 
   return (
     <div>
-      <p className="whitespace-pre-wrap text-xs text-stone-600 dark:text-stone-100">{shown}</p>
+      <p className="whitespace-pre-wrap text-xs text-gray-600 dark:text-gray-400">{shown}</p>
       {isLong && (
         <button
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
-          className="mt-1 text-xs font-medium text-stone-500 hover:underline dark:text-stone-100"
+          className="mt-1 text-xs font-medium text-gray-500 hover:underline dark:text-gray-400"
         >
           {expanded ? t("subagentsModal.showLess") : t("subagentsModal.showMore")}
         </button>
@@ -55,19 +55,19 @@ function SubagentCard({ agent }: { agent: SubagentDetail }) {
   const { t } = useLanguage();
 
   return (
-    <li className="rounded-lg border border-stone-100 bg-marrom-50 p-3 dark:border-stone-800 dark:bg-stone-800/50">
+    <li className="rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/50">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="rounded bg-stone-200 px-1.5 py-0.5 font-mono text-[10px] font-medium text-stone-700 dark:bg-stone-700 dark:text-stone-100">
+        <span className="rounded bg-gray-200 px-1.5 py-0.5 font-mono text-[10px] font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
           {agent.agentType ?? t("subagentsModal.unknownType")}
         </span>
-        <span className="text-xs text-stone-500 dark:text-stone-100">
+        <span className="text-xs text-gray-500 dark:text-gray-400">
           {duration && `${duration} · `}
           {agent.usage.totalCostUsd === null
             ? t("subagentsModal.unknownPricing")
             : formatUsd(agent.usage.totalCostUsd)}
         </span>
       </div>
-      <p className="mb-2 text-sm font-medium text-stone-900 dark:text-stone-100">
+      <p className="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">
         {agent.description ?? t("subagentsModal.noDescription")}
       </p>
       {agent.resultText && <SubagentResult text={agent.resultText} />}
@@ -107,7 +107,7 @@ export function SubagentsModal({ session, open, onClose }: SubagentsModalProps) 
     >
       {loadError ? (
         <div className="flex flex-col gap-2">
-          <p className="text-sm text-stone-500 dark:text-stone-100">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {t("subagentsModal.loadError")}
           </p>
           <Button variant="outline" size="sm" onClick={() => setLoadError(false)}>
@@ -115,9 +115,9 @@ export function SubagentsModal({ session, open, onClose }: SubagentsModalProps) 
           </Button>
         </div>
       ) : subagents === null ? (
-        <p className="text-sm text-stone-500 dark:text-stone-100">{t("subagentsModal.loading")}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t("subagentsModal.loading")}</p>
       ) : subagents.length === 0 ? (
-        <p className="text-sm text-stone-500 dark:text-stone-100">{t("subagentsModal.empty")}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t("subagentsModal.empty")}</p>
       ) : (
         <ol className="flex flex-col gap-3">
           {subagents.map((agent) => (

@@ -21,7 +21,7 @@ export function Pagination({ page, pageCount, onChange }: PaginationProps) {
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
-      <span className="text-sm text-stone-600 dark:text-stone-400">
+      <span className="text-sm text-gray-600 dark:text-gray-400">
         {t("pagination.pageInfo", { page, pageCount })}
       </span>
       <Button

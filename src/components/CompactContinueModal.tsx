@@ -28,10 +28,10 @@ const STEP_LABEL_KEYS: Record<StepKey, TranslationKey> = {
 const STEP_ORDER: StepKey[] = ["summary", "launch"];
 
 const TEXTAREA_CLASSNAME =
-  "w-full rounded-lg border border-stone-300 bg-white p-3 text-sm text-stone-900 placeholder:text-stone-400 " +
-  "focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:border-stone-700 " +
-  "dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-stone-600 " +
-  "dark:focus:ring-stone-100/10";
+  "w-full rounded-lg border border-gray-300 bg-white p-3 text-sm text-gray-900 placeholder:text-gray-400 " +
+  "focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-gray-700 " +
+  "dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-gray-600 " +
+  "dark:focus:ring-gray-100/10";
 
 /**
  * Mounted only while open (SessionCard conditionally renders it), unlike NewTaskModal's
@@ -55,9 +55,7 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
   const [busy, setBusy] = useState(false);
 
   const updateStep = (key: StepKey, status: StepStatus, error?: string) => {
-    setSteps((current) =>
-      current.map((step) => (step.key === key ? { ...step, status, error } : step)),
-    );
+    setSteps((current) => current.map((step) => (step.key === key ? { ...step, status, error } : step)));
   };
 
   const handleGenerate = async () => {
@@ -117,8 +115,8 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
     >
       <div className="flex flex-col gap-4">
         {!draft && (
-          <div className="rounded-lg border border-stone-200 bg-marrom-50 p-3 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-800/50 dark:text-stone-100">
-            <p className="mb-2 font-medium text-stone-700 dark:text-stone-100">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
+            <p className="mb-2 font-medium text-gray-700 dark:text-gray-300">
               {t("compactContinueModal.whatWillHappen")}
             </p>
             <ol className="list-decimal space-y-1 pl-5">
@@ -131,12 +129,10 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
 
         {draft && (
           <div className="flex flex-col gap-3">
-            <div className="rounded-lg border border-stone-200 p-3 text-xs text-stone-500 dark:border-stone-800 dark:text-stone-100">
+            <div className="rounded-lg border border-gray-200 p-3 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
               <p>
                 {t("compactContinueModal.continuingFrom")}{" "}
-                <span className="font-medium text-stone-700 dark:text-stone-100">
-                  {draft.oldTitle}
-                </span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">{draft.oldTitle}</span>
               </p>
               <p className="mt-0.5 font-mono">
                 id: {draft.oldSessionId}
@@ -144,7 +140,7 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
               </p>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-stone-500 dark:text-stone-100">
+              <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
                 {t("compactContinueModal.summaryLabel")}
               </label>
               <textarea
@@ -154,7 +150,7 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
                 disabled={busy}
                 className={TEXTAREA_CLASSNAME}
               />
-              <p className="mt-1 text-xs text-stone-400 dark:text-stone-100">
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                 {t("compactContinueModal.summaryHint")}
               </p>
             </div>
@@ -162,18 +158,18 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
         )}
 
         {steps.length > 0 && (
-          <div className="rounded-lg border border-stone-200 bg-marrom-50 p-3 dark:border-stone-800 dark:bg-stone-800/50">
-            <p className="mb-2 text-sm font-medium text-stone-700 dark:text-stone-100">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/50">
+            <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               {t("compactContinueModal.progressLabel")}
             </p>
             <ol className="space-y-2">
               {steps.map((step) => (
                 <li key={step.key} className="flex items-start gap-2">
                   {step.status === "pending" && (
-                    <Circle className="mt-0.5 h-4 w-4 shrink-0 text-stone-300 dark:text-stone-100" />
+                    <Circle className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
                   )}
                   {step.status === "doing" && (
-                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-stone-500 dark:text-stone-100" />
+                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-gray-500 dark:text-gray-400" />
                   )}
                   {step.status === "done" && (
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-500" />
@@ -185,8 +181,8 @@ export function CompactContinueModal({ session, onClose, onLaunched }: CompactCo
                     <p
                       className={`text-sm ${
                         step.status === "pending"
-                          ? "text-stone-400 dark:text-stone-100"
-                          : "text-stone-700 dark:text-stone-100"
+                          ? "text-gray-400 dark:text-gray-500"
+                          : "text-gray-700 dark:text-gray-300"
                       }`}
                     >
                       {step.label}
