@@ -341,6 +341,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         trimmedFolder,
         trimmedBranch,
         baseBranchRef,
+        trimmedBase,
         !skipWorktree,
       );
       updateStep("worktree", "done");

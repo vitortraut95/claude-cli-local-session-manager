@@ -78,6 +78,12 @@ export type Session = {
    *  reverse of `continuesFromSessionId`, computed by scanning the same sidecar file for an
    *  entry whose `continuesFrom` points at this session. */
   continuedBySessionId: string | null;
+  /** The branch this session's worktree was branched off, from this app's own
+   *  `task-base-branches.json` sidecar — only ever set for a "New task"-created worktree whose
+   *  chosen base branch differed from the repo's own default (main/master or whatever `origin/HEAD`
+   *  resolves to). Null for every other session, including a worktree branched off the default.
+   *  Powers the "Open PR" button's choice between comparing against this base or the repo's default. */
+  baseBranch: string | null;
 };
 
 export type WorktreeToRootFileDiff = {

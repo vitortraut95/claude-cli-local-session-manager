@@ -128,10 +128,15 @@ export async function fetchSessionRepoInsights(id: string): Promise<SessionRepoI
  *  is passed from the caller's own `session.gitBranch` rather than re-derived server-side, same
  *  convention as `deleteBranch`/`stopAndCheckoutResume` above. Throws (via withServerErrorMessage)
  *  when the session's repo isn't a recognized remote — the caller decides how to surface that
- *  (a toast, in SessionCard's case) rather than this returning a silent null. */
-export async function fetchPrUrl(id: string, branch: string): Promise<string> {
+ *  (a toast, in SessionCard's case) rather than this returning a silent null.
+ *
+ * `base`, when given, is spelled out explicitly in the built link (`<base>...<branch>` on GitHub,
+ * `&dest=<base>` on Bitbucket) instead of relying on the host's implicit default-branch comparison
+ * — passed only when the user picked "use the creation-time base branch" in
+ * `OpenPrBaseChoiceModal`. */
+export async function fetchPrUrl(id: string, branch: string, base?: string): Promise<string> {
   const { data } = await withServerErrorMessage(() =>
-    client.get<{ url: string }>(`/${encodeURIComponent(id)}/pr-url`, { params: { branch } }),
+    client.get<{ url: string }>(`/${encodeURIComponent(id)}/pr-url`, { params: { branch, base } }),
   );
   return data.url;
 }

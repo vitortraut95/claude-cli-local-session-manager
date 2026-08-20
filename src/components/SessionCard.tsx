@@ -35,6 +35,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { InsightsModal } from "./InsightsModal";
 import { NicknameModal } from "./NicknameModal";
+import { OpenPrBaseChoiceModal } from "./OpenPrBaseChoiceModal";
 import { ResetRootConfirmModal } from "./ResetRootConfirmModal";
 import { SessionSizeMeter } from "./SessionSizeMeter";
 import { SubagentsModal } from "./SubagentsModal";
@@ -119,6 +120,7 @@ export function SessionCard({
   const [showWorktreeToRootModal, setShowWorktreeToRootModal] = useState(false);
   const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
   const [showCompactContinueModal, setShowCompactContinueModal] = useState(false);
+  const [showOpenPrBaseChoice, setShowOpenPrBaseChoice] = useState(false);
   const [openingPrUrl, setOpeningPrUrl] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
@@ -145,8 +147,16 @@ export function SessionCard({
 
   // Fetched on click rather than eagerly for every card — this is a git call (origin remote →
   // host + repo slug) on the server, only worth paying for when the user actually wants the link.
+  // When the worktree was branched off something other than the repo's default (`baseBranch` set,
+  // see taskBaseBranches.ts), defers to OpenPrBaseChoiceModal instead of opening straight away —
+  // the plain compare link's implicit default-branch comparison would otherwise show every commit
+  // already on that base as part of the "diff" too.
   const handleOpenPr = async () => {
     if (!session.gitBranch) return;
+    if (session.baseBranch) {
+      setShowOpenPrBaseChoice(true);
+      return;
+    }
     setOpeningPrUrl(true);
     try {
       const url = await sessionsApi.fetchPrUrl(session.id, session.gitBranch);
@@ -692,6 +702,9 @@ export function SessionCard({
           onClose={() => setShowCompactContinueModal(false)}
           onLaunched={() => onCompactContinueLaunched(session)}
         />
+      )}
+      {showOpenPrBaseChoice && (
+        <OpenPrBaseChoiceModal session={session} onClose={() => setShowOpenPrBaseChoice(false)} />
       )}
       <ConfirmDialog
         open={showDeleteWorktreeConfirm}

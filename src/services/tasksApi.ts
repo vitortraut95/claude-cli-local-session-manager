@@ -102,6 +102,7 @@ export async function createTaskWorktree(
   folderPath: string,
   branchName: string,
   baseBranchRef: string,
+  baseBranch: string,
   useWorktree: boolean,
 ): Promise<{ worktreePath: string }> {
   const { data } = await withServerErrorMessage(() =>
@@ -109,6 +110,7 @@ export async function createTaskWorktree(
       folderPath,
       branchName,
       baseBranchRef,
+      baseBranch,
       useWorktree,
     }),
   );

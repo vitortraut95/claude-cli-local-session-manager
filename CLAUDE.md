@@ -39,9 +39,15 @@ spelunking at the start of a task.
 - **No test suite** — nothing runs under `yarn test` in this repo; verification is
   `yarn typecheck` + `yarn lint` + manual exercise via `yarn dev`.
 - **Data sources on disk** (no database): `~/.claude/projects/*.jsonl` (session transcripts, read
-  by `server/utils/claudeProjects.ts`), `~/.claude-session-manager/custom-titles.json` (this app's
-  nickname sidecar, `server/utils/nicknames.ts`), `~/.claude/sessions/<pid>.json` (CLI's own active-
-  session state, read by `getActiveResumeSessionIds()` in `sessionService.ts`).
+  by `server/utils/claudeProjects.ts`), this app's own gitignored sidecar files at the repo root —
+  `custom-titles.json` (nicknames, `server/utils/nicknames.ts`), `session-continuations.json`
+  ("Compact & continue" links), `task-base-branches.json` ("New task" worktrees' recorded base
+  branches), `userPreferences.json` (the "New task" modal's remembered defaults) — all resolved via
+  `REPO_ROOT` (`server/utils/repoRoot.ts`) rather than a home-directory dotfolder, specifically so
+  they're visible/editable/deletable in an editor right alongside the project instead of buried
+  under `~/.claude-session-manager/` (this app's now-unused original location for the first three —
+  moved here for exactly that discoverability), and `~/.claude/sessions/<pid>.json` (CLI's own
+  active-session state, read by `getActiveResumeSessionIds()` in `sessionService.ts`).
 - **Layout**:
   - `src/components/` — presentational + modal components (`SessionCard`, `PromptPreviewModal`,
     `UsageDetailsModal`, `Header`, etc.)
@@ -164,7 +170,7 @@ spelunking at the start of a task.
   throw `SessionActiveError` (mapped to HTTP 409) — the disabled UI state only covers the common
   case, not a session that becomes active between page load and request.
 - **Nicknames are a local label, not a rename.** `setSessionNickname()` only writes to this app's
-  own sidecar file (`~/.claude-session-manager/custom-titles.json`), never to
+  own gitignored sidecar file (`custom-titles.json`, repo root), never to
   `~/.claude/projects/`. There is no way for this app to change what Warp or Claude Code display —
   that's set by Claude Code itself via a `set_tab_title` tool call. `Session.title` is always the
   real auto-derived title; `Session.nickname` is a separate, independent field.
@@ -232,7 +238,7 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
 - **"Worktree → root" sync's "reset root" step** (shared by both wizard modes and the standalone
   quick action — `discardWorkingTreeChanges`/`listAppStashes` in `git.ts`, `RootStatus.appStashes`)
   stashes root's uncommitted changes rather than discarding them outright, but a plain `git stash
-  push -m "worktree-to-root: root's pre-sync state"` on every run leaves `git stash list` with
+push -m "worktree-to-root: root's pre-sync state"` on every run leaves `git stash list` with
   several entries reading identically after a few resets in one sitting — confirmed while
   dogfooding the copy → reset → repeat loop this feature is built for — with the only place the
   actual SHA for any one of them ever surfaced being a success toast at the moment it was created.
@@ -259,7 +265,7 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
     Created lazily on first save; a fresh clone (or a missing/malformed file) just falls back to
     hardcoded defaults —
     `getUserPreferences()` never throws over it. Hardcoded defaults are just `["feature", "fix"]` —
-    a custom ("Other") branch type that's actually used to create a task gets *prepended* to
+    a custom ("Other") branch type that's actually used to create a task gets _prepended_ to
     `branchTypes` automatically (best-effort PUT right after the "launch" step succeeds), becoming
     the new default selection (`branchTypes[0]`) rather than landing at the end of the list — no
     separate "manage branch types" UI, it just remembers itself; to
@@ -316,7 +322,7 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
   meter keeps climbing regardless. The only real lever is starting a fresh, lighter session seeded
   with a summary of the old one.
   - **Draft summary comes from a real headless turn**: `claude --resume <id> --print
-    --permission-mode plan "<instruction>"` (`runClaudeHeadlessSummary`), not just the CLI's own
+--permission-mode plan "<instruction>"` (`runClaudeHeadlessSummary`), not just the CLI's own
     `away_summary` recap — `plan` mode lets the model read around the repo for a better-grounded
     summary while guaranteeing it can't edit anything, safe to fire from the backend unattended.
     **`--tools ""` was tried first and is broken** — confirmed by direct reproduction: it's a
@@ -328,21 +334,64 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
     flag, generated server-side right before linking and launching — avoids the "discover the new
     session's id after the fact by matching directory + timestamp" problem earlier designs in this
     file solve for (see the worktree section above); here there's just nothing to discover.
-  - **The link lives in its own sidecar**, `~/.claude-session-manager/session-continuations.json`
-    (`sessionContinuations.ts`, same pattern as `nicknames.ts`): `{ [newSessionId]: { continuesFrom:
-    oldSessionId, createdAt } }`. The reverse edge (`continuedBySessionId`) isn't stored — it's
+  - **The link lives in its own gitignored sidecar**, `session-continuations.json` (repo root,
+    `sessionContinuations.ts`, same pattern as `nicknames.ts`): `{ [newSessionId]: { continuesFrom:
+oldSessionId, createdAt } }`. The reverse edge (`continuedBySessionId`) isn't stored — it's
     derived by scanning for the one entry whose `continuesFrom` matches, so there's nothing to keep
     in sync. `listSessions()` decorates both directions the same way it decorates `nickname`.
   - **`SessionSizeGateModal`** intercepts "Retomar (terminal)" client-side (`resumeSession` in
     `useSessions.ts`) once `sessionSizeStatus(sizeBytes) !== "healthy"`, offering "continue anyway"
     (re-calls with `skipSizeGate: true`) or "compact instead" — the Resume button itself stays
     always-enabled, same as the pre-existing active-session-conflict check right above it.
-  - **Continuation badges** (violet, both cards) resolve the *other* side's title from
+  - **Continuation badges** (violet, both cards) resolve the _other_ side's title from
     `useSessions.ts`'s `allSessions` (the full unfiltered/unpaginated list — the linked session
     might not be on the current page) and, on click, jump to it by setting the search query to its
     id and clearing project/date filters; on hover, they set `highlightedSessionId` so the other
     card (if visible on the current page) gets a violet ring — purely a `SessionsPage.tsx`-level
     state, no new sort/grouping logic.
+- **"Open PR" / "Open Jenkins" buttons** (`SessionCard.tsx`, `getSessionPrUrl`/`getGitHostInfo` in
+  `sessionService.ts`/`git.ts`, `getJenkinsBranchJobUrl` in `utils/jenkins.ts`) resolve `origin`'s
+  remote URL to a host + `owner/repo` slug and just open the matching compare/create-PR page in the
+  user's own already-authenticated browser — no Jenkins/host API call, no stored credentials. Both
+  buttons only render when a link can actually be built (a recognized github.com/bitbucket.org
+  `origin`, or an `env/*`-prefixed branch for Jenkins) rather than opening a dead link.
+  - **Neither host's plain compare link takes an explicit base branch** — GitHub's
+    `/compare/<branch>?expand=1` and Bitbucket's `/pull-requests/new?source=<branch>` both fall back
+    to the repo's own default branch (main/master) for the "other side" of the diff. That's right
+    for the common case (a task branched off main/master) but wrong whenever a "New task" worktree
+    was branched off something else (e.g. an `env/*` branch for a Jenkins-preview task) — the link
+    would silently include every commit already on that other branch as if it were part of this
+    task's diff.
+  - **Fixed by recording the base branch at worktree-creation time**, not by trying to reconstruct
+    it later — `--no-track` (see `createWorktreeWithBranch` above) leaves no upstream ref to recover
+    it from afterward, and there's no generic git heuristic for "which branch was this one forked
+    from" (`getMergeBase` only compares two already-known refs). `taskService.ts`'s
+    `createTaskWorktree` takes the raw, human-typed base branch name (`baseBranch`, separate from
+    `baseBranchRef` — the already-resolved `origin/<base>`-shaped ref actually used for the git
+    operation) and best-effort records it via `recordTaskBaseBranch` (`taskBaseBranches.ts`, same
+    sidecar pattern as `nicknames.ts`/`sessionContinuations.ts`) — but only when it differs from the
+    repo's own resolved default (`getDefaultBaseBranch`), so the common case needs no entry at all.
+  - **Keyed by the worktree's absolute path, not session id** — the session id doesn't exist yet at
+    worktree-creation time (unlike "Compact & continue"'s pre-generated `--session-id`), while the
+    worktree path is already final. Only ever written for `useWorktree: true` tasks: the "skip
+    worktree" path checks the branch out directly in the repo root, which is shared/reused across
+    unrelated future tasks in that folder, so a root-keyed entry there would misattribute a stale
+    base branch to whatever session next happens to share that root. `listSessions()` decorates
+    `Session.baseBranch` from this sidecar the same way it decorates `nickname`/`continuesFromSessionId`.
+  - **Cleaned up when the worktree is actually removed** — `deleteSessionWorktree` and
+    `removeWorktreeAndCheckoutRoot` (both in `sessionService.ts`) each best-effort call
+    `forgetTaskBaseBranch` right after their respective `removeWorktreeAndBranch`/
+    `removeWorktreeKeepBranch` git call succeeds, so this sidecar can't accumulate entries for
+    worktrees that no longer exist — unlike `nicknames.ts`/`sessionContinuations.ts`, which have no
+    such cleanup today (a deleted session's nickname/continuation link just lingers forever; a
+    smaller, known gap, not fixed here).
+  - **`OpenPrBaseChoiceModal`** intercepts the "Open PR" click (client-side, `SessionCard.tsx`'s
+    `handleOpenPr`) only when `session.baseBranch` is set, offering "compare against `<baseBranch>`"
+    (spelled out explicitly as `<base>...<branch>` on GitHub, `&dest=<base>` on Bitbucket — both
+    added to `getSessionPrUrl`/`fetchPrUrl` as an optional param) alongside "compare against the
+    repo's default" (the original, base-less link) — same two-real-choices layout as
+    `SessionSizeGateModal`, not a confirm/cancel pair. A session with no recorded base branch skips
+    the modal entirely and opens the default link directly, same as before this existed.
 
 ## to-do's
 
@@ -351,7 +400,7 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
   `{error: "<message>"}` body verbatim as `Error.message`, and every caller did
   `showToast(err instanceof Error ? err.message : t(...))` — so any time a request actually failed
   server-side, the toast was raw English no matter what language was selected, while every
-  *client-side* fallback message right next to it was properly translated.
+  _client-side_ fallback message right next to it was properly translated.
   - **The mechanism**: `server/utils/httpError.ts`'s `AppError` class carries a stable
     machine-readable `code` alongside the English `message` (and accepts the same
     `ErrorOptions`/`cause` a plain `Error` does); `sendErrorResponse` (same file) includes it in
@@ -379,12 +428,12 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
     on purpose — not oversights):
     - `git.ts`'s `runGit()` — it throws git's own stderr text, not this app's copy; there's no
       fixed set of messages to map to translated strings the way there is for every throw above.
-    - `repoRoot.ts`'s `findRepoRoot()` — throws at *module load time* computing the top-level
+    - `repoRoot.ts`'s `findRepoRoot()` — throws at _module load time_ computing the top-level
       `REPO_ROOT` constant, long before any HTTP request/response exists. A developer sees this
       directly in the server's own startup log, never through the web UI, so there's nothing for
       `resolveApiErrorMessage` to ever intercept.
   - **What's left — the only remaining file**: `server/scripts/run-update.mjs`'s 2 throws (`git
-    pull failed`, `yarn install failed`) — these **are** user-facing: `startUpdate()`'s job result
+pull failed`, `yarn install failed`) — these **are** user-facing: `startUpdate()`'s job result
     flows through `UpdateJobStatus`'s `{state: "error", message}` shape
     (`server/services/updateService.ts` / `src/services/systemApi.ts`, kept in sync by hand like
     `Session`) to `useUpdate.ts`'s `applyUpdate` → `throw new Error(job.message)` → the same
@@ -397,7 +446,7 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
     `job.code` onto the thrown `Error` (`Object.assign(new Error(job.message), {code: job.code})`)
     before it reaches `resolveApiErrorMessage`. Once that's done, this to-do is fully closed.
 
-- **Future idea: deeper Jenkins integration for `env/*` branches.** "New task" branches created
+- **Long future idea: deeper Jenkins integration for `env/*` branches.** "New task" branches created
   with the `env/` prefix (this convention is per-repo, not universal — the concrete case so far
   is `hg-led-mainsite`, a Jenkins multibranch job) get their own pipeline run, and its console
   output ends with one `Success! Your site should be available at http://...` line per
@@ -407,7 +456,7 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
   push or a manual "Build Now" click starts it), and a full run takes ~15-30min. A real
   integration would:
   - **Trigger the build via the Jenkins REST API** (`POST
-    .../job/<job>/job/<url-encoded-branch>/build`) right after the worktree's branch is pushed,
+.../job/<job>/job/<url-encoded-branch>/build`) right after the worktree's branch is pushed,
     instead of relying on the user to notice and click "Build Now" or make a throwaway second
     commit — this is the part that actually fixes the annoying first-push gap, not just a
     convenience on top of it.
@@ -417,7 +466,7 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
     to copy into Jira (e.g. a small panel/toast listing all the links found).
   - **Needs real Jenkins credentials (username + API token)**, which is a new class of secret
     this app has never had to store — contrast with the usage-limits badge (`usageService.ts`),
-    which only ever *reads* a credential the Claude CLI already wrote to disk and never persists
+    which only ever _reads_ a credential the Claude CLI already wrote to disk and never persists
     one of its own. Wherever this token lives (a new local config file, env var, etc.), treat it
     with the same discipline as that badge's access token: read into memory, used once, never
     logged or echoed back to the client.
@@ -428,21 +477,13 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
     there's no per-external-project settings surface — `userPreferences.json` is one global file
     for the whole app, used by the New Task modal's own defaults) since the job name is specific
     to each repo, not derivable from anything git already exposes.
-  - Two cheaper, credential-free steps worth shipping first, since they only build a URL and open
-    it in the user's own already-authenticated browser (no Jenkins/host API call at all): an
-    "Open Jenkins" button for `env/*`-branched sessions, and an "Open PR" button that resolves
-    `origin`'s remote URL to a host + `owner/repo` slug (this app manages both GitHub- and
-    Bitbucket-hosted projects — `hg-led-mainsite`'s own remote is `bitbucket.org`, not
-    `github.com`) and opens the matching compare/create-PR page:
-    `https://github.com/<owner>/<repo>/compare/<branch>?expand=1` for GitHub, or
-    `https://bitbucket.org/<workspace>/<repo>/pull-requests/new?source=<branch>` for Bitbucket —
-    Bitbucket has no direct "jump straight to the existing PR for this branch" URL the way
-    GitHub's compare page effectively has, so this lands on the create-PR form, and Bitbucket
-    itself shows a banner linking to the existing PR when one's already open for that branch.
-    
+  - **The two cheaper, credential-free steps below are already shipped** — see "Open PR"/"Open
+    Jenkins" in the architecture notes above this to-do section. Only the REST-API-driven pieces
+    above (auto-trigger, poll + scrape console log, stored Jenkins credentials) remain undone.
+
 - **Save locally instructions/tips of each project in something like userPreferences** No menu
-    de nova tarefa hoje temos um prompt default, que concatenamos juntamente link id de tarefa
-    para iniciar uma nova sessão no claude. Creio que seja bom termos informações específicas de
-    cada projeto de como o usuário gosta de rodar/testar, etc, processos internos da empresa, previews,
-    enfim, olhe hoje como está meu default prompt e quanta informação seria bom deixar separada por
-    projeto. Hoje eu deixo tudo junto no prompt default.
+  de nova tarefa hoje temos um prompt default, que concatenamos juntamente link id de tarefa
+  para iniciar uma nova sessão no claude. Creio que seja bom termos informações específicas de
+  cada projeto de como o usuário gosta de rodar/testar, etc, processos internos da empresa, previews,
+  enfim, olhe hoje como está meu default prompt e quanta informação seria bom deixar separada por
+  projeto. Hoje eu deixo tudo junto no prompt default.

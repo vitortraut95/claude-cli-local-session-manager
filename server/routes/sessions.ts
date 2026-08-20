@@ -111,7 +111,8 @@ sessionsRouter.get("/:id/insights", async (req, res) => {
 sessionsRouter.get("/:id/pr-url", async (req, res) => {
   try {
     const branch = typeof req.query.branch === "string" ? req.query.branch : "";
-    const url = await getSessionPrUrl(req.params.id, branch);
+    const base = typeof req.query.base === "string" ? req.query.base : undefined;
+    const url = await getSessionPrUrl(req.params.id, branch, base);
     if (!url) {
       res
         .status(404)

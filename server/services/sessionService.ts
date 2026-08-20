@@ -33,6 +33,7 @@ import {
   getContinuations,
   linkContinuation,
 } from "../utils/sessionContinuations.js";
+import { forgetTaskBaseBranch, getTaskBaseBranches } from "../utils/taskBaseBranches.js";
 import { runClaudeHeadlessSummary } from "../utils/claudeCli.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import { AppError } from "../utils/httpError.js";
@@ -98,7 +99,7 @@ function repoRootFromMissingWorktreePath(cwd: string): string | null {
 
 type BuiltSession = Omit<
   Session,
-  "isActive" | "nickname" | "continuesFromSessionId" | "continuedBySessionId"
+  "isActive" | "nickname" | "continuesFromSessionId" | "continuedBySessionId" | "baseBranch"
 >;
 
 async function buildSession(filePath: string): Promise<BuiltSession | null> {
@@ -252,11 +253,12 @@ function waitForProcessExit(pid: number, timeoutMs: number): Promise<void> {
 
 export async function listSessions(): Promise<Session[]> {
   const files = await findJsonlFiles(getClaudeProjectsDir());
-  const [built, activeIds, nicknames, continuations] = await Promise.all([
+  const [built, activeIds, nicknames, continuations, taskBaseBranches] = await Promise.all([
     Promise.all(files.map(buildSession)),
     getActiveResumeSessionIds(),
     getNicknames(),
     getContinuations(),
+    getTaskBaseBranches(),
   ]);
 
   const sessions = built.filter((session): session is BuiltSession => session !== null);
@@ -296,6 +298,9 @@ export async function listSessions(): Promise<Session[]> {
         isWorktree,
         continuesFromSessionId: continuations[session.id]?.continuesFrom ?? null,
         continuedBySessionId: findContinuedBy(continuations, session.id),
+        baseBranch: session.workingDirectory
+          ? taskBaseBranches[session.workingDirectory]?.baseBranch ?? null
+          : null,
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -599,16 +604,28 @@ export async function getSessionRepoInsights(id: string): Promise<SessionRepoIns
  * github.com/bitbucket.org remote (see `getGitHostInfo`).
  *
  * - GitHub's compare page pre-fills the "Create pull request" form against the repo's default
- *   branch when only one ref is given, so this doesn't need to know the base branch at all.
+ *   branch when only one ref is given, so this doesn't need to know the base branch at all —
+ *   unless `explicitBase` is given (see below), in which case it's spelled out as `<base>...<branch>`.
  * - Bitbucket has no exact equivalent — `pull-requests/new?source=<branch>` opens the "create
  *   pull request" form for that branch, and if one's already open for it, Bitbucket itself shows
  *   a banner linking to the existing PR rather than this app trying to look up its number (that
  *   would need the Bitbucket API and its own credentials — see CLAUDE.md's Jenkins-integration
- *   to-do for the same tradeoff on a different provider).
+ *   to-do for the same tradeoff on a different provider). It does support an explicit `dest`
+ *   param, added only when `explicitBase` is given.
+ *
+ * `explicitBase`, when given, is spelled out in the link instead of relying on the host's implicit
+ * default-branch comparison — used when the session's worktree was branched off something other
+ * than the repo's default (see `Session.baseBranch`/`taskBaseBranches.ts`) and the user chose, via
+ * `OpenPrBaseChoiceModal`, to compare against that actual base rather than the default.
  */
-export async function getSessionPrUrl(id: string, branch: string): Promise<string | null> {
+export async function getSessionPrUrl(
+  id: string,
+  branch: string,
+  explicitBase?: string,
+): Promise<string | null> {
   const trimmedBranch = branch.trim();
   if (!trimmedBranch) return null;
+  const trimmedBase = explicitBase?.trim() ?? "";
 
   const cwd = await findSessionCwd(id);
   if (!cwd) throw new SessionNotFoundError(id);
@@ -617,9 +634,15 @@ export async function getSessionPrUrl(id: string, branch: string): Promise<strin
   if (!hostInfo) return null;
 
   const encodedBranch = encodeURIComponent(trimmedBranch);
-  return hostInfo.host === "github"
-    ? `https://github.com/${hostInfo.slug}/compare/${trimmedBranch}?expand=1`
-    : `https://bitbucket.org/${hostInfo.slug}/pull-requests/new?source=${encodedBranch}&t=1`;
+  if (hostInfo.host === "github") {
+    const compareRef = trimmedBase
+      ? `${encodeURIComponent(trimmedBase)}...${trimmedBranch}`
+      : trimmedBranch;
+    return `https://github.com/${hostInfo.slug}/compare/${compareRef}?expand=1`;
+  }
+
+  const destParam = trimmedBase ? `&dest=${encodeURIComponent(trimmedBase)}` : "";
+  return `https://bitbucket.org/${hostInfo.slug}/pull-requests/new?source=${encodedBranch}${destParam}&t=1`;
 }
 
 /**
@@ -1241,6 +1264,10 @@ export async function deleteSessionWorktree(id: string): Promise<void> {
   }
 
   await removeWorktreeAndBranch(cwd);
+  // Best-effort — the worktree (and thus taskBaseBranches.ts's key for it) is gone either way;
+  // a failure here would just leave a harmless orphaned entry, same tolerance as elsewhere in
+  // this file when a sidecar write isn't load-bearing for the actual git operation.
+  await forgetTaskBaseBranch(cwd).catch(() => undefined);
 }
 
 /** Shared validation for every "worktree → root" function below: resolves the session's worktree
@@ -1409,6 +1436,9 @@ export async function removeWorktreeAndCheckoutRoot(
     entriesBefore.find((e) => path.resolve(e.path) === resolvedRepoRoot)?.branch ?? null;
 
   const branch = await removeWorktreeKeepBranch(cwd);
+  // Best-effort, right after the worktree directory is actually gone (regardless of whether the
+  // checkout below succeeds) — same tolerance as deleteSessionWorktree's own cleanup.
+  await forgetTaskBaseBranch(cwd).catch(() => undefined);
   if (!branch) {
     throw new AppError(
       "WORKTREE_BRANCH_UNKNOWN",

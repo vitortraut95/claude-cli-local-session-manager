@@ -1,9 +1,10 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { REPO_ROOT } from "./repoRoot.js";
 
 /**
- * Local "Compact & continue" links, stored in this app's own sidecar file — never inside
+ * Local "Compact & continue" links, stored in this app's own gitignored sidecar file at the repo
+ * root (same convention as `userPreferences.json`/`nicknames.ts`) — never inside
  * `~/.claude/projects/`, same reasoning as `nicknames.ts`. The Claude CLI has no notion of one
  * session being a follow-up of another, so this app tracks it itself: each entry records the
  * *new* ("pt2") session's id, pointing back at the old one it was compacted from.
@@ -14,7 +15,7 @@ export type ContinuationEntry = {
 };
 
 function getContinuationsPath(): string {
-  return path.join(os.homedir(), ".claude-session-manager", "session-continuations.json");
+  return path.join(REPO_ROOT, "session-continuations.json");
 }
 
 export async function getContinuations(): Promise<Record<string, ContinuationEntry>> {
@@ -38,10 +39,7 @@ export async function getContinuations(): Promise<Record<string, ContinuationEnt
 export async function linkContinuation(newSessionId: string, oldSessionId: string): Promise<void> {
   const continuations = await getContinuations();
   continuations[newSessionId] = { continuesFrom: oldSessionId, createdAt: new Date().toISOString() };
-
-  const filePath = getContinuationsPath();
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, JSON.stringify(continuations, null, 2), "utf8");
+  await writeFile(getContinuationsPath(), JSON.stringify(continuations, null, 2), "utf8");
 }
 
 /** The reverse of `continuesFrom` isn't stored separately (nothing to keep in sync that way) —

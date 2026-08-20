@@ -106,6 +106,7 @@ tasksRouter.post("/worktree", async (req, res) => {
       extractStringField(req.body, "folderPath"),
       extractStringField(req.body, "branchName"),
       extractStringField(req.body, "baseBranchRef"),
+      extractStringField(req.body, "baseBranch"),
       extractBooleanField(req.body, "useWorktree", true),
     );
     res.json(result);

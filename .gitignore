@@ -23,6 +23,13 @@ claude-session-manager.desktop
 # checkbox) — local preference, not shared project content.
 /userPreferences.json
 
+# Local sidecar data — session nicknames, "Compact & continue" links, and "New task" worktrees'
+# recorded base branches. Per-machine, not shared project content, same reasoning as
+# userPreferences.json above (see nicknames.ts/sessionContinuations.ts/taskBaseBranches.ts).
+/custom-titles.json
+/session-continuations.json
+/task-base-branches.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

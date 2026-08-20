@@ -939,6 +939,47 @@ export const translations = {
     "Não foi possível abrir um link de PR para esta sessão.",
     "No se pudo abrir un enlace de PR para esta sesión.",
   ),
+  "openPrBaseChoiceModal.title": dict(
+    "Compare against which base?",
+    "Comparar com qual branch base?",
+    "¿Comparar contra qué rama base?",
+  ),
+  "openPrBaseChoiceModal.intro": dict(
+    "This task's worktree was branched off {branch} instead of the repo's default. Choose which comparison to open.",
+    "O worktree desta tarefa foi criado a partir de {branch}, e não da branch padrão do repositório. Escolha qual comparação abrir.",
+    "El worktree de esta tarea se creó a partir de {branch}, no de la rama predeterminada del repositorio. Elige qué comparación abrir.",
+  ),
+  "openPrBaseChoiceModal.useBase.title": dict(
+    "Compare against {branch}",
+    "Comparar com {branch}",
+    "Comparar contra {branch}",
+  ),
+  "openPrBaseChoiceModal.useBase.body": dict(
+    "Opens the compare/PR page against the actual branch this task started from — the accurate diff.",
+    "Abre a página de comparação/PR contra a branch que esta tarefa realmente usou como base — o diff correto.",
+    "Abre la página de comparación/PR contra la rama que esta tarea realmente usó como base — el diff correcto.",
+  ),
+  "openPrBaseChoiceModal.useBase.button": dict(
+    "Compare with {branch}",
+    "Comparar com {branch}",
+    "Comparar con {branch}",
+  ),
+  "openPrBaseChoiceModal.useDefault.title": dict(
+    "Compare against the repo's default",
+    "Comparar com a branch padrão do repositório",
+    "Comparar contra la rama predeterminada del repositorio",
+  ),
+  "openPrBaseChoiceModal.useDefault.body": dict(
+    "Opens the compare/PR page against the repo's usual default branch (main/master) instead.",
+    "Abre a página de comparação/PR contra a branch padrão do repositório (main/master).",
+    "Abre la página de comparación/PR contra la rama predeterminada del repositorio (main/master).",
+  ),
+  "openPrBaseChoiceModal.useDefault.button": dict(
+    "Compare with default",
+    "Comparar com a padrão",
+    "Comparar con la predeterminada",
+  ),
+  "openPrBaseChoiceModal.cancel": dict("Cancel", "Cancelar", "Cancelar"),
   "sessionCard.cleanupWorktree.disabledTooltip": dict(
     "Close this session in its terminal before cleaning up the worktree.",
     "Encerre esta sessão no terminal antes de limpar o worktree.",

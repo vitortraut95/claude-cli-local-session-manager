@@ -12,6 +12,7 @@ import {
   sanitizeWorktreeDirName,
 } from "../utils/git.js";
 import { AppError } from "../utils/httpError.js";
+import { recordTaskBaseBranch } from "../utils/taskBaseBranches.js";
 
 export type ProjectFolderOption = {
   path: string;
@@ -190,23 +191,50 @@ export async function resolveBaseBranch(
 }
 
 /**
+ * Best-effort: records `baseBranch` against `worktreePath` for the "Open PR" button's later use
+ * (see `taskBaseBranches.ts`), but only when it actually differs from the repo's own resolved
+ * default — branching off main/master (the common case) needs no entry, since that's already what
+ * the default compare link assumes. Never throws: worst case the "Open PR" button just won't offer
+ * the creation-time base branch as an option, same tolerance as `markWorktreeTrustAccepted`.
+ */
+async function recordTaskBaseBranchIfNonDefault(
+  repoRoot: string,
+  worktreePath: string,
+  baseBranch: string,
+): Promise<void> {
+  try {
+    const trimmedBase = baseBranch.trim();
+    if (!trimmedBase) return;
+    const defaultBase = await getDefaultBaseBranch(repoRoot);
+    if (trimmedBase === defaultBase) return;
+    await recordTaskBaseBranch(worktreePath, trimmedBase);
+  } catch {
+    // Best-effort — see doc comment above.
+  }
+}
+
+/**
  * Creates a new linked worktree at `<repoRoot>/.claude/worktrees/<branchName>` on a fresh branch
  * (custom name + custom base branch — unlike `createSessionWorktree`'s CLI-delegated
  * `worktree-<name>` naming). Uses a worktree (rather than checking out the branch directly in
  * `folderPath`) so starting a new task never collides with whatever session might already be
  * active in that folder. `baseBranchRef` comes from `resolveBaseBranch` above (a separate step),
- * not re-resolved here.
+ * not re-resolved here; `baseBranch` is the raw, human-typed branch name (not the resolved
+ * `origin/<baseBranch>`-shaped ref) — kept separate purely so `recordTaskBaseBranchIfNonDefault`
+ * has a clean branch name to compare/store, never used for the actual git operation.
  *
  * `useWorktree` is the escape hatch behind the modal's "no worktree" checkbox (default off, so the
  * collision-free worktree path stays the default): when false, this instead checks out the new
  * branch directly in `folderPath` via `checkoutNewBranch`, and the returned "worktreePath" is just
  * `repoRoot` — the caller only ever uses it as "where to open the terminal", so no separate field
- * is needed for the two cases.
+ * is needed for the two cases. The base branch is deliberately not recorded in this case (see
+ * `taskBaseBranches.ts`'s doc comment for why a repo-root-keyed entry would misattribute).
  */
 export async function createTaskWorktree(
   folderPath: string,
   branchName: string,
   baseBranchRef: string,
+  baseBranch: string,
   useWorktree: boolean,
 ): Promise<{ worktreePath: string }> {
   const trimmedFolder = folderPath.trim();
@@ -253,6 +281,7 @@ export async function createTaskWorktree(
   // Best-effort, non-blocking — see markWorktreeTrustAccepted's own doc comment for why this
   // specific directory is safe to pre-trust and what silently fails without it.
   await markWorktreeTrustAccepted(worktreePath);
+  await recordTaskBaseBranchIfNonDefault(repoRoot, worktreePath, baseBranch);
   return { worktreePath };
 }
 
