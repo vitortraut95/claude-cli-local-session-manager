@@ -1,6 +1,8 @@
 import path from "node:path";
-import { directoryExists, listSessions } from "./sessionService.js";
+import { deleteSession, directoryExists, listSessions } from "./sessionService.js";
+import { getUserPreferences } from "./preferencesService.js";
 import { getKnownProjectFolders } from "./taskService.js";
+import type { Session } from "../types/session.js";
 import {
   getDefaultBaseBranch,
   hasUncommittedChanges,
@@ -12,21 +14,34 @@ import {
 } from "../utils/git.js";
 import { AppError } from "../utils/httpError.js";
 
+export type StaleSession = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  sizeBytes: number;
+};
+
 export type CleanupFinding = {
   id: string;
-  kind: "prune-worktrees" | "remove-merged-worktree";
+  kind: "prune-worktrees" | "remove-merged-worktree" | "prune-old-sessions";
   /** Structured data the client renders its own (translated) title/description from — this
    *  service used to build those as hardcoded English prose here, which meant they were the one
    *  corner of the app the i18n system (see LanguageProvider/translations.ts) could never reach. */
   command: string;
   repoRoot: string;
-  /** Only set for `prune-worktrees`; empty for `remove-merged-worktree`. */
+  /** Only set for `prune-worktrees`; empty for the other kinds. */
   staleBranches: string[];
-  /** Only set for `remove-merged-worktree`; null for `prune-worktrees`. */
+  /** Only set for `remove-merged-worktree`; null for the other kinds. */
   worktreePath: string | null;
   branch: string | null;
-  /** Only set for `remove-merged-worktree`; null for `prune-worktrees`. */
+  /** Only set for `remove-merged-worktree`; null for the other kinds. */
   defaultBranch: string | null;
+  /** Only set for `prune-old-sessions` — the sessions beyond the configured keep-count for this
+   *  repo that this finding would delete, most-recently-updated first; empty for the other kinds. */
+  staleSessions: StaleSession[];
+  /** Only set for `prune-old-sessions` — how many of this repo's most-recent sessions are being
+   *  kept (from userPreferences.json's `keepRecentSessionsPerProject`); 0 for the other kinds. */
+  keepCount: number;
 };
 
 /**
@@ -76,6 +91,8 @@ export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
         worktreePath: null,
         branch: null,
         defaultBranch: null,
+        staleSessions: [],
+        keepCount: 0,
       });
     }
 
@@ -103,10 +120,108 @@ export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
         worktreePath: entry.path,
         branch: entry.branch,
         defaultBranch,
+        staleSessions: [],
+        keepCount: 0,
       });
     }
   }
 
+  findings.push(...(await scanForOldSessionFindings(projectFolders, sessions)));
+
+  return findings;
+}
+
+/**
+ * Finds which known repo root a session's working directory actually belongs to — covers the
+ * repo's main checkout, any worktree this app created under `<repoRoot>/.claude/worktrees/`, and
+ * (via `missingWorktreeRepoRoot`) an orphaned worktree whose directory is already gone. Pure path
+ * comparison, no extra git/filesystem call — `repoRoots` is already known from
+ * `getKnownProjectFolders()` above.
+ *
+ * Picks the *longest* (most specific/innermost) matching root rather than the first one found:
+ * some users keep several independent git repos nested inside one outer git repo (e.g. a plain
+ * `~/git` checkout with individual project repos underneath it, or the home directory itself
+ * being a repo) — a naive "starts with" match against every known root would otherwise attribute
+ * the same session to both the inner project *and* every outer ancestor repo, double-pooling it
+ * and corrupting the "keep the N most recent" count for both. Confirmed by direct reproduction
+ * against this exact layout.
+ */
+function resolveOwningRepoRoot(session: Session, repoRoots: string[]): string | null {
+  if (session.missingWorktreeRepoRoot) {
+    const resolvedMissing = path.resolve(session.missingWorktreeRepoRoot);
+    return repoRoots.find((root) => path.resolve(root) === resolvedMissing) ?? null;
+  }
+  if (!session.workingDirectory) return null;
+  const resolvedDir = path.resolve(session.workingDirectory);
+
+  let best: string | null = null;
+  for (const root of repoRoots) {
+    const resolvedRoot = path.resolve(root);
+    const matches = resolvedDir === resolvedRoot || resolvedDir.startsWith(`${resolvedRoot}${path.sep}`);
+    if (matches && (!best || resolvedRoot.length > path.resolve(best).length)) {
+      best = root;
+    }
+  }
+  return best;
+}
+
+/**
+ * Per project, keeps the `keepRecentSessionsPerProject` most-recently-updated sessions and offers
+ * to delete the rest — but only the ones that are safe to lose outright: never the active session
+ * (defense in depth, `executeCleanupFinding`/`deleteSession` re-check this again right before
+ * acting), and never one linked to a "Compact & continue" pair (`continuesFromSessionId`/
+ * `continuedBySessionId`) in either direction, since deleting either half of that pair would break
+ * the other's back-reference. A session that's merely old but *not* in the deletable set still
+ * counts toward "kept" — it just doesn't get suggested for deletion.
+ */
+async function scanForOldSessionFindings(
+  projectFolders: { path: string }[],
+  sessions: Session[],
+): Promise<CleanupFinding[]> {
+  const { keepRecentSessionsPerProject: keepCount } = await getUserPreferences();
+  if (keepCount < 0) return [];
+
+  const repoRoots = projectFolders.map((f) => f.path);
+  const sessionsByRepoRoot = new Map<string, Session[]>();
+  for (const session of sessions) {
+    const repoRoot = resolveOwningRepoRoot(session, repoRoots);
+    if (!repoRoot) continue;
+    const list = sessionsByRepoRoot.get(repoRoot);
+    if (list) {
+      list.push(session);
+    } else {
+      sessionsByRepoRoot.set(repoRoot, [session]);
+    }
+  }
+
+  const findings: CleanupFinding[] = [];
+  for (const [repoRoot, repoSessions] of sessionsByRepoRoot) {
+    const sorted = [...repoSessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+    const beyondKeepCount = sorted.slice(keepCount);
+    const deletable = beyondKeepCount.filter(
+      (s) => !s.isActive && !s.continuesFromSessionId && !s.continuedBySessionId,
+    );
+    if (deletable.length === 0) continue;
+
+    findings.push({
+      id: `prune-sessions:${repoRoot}`,
+      kind: "prune-old-sessions",
+      command: "",
+      repoRoot,
+      staleBranches: [],
+      worktreePath: null,
+      branch: null,
+      defaultBranch: null,
+      staleSessions: deletable.map((s) => ({
+        id: s.id,
+        title: s.title,
+        updatedAt: s.updatedAt,
+        sizeBytes: s.sizeBytes,
+      })),
+      keepCount,
+    });
+  }
   return findings;
 }
 
@@ -118,6 +233,20 @@ export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
 export async function executeCleanupFinding(finding: CleanupFinding): Promise<void> {
   if (finding.kind === "prune-worktrees") {
     await pruneWorktrees(finding.repoRoot);
+    return;
+  }
+
+  if (finding.kind === "prune-old-sessions") {
+    // Best-effort per id, not all-or-nothing: a session already gone (deleted since the scan) or
+    // that became active in the meantime just gets skipped, rather than aborting the whole batch
+    // over one stale entry — deleteSession() re-checks "not currently active" itself either way.
+    for (const { id } of finding.staleSessions) {
+      try {
+        await deleteSession(id);
+      } catch {
+        // Already gone or became active since the scan — not a real failure, keep going.
+      }
+    }
     return;
   }
 

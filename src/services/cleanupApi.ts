@@ -5,17 +5,30 @@ const client = axios.create({
   baseURL: "/cleanup",
 });
 
+export type StaleSession = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  sizeBytes: number;
+};
+
 export type CleanupFinding = {
   id: string;
-  kind: "prune-worktrees" | "remove-merged-worktree";
+  kind: "prune-worktrees" | "remove-merged-worktree" | "prune-old-sessions";
   command: string;
   repoRoot: string;
-  /** Only set for `prune-worktrees`; empty for `remove-merged-worktree`. */
+  /** Only set for `prune-worktrees`; empty for the other kinds. */
   staleBranches: string[];
   worktreePath: string | null;
   branch: string | null;
-  /** Only set for `remove-merged-worktree`; null for `prune-worktrees`. */
+  /** Only set for `remove-merged-worktree`; null for the other kinds. */
   defaultBranch: string | null;
+  /** Only set for `prune-old-sessions` — the sessions beyond the configured keep-count for this
+   *  repo that this finding would delete, most-recently-updated first; empty for the other kinds. */
+  staleSessions: StaleSession[];
+  /** Only set for `prune-old-sessions` — how many of this repo's most-recent sessions are being
+   *  kept; 0 for the other kinds. */
+  keepCount: number;
 };
 
 export async function fetchCleanupFindings(): Promise<CleanupFinding[]> {

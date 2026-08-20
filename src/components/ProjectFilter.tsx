@@ -4,11 +4,16 @@ import { Select } from "./Select";
 
 type ProjectFilterProps = {
   projects: string[];
+  /** Display text per project (e.g. "git/hg-led-mainsite" for project "hg-led-mainsite") — the
+   *  option's `value` (and thus the actual filter match) always stays the plain project name;
+   *  this only changes what's shown. Falls back to the bare project name when a project has no
+   *  entry (see `resolveProjectParentSegment` for when that happens). */
+  projectLabels: Record<string, string>;
   value: string;
   onChange: (value: string) => void;
 };
 
-export function ProjectFilter({ projects, value, onChange }: ProjectFilterProps) {
+export function ProjectFilter({ projects, projectLabels, value, onChange }: ProjectFilterProps) {
   const { t } = useLanguage();
   return (
     <Select
@@ -21,7 +26,7 @@ export function ProjectFilter({ projects, value, onChange }: ProjectFilterProps)
       <option value="">{t("projectFilter.allProjects")}</option>
       {projects.map((project) => (
         <option key={project} value={project}>
-          {project}
+          {projectLabels[project] ?? project}
         </option>
       ))}
     </Select>

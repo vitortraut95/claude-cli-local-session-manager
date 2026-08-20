@@ -19,6 +19,17 @@ export type UserPreferences = {
   /** Whether the onboarding modal (explains the worktree dev workflow) has already been shown
    *  once — gates its auto-open on first visit. */
   hasSeenOnboarding: boolean;
+  /** Repo roots used via the "new task" modal, most-recently-used first — see
+   *  `taskService.ts`'s `recordUsedProjectPath`. Lets `getKnownProjectFolders()` offer a project
+   *  folder before it has any session/`.jsonl` of its own yet, and (once cached listing lands)
+   *  without needing the full session scan at all. No management UI — hand-edit this file to
+   *  remove a stale entry, same convention as `branchTypes`. */
+  recentProjectPaths: string[];
+  /** How many of a project's most-recently-updated sessions the "Cleanup" modal's
+   *  `prune-old-sessions` finding always keeps — the rest become deletion candidates (see
+   *  `cleanupService.ts`). No management UI by design (same as `branchTypes`) — hand-edit this
+   *  file to change it. */
+  keepRecentSessionsPerProject: number;
 };
 
 const PREFERENCES_PATH = path.join(REPO_ROOT, "userPreferences.json");
@@ -30,6 +41,8 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   useAutoPermissionModeByDefault: false,
   language: null,
   hasSeenOnboarding: false,
+  recentProjectPaths: [],
+  keepRecentSessionsPerProject: 5,
 };
 
 function isLanguage(value: unknown): value is Language {
@@ -73,6 +86,15 @@ export async function getUserPreferences(): Promise<UserPreferences> {
         typeof parsed.hasSeenOnboarding === "boolean"
           ? parsed.hasSeenOnboarding
           : DEFAULT_PREFERENCES.hasSeenOnboarding,
+      recentProjectPaths: isStringArray(parsed.recentProjectPaths)
+        ? parsed.recentProjectPaths
+        : DEFAULT_PREFERENCES.recentProjectPaths,
+      keepRecentSessionsPerProject:
+        typeof parsed.keepRecentSessionsPerProject === "number" &&
+        Number.isInteger(parsed.keepRecentSessionsPerProject) &&
+        parsed.keepRecentSessionsPerProject >= 0
+          ? parsed.keepRecentSessionsPerProject
+          : DEFAULT_PREFERENCES.keepRecentSessionsPerProject,
     };
   } catch {
     return DEFAULT_PREFERENCES;

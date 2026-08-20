@@ -18,9 +18,13 @@ type HeaderProps = {
   /** Fired after a new task is successfully created via the "New Task" modal, so the page's
    *  session list can pick up the newly created session/worktree. */
   onSessionCreated?: () => void;
+  /** Fired after any Cleanup modal finding is successfully executed — only `prune-old-sessions`
+   *  actually changes the session list, but refreshing unconditionally keeps this as simple as
+   *  `onSessionCreated` above. */
+  onSessionsChanged?: () => void;
 };
 
-export function Header({ onSessionCreated }: HeaderProps) {
+export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { status: updateStatus, checking, updating, applyUpdate } = useUpdate();
   const {
@@ -114,7 +118,11 @@ export function Header({ onSessionCreated }: HeaderProps) {
         onClose={() => setShowNewTaskModal(false)}
         onTaskCreated={onSessionCreated}
       />
-      <CleanupModal open={showCleanupModal} onClose={() => setShowCleanupModal(false)} />
+      <CleanupModal
+        open={showCleanupModal}
+        onClose={() => setShowCleanupModal(false)}
+        onFindingExecuted={onSessionsChanged}
+      />
       <OnboardingModal open={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </header>
   );

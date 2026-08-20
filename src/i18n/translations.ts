@@ -1018,6 +1018,43 @@ export const translations = {
     "na branch padrão do repositório, sem sessão ativa ou mudanças pendentes — pode ser removido com segurança (worktree e branch local juntos).",
     "en la rama predeterminada del repositorio, sin sesión activa ni cambios pendientes — se puede eliminar de forma segura (worktree y rama local juntos).",
   ),
+  "cleanupModal.finding.oldSessions.label": dict(
+    "Old local sessions",
+    "Sessões locais antigas",
+    "Sesiones locales antiguas",
+  ),
+  "cleanupModal.finding.oldSessions.body": dict(
+    "once a project has more sessions than the configured limit (5 by default — edit " +
+      '"keepRecentSessionsPerProject" in userPreferences.json to change it), the oldest ones ' +
+      "can be deleted to free disk space and speed up the session list. The active session and " +
+      'any session linked via "Compact & continue" are never suggested.',
+    'quando um projeto tem mais sessões do que o limite configurado (5 por padrão — edite ' +
+      '"keepRecentSessionsPerProject" no userPreferences.json para mudar isso), as mais antigas ' +
+      "podem ser excluídas para liberar espaço em disco e acelerar a listagem de sessões. A " +
+      'sessão ativa e qualquer sessão ligada via "Compactar e continuar" nunca são sugeridas.',
+    'cuando un proyecto tiene más sesiones que el límite configurado (5 por defecto — edita ' +
+      '"keepRecentSessionsPerProject" en userPreferences.json para cambiarlo), las más antiguas ' +
+      "se pueden eliminar para liberar espacio en disco y acelerar el listado de sesiones. La " +
+      'sesión activa y cualquier sesión vinculada mediante "Compactar y continuar" nunca se sugieren.',
+  ),
+  "cleanupModal.finding.oldSessions.title": dict(
+    '{count} old session(s) in "{project}"',
+    '{count} sessão(ões) antiga(s) em "{project}"',
+    '{count} sesión(es) antigua(s) en "{project}"',
+  ),
+  "cleanupModal.finding.oldSessions.description": dict(
+    "Keeping the {keep} most recently updated session(s) in this project. These {count} older " +
+      "session(s) can be deleted, freeing about {freed}.",
+    "Mantendo a(s) {keep} sessão(ões) mais recente(s) deste projeto. Estas {count} sessão(ões) " +
+      "mais antiga(s) podem ser excluídas, liberando cerca de {freed}.",
+    "Manteniendo la(s) {keep} sesión(es) más reciente(s) de este proyecto. Estas {count} " +
+      "sesión(es) más antigua(s) se pueden eliminar, liberando aproximadamente {freed}.",
+  ),
+  "cleanupModal.finding.oldSessions.warning": dict(
+    "This permanently deletes the session transcript(s) listed below. This cannot be undone.",
+    "Isso exclui permanentemente a(s) transcrição(ões) de sessão listada(s) abaixo. Isso não pode ser desfeito.",
+    "Esto elimina permanentemente la(s) transcripción(es) de sesión que se muestran abajo. Esto no se puede deshacer.",
+  ),
   "cleanupModal.finding.prune.title": dict(
     'Worktrees deleted manually in "{project}"',
     'Worktrees excluídos manualmente em "{project}"',
