@@ -28,7 +28,9 @@ cleanupRouter.post("/findings/execute", async (req, res) => {
     if (
       typeof finding !== "object" ||
       finding === null ||
-      (finding.kind !== "prune-worktrees" && finding.kind !== "remove-merged-worktree") ||
+      (finding.kind !== "prune-worktrees" &&
+        finding.kind !== "remove-merged-worktree" &&
+        finding.kind !== "prune-old-sessions") ||
       typeof finding.repoRoot !== "string"
     ) {
       throw new AppError("MALFORMED_CLEANUP_FINDING", "Malformed cleanup finding.");

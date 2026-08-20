@@ -329,7 +329,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
 
     try {
       updateStep("repo", "doing");
-      await tasksApi.fetchRepoInfo(trimmedFolder);
+      const repoInfo = await tasksApi.fetchRepoInfo(trimmedFolder);
       updateStep("repo", "done");
 
       updateStep("base", "doing");
@@ -346,7 +346,12 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       updateStep("worktree", "done");
 
       updateStep("launch", "doing");
-      await tasksApi.launchTaskTerminal(worktreePath, composedPrompt, permissionModeAuto);
+      await tasksApi.launchTaskTerminal(
+        worktreePath,
+        composedPrompt,
+        permissionModeAuto,
+        repoInfo.repoRoot,
+      );
       updateStep("launch", "done");
 
       // Both auto-remembered fields below are folded into one `updatePreferences` call — each

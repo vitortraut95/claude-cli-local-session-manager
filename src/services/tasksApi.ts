@@ -31,6 +31,12 @@ export type UserPreferences = {
   language: Language | null;
   /** Whether the onboarding modal (worktree dev workflow walkthrough) has already been shown once. */
   hasSeenOnboarding: boolean;
+  /** Repo roots used via the "new task" modal, most-recently-used first. No dedicated UI —
+   *  hand-edit userPreferences.json to remove a stale entry, same as branchTypes. */
+  recentProjectPaths: string[];
+  /** How many of a project's most-recently-updated sessions the Cleanup modal's "old sessions"
+   *  finding always keeps. No dedicated UI — hand-edit userPreferences.json to change it. */
+  keepRecentSessionsPerProject: number;
 };
 
 /** Everything the app remembers between sessions in one JSON file (`userPreferences.json`, see
@@ -110,13 +116,15 @@ export async function createTaskWorktree(
 }
 
 /** Opens a terminal in `worktreePath` running `claude <prompt>` (see server-side
- *  launchTaskTerminal for why a positional arg, not a temp file/stdin). */
+ *  launchTaskTerminal for why a positional arg, not a temp file/stdin). `repoRoot` is only used
+ *  server-side to remember the project folder for next time's dropdown — pass "" if unknown. */
 export async function launchTaskTerminal(
   worktreePath: string,
   prompt: string,
   permissionModeAuto: boolean,
+  repoRoot: string,
 ): Promise<void> {
   await withServerErrorMessage(() =>
-    client.post("/launch", { worktreePath, prompt, permissionModeAuto }),
+    client.post("/launch", { worktreePath, prompt, permissionModeAuto, repoRoot }),
   );
 }

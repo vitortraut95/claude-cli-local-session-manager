@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -7,10 +7,17 @@ import type { CleanupFinding } from "../services/cleanupApi";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import { formatUpdatedAt } from "../utils/formatDate";
+import { formatBytes } from "../utils/sessionSize";
 
 type CleanupModalProps = {
   open: boolean;
   onClose: () => void;
+  /** Fired right after any finding is successfully executed, so the page's session list can drop
+   *  whatever was just deleted — only `prune-old-sessions` actually changes it, but firing this
+   *  unconditionally keeps the wiring simple (the same cheap refresh NewTaskModal's
+   *  `onTaskCreated` already triggers). */
+  onFindingExecuted?: () => void;
 };
 
 /** Renders a finding's title/description from its structured data rather than a pre-rendered
@@ -18,8 +25,12 @@ type CleanupModalProps = {
  *  lets it participate in the app's i18n instead of always showing up in English regardless of
  *  the selected language. */
 function findingTitle(finding: CleanupFinding, t: ReturnType<typeof useLanguage>["t"]): string {
+  const project = finding.repoRoot.split("/").pop() ?? finding.repoRoot;
   if (finding.kind === "prune-worktrees") {
-    return t("cleanupModal.finding.prune.title", { project: finding.repoRoot.split("/").pop() ?? finding.repoRoot });
+    return t("cleanupModal.finding.prune.title", { project });
+  }
+  if (finding.kind === "prune-old-sessions") {
+    return t("cleanupModal.finding.oldSessions.title", { count: finding.staleSessions.length, project });
   }
   return t("cleanupModal.finding.merged.title", { branch: finding.branch ?? "?" });
 }
@@ -29,6 +40,14 @@ function findingDescription(finding: CleanupFinding, t: ReturnType<typeof useLan
     return t("cleanupModal.finding.prune.description", {
       count: finding.staleBranches.length,
       branches: finding.staleBranches.join(", "),
+    });
+  }
+  if (finding.kind === "prune-old-sessions") {
+    const freedBytes = finding.staleSessions.reduce((sum, s) => sum + s.sizeBytes, 0);
+    return t("cleanupModal.finding.oldSessions.description", {
+      keep: finding.keepCount,
+      count: finding.staleSessions.length,
+      freed: formatBytes(freedBytes),
     });
   }
   return t("cleanupModal.finding.merged.description", {
@@ -44,7 +63,7 @@ function findingDescription(finding: CleanupFinding, t: ReturnType<typeof useLan
  * in-progress form input here worth preserving across an accidental close, so a plain
  * conditional-fetch-on-open is enough.
  */
-export function CleanupModal({ open, onClose }: CleanupModalProps) {
+export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalProps) {
   const { showToast } = useToast();
   const { t } = useLanguage();
 
@@ -90,6 +109,7 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
       await cleanupApi.executeCleanupFinding(finding);
       setFindings((current) => current.filter((item) => item.id !== finding.id));
       showToast(t("cleanupModal.resolved"), "success");
+      onFindingExecuted?.();
     } catch (err) {
       showToast(
         resolveApiErrorMessage(err, t, "cleanupModal.runError"),
@@ -122,6 +142,10 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
             <strong>{t("cleanupModal.finding.mergedBranch.label")}</strong>{" "}
             {t("cleanupModal.finding.mergedBranch.body")}
           </li>
+          <li>
+            <strong>{t("cleanupModal.finding.oldSessions.label")}</strong>{" "}
+            {t("cleanupModal.finding.oldSessions.body")}
+          </li>
         </ul>
       </div>
 
@@ -146,6 +170,29 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                 {findingDescription(finding, t)}
               </p>
+              {finding.kind === "prune-old-sessions" && (
+                <>
+                  <p className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-400">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    {t("cleanupModal.finding.oldSessions.warning")}
+                  </p>
+                  <ul className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-800">
+                    {finding.staleSessions.map((session) => (
+                      <li
+                        key={session.id}
+                        className="flex items-center justify-between gap-2 border-b border-gray-100 px-2 py-1 text-xs last:border-b-0 dark:border-gray-800/60"
+                      >
+                        <span className="truncate text-gray-700 dark:text-gray-300">
+                          {session.title}
+                        </span>
+                        <span className="shrink-0 text-gray-400 dark:text-gray-500">
+                          {formatUpdatedAt(session.updatedAt)} · {formatBytes(session.sizeBytes)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
               <div className="mt-3 flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -161,9 +208,11 @@ export function CleanupModal({ open, onClose }: CleanupModalProps) {
                   {t("cleanupModal.run")}
                 </Button>
               </div>
-              <p className="mt-2 break-all font-mono text-xs text-gray-400 dark:text-gray-500">
-                {finding.command}
-              </p>
+              {finding.command && (
+                <p className="mt-2 break-all font-mono text-xs text-gray-400 dark:text-gray-500">
+                  {finding.command}
+                </p>
+              )}
             </li>
           ))}
         </ul>

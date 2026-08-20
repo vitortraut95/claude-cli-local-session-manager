@@ -6,7 +6,7 @@ import {
 } from "../services/preferencesService.js";
 import {
   createTaskWorktree,
-  getKnownProjectFolders,
+  getRecentProjectFolders,
   getRepoInfo,
   launchTaskTerminal,
   resolveBaseBranch,
@@ -29,13 +29,18 @@ function isValidPreferences(body: unknown): body is UserPreferences {
       candidate.language === "en" ||
       candidate.language === "pt" ||
       candidate.language === "es") &&
-    typeof candidate.hasSeenOnboarding === "boolean"
+    typeof candidate.hasSeenOnboarding === "boolean" &&
+    Array.isArray(candidate.recentProjectPaths) &&
+    candidate.recentProjectPaths.every((item) => typeof item === "string") &&
+    typeof candidate.keepRecentSessionsPerProject === "number" &&
+    Number.isInteger(candidate.keepRecentSessionsPerProject) &&
+    candidate.keepRecentSessionsPerProject >= 0
   );
 }
 
 tasksRouter.get("/projects", async (_req, res) => {
   try {
-    const projects = await getKnownProjectFolders();
+    const projects = await getRecentProjectFolders();
     res.json({ projects });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
@@ -58,7 +63,8 @@ tasksRouter.put("/preferences", async (req, res) => {
         "MALFORMED_PREFERENCES",
         "Malformed preferences payload — expected { defaultPrompt: string, branchTypes: string[], " +
           "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
-          "language: \"en\"|\"pt\"|\"es\"|null, hasSeenOnboarding: boolean }.",
+          "language: \"en\"|\"pt\"|\"es\"|null, hasSeenOnboarding: boolean, " +
+          "recentProjectPaths: string[], keepRecentSessionsPerProject: number }.",
       );
     }
     await saveUserPreferences(req.body);
@@ -114,6 +120,7 @@ tasksRouter.post("/launch", async (req, res) => {
       extractStringField(req.body, "worktreePath"),
       extractStringField(req.body, "prompt"),
       extractBooleanField(req.body, "permissionModeAuto", false),
+      extractStringField(req.body, "repoRoot"),
     );
     res.json({ success: true });
   } catch (err) {

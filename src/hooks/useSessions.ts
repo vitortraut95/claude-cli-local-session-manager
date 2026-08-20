@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as sessionsApi from "../services/sessionsApi";
 import type { Session } from "../types/session";
+import { resolveProjectParentSegment } from "../utils/formatPath";
 import { isSessionFullyRed } from "../utils/sessionSize";
 import { useLanguage } from "./useLanguage";
 import { useUrlParam } from "./useUrlState";
@@ -148,6 +149,20 @@ export function useSessions() {
       [...new Set(sessions.map((session) => session.project))].sort((a, b) => a.localeCompare(b)),
     [sessions],
   );
+
+  // One extra path segment per project for the filter dropdown's display text only (e.g.
+  // "git/hg-led-mainsite") — the filter itself still matches on the plain `project` string, this
+  // is purely a label. See `resolveProjectParentSegment`'s own doc comment for what it can and
+  // can't derive reliably from the session payload alone.
+  const projectLabels = useMemo(() => {
+    const labels: Record<string, string> = {};
+    for (const session of sessions) {
+      if (labels[session.project]) continue;
+      const parent = resolveProjectParentSegment(session);
+      if (parent) labels[session.project] = `${parent}/${session.project}`;
+    }
+    return labels;
+  }, [sessions]);
 
   const filteredSessions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -535,6 +550,7 @@ export function useSessions() {
     searchQuery,
     setSearchQuery,
     projects,
+    projectLabels,
     projectFilter,
     setProjectFilter,
     updatedFrom,

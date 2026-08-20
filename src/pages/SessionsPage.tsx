@@ -29,6 +29,7 @@ export function SessionsPage() {
     searchQuery,
     setSearchQuery,
     projects,
+    projectLabels,
     projectFilter,
     setProjectFilter,
     updatedFrom,
@@ -225,11 +226,16 @@ export function SessionsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <Header onSessionCreated={refreshSoon} />
+      <Header onSessionCreated={refreshSoon} onSessionsChanged={refreshSoon} />
       <main className="px-4 py-6 sm:px-6">
         <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center max-w-375 mx-auto">
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
-          <ProjectFilter projects={projects} value={projectFilter} onChange={setProjectFilter} />
+          <ProjectFilter
+            projects={projects}
+            projectLabels={projectLabels}
+            value={projectFilter}
+            onChange={setProjectFilter}
+          />
           <DateRangeFilter from={updatedFrom} to={updatedTo} onChange={setUpdatedRange} />
 
           <Button

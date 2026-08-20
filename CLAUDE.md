@@ -439,3 +439,10 @@ start ...)`) persists after the process exits, so a plain `git worktree remove` 
     Bitbucket has no direct "jump straight to the existing PR for this branch" URL the way
     GitHub's compare page effectively has, so this lands on the create-PR form, and Bitbucket
     itself shows a banner linking to the existing PR when one's already open for that branch.
+    
+- **Save locally instructions/tips of each project in something like userPreferences** No menu
+    de nova tarefa hoje temos um prompt default, que concatenamos juntamente link id de tarefa
+    para iniciar uma nova sessão no claude. Creio que seja bom termos informações específicas de
+    cada projeto de como o usuário gosta de rodar/testar, etc, processos internos da empresa, previews,
+    enfim, olhe hoje como está meu default prompt e quanta informação seria bom deixar separada por
+    projeto. Hoje eu deixo tudo junto no prompt default.
