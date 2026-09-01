@@ -9,7 +9,7 @@ const execFileAsync = promisify(execFile);
 
 export type UpdateStatus = {
   branch: string;
-  tracking: string | null;
+  tracking: string;
   ahead: number;
   behind: number;
   updateAvailable: boolean;
@@ -39,20 +39,20 @@ async function getRepoRoot(): Promise<string> {
   return git(["rev-parse", "--show-toplevel"], process.cwd());
 }
 
-async function getUpstream(repoRoot: string): Promise<string | null> {
-  try {
-    return await git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], repoRoot);
-  } catch {
-    return null;
-  }
-}
+/** Hardcoded rather than resolved via the current branch's own `@{u}` upstream: this repo can be
+ *  dogfooded on itself (see CLAUDE.md), so this process might be running from a `--no-track`
+ *  worktree branch with no upstream configured at all — resolving `@{u}` there throws and used to
+ *  silently report "no update available" (disabling the Update button) instead of ever reaching
+ *  the real comparison. "Update available" always means "origin/main has commits this checkout
+ *  doesn't", regardless of what branch/worktree happened to launch this process. */
+const UPDATE_TARGET_REF = "origin/main";
 
 export async function getUpdateStatus(): Promise<UpdateStatus> {
   const repoRoot = await getRepoRoot();
   const branch = await git(["rev-parse", "--abbrev-ref", "HEAD"], repoRoot);
 
   try {
-    await git(["fetch", "--quiet"], repoRoot);
+    await git(["fetch", "--quiet", "origin", "main"], repoRoot);
   } catch (err) {
     throw new AppError(
       "UPDATE_FETCH_FAILED",
@@ -61,12 +61,10 @@ export async function getUpdateStatus(): Promise<UpdateStatus> {
     );
   }
 
-  const tracking = await getUpstream(repoRoot);
-  if (!tracking) {
-    return { branch, tracking: null, ahead: 0, behind: 0, updateAvailable: false };
-  }
-
-  const counts = await git(["rev-list", "--left-right", "--count", `HEAD...${tracking}`], repoRoot);
+  const counts = await git(
+    ["rev-list", "--left-right", "--count", `HEAD...${UPDATE_TARGET_REF}`],
+    repoRoot,
+  );
   const [aheadStr, behindStr] = counts.split(/\s+/);
   if (aheadStr === undefined || behindStr === undefined) {
     throw new AppError(
@@ -77,7 +75,7 @@ export async function getUpdateStatus(): Promise<UpdateStatus> {
   const ahead = Number(aheadStr);
   const behind = Number(behindStr);
 
-  return { branch, tracking, ahead, behind, updateAvailable: behind > 0 };
+  return { branch, tracking: UPDATE_TARGET_REF, ahead, behind, updateAvailable: behind > 0 };
 }
 
 const UPDATE_SCRIPT = fileURLToPath(new URL("../scripts/run-update.mjs", import.meta.url));

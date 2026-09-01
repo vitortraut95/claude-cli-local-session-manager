@@ -382,9 +382,15 @@ export const translations = {
     "Salida inesperada al comprobar actualizaciones.",
   ),
   "apiError.updateGitPullFailed": dict(
-    "Failed to pull the latest changes.",
-    "Falha ao buscar as atualizações mais recentes.",
-    "Error al obtener los últimos cambios.",
+    "Failed to pull the latest changes. If this keeps happening, open a terminal in the " +
+      "project folder and run: git fetch origin && git reset --hard origin/main (this discards " +
+      "any local changes in favor of the remote).",
+    "Falha ao buscar as atualizações mais recentes. Se isso continuar acontecendo, abra um " +
+      "terminal na pasta do projeto e rode: git fetch origin && git reset --hard origin/main " +
+      "(isso descarta qualquer alteração local em favor do remoto).",
+    "Error al obtener los últimos cambios. Si esto sigue ocurriendo, abre una terminal en la " +
+      "carpeta del proyecto y ejecuta: git fetch origin && git reset --hard origin/main (esto " +
+      "descarta cualquier cambio local en favor del remoto).",
   ),
   "apiError.updateYarnInstallFailed": dict(
     "Failed to install dependencies.",

@@ -7,7 +7,7 @@ const client = axios.create({
 
 export type UpdateStatus = {
   branch: string;
-  tracking: string | null;
+  tracking: string;
   ahead: number;
   behind: number;
   updateAvailable: boolean;

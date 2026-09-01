@@ -38,19 +38,25 @@ async function writeStatus(status) {
 }
 
 try {
-  // Force-align to the remote rather than merging/fast-forwarding: a machine that ended up with
+  // Force-align to origin/main rather than merging/fast-forwarding: a machine that ended up with
   // diverged local commits (or any other local edit) would otherwise make `git pull` stop and ask
-  // which merge strategy to use — exactly the friction this app wants to never surface. `reset
-  // --hard` always succeeds (it just moves the branch pointer + working tree, no merge involved),
-  // discarding any local commits/edits in favor of whatever the remote has. `git clean -fd`
+  // which merge strategy to use — exactly the friction this app wants to never surface. Targets
+  // "origin/main" directly instead of the current branch's own `@{u}` upstream: this repo can be
+  // dogfooded on itself (see CLAUDE.md), so the process running this update might be sitting in a
+  // `--no-track` worktree branch with no upstream configured at all — resolving `@{u}` there
+  // throws before ever reaching the actual update. "Update app" always means "make this checkout's
+  // working tree identical to the published main branch", regardless of what branch/worktree
+  // happened to launch it from — `reset --hard origin/main` moves *whatever branch is currently
+  // checked out here* to that commit rather than switching to a branch literally named "main" (a
+  // plain `checkout -B main origin/main` would fail with "already used by worktree" when run from
+  // a linked worktree, since "main" is locked to the primary checkout there). `git clean -fd`
   // afterward removes stray untracked files too (e.g. one left over from a previous failed
   // update) — it never touches gitignored files (this app's own sidecar JSON files included)
   // since that needs an explicit `-x`.
   let pullSummary;
   try {
-    await git(["fetch", "--quiet"]);
-    const tracking = await git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]);
-    pullSummary = await git(["reset", "--hard", tracking]);
+    await git(["fetch", "--quiet", "origin", "main"]);
+    pullSummary = await git(["reset", "--hard", "origin/main"]);
     await git(["clean", "-fd"]);
   } catch (err) {
     throw Object.assign(new Error(`git update failed: ${errorMessage(err)}`), {
