@@ -1,10 +1,8 @@
-# Claude CLI Local Session Manager
+# Claude CLI Local Session Manager ->> LINUX ONLY
 
 Local web app for managing [Claude CLI](https://claude.com/claude-code) sessions. Reads the
 `*.jsonl` files `claude` writes to `~/.claude/projects` and lets you browse, resume, organize,
 and clean them up. Everything runs on your machine — no external server involved.
-
-**Linux only.**
 
 ## Features
 
@@ -22,7 +20,7 @@ and clean them up. Everything runs on your machine — no external server involv
   the same session)
 - Subagent browser (per-invocation type/description/duration/result), Claude usage-limits badge
 - One-click "Open in VS Code", "Open Jenkins" (for `env/*` branches), and "Open PR" buttons
-- Self-update button (`git pull` + rebuild) from the header
+- Self-update button from the header
 - pt/en/es language switcher
 
 ## Prerequisites
@@ -59,19 +57,15 @@ Stop the app by closing the terminal running `yarn dev`.
 > desktop icon/Warp config bakes in that same absolute path — if you do move the folder, just
 > rerun `./install-shortcut.sh` from the new location to regenerate it.
 
-## Desktop shortcut (optional)
-
-### Linux (GNOME)
+## Desktop shortcut Linux (optional)
 
 ```bash
 ./install-shortcut.sh
 ```
 
-Adds a **Claude Session Manager** icon to the Desktop and application menu. Clicking it opens the
-app in a browser if it's already running, or starts it (in Warp if installed, otherwise the first
-terminal emulator found) if not.
+Adds a **Claude Session Manager** icon to the Desktop and application menu. 
 
-Remove it with:
+Remove code:
 
 ```bash
 rm -f ~/.local/share/applications/claude-session-manager.desktop ~/Desktop/claude-session-manager.desktop
@@ -80,17 +74,7 @@ update-desktop-database ~/.local/share/applications 2>/dev/null
 
 ## Structure
 
-```
-/
-├── install-shortcut.sh    # generates and installs the GNOME shortcut
-├── open-terminal.sh       # opens a browser tab if already running, else a terminal + start.sh
-├── start.sh               # runs inside the terminal: cd into the project + yarn dev
-├── server/                # Express API
-└── src/                   # React SPA (workspace root)
-```
-
-Yarn workspaces monorepo: the root is the frontend, `server/` is the backend. See `CLAUDE.md` for
-the full architecture/API surface and the "why" behind non-obvious decisions.
+Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 
 ## API
 
@@ -104,14 +88,6 @@ the full architecture/API surface and the "why" behind non-obvious decisions.
 | POST   | `/sessions/:id/vscode`         | Open the session's working directory in VS Code  |
 | POST   | `/sessions/:id/compact-summary`  | Draft a summary for "Compact & continue"        |
 | POST   | `/sessions/:id/compact-continue` | Launch the lighter pt2 session from that draft  |
-
-## Scripts
-
-- `yarn dev` — start frontend and backend together
-- `yarn build` — production build for both workspaces
-- `yarn lint` — lint frontend and backend
-- `yarn typecheck` — type-check both workspaces
-- `yarn preview` — serve the frontend production build
 
 ## Changelog
 
