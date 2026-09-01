@@ -23,7 +23,7 @@ function describeStatus(
   if (!status) return t("updateButton.checkError");
   if (!status.updateAvailable) return t("updateButton.upToDate");
 
-  const branch = status.tracking ?? status.branch;
+  const branch = status.tracking;
   return status.behind === 1
     ? t("updateButton.updateAvailable.one", { branch })
     : t("updateButton.updateAvailable.many", { count: status.behind, branch });

@@ -3,6 +3,9 @@ import { ToastContext, type ToastItem, type ToastVariant } from "../hooks/useToa
 import { ToastViewport } from "./ToastViewport";
 
 const TOAST_DURATION_MS = 3500;
+// Error toasts sometimes carry actionable troubleshooting text (e.g. a shell command to copy) —
+// give those more time to read/copy than a short success confirmation.
+const ERROR_TOAST_DURATION_MS = 10000;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -16,7 +19,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (message: string, variant: ToastVariant = "success") => {
       const id = `toast-${nextId.current++}`;
       setToasts((current) => [...current, { id, message, variant }]);
-      setTimeout(() => dismissToast(id), TOAST_DURATION_MS);
+      const duration = variant === "error" ? ERROR_TOAST_DURATION_MS : TOAST_DURATION_MS;
+      setTimeout(() => dismissToast(id), duration);
     },
     [dismissToast],
   );
