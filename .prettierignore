@@ -1,0 +1,6 @@
+node_modules
+dist
+dist-ssr
+server/dist
+package-lock.json
+claude-session-manager.desktop
