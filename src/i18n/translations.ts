@@ -480,6 +480,11 @@ export const translations = {
     "Esta sessão não está rodando em um worktree do git.",
     "Esta sesión no se está ejecutando en un worktree de git.",
   ),
+  "apiError.protectedBranchDeleteForbidden": dict(
+    "Refusing to delete that branch — it looks like the repo's primary branch.",
+    "Não é possível excluir essa branch — ela parece ser a branch principal do repositório.",
+    "No se puede eliminar esa rama — parece ser la rama principal del repositorio.",
+  ),
   "apiError.repoRootUnresolved": dict(
     "Could not resolve the repo root for this session's directory.",
     "Não foi possível resolver a raiz do repositório para o diretório desta sessão.",

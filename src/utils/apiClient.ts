@@ -77,6 +77,7 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   TERMINAL_LAUNCH_FAILED: "apiError.terminalLaunchFailed",
   WORKTREE_NAME_REQUIRED: "apiError.worktreeNameRequired",
   NOT_A_WORKTREE_SESSION: "apiError.notAWorktreeSession",
+  PROTECTED_BRANCH_DELETE_FORBIDDEN: "apiError.protectedBranchDeleteForbidden",
   REPO_ROOT_UNRESOLVED: "apiError.repoRootUnresolved",
   WORKTREE_BRANCH_UNKNOWN: "apiError.worktreeBranchUnknown",
   WORKTREE_TO_ROOT_CHECKOUT_FAILED: "apiError.worktreeToRootCheckoutFailed",
