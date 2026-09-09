@@ -41,7 +41,7 @@ import { Tooltip } from "./Tooltip";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
-import { getJenkinsBranchJobUrl } from "../utils/jenkins";
+import { extractEnvBranchFromNickname, getJenkinsBranchJobUrl } from "../utils/jenkins";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 
 type SessionCardProps = {
@@ -122,9 +122,13 @@ export function SessionCard({
     session.isWorktree && session.workingDirectory
       ? formatWorktreePath(session.workingDirectory)
       : null;
-  const jenkinsUrl = session.gitBranch
-    ? getJenkinsBranchJobUrl(session.gitBranch, session.project)
-    : null;
+  // session.gitBranch is stuck on whatever the transcript last recorded, so it misses an env/*
+  // branch created/pushed after the session's last turn — fall back to scavenging one out of the
+  // nickname text for that case (see extractEnvBranchFromNickname's doc comment).
+  const jenkinsBranch = session.gitBranch?.startsWith("env/")
+    ? session.gitBranch
+    : extractEnvBranchFromNickname(session.nickname);
+  const jenkinsUrl = jenkinsBranch ? getJenkinsBranchJobUrl(jenkinsBranch, session.project) : null;
 
   const handleCopyCommand = async () => {
     try {
