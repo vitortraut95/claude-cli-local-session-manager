@@ -5,6 +5,7 @@ import { useToast } from "../hooks/useToast";
 import * as sessionsApi from "../services/sessionsApi";
 import type { Session } from "../types/session";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import { resolveSessionBranches } from "../utils/sessionBranches";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 
@@ -28,12 +29,13 @@ export function OpenPrBaseChoiceModal({ session, onClose }: OpenPrBaseChoiceModa
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [loadingChoice, setLoadingChoice] = useState<"base" | "default" | null>(null);
+  const { destination: taskBranch } = resolveSessionBranches(session);
 
   const openWith = async (base: string | undefined, choice: "base" | "default") => {
-    if (!session.gitBranch) return;
+    if (!taskBranch) return;
     setLoadingChoice(choice);
     try {
-      const url = await sessionsApi.fetchPrUrl(session.id, session.gitBranch, base);
+      const url = await sessionsApi.fetchPrUrl(session.id, taskBranch, base);
       window.open(url, "_blank", "noopener,noreferrer");
       onClose();
     } catch (err) {
