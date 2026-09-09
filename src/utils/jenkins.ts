@@ -19,20 +19,3 @@ export function getJenkinsBranchJobUrl(branch: string, project: string): string 
   const doubleEncodedBranch = encodeURIComponent(encodeURIComponent(branch));
   return `${JENKINS_BASE_URL}/job/${project}/job/${doubleEncodedBranch}/`;
 }
-
-const ENV_BRANCH_IN_TEXT = /env\/[\w.-]+/;
-
-/**
- * Fallback for sessions whose `env/*` branch was created and pushed outside of any Claude Code
- * turn in that session (e.g. work done ahead on the base branch, then manually committed to an
- * `env/*` branch afterward) — `session.gitBranch` only reflects the last branch recorded in the
- * transcript, which never advances past whatever it was when the session's last message was
- * written, so it stays stuck on the original branch forever. Nicknames for exactly this case
- * already tend to contain the real `env/*` branch name (either the raw branch as the whole
- * nickname, or the "<source> -> <dest>" auto-nickname format), so scavenging one out of free-form
- * nickname text is a pragmatic way to recover the link without needing live git state.
- */
-export function extractEnvBranchFromNickname(nickname: string | null): string | null {
-  if (!nickname) return null;
-  return ENV_BRANCH_IN_TEXT.exec(nickname)?.[0] ?? null;
-}

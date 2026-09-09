@@ -41,7 +41,8 @@ import { Tooltip } from "./Tooltip";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
-import { extractEnvBranchFromNickname, getJenkinsBranchJobUrl } from "../utils/jenkins";
+import { getJenkinsBranchJobUrl } from "../utils/jenkins";
+import { resolveSessionBranches } from "../utils/sessionBranches";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 
 type SessionCardProps = {
@@ -122,13 +123,11 @@ export function SessionCard({
     session.isWorktree && session.workingDirectory
       ? formatWorktreePath(session.workingDirectory)
       : null;
-  // session.gitBranch is stuck on whatever the transcript last recorded, so it misses an env/*
-  // branch created/pushed after the session's last turn — fall back to scavenging one out of the
-  // nickname text for that case (see extractEnvBranchFromNickname's doc comment).
-  const jenkinsBranch = session.gitBranch?.startsWith("env/")
-    ? session.gitBranch
-    : extractEnvBranchFromNickname(session.nickname);
-  const jenkinsUrl = jenkinsBranch ? getJenkinsBranchJobUrl(jenkinsBranch, session.project) : null;
+  // See resolveSessionBranches' doc comment: `destination` is session.gitBranch unless that's
+  // missing/stale, in which case it falls back to whatever branch the nickname encodes. Feeds
+  // both the Jenkins and the PR links below.
+  const { destination: taskBranch } = resolveSessionBranches(session);
+  const jenkinsUrl = taskBranch ? getJenkinsBranchJobUrl(taskBranch, session.project) : null;
 
   const handleCopyCommand = async () => {
     try {
@@ -151,14 +150,14 @@ export function SessionCard({
   // default-branch comparison would otherwise show every commit already on that base as part of
   // the "diff" too.
   const handleOpenPr = async () => {
-    if (!session.gitBranch) return;
+    if (!taskBranch) return;
     if (session.baseBranch) {
       setShowOpenPrBaseChoice(true);
       return;
     }
     setOpeningPrUrl(true);
     try {
-      const url = await sessionsApi.fetchPrUrl(session.id, session.gitBranch);
+      const url = await sessionsApi.fetchPrUrl(session.id, taskBranch);
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (err) {
       showToast(resolveApiErrorMessage(err, t, "sessionCard.openPr.error"), "error");
@@ -550,7 +549,7 @@ export function SessionCard({
             icon={<Factory className="h-4 w-4" />}
           />
         )}
-        {session.gitBranch && !session.directoryMissing && (
+        {taskBranch && !session.directoryMissing && (
           <ToolbarIconButton
             tooltip={t("sessionCard.openPrTooltip")}
             ariaLabel={t("sessionCard.openPrAriaLabel")}
