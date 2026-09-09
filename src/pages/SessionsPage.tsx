@@ -19,6 +19,10 @@ import { useSessions } from "../hooks/useSessions";
 import type { Session } from "../types/session";
 import { RefreshCw, Trash2, X } from "lucide-react";
 
+// Never offer to delete these outright, regardless of what's checked out — mirrored server-side
+// in sessionService.ts's deleteSessionBranch for defense-in-depth.
+const PROTECTED_BRANCHES = new Set(["main", "master"]);
+
 export function SessionsPage() {
   const {
     sessions,
@@ -110,7 +114,10 @@ export function SessionsPage() {
     if (!sessionPendingDeletion) return;
     const id = sessionPendingDeletion.id;
     const cleanupWorktree = sessionPendingDeletion.isWorktree && cleanupWorktreeOnDelete;
-    const cleanupBranch = !sessionPendingDeletion.isWorktree && cleanupBranchOnDelete;
+    const cleanupBranch =
+      !sessionPendingDeletion.isWorktree &&
+      cleanupBranchOnDelete &&
+      !PROTECTED_BRANCHES.has(sessionPendingDeletion.gitBranch ?? "");
     const branchName = sessionPendingDeletion.gitBranch ?? undefined;
     setSessionPendingDeletion(null);
     await removeSession(id, cleanupWorktree, cleanupBranch, branchName);
@@ -273,19 +280,21 @@ export function SessionsPage() {
             {t("sessionsPage.deleteConfirm.cleanupWorktree")}
           </label>
         )}
-        {!sessionPendingDeletion?.isWorktree && sessionPendingDeletion?.gitBranch && (
-          <label className="mt-3 flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <input
-              type="checkbox"
-              checked={cleanupBranchOnDelete}
-              onChange={(event) => setCleanupBranchOnDelete(event.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
-            />
-            {t("sessionsPage.deleteConfirm.cleanupBranch", {
-              branch: sessionPendingDeletion.gitBranch,
-            })}
-          </label>
-        )}
+        {!sessionPendingDeletion?.isWorktree &&
+          sessionPendingDeletion?.gitBranch &&
+          !PROTECTED_BRANCHES.has(sessionPendingDeletion.gitBranch) && (
+            <label className="mt-3 flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <input
+                type="checkbox"
+                checked={cleanupBranchOnDelete}
+                onChange={(event) => setCleanupBranchOnDelete(event.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+              />
+              {t("sessionsPage.deleteConfirm.cleanupBranch", {
+                branch: sessionPendingDeletion.gitBranch,
+              })}
+            </label>
+          )}
       </ConfirmDialog>
 
       <ConfirmDialog

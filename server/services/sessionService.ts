@@ -363,6 +363,20 @@ function branchNameRequiredError(): AppError {
   return new AppError("TASK_BRANCH_NAME_REQUIRED", "A branch name is required.");
 }
 
+/** Mirrored client-side in SessionsPage.tsx, which hides the "also delete branch" checkbox for
+ *  these — this is the defense-in-depth copy for direct API calls, same reasoning as the
+ *  active-session re-check in `deleteSession` above. A literal name check rather than resolving
+ *  the repo's actual default branch (`getDefaultBaseBranch`): simpler, and "main"/"master" should
+ *  never be deletable through this action regardless of what a given repo's default happens to be. */
+const PROTECTED_BRANCHES = new Set(["main", "master"]);
+
+function protectedBranchDeleteError(branch: string): AppError {
+  return new AppError(
+    "PROTECTED_BRANCH_DELETE_FORBIDDEN",
+    `Refusing to delete "${branch}" — it looks like the repo's primary branch.`,
+  );
+}
+
 /**
  * Fetched on demand when the prompt-preview modal opens for a single session, rather than
  * embedded in `listSessions()` — see `readFullSessionPrompts` for why (it's untruncated, unlike
@@ -631,6 +645,9 @@ export async function deleteSessionBranch(id: string, branch: string): Promise<v
   const trimmedBranch = branch.trim();
   if (!trimmedBranch) {
     throw branchNameRequiredError();
+  }
+  if (PROTECTED_BRANCHES.has(trimmedBranch)) {
+    throw protectedBranchDeleteError(trimmedBranch);
   }
 
   const cwd = await findSessionCwd(id);
