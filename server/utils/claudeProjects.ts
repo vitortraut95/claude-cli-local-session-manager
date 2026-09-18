@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import os from "node:os";
 import path from "node:path";
@@ -94,13 +94,61 @@ function extractText(content: unknown): string | null {
   return null;
 }
 
+/**
+ * `.jsonl` transcripts are append-only (the CLI only ever adds lines to its own session log), so
+ * a previous parse stays valid for as long as `mtime`+`size` haven't changed — cheap to check via
+ * a single `stat()` and far cheaper than re-scanning a multi-MB transcript on every `GET
+ * /sessions`. Keyed by absolute file path; entries for deleted sessions are pruned explicitly via
+ * `forgetCachedSession` rather than left to grow forever, since nothing here ever evicts on its
+ * own otherwise.
+ */
+type CacheEntry<T> = { mtimeMs: number; size: number; value: T };
+
+function readCache<T>(
+  cache: Map<string, CacheEntry<T>>,
+  filePath: string,
+  s: { mtimeMs: number; size: number },
+): T | undefined {
+  const entry = cache.get(filePath);
+  return entry?.mtimeMs === s.mtimeMs && entry.size === s.size ? entry.value : undefined;
+}
+
+function writeCache<T>(
+  cache: Map<string, CacheEntry<T>>,
+  filePath: string,
+  s: { mtimeMs: number; size: number },
+  value: T,
+): void {
+  cache.set(filePath, { mtimeMs: s.mtimeMs, size: s.size, value });
+}
+
+const headCache = new Map<string, CacheEntry<SessionHead>>();
+const fullScanCache = new Map<string, CacheEntry<FullScanResult>>();
+
+/** Clears every cached parse for a session file — call once its `.jsonl` is actually deleted, so
+ *  a stale entry never lingers keyed by a path that no longer exists. */
+export function forgetCachedSession(filePath: string): void {
+  headCache.delete(filePath);
+  fullScanCache.delete(filePath);
+}
+
 const MAX_LINES_SCANNED = 80;
 
 /**
  * Reads only the leading lines of a session's `.jsonl` file — title metadata
- * and the first user prompt both appear near the top, so a full read is unnecessary.
+ * and the first user prompt both appear near the top, so a full read is unnecessary. Cached by
+ * `mtime`+`size` (see above) since even this partial read isn't free on a very active session.
  */
 export async function readSessionHead(filePath: string): Promise<SessionHead> {
+  const s = await stat(filePath);
+  const cached = readCache(headCache, filePath, s);
+  if (cached) return cached;
+  const value = await scanSessionHead(filePath);
+  writeCache(headCache, filePath, s, value);
+  return value;
+}
+
+async function scanSessionHead(filePath: string): Promise<SessionHead> {
   const result: SessionHead = {
     sessionId: null,
     cwd: null,
@@ -178,15 +226,29 @@ function truncatePrompt(text: string): string {
     : trimmed;
 }
 
+/** The CLI appends this hint to some recaps — a UI aside, not part of the actual summary. */
+const RECAP_HINT_SUFFIX = / \(disable recaps in \/config\)$/;
+
+type FullScanResult = {
+  /** Untruncated, capped at MAX_PROMPTS_EXTRACTED — callers below truncate per-prompt as needed. */
+  prompts: string[];
+  activeTimeMs: number;
+  recap: string | null;
+  latestGitBranch: string | null;
+};
+
 /**
- * Reads the *entire* session transcript (unlike readSessionHead, which stops after the first
- * user prompt) to collect every human-authored prompt, up to MAX_PROMPTS_EXTRACTED — later
- * prompts in a very long session are simply not included past that cap. Shared by both
- * `readSessionPrompts` (list/search, additionally truncated per-prompt) and
- * `readFullSessionPrompts` (preview modal, untruncated).
+ * Every field here needs a full pass over the transcript with no early exit (prompts stop once
+ * `MAX_PROMPTS_EXTRACTED` is hit, but activeTimeMs/recap/latestGitBranch all need the *last*
+ * matching entry, which can appear anywhere). Previously each lived in its own function and did
+ * its own independent full-file read; folded into one pass since they're always needed together
+ * (see `getFullScan`'s callers) and a `.jsonl` transcript is only worth reading through once.
  */
-async function collectUserPrompts(filePath: string): Promise<string[]> {
+async function scanFullTranscript(filePath: string): Promise<FullScanResult> {
   const prompts: string[] = [];
+  let activeTimeMs = 0;
+  let recap: string | null = null;
+  let latestGitBranch: string | null = null;
 
   const rl = createInterface({
     input: createReadStream(filePath, { encoding: "utf8" }),
@@ -195,7 +257,6 @@ async function collectUserPrompts(filePath: string): Promise<string[]> {
 
   try {
     for await (const line of rl) {
-      if (prompts.length >= MAX_PROMPTS_EXTRACTED) break;
       if (!line.trim()) continue;
 
       let entry: JsonlEntry;
@@ -205,18 +266,42 @@ async function collectUserPrompts(filePath: string): Promise<string[]> {
         continue;
       }
 
-      if (entry.type === "user" && !entry.isSidechain && entry.message?.role === "user") {
+      if (
+        prompts.length < MAX_PROMPTS_EXTRACTED &&
+        entry.type === "user" &&
+        !entry.isSidechain &&
+        entry.message?.role === "user"
+      ) {
         const text = extractText(entry.message.content);
         if (text && !text.trimStart().startsWith("<")) {
           prompts.push(text.trim());
         }
       }
+
+      if (entry.type === "system" && entry.subtype === "turn_duration" && entry.durationMs) {
+        activeTimeMs += entry.durationMs;
+      }
+
+      if (entry.type === "system" && entry.subtype === "away_summary" && entry.content) {
+        recap = entry.content.replace(RECAP_HINT_SUFFIX, "").trim();
+      }
+
+      if (entry.gitBranch) latestGitBranch = entry.gitBranch;
     }
   } finally {
     rl.close();
   }
 
-  return prompts;
+  return { prompts, activeTimeMs, recap, latestGitBranch };
+}
+
+async function getFullScan(filePath: string): Promise<FullScanResult> {
+  const s = await stat(filePath);
+  const cached = readCache(fullScanCache, filePath, s);
+  if (cached) return cached;
+  const value = await scanFullTranscript(filePath);
+  writeCache(fullScanCache, filePath, s, value);
+  return value;
 }
 
 /**
@@ -225,7 +310,7 @@ async function collectUserPrompts(filePath: string): Promise<string[]> {
  * which embeds this for every session up front.
  */
 export async function readSessionPrompts(filePath: string): Promise<string[]> {
-  const prompts = await collectUserPrompts(filePath);
+  const { prompts } = await getFullScan(filePath);
   return prompts.map(truncatePrompt);
 }
 
@@ -235,7 +320,40 @@ export async function readSessionPrompts(filePath: string): Promise<string[]> {
  * `/sessions` list payload's size the way including it in `readSessionPrompts` would.
  */
 export async function readFullSessionPrompts(filePath: string): Promise<string[]> {
-  return collectUserPrompts(filePath);
+  return (await getFullScan(filePath)).prompts;
+}
+
+/**
+ * Sums `{"type":"system","subtype":"turn_duration","durationMs":...}` entries — the CLI's own
+ * measurement of how long it actually spent processing each turn. A more honest signal of active
+ * work than the file's mtime, which only says when the transcript was last written to.
+ */
+export async function readSessionActiveTimeMs(filePath: string): Promise<number> {
+  return (await getFullScan(filePath)).activeTimeMs;
+}
+
+/**
+ * Scans the entire transcript for the *last* recorded `gitBranch`, not the first (unlike
+ * `readSessionHead`, which stops at the first non-null value within its leading-lines window).
+ * The CLI logs the current branch on every entry, and a session that switches branches mid-way
+ * (e.g. a manual `git checkout` run outside the "New task" modal's worktree/branch-per-task flow)
+ * will have that switch land well past `readSessionHead`'s `MAX_LINES_SCANNED` cutoff — using the
+ * first-seen value would then pin the session to a branch it left behind hundreds of lines ago.
+ * The last-seen value is what the session's working directory is actually left on.
+ */
+export async function readSessionLatestGitBranch(filePath: string): Promise<string | null> {
+  return (await getFullScan(filePath)).latestGitBranch;
+}
+
+/**
+ * Scans for `{"type":"system","subtype":"away_summary","content":...}` entries — the CLI's own
+ * natural-language "what we did / what's next" recap, written each time the user steps away. A
+ * session can log several over its lifetime (one per away period); later entries overwrite
+ * earlier ones here so the *most recent* recap wins, since it best reflects where the session
+ * currently stands.
+ */
+export async function readSessionRecap(filePath: string): Promise<string | null> {
+  return (await getFullScan(filePath)).recap;
 }
 
 /**
@@ -325,114 +443,3 @@ export async function readSubagentSummary(filePath: string): Promise<SubagentTra
   return { startedAt, endedAt, resultText };
 }
 
-/**
- * Sums `{"type":"system","subtype":"turn_duration","durationMs":...}` entries — the CLI's own
- * measurement of how long it actually spent processing each turn. A more honest signal of active
- * work than the file's mtime, which only says when the transcript was last written to.
- */
-export async function readSessionActiveTimeMs(filePath: string): Promise<number> {
-  let totalMs = 0;
-
-  const rl = createInterface({
-    input: createReadStream(filePath, { encoding: "utf8" }),
-    crlfDelay: Infinity,
-  });
-
-  try {
-    for await (const line of rl) {
-      if (!line.trim()) continue;
-
-      let entry: JsonlEntry;
-      try {
-        entry = JSON.parse(line) as JsonlEntry;
-      } catch {
-        continue;
-      }
-
-      if (entry.type === "system" && entry.subtype === "turn_duration" && entry.durationMs) {
-        totalMs += entry.durationMs;
-      }
-    }
-  } finally {
-    rl.close();
-  }
-
-  return totalMs;
-}
-
-/**
- * Scans the entire transcript for the *last* recorded `gitBranch`, not the first (unlike
- * `readSessionHead`, which stops at the first non-null value within its leading-lines window).
- * The CLI logs the current branch on every entry, and a session that switches branches mid-way
- * (e.g. a manual `git checkout` run outside the "New task" modal's worktree/branch-per-task flow)
- * will have that switch land well past `readSessionHead`'s `MAX_LINES_SCANNED` cutoff — using the
- * first-seen value would then pin the session to a branch it left behind hundreds of lines ago.
- * The last-seen value is what the session's working directory is actually left on.
- */
-export async function readSessionLatestGitBranch(filePath: string): Promise<string | null> {
-  let gitBranch: string | null = null;
-
-  const rl = createInterface({
-    input: createReadStream(filePath, { encoding: "utf8" }),
-    crlfDelay: Infinity,
-  });
-
-  try {
-    for await (const line of rl) {
-      if (!line.trim()) continue;
-
-      let entry: JsonlEntry;
-      try {
-        entry = JSON.parse(line) as JsonlEntry;
-      } catch {
-        continue;
-      }
-
-      if (entry.gitBranch) gitBranch = entry.gitBranch;
-    }
-  } finally {
-    rl.close();
-  }
-
-  return gitBranch;
-}
-
-/** The CLI appends this hint to some recaps — a UI aside, not part of the actual summary. */
-const RECAP_HINT_SUFFIX = / \(disable recaps in \/config\)$/;
-
-/**
- * Scans for `{"type":"system","subtype":"away_summary","content":...}` entries — the CLI's own
- * natural-language "what we did / what's next" recap, written each time the user steps away. A
- * session can log several over its lifetime (one per away period); later entries overwrite
- * earlier ones here so the *most recent* recap wins, since it best reflects where the session
- * currently stands.
- */
-export async function readSessionRecap(filePath: string): Promise<string | null> {
-  let recap: string | null = null;
-
-  const rl = createInterface({
-    input: createReadStream(filePath, { encoding: "utf8" }),
-    crlfDelay: Infinity,
-  });
-
-  try {
-    for await (const line of rl) {
-      if (!line.trim()) continue;
-
-      let entry: JsonlEntry;
-      try {
-        entry = JSON.parse(line) as JsonlEntry;
-      } catch {
-        continue;
-      }
-
-      if (entry.type === "system" && entry.subtype === "away_summary" && entry.content) {
-        recap = entry.content.replace(RECAP_HINT_SUFFIX, "").trim();
-      }
-    }
-  } finally {
-    rl.close();
-  }
-
-  return recap;
-}

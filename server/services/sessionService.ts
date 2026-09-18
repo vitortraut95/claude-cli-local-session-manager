@@ -8,6 +8,7 @@ import type { RootStatus, Session, SubagentDetail, WorktreeToRootPreview } from 
 import {
   findJsonlFiles,
   findSubagentFiles,
+  forgetCachedSession,
   getClaudeProjectsDir,
   readFullSessionPrompts,
   readSessionActiveTimeMs,
@@ -628,6 +629,7 @@ export async function deleteSession(id: string): Promise<void> {
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
   await unlink(filePath);
+  forgetCachedSession(filePath);
 }
 
 /**
