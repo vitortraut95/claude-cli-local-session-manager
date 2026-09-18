@@ -29,6 +29,7 @@ export function SessionsPage() {
     allSessions,
     filteredCount,
     loading,
+    scanProgress,
     error,
     searchQuery,
     setSearchQuery,
@@ -142,7 +143,7 @@ export function SessionsPage() {
     updatedTo.length > 0;
 
   const renderContent = () => {
-    if (loading) return <LoadingState />;
+    if (loading) return <LoadingState scanProgress={scanProgress} />;
     if (error) return <ErrorState message={error} onRetry={refresh} />;
     if (filteredCount === 0) return <EmptyState hasSearchQuery={hasActiveFilter} />;
 

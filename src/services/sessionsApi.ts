@@ -11,6 +11,17 @@ export async function fetchSessions(): Promise<Session[]> {
   return data;
 }
 
+export type ScanProgress = { total: number; done: number; scanning: boolean };
+
+/** Polled by useSessions while the initial `fetchSessions()` call is still in flight, to show
+ *  progress on a cold cache (see server-side getScanProgress). Best-effort only — callers should
+ *  swallow errors rather than surface them, since this is a nice-to-have on top of the real
+ *  request, not a fetch a failure should ever block on. */
+export async function fetchScanProgress(): Promise<ScanProgress> {
+  const { data } = await client.get<ScanProgress>("/scan-progress");
+  return data;
+}
+
 export async function deleteSession(id: string): Promise<void> {
   await withServerErrorMessage(() => client.delete(`/${encodeURIComponent(id)}`));
 }

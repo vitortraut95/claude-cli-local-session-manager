@@ -236,10 +236,46 @@ function waitForProcessExit(pid: number, timeoutMs: number): Promise<void> {
   });
 }
 
+export type ScanProgress = { total: number; done: number; scanning: boolean };
+
+/**
+ * Lets the frontend show a "first scan, this can take a while" progress message instead of the
+ * generic loading spinner on a cold cache (see `readCache`/`getFullScan` in claudeProjects.ts) —
+ * without this, someone installing the app with hundreds of sessions has no idea why the initial
+ * load is slow. A single mutable module-level object rather than one entry per request: this app
+ * has no per-request tracking anywhere else (see the concurrent-scan to-do for `/cleanup/findings`),
+ * and a second `GET /sessions` landing mid-scan (e.g. a second browser tab) just overwrites this
+ * with its own totals — acceptable since it's a coarse "is *a* scan in flight" signal, not a
+ * per-client one.
+ */
+const scanProgress: ScanProgress = { total: 0, done: 0, scanning: false };
+
+export function getScanProgress(): ScanProgress {
+  return { ...scanProgress };
+}
+
 export async function listSessions(): Promise<Session[]> {
+  scanProgress.total = 0;
+  scanProgress.done = 0;
+  scanProgress.scanning = true;
+  try {
+    return await listSessionsUncached();
+  } finally {
+    scanProgress.scanning = false;
+  }
+}
+
+async function listSessionsUncached(): Promise<Session[]> {
   const files = await findJsonlFiles(getClaudeProjectsDir());
+  scanProgress.total = files.length;
   const [built, activeIds, nicknames, continuations, taskBaseBranches] = await Promise.all([
-    Promise.all(files.map(buildSession)),
+    Promise.all(
+      files.map(async (file) => {
+        const result = await buildSession(file);
+        scanProgress.done += 1;
+        return result;
+      }),
+    ),
     getActiveResumeSessionIds(),
     getNicknames(),
     getContinuations(),

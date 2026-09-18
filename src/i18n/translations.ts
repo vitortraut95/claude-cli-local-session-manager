@@ -637,6 +637,16 @@ export const translations = {
     "Carregando sessões...",
     "Cargando sesiones...",
   ),
+  "loadingState.scanning.title": dict(
+    "Scanning your sessions for the first time — this can take a while with a lot of them.",
+    "Fazendo a primeira varredura das suas sessões — isso pode demorar um pouco se houver muitas.",
+    "Escaneando tus sesiones por primera vez — esto puede tardar un poco si hay muchas.",
+  ),
+  "loadingState.scanning.progress": dict(
+    "{done} of {total} sessions processed",
+    "{done} de {total} sessões processadas",
+    "{done} de {total} sesiones procesadas",
+  ),
 
   "sessionSizeMeter.tooltip": dict(
     "{size} session — {message}",
