@@ -144,6 +144,46 @@ export function useSessions() {
     void loadSessions();
   }, [loadSessions]);
 
+  /**
+   * Shown by <LoadingState/> only for the very first, mount-time load — a cold cache (server
+   * restart, or a session's transcript grown since last read, see claudeProjects.ts) can make a
+   * user with hundreds of sessions stare at a bare spinner with no idea why. Deliberately not
+   * wired into `refresh()`/`loadSessions()` in general: every later reload (delete, nickname,
+   * resume, the manual refresh button) almost always hits a warm cache, so polling there would
+   * just be wasted requests for a state that will resolve near-instantly anyway.
+   *
+   * Polling (not a single check) because the scan's total isn't known until the server's own
+   * `findJsonlFiles` resolves, and its `done` count climbs over the scan's lifetime — a fixed
+   * short delay before the first poll avoids ever showing progress for a load that was going to
+   * finish fast regardless.
+   */
+  const [scanProgress, setScanProgress] = useState<{ done: number; total: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const timeouts: number[] = [];
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const progress = await sessionsApi.fetchScanProgress();
+        if (cancelled) return;
+        if (!progress.scanning) return;
+        setScanProgress({ done: progress.done, total: progress.total });
+        timeouts.push(window.setTimeout(() => void poll(), 300));
+      } catch {
+        // Best-effort only — a failed progress check shouldn't affect the real load.
+      }
+    };
+
+    timeouts.push(window.setTimeout(() => void poll(), 400));
+
+    return () => {
+      cancelled = true;
+      timeouts.forEach(clearTimeout);
+    };
+  }, []);
+
   const projects = useMemo(
     () =>
       [...new Set(sessions.map((session) => session.project))].sort((a, b) => a.localeCompare(b)),
@@ -546,6 +586,7 @@ export function useSessions() {
     setPage,
     setPerPage,
     loading,
+    scanProgress,
     error,
     searchQuery,
     setSearchQuery,

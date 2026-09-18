@@ -10,6 +10,7 @@ import {
   getSessionPrUrl,
   getSessionPrompts,
   getRootStatus,
+  getScanProgress,
   getSessionSubagents,
   getWorktreeToRootPreview,
   listSessions,
@@ -50,6 +51,13 @@ sessionsRouter.get("/", async (_req, res) => {
       message: err instanceof Error ? err.message : String(err),
     });
   }
+});
+
+/** Polled by the frontend only while the initial (mount) `GET /sessions` call is still in
+ *  flight — see `getScanProgress`'s own doc comment for why this is a single shared counter
+ *  rather than per-request. */
+sessionsRouter.get("/scan-progress", (_req, res) => {
+  res.json(getScanProgress());
 });
 
 sessionsRouter.delete("/:id", async (req, res) => {
