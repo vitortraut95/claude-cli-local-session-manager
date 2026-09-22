@@ -971,14 +971,18 @@ export async function openInVSCode(id: string): Promise<void> {
 /**
  * Opens `dir` in Cursor via its `cursor` CLI — same rationale as `openDirInVSCode` above (no
  * terminal needed, `--new-window` so an already-open Cursor window isn't swapped out from under
- * the user).
+ * the user). `--classic` is also required: recent Cursor versions default a CLI-launched window to
+ * the Agents panel instead of the classic file-tree/editor view, which — since the Agents panel
+ * doesn't surface the opened folder path anywhere obvious — reads to the user as "it didn't open
+ * in the project folder" even though the folder actually did open underneath it. See
+ * https://forum.cursor.com/t/cli-launch-always-opens-agent-panel-instead-of-ide/166537.
  */
 async function openDirInCursor(dir: string): Promise<void> {
   if (!(await directoryExists(dir))) {
     throw new AppError("DIRECTORY_MISSING", `This directory no longer exists ("${dir}").`);
   }
 
-  if (!(await trySpawnDetached("cursor", ["--new-window", dir]))) {
+  if (!(await trySpawnDetached("cursor", ["--new-window", "--classic", dir]))) {
     throw new AppError(
       "CURSOR_COMMAND_NOT_FOUND",
       `Could not open Cursor — the "cursor" command wasn't found on PATH. In Cursor, run ` +
