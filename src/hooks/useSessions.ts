@@ -13,6 +13,7 @@ export type PendingAction =
   | "continue"
   | "nickname"
   | "vscode"
+  | "cursor"
   | "worktree-create"
   | "worktree-delete"
   | "missing-root-resume";
@@ -501,6 +502,21 @@ export function useSessions() {
     [showToast, setPending, t],
   );
 
+  const openInCursor = useCallback(
+    async (id: string) => {
+      setPending(id, "cursor");
+      try {
+        await sessionsApi.openInCursor(id);
+        showToast(t("useSessions.openingCursor"), "success");
+      } catch (err) {
+        showToast(resolveApiErrorMessage(err, t, "useSessions.openCursorError"), "error");
+      } finally {
+        setPending(id, null);
+      }
+    },
+    [showToast, setPending, t],
+  );
+
   const openMissingWorktreeRootInVSCode = useCallback(
     async (id: string) => {
       setPending(id, "vscode");
@@ -609,6 +625,7 @@ export function useSessions() {
     resumeSession,
     setNickname,
     openInVSCode,
+    openInCursor,
     openMissingWorktreeRootInVSCode,
     startNewSessionAtMissingWorktreeRoot,
     createWorktree,

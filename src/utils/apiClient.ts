@@ -72,6 +72,7 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   SESSION_DIRECTORY_MISSING: "apiError.sessionDirectoryMissing",
   DIRECTORY_MISSING: "apiError.directoryMissing",
   VSCODE_COMMAND_NOT_FOUND: "apiError.vscodeCommandNotFound",
+  CURSOR_COMMAND_NOT_FOUND: "apiError.cursorCommandNotFound",
   NOT_APP_WORKTREE: "apiError.notAppWorktree",
   PROJECT_ROOT_MISSING: "apiError.projectRootMissing",
   TERMINAL_LAUNCH_FAILED: "apiError.terminalLaunchFailed",

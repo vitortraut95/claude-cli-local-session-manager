@@ -14,6 +14,7 @@ import {
   getSessionSubagents,
   getWorktreeToRootPreview,
   listSessions,
+  openInCursor,
   openInVSCode,
   openMissingWorktreeRootInVSCode,
   openWorktreeRootInVSCode,
@@ -232,6 +233,15 @@ sessionsRouter.post("/:id/worktree-to-root/remove-and-checkout", async (req, res
 sessionsRouter.post("/:id/vscode", async (req, res) => {
   try {
     await openInVSCode(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    sendErrorResponse(res, err, notFoundOrActive);
+  }
+});
+
+sessionsRouter.post("/:id/cursor", async (req, res) => {
+  try {
+    await openInCursor(req.params.id);
     res.json({ success: true });
   } catch (err) {
     sendErrorResponse(res, err, notFoundOrActive);

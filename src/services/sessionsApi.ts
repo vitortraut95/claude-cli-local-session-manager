@@ -66,6 +66,10 @@ export async function openInVSCode(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/vscode`));
 }
 
+export async function openInCursor(id: string): Promise<void> {
+  await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/cursor`));
+}
+
 /** Runs `claude --worktree <name>` for this session's project (see server-side
  *  createSessionWorktree for why it's not `--resume`d). */
 export async function createWorktree(id: string, name: string): Promise<void> {

@@ -17,6 +17,7 @@ import {
   Play,
   RotateCcw,
   Scissors,
+  Sparkles,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
@@ -54,6 +55,7 @@ type SessionCardProps = {
   onDeleteRequest: (session: Session) => void;
   onSetNickname: (session: Session, nickname: string) => void;
   onOpenInVSCode: (session: Session) => void;
+  onOpenInCursor: (session: Session) => void;
   onOpenMissingWorktreeRootInVSCode: (session: Session) => void;
   onStartNewSessionAtMissingWorktreeRoot: (session: Session) => Promise<void>;
   onDeleteWorktree: (session: Session) => void;
@@ -86,6 +88,7 @@ export function SessionCard({
   onDeleteRequest,
   onSetNickname,
   onOpenInVSCode,
+  onOpenInCursor,
   onOpenMissingWorktreeRootInVSCode,
   onStartNewSessionAtMissingWorktreeRoot,
   onDeleteWorktree,
@@ -102,6 +105,7 @@ export function SessionCard({
   const isContinuing = pendingAction === "continue";
   const isSettingNickname = pendingAction === "nickname";
   const isOpeningVSCode = pendingAction === "vscode";
+  const isOpeningCursor = pendingAction === "cursor";
   const isDeletingWorktree = pendingAction === "worktree-delete";
   const isResumingAtMissingWorktreeRoot = pendingAction === "missing-root-resume";
   const isBusy = isDeleting || isContinuing || isSettingNickname;
@@ -448,6 +452,27 @@ export function SessionCard({
                 }
               >
                 {t("sessionCard.codeButton")}
+              </Button>
+            </Tooltip>
+          )}
+
+          {!session.directoryMissing && (
+            <Tooltip content={t("sessionCard.openInCursorTooltip")}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenInCursor(session)}
+                disabled={isOpeningCursor}
+                aria-label={t("sessionCard.openInCursorAriaLabel")}
+                icon={
+                  isOpeningCursor ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )
+                }
+              >
+                {t("sessionCard.cursorButton")}
               </Button>
             </Tooltip>
           )}

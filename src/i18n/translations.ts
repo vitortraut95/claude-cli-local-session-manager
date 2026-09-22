@@ -455,6 +455,11 @@ export const translations = {
     'Não foi possível abrir o VS Code — o comando "code" não foi encontrado no PATH.',
     'No se pudo abrir VS Code — el comando "code" no se encontró en el PATH.',
   ),
+  "apiError.cursorCommandNotFound": dict(
+    'Could not open Cursor — the "cursor" command wasn\'t found on PATH.',
+    'Não foi possível abrir o Cursor — o comando "cursor" não foi encontrado no PATH.',
+    'No se pudo abrir Cursor — el comando "cursor" no se encontró en el PATH.',
+  ),
   "apiError.notAppWorktree": dict(
     "This session's directory doesn't look like one of this app's own worktrees.",
     "O diretório desta sessão não parece ser um worktree criado por este app.",
@@ -830,6 +835,17 @@ export const translations = {
     "Open in VS Code",
     "Abrir no VS Code",
     "Abrir en VS Code",
+  ),
+  "sessionCard.cursorButton": dict("cursor .", "cursor .", "cursor ."),
+  "sessionCard.openInCursorTooltip": dict(
+    "Open this folder in Cursor",
+    "Abrir esta pasta no Cursor",
+    "Abrir esta carpeta en Cursor",
+  ),
+  "sessionCard.openInCursorAriaLabel": dict(
+    "Open in Cursor",
+    "Abrir no Cursor",
+    "Abrir en Cursor",
   ),
   "sessionCard.worktreeToRoot.ariaLabel": dict(
     "Sync worktree into the root folder",
@@ -1473,6 +1489,16 @@ export const translations = {
     "Could not open VS Code.",
     "Não foi possível abrir o VS Code.",
     "No se pudo abrir VS Code.",
+  ),
+  "useSessions.openingCursor": dict(
+    "Opening in Cursor…",
+    "Abrindo no Cursor…",
+    "Abriendo en Cursor…",
+  ),
+  "useSessions.openCursorError": dict(
+    "Could not open Cursor.",
+    "Não foi possível abrir o Cursor.",
+    "No se pudo abrir Cursor.",
   ),
   "useSessions.openingRootVSCode": dict(
     "Opening the project root in VS Code…",

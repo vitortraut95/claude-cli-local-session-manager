@@ -57,6 +57,7 @@ export function SessionsPage() {
     resumeSession,
     setNickname,
     openInVSCode,
+    openInCursor,
     openMissingWorktreeRootInVSCode,
     startNewSessionAtMissingWorktreeRoot,
     createWorktree,
@@ -203,6 +204,7 @@ export function SessionsPage() {
               onDeleteRequest={handleDeleteRequest}
               onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
               onOpenInVSCode={(s) => openInVSCode(s.id)}
+              onOpenInCursor={(s) => openInCursor(s.id)}
               onOpenMissingWorktreeRootInVSCode={(s) => openMissingWorktreeRootInVSCode(s.id)}
               onStartNewSessionAtMissingWorktreeRoot={(s) =>
                 startNewSessionAtMissingWorktreeRoot(s)
