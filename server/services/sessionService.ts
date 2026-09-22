@@ -969,6 +969,50 @@ export async function openInVSCode(id: string): Promise<void> {
 }
 
 /**
+ * Opens `dir` in Cursor via its `cursor` CLI — same rationale as `openDirInVSCode` above (no
+ * terminal needed, `--new-window` so an already-open Cursor window isn't swapped out from under
+ * the user).
+ */
+async function openDirInCursor(dir: string): Promise<void> {
+  if (!(await directoryExists(dir))) {
+    throw new AppError("DIRECTORY_MISSING", `This directory no longer exists ("${dir}").`);
+  }
+
+  if (!(await trySpawnDetached("cursor", ["--new-window", dir]))) {
+    throw new AppError(
+      "CURSOR_COMMAND_NOT_FOUND",
+      `Could not open Cursor — the "cursor" command wasn't found on PATH. In Cursor, run ` +
+        `"Shell Command: Install 'cursor' command in PATH" from the Command Palette.`,
+    );
+  }
+}
+
+/** Opens a session's own working directory in Cursor — see `openInVSCode` above for the same
+ *  reasoning (no git involved, deliberately not `--resume`-aware). */
+export async function openInCursor(id: string): Promise<void> {
+  if (!isSafeSessionId(id)) {
+    throw invalidSessionIdError(id);
+  }
+
+  const cwd = await findSessionCwd(id);
+  if (!cwd) {
+    throw new AppError(
+      "SESSION_NO_WORKING_DIRECTORY",
+      "This session has no known working directory to open.",
+    );
+  }
+  try {
+    await openDirInCursor(cwd);
+  } catch {
+    throw new AppError(
+      "SESSION_DIRECTORY_MISSING",
+      `This session's original directory no longer exists ("${cwd}"). Recreate the folder ` +
+        `(or a symlink) at the old path before opening it in Cursor.`,
+    );
+  }
+}
+
+/**
  * Opens a worktree-backed session's *repo root* (not the worktree itself) in VS Code — backs the
  * "Worktree → root" modal's "code ." button next to the root dirty-files list, so the user can
  * actually look at what's about to be discarded/overwritten before confirming. Reuses the same
