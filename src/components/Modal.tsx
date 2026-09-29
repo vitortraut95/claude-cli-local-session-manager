@@ -35,11 +35,15 @@ type ModalProps = {
 };
 
 /**
- * Shared modal shell: standardizes the document.body portal, overlay, Escape/click-outside
- * handling, and the optional confirm/cancel footer. Portalled to document.body because these
- * modals are triggered from inside SessionCard, whose `hover:-translate-y-0.5` class makes it a
- * CSS containing block for `position: fixed` descendants while hovered — mounting outside its DOM
- * subtree avoids the card clipping the modal to its own bounds.
+ * Shared modal shell: standardizes the document.body portal, overlay, Escape handling, and the
+ * optional confirm/cancel footer. Portalled to document.body because these modals are triggered
+ * from inside SessionCard, whose `hover:-translate-y-0.5` class makes it a CSS containing block
+ * for `position: fixed` descendants while hovered — mounting outside its DOM subtree avoids the
+ * card clipping the modal to its own bounds.
+ *
+ * Deliberately does NOT close on a backdrop click — only the X button, Escape, or an explicit
+ * Cancel action close the modal, so an accidental click just outside it while editing doesn't
+ * discard in-progress input.
  */
 export function Modal({
   open,
@@ -62,9 +66,9 @@ export function Modal({
   const resolvedConfirmLabel = confirmLabel ?? t("modal.confirmDefault");
   const resolvedCancelLabel = cancelLabel ?? t("modal.cancelDefault");
 
-  // Escape/backdrop/the X button all route through this instead of the raw `onClose` prop, so a
+  // Escape and the X button both route through this instead of the raw `onClose` prop, so a
   // request in flight (isConfirmLoading — same signal that already disables the footer's
-  // Cancel/Confirm buttons below) can't be abandoned through one of these three bypasses while its
+  // Cancel/Confirm buttons below) can't be abandoned through one of these two bypasses while its
   // resolution is still going to fire state updates/toasts against a since-unmounted modal.
   const handleClose = () => {
     if (!isConfirmLoading) onClose();
@@ -82,15 +86,11 @@ export function Modal({
   if (!open) return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600/80 px-4"
-      onClick={handleClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600/80 px-4">
       <div
         role="dialog"
         aria-modal="true"
         className={`flex max-h-[98dvh] w-full ${SIZE_CLASSES[size]} flex-col rounded-xl bg-white shadow-xl dark:bg-gray-900`}
-        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-8 py-4 dark:border-gray-800">
           <div className="flex items-start gap-3">
