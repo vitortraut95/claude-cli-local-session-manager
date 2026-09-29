@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { useLanguage } from "../hooks/useLanguage";
 import { Button } from "./Button";
 
-type ModalSize = "sm" | "md" | "lg" | "xl" | "xxl";
+type ModalSize = "sm" | "md" | "lg" | "xl" | "xxl" | "xxxl";
 
 const SIZE_CLASSES: Record<ModalSize, string> = {
   sm: "max-w-sm",
@@ -12,6 +12,7 @@ const SIZE_CLASSES: Record<ModalSize, string> = {
   lg: "max-w-2xl",
   xl: "max-w-4xl",
   xxl: "max-w-6xl",
+  xxxl: "max-w-[84rem]",
 };
 
 type ModalProps = {
