@@ -476,7 +476,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       isConfirmDisabled={!canSubmit}
       onSecondary={resetForm}
       secondaryLabel={t("newTaskModal.clear")}
-      size="xl"
+      size="xxxl"
     >
       <div className="flex flex-col gap-4">
         <div>
