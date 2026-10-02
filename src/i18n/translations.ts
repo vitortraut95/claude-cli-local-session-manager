@@ -1495,6 +1495,16 @@ export const translations = {
     "na branch padrão do repositório, sem sessão ativa ou mudanças pendentes — pode ser removido com segurança (worktree e branch local juntos).",
     "en la rama predeterminada del repositorio, sin sesión activa ni cambios pendientes — se puede eliminar de forma segura (worktree y rama local juntos).",
   ),
+  "cleanupModal.finding.abandonedWorktree.label": dict(
+    "Abandoned worktree",
+    "Worktree abandonado",
+    "Worktree abandonado",
+  ),
+  "cleanupModal.finding.abandonedWorktree.body": dict(
+    "(created by Claude/\"New task\" under .claude/worktrees/ but never used by any session) with no pending changes and no commit of its own — removing it loses nothing.",
+    "(criado pelo Claude/\"Nova tarefa\" em .claude/worktrees/ mas nunca usado por nenhuma sessão) sem mudanças pendentes e sem nenhum commit próprio — removê-lo não perde nada.",
+    "(creado por Claude/\"Nueva tarea\" en .claude/worktrees/ pero nunca usado por ninguna sesión) sin cambios pendientes ni commits propios — eliminarlo no pierde nada.",
+  ),
   "cleanupModal.finding.oldSessions.label": dict(
     "Old local sessions",
     "Sessões locais antigas",
@@ -1551,6 +1561,26 @@ export const translations = {
     'Branch "{branch}" is already merged into "{defaultBranch}" and the worktree has no active session or pending changes. The worktree and local branch can be safely removed.',
     'A branch "{branch}" já está mergeada em "{defaultBranch}" e o worktree não tem sessão ativa nem alterações pendentes. O worktree e a branch local podem ser removidos com segurança.',
     'La rama "{branch}" ya está fusionada en "{defaultBranch}" y el worktree no tiene sesión activa ni cambios pendientes. El worktree y la rama local se pueden eliminar de forma segura.',
+  ),
+  "cleanupModal.finding.abandoned.title": dict(
+    'Abandoned worktree "{branch}" in "{project}"',
+    'Worktree abandonado "{branch}" em "{project}"',
+    'Worktree abandonado "{branch}" en "{project}"',
+  ),
+  "cleanupModal.finding.abandoned.description": dict(
+    'No session ever ran in this worktree, it has no pending changes, and branch "{branch}" has no commit that isn\'t on another branch, remote or tag. The worktree and local branch can be safely removed.',
+    'Nenhuma sessão rodou neste worktree, ele não tem alterações pendentes e a branch "{branch}" não tem nenhum commit que já não esteja em outra branch, no remoto ou numa tag. O worktree e a branch local podem ser removidos com segurança.',
+    'Ninguna sesión se ejecutó en este worktree, no tiene cambios pendientes y la rama "{branch}" no tiene ningún commit que no esté en otra rama, en el remoto o en una tag. El worktree y la rama local se pueden eliminar de forma segura.',
+  ),
+  "apiError.cleanupBranchHasCommits": dict(
+    "That branch now has commits of its own — cancelled for safety.",
+    "Essa branch agora tem commits próprios — cancelado por segurança.",
+    "Esa rama ahora tiene commits propios — cancelado por seguridad.",
+  ),
+  "apiError.cleanupWorktreeHasSession": dict(
+    "A session now exists in that worktree — cancelled for safety.",
+    "Agora existe uma sessão nesse worktree — cancelado por segurança.",
+    "Ahora existe una sesión en ese worktree — cancelado por seguridad.",
   ),
   "cleanupModal.loading": dict("Loading...", "Carregando...", "Cargando..."),
   "cleanupModal.loadError": dict(

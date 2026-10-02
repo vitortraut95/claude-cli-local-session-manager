@@ -1,6 +1,7 @@
 import { readdir, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { getUserPreferences } from "./preferencesService.js";
 import { directoryExists } from "./sessionService.js";
 import { getKnownProjectFolders } from "./taskService.js";
 
@@ -96,4 +97,22 @@ export async function inspectWorkspaceDirs(dirs: string[]): Promise<WorkspaceDir
       return { dir, exists, repoCount: exists ? (await findReposIn(dir)).length : 0 };
     }),
   );
+}
+
+/** Every repo directly inside any of the user's `workspaceDirs` (none when never set). */
+export async function getWorkspaceRepos(): Promise<string[]> {
+  const { workspaceDirs } = await getUserPreferences();
+  const lists = await Promise.all((workspaceDirs ?? []).map((dir) => findReposIn(expandHome(dir))));
+  return [...new Set(lists.flat())];
+}
+
+/** `folders` plus every workspace repo not already in it (compared by resolved path) — for scans
+ *  that should also cover repos never used with Claude here (Cleanup, session import). */
+export async function withWorkspaceRepos<T extends { path: string }>(
+  folders: T[],
+  toFolder: (repoPath: string) => T,
+): Promise<T[]> {
+  const known = new Set(folders.map((f) => path.resolve(f.path)));
+  const extra = (await getWorkspaceRepos()).filter((repo) => !known.has(path.resolve(repo)));
+  return [...folders, ...extra.map(toFolder)];
 }

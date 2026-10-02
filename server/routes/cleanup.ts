@@ -30,6 +30,7 @@ cleanupRouter.post("/findings/execute", async (req, res) => {
       finding === null ||
       (finding.kind !== "prune-worktrees" &&
         finding.kind !== "remove-merged-worktree" &&
+        finding.kind !== "remove-abandoned-worktree" &&
         finding.kind !== "prune-old-sessions") ||
       typeof finding.repoRoot !== "string"
     ) {

@@ -2,8 +2,10 @@ import path from "node:path";
 import { deleteSession, directoryExists, listSessions } from "./sessionService.js";
 import { getUserPreferences } from "./preferencesService.js";
 import { getKnownProjectFolders } from "./taskService.js";
+import { withWorkspaceRepos } from "./workspaceService.js";
 import type { Session } from "../types/session.js";
 import {
+  branchHasUniqueCommits,
   getDefaultBaseBranch,
   hasUncommittedChanges,
   isBranchMerged,
@@ -23,7 +25,11 @@ export type StaleSession = {
 
 export type CleanupFinding = {
   id: string;
-  kind: "prune-worktrees" | "remove-merged-worktree" | "prune-old-sessions";
+  kind:
+    | "prune-worktrees"
+    | "remove-merged-worktree"
+    | "remove-abandoned-worktree"
+    | "prune-old-sessions";
   /** Structured data the client renders its own (translated) title/description from — this
    *  service used to build those as hardcoded English prose here, which meant they were the one
    *  corner of the app the i18n system (see LanguageProvider/translations.ts) could never reach. */
@@ -54,11 +60,24 @@ export type CleanupFinding = {
  *    repo's default branch, has no uncommitted changes, and isn't backing an active session right
  *    now. Deleting it can't lose any work, by the same test `git branch -d` (not `-D`) uses.
  *
- * Everything here is local-only (no network fetch) and re-validated again in
+ * 3. `remove-abandoned-worktree` — a worktree under `<repo>/.claude/worktrees/` (created by the
+ *    Claude CLI's `--worktree` or this app's "New task") that no session — active or not — ever ran
+ *    in, with no uncommitted changes and no commit that only its branch holds
+ *    (`branchHasUniqueCommits`). Covers what (2) can't: a task branched off something other than
+ *    the default branch, abandoned before its first prompt. Limited to `.claude/worktrees/` on
+ *    purpose — a worktree the user created by hand elsewhere may be in use without any Claude
+ *    session.
+ *
+ * Scans every known project plus every repo in the user's workspace dirs (see
+ * `withWorkspaceRepos`). Everything here is local-only (no network fetch) and re-validated again in
  * `executeCleanupFinding` right before acting, since the scan and the click can be minutes apart.
  */
 export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
-  const [projectFolders, sessions] = await Promise.all([getKnownProjectFolders(), listSessions()]);
+  const [knownFolders, sessions] = await Promise.all([getKnownProjectFolders(), listSessions()]);
+  const projectFolders = await withWorkspaceRepos(knownFolders, (repoPath) => ({
+    path: repoPath,
+    label: path.basename(repoPath),
+  }));
   const activeWorktreePaths = new Set(
     sessions
       .filter((s) => s.isActive && s.workingDirectory)
@@ -109,7 +128,28 @@ export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
         isBranchMerged(repoRoot, entry.branch, defaultBranch),
         hasUncommittedChanges(entry.path).catch(() => true),
       ]);
-      if (!merged || dirty) continue;
+      if (dirty) continue;
+      if (!merged) {
+        if (
+          isAppWorktree(repoRoot, entry.path) &&
+          !hasAnySession(sessions, entry.path) &&
+          !(await branchHasUniqueCommits(repoRoot, entry.branch))
+        ) {
+          findings.push({
+            id: `abandoned:${entry.path}`,
+            kind: "remove-abandoned-worktree",
+            command: `git worktree remove ${entry.path} && git branch -D ${entry.branch}`,
+            repoRoot,
+            staleBranches: [],
+            worktreePath: entry.path,
+            branch: entry.branch,
+            defaultBranch: null,
+            staleSessions: [],
+            keepCount: 0,
+          });
+        }
+        continue;
+      }
 
       findings.push({
         id: `remove:${entry.path}`,
@@ -129,6 +169,23 @@ export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
   findings.push(...(await scanForOldSessionFindings(projectFolders, sessions)));
 
   return findings;
+}
+
+/** Under `<repoRoot>/.claude/worktrees/` — where both the Claude CLI's `--worktree` and this app's
+ *  "New task" put the worktrees they create. */
+function isAppWorktree(repoRoot: string, worktreePath: string): boolean {
+  const base = path.join(path.resolve(repoRoot), ".claude", "worktrees") + path.sep;
+  return path.resolve(worktreePath).startsWith(base);
+}
+
+/** Any session (active or not) whose working directory is the worktree or inside it. */
+function hasAnySession(sessions: Session[], worktreePath: string): boolean {
+  const target = path.resolve(worktreePath);
+  return sessions.some((s) => {
+    if (!s.workingDirectory) return false;
+    const dir = path.resolve(s.workingDirectory);
+    return dir === target || dir.startsWith(`${target}${path.sep}`);
+  });
 }
 
 /**
@@ -260,6 +317,35 @@ export async function executeCleanupFinding(finding: CleanupFinding): Promise<vo
 
   if (!(await directoryExists(worktreePath))) {
     throw new AppError("CLEANUP_TARGET_GONE", `"${worktreePath}" no longer exists — refresh the list.`);
+  }
+
+  if (finding.kind === "remove-abandoned-worktree") {
+    if (!isAppWorktree(repoRoot, worktreePath)) {
+      throw new AppError(
+        "CLEANUP_MISSING_TARGET",
+        "Only worktrees under .claude/worktrees/ can be removed this way.",
+      );
+    }
+    if (await branchHasUniqueCommits(repoRoot, branch)) {
+      throw new AppError(
+        "CLEANUP_BRANCH_HAS_COMMITS",
+        `Branch "${branch}" now has commits of its own — cancelled for safety.`,
+      );
+    }
+    if (await hasUncommittedChanges(worktreePath)) {
+      throw new AppError(
+        "CLEANUP_UNCOMMITTED_CHANGES",
+        `"${worktreePath}" now has uncommitted changes — cancelled for safety.`,
+      );
+    }
+    if (hasAnySession(await listSessions(), worktreePath)) {
+      throw new AppError(
+        "CLEANUP_WORKTREE_HAS_SESSION",
+        `A session now exists in "${worktreePath}" — cancelled for safety.`,
+      );
+    }
+    await removeWorktreeAndBranch(worktreePath);
+    return;
   }
 
   const defaultBranch = await getDefaultBaseBranch(repoRoot);

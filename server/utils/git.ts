@@ -327,6 +327,39 @@ export async function isBranchMerged(
   }
 }
 
+/**
+ * True when `branch` has at least one commit that no *other* ref (local branch, remote-tracking
+ * branch or tag) also reaches — i.e. deleting the branch would actually lose history. A branch
+ * still sitting on the commit it was created from, or whose commits were pushed/merged anywhere,
+ * returns false. Broader than `isBranchMerged`: it doesn't care which branch the commits landed
+ * on, so a task branched off a feature branch (never merged into the default branch) still counts
+ * as "nothing to lose" while it has no commits of its own.
+ */
+export async function branchHasUniqueCommits(repoRoot: string, branch: string): Promise<boolean> {
+  try {
+    const count = await runGit(
+      [
+        "rev-list",
+        "--count",
+        `refs/heads/${branch}`,
+        "--not",
+        // Short name on purpose: with `--branches`, `--exclude` patterns are matched without the
+        // `refs/heads/` prefix — a full refname here silently excludes nothing, and the branch
+        // would "cover" its own commits.
+        `--exclude=${branch}`,
+        "--branches",
+        "--remotes",
+        "--tags",
+      ],
+      repoRoot,
+    );
+    return Number(count.trim()) > 0;
+  } catch {
+    // Can't tell — treat as "has commits" so nothing gets offered for deletion on a guess.
+    return true;
+  }
+}
+
 /** True if `worktreePath` has any uncommitted changes (staged, unstaged, or untracked) — the
  *  cleanup scan only offers to remove a worktree when this is false, so "safe, one click" holds. */
 export async function hasUncommittedChanges(worktreePath: string): Promise<boolean> {
