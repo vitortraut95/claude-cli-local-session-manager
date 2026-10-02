@@ -127,6 +127,11 @@ export function SessionCard({
   const [openingPrUrl, setOpeningPrUrl] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
+  const subagentsLabel = `${
+    session.subagentCount === 1
+      ? t("sessionCard.subagentCount.one", { count: session.subagentCount })
+      : t("sessionCard.subagentCount.many", { count: session.subagentCount })
+  } - ${t("sessionCard.subagents.tooltip")}`;
   const worktreePathParts =
     session.isWorktree && session.workingDirectory
       ? formatWorktreePath(session.workingDirectory)
@@ -517,25 +522,18 @@ export function SessionCard({
         )}
       </p>
 
-      {/* Card action toolbar — one standardized-size icon per action, colored by kind so they
-          stay easy to tell apart at a glance as more get added here over time. */}
+      {/* Card action toolbar — one standardized-size icon per action, each in its own color
+          (no two actions share one) so they stay easy to tell apart at a glance; pick an unused
+          ToolbarIconButtonColor when adding a new action here. */}
       <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 pt-3 dark:border-gray-800">
         {!!session.subagentCount && (
-          <Tooltip
-            content={`${
-              session.subagentCount === 1
-                ? t("sessionCard.subagentCount.one", { count: session.subagentCount })
-                : t("sessionCard.subagentCount.many", { count: session.subagentCount })
-            } - ${t("sessionCard.subagents.tooltip")}`}
-          >
-            <button
-              type="button"
-              onClick={() => setShowSubagents(true)}
-              className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 hover:underline dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <Bot className="h-4 w-4" />
-            </button>
-          </Tooltip>
+          <ToolbarIconButton
+            tooltip={subagentsLabel}
+            ariaLabel={subagentsLabel}
+            color="pink"
+            onClick={() => setShowSubagents(true)}
+            icon={<Bot className="h-4 w-4" />}
+          />
         )}
         {session.prompts.length > 0 && (
           <ToolbarIconButton
@@ -549,7 +547,7 @@ export function SessionCard({
         <ToolbarIconButton
           tooltip={t("sessionCard.exportTooltip")}
           ariaLabel={t("sessionCard.exportAriaLabel")}
-          color="neutral"
+          color="teal"
           onClick={() => setShowExportModal(true)}
           icon={<Share className="h-4 w-4" />}
         />
@@ -580,7 +578,7 @@ export function SessionCard({
           <ToolbarIconButton
             tooltip={t("sessionCard.openJenkinsTooltip")}
             ariaLabel={t("sessionCard.openJenkinsAriaLabel")}
-            color="neutral"
+            color="orange"
             onClick={handleOpenJenkins}
             icon={<Factory className="h-4 w-4" />}
           />
@@ -589,7 +587,7 @@ export function SessionCard({
           <ToolbarIconButton
             tooltip={t("sessionCard.openPrTooltip")}
             ariaLabel={t("sessionCard.openPrAriaLabel")}
-            color="blue"
+            color="lime"
             disabled={openingPrUrl}
             onClick={() => void handleOpenPr()}
             icon={
