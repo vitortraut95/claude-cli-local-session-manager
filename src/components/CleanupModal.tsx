@@ -32,6 +32,9 @@ function findingTitle(finding: CleanupFinding, t: ReturnType<typeof useLanguage>
   if (finding.kind === "prune-old-sessions") {
     return t("cleanupModal.finding.oldSessions.title", { count: finding.staleSessions.length, project });
   }
+  if (finding.kind === "remove-abandoned-worktree") {
+    return t("cleanupModal.finding.abandoned.title", { branch: finding.branch ?? "?", project });
+  }
   return t("cleanupModal.finding.merged.title", { branch: finding.branch ?? "?" });
 }
 
@@ -49,6 +52,9 @@ function findingDescription(finding: CleanupFinding, t: ReturnType<typeof useLan
       count: finding.staleSessions.length,
       freed: formatBytes(freedBytes),
     });
+  }
+  if (finding.kind === "remove-abandoned-worktree") {
+    return t("cleanupModal.finding.abandoned.description", { branch: finding.branch ?? "?" });
   }
   return t("cleanupModal.finding.merged.description", {
     branch: finding.branch ?? "?",
@@ -141,6 +147,10 @@ export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalP
           <li>
             <strong>{t("cleanupModal.finding.mergedBranch.label")}</strong>{" "}
             {t("cleanupModal.finding.mergedBranch.body")}
+          </li>
+          <li>
+            <strong>{t("cleanupModal.finding.abandonedWorktree.label")}</strong>{" "}
+            {t("cleanupModal.finding.abandonedWorktree.body")}
           </li>
           <li>
             <strong>{t("cleanupModal.finding.oldSessions.label")}</strong>{" "}

@@ -22,6 +22,7 @@ import {
   SessionNotFoundError,
 } from "./sessionService.js";
 import { getKnownProjectFolders } from "./taskService.js";
+import { withWorkspaceRepos } from "./workspaceService.js";
 
 /**
  * Session export/import ("share a session with another dev/machine"). A bundle is one gzipped
@@ -301,7 +302,12 @@ async function getActiveWorkingDirectories(): Promise<Set<string>> {
 
 export async function inspectSessionBundle(raw: Buffer): Promise<SessionImportPreview> {
   const bundle = parseBundle(raw);
-  const [sessions, folders] = await Promise.all([listSessions(), getKnownProjectFolders()]);
+  const [sessions, knownFolders] = await Promise.all([listSessions(), getKnownProjectFolders()]);
+  // Workspace repos too — finds the matching clone even when it was never used with Claude here.
+  const folders = await withWorkspaceRepos(knownFolders, (repoPath) => ({
+    path: repoPath,
+    label: path.basename(repoPath),
+  }));
   const activeDirs = activeWorkingDirectoriesOf(sessions);
   const existing = sessions.find((s) => s.id === bundle.session.id) ?? null;
   const candidates = await Promise.all(

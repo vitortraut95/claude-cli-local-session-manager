@@ -14,7 +14,11 @@ export type StaleSession = {
 
 export type CleanupFinding = {
   id: string;
-  kind: "prune-worktrees" | "remove-merged-worktree" | "prune-old-sessions";
+  kind:
+    | "prune-worktrees"
+    | "remove-merged-worktree"
+    | "remove-abandoned-worktree"
+    | "prune-old-sessions";
   command: string;
   repoRoot: string;
   /** Only set for `prune-worktrees`; empty for the other kinds. */
