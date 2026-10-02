@@ -585,11 +585,10 @@ export const translations = {
     "Rama de origen",
   ),
   "jenkinsLinksModal.section.envPreviews": dict(
-    "Previews of {branch}",
-    "Previews de {branch}",
-    "Previews de {branch}",
+    "{branch} previews:",
+    "Previews do {branch}:",
+    "Previews de {branch}:",
   ),
-  "jenkinsLinksModal.openPreview": dict("Open", "Abrir", "Abrir"),
   "jenkinsLinksModal.section.variants": dict(
     "Same ticket, other prefixes",
     "Mesmo ticket, outros prefixos",
@@ -603,7 +602,6 @@ export const translations = {
   ),
   "jenkinsLinksModal.pullRequests": dict("Pull requests", "Pull requests", "Pull requests"),
   "jenkinsLinksModal.tags": dict("Tags", "Tags", "Tags"),
-  "jenkinsLinksModal.close": dict("Close", "Fechar", "Cerrar"),
 
   "settings.title": dict("Settings", "Configurações", "Configuración"),
   "settings.intro": dict(
