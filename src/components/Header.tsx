@@ -1,4 +1,4 @@
-import { Bot, FileUp, Globe, HelpCircle, Plus, Sparkles } from "lucide-react";
+import { Bot, Globe, HelpCircle, Import, Plus, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
@@ -86,7 +86,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           <Button
             variant="outline"
             onClick={() => setShowImportModal(true)}
-            icon={<FileUp className="h-4 w-4" />}
+            icon={<Import className="h-4 w-4" />}
           >
             {t("header.importSession")}
           </Button>

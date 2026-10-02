@@ -1,4 +1,4 @@
-import { TriangleAlert } from "lucide-react";
+import { Share, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -46,6 +46,7 @@ export function ExportSessionModal({ session, onClose }: ExportSessionModalProps
       cancelLabel={t("exportSessionModal.cancel")}
       isConfirmLoading={exporting}
       size="md"
+      icon={<Share className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
     >
       <p className="text-sm text-gray-600 dark:text-gray-400">{t("exportSessionModal.intro")}</p>
 
