@@ -76,3 +76,57 @@ export function getJenkinsLinks(
   links.push({ kind: "tags", url: `${projectUrl}view/tags/` });
   return links;
 }
+
+export type EnvPreview = { label: string; url: string };
+export type EnvPreviewGroup = { branch: string; previews: EnvPreview[] };
+
+const S3_WEBSITE_SUFFIX = "s3-website-us-east-1.amazonaws.com";
+
+/**
+ * Static S3 preview sites an `env/*` branch's pipeline deploys, per project — one per locale. Kept
+ * as data on purpose (rather than derived) since each repo names its buckets differently. Order
+ * matters: it's the dropdown's order (BR and MX first, the rest alphabetical).
+ */
+const ENV_PREVIEW_BUILDERS: Record<string, (envSlug: string) => EnvPreview[]> = {
+  "hg-led-mainsite": (envSlug) =>
+    ["br", "mx", "ar", "bo", "cl", "co", "do", "ec", "pe", "uy"].map((country) => ({
+      label: country.toUpperCase(),
+      url: `http://${country}-${envSlug}-mainsite-hostgator.${S3_WEBSITE_SUFFIX}/`,
+    })),
+  "hg-led-cart": (envSlug) =>
+    [
+      ["MX", "mx"],
+      ["AR", "ar"],
+      ["BO", "bo"],
+      ["CL", "cl"],
+      ["CO", "co"],
+      ["DO", "do"],
+      ["EC", "net.ec"],
+      ["PE", "pe"],
+      ["UY", "uy"],
+      ["COM", "com"],
+    ].map(([label, domain]) => ({
+      label: label!,
+      url: `http://${envSlug}-cart.hostgator.${domain}.${S3_WEBSITE_SUFFIX}/`,
+    })),
+};
+
+/**
+ * Preview URLs for each `env/*` branch among the session's current and origin branches (a
+ * `feature/*` task branched off `env/vitrine` still has that env's previews worth opening).
+ * `env/LED-55474` → bucket slug `env-led-55474`. Empty for projects with no known preview layout.
+ */
+export function getEnvPreviewGroups(
+  project: string,
+  branches: (string | null)[],
+): EnvPreviewGroup[] {
+  const build = ENV_PREVIEW_BUILDERS[project];
+  if (!build) return [];
+  const envBranches = [...new Set(branches)].filter(
+    (b): b is string => typeof b === "string" && b.startsWith("env/"),
+  );
+  return envBranches.map((branch) => ({
+    branch,
+    previews: build(branch.replace(/\//g, "-").toLowerCase()),
+  }));
+}
