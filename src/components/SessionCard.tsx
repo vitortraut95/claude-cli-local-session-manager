@@ -6,7 +6,6 @@ import {
   Copy,
   CornerUpLeft,
   CornerUpRight,
-  Factory,
   Folder,
   GitFork,
   GitMerge,
@@ -23,6 +22,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useState } from "react";
+import jenkinsIcon from "../assets/jenkins.svg";
 import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -33,6 +33,7 @@ import { Button } from "./Button";
 import { CompactContinueModal } from "./CompactContinueModal";
 import { ExportSessionModal } from "./ExportSessionModal";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { JenkinsLinksModal } from "./JenkinsLinksModal";
 import { LinkifiedText } from "./LinkifiedText";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { NicknameModal } from "./NicknameModal";
@@ -45,7 +46,7 @@ import { Tooltip } from "./Tooltip";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
-import { getJenkinsBranchJobUrl } from "../utils/jenkins";
+import { getJenkinsLinks } from "../utils/jenkins";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 
@@ -124,6 +125,7 @@ export function SessionCard({
   const [showCompactContinueModal, setShowCompactContinueModal] = useState(false);
   const [showOpenPrBaseChoice, setShowOpenPrBaseChoice] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showJenkinsModal, setShowJenkinsModal] = useState(false);
   const [openingPrUrl, setOpeningPrUrl] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
@@ -139,8 +141,12 @@ export function SessionCard({
   // See resolveSessionBranches' doc comment: `destination` is session.gitBranch unless that's
   // missing/stale, in which case it falls back to whatever branch the nickname encodes. Feeds
   // both the Jenkins and the PR links below.
-  const { destination: taskBranch } = resolveSessionBranches(session);
-  const jenkinsUrl = taskBranch ? getJenkinsBranchJobUrl(taskBranch, session.project) : null;
+  const { origin: originBranch, destination: taskBranch } = resolveSessionBranches(session);
+  // Shown for any session whose folder still exists (not just `env/*` branches) — every team's
+  // Jenkins follows the same job/<repo>/job/<branch> layout, see getJenkinsLinks.
+  const jenkinsLinks = session.directoryMissing
+    ? null
+    : getJenkinsLinks(session.project, taskBranch ?? null, originBranch);
 
   const handleCopyCommand = async () => {
     try {
@@ -149,10 +155,6 @@ export function SessionCard({
     } catch {
       showToast(t("sessionCard.copyCommand.error"), "error");
     }
-  };
-
-  const handleOpenJenkins = () => {
-    if (jenkinsUrl) window.open(jenkinsUrl, "_blank", "noopener,noreferrer");
   };
 
   // Fetched on click rather than eagerly for every card — this is a git call (origin remote →
@@ -574,13 +576,15 @@ export function SessionCard({
             icon={<Scissors className="h-4 w-4" />}
           />
         )}
-        {jenkinsUrl && (
+        {jenkinsLinks && (
           <ToolbarIconButton
             tooltip={t("sessionCard.openJenkinsTooltip")}
             ariaLabel={t("sessionCard.openJenkinsAriaLabel")}
-            color="orange"
-            onClick={handleOpenJenkins}
-            icon={<Factory className="h-4 w-4" />}
+            color="neutral"
+            onClick={() => setShowJenkinsModal(true)}
+            // Jenkins' own (multi-color) logo instead of a tinted line icon — it carries its own
+            // brand colors, so the button's color only drives the hover background here.
+            icon={<img src={jenkinsIcon} alt="" className="h-6 w-6" />}
           />
         )}
         {taskBranch && !session.directoryMissing && (
@@ -714,6 +718,13 @@ export function SessionCard({
           session={session}
           onClose={() => setShowCompactContinueModal(false)}
           onLaunched={() => onCompactContinueLaunched(session)}
+        />
+      )}
+      {showJenkinsModal && jenkinsLinks && (
+        <JenkinsLinksModal
+          project={session.project}
+          links={jenkinsLinks}
+          onClose={() => setShowJenkinsModal(false)}
         />
       )}
       {showExportModal && (

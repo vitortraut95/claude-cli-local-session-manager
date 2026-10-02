@@ -19,7 +19,7 @@ and clean them up. Everything runs on your machine — no external server involv
 - Local nicknames, bulk delete, active-session protection (won't let two terminals fight over
   the same session)
 - Subagent browser (per-invocation type/description/duration/result), Claude usage-limits badge
-- One-click "Open in VS Code", "Open Jenkins" (for `env/*` branches), and "Open PR" buttons
+- One-click "Open in VS Code", Jenkins links (project, branch and ticket variants, PRs, tags), and "Open PR" buttons
 - Self-update button from the header
 - pt/en/es language switcher
 
