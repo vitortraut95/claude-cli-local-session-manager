@@ -17,7 +17,6 @@ import {
   RotateCcw,
   Scissors,
   Share,
-  Sparkles,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
@@ -479,7 +478,7 @@ export function SessionCard({
                   isOpeningCursor ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
+                    <Code2 className="h-3.5 w-3.5" />
                   )
                 }
               >
