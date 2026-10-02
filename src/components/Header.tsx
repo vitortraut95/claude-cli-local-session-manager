@@ -86,7 +86,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           <Button
             variant="outline"
             onClick={() => setShowImportModal(true)}
-            icon={<Import className="h-4 w-4" />}
+            icon={<Import className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
           >
             {t("header.importSession")}
           </Button>

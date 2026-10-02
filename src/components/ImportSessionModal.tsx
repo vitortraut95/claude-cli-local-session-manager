@@ -156,7 +156,7 @@ export function ImportSessionModal({ onClose, onImported }: ImportSessionModalPr
       isConfirmLoading={importing}
       isConfirmDisabled={!targetDir || conflictUnresolved}
       size="lg"
-      icon={<Import className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
+      icon={<Import className="h-5 w-5 text-teal-600 dark:text-teal-400" />}
     >
       <p className="text-sm text-gray-600 dark:text-gray-400">{t("importSessionModal.intro")}</p>
 

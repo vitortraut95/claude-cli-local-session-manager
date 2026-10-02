@@ -1,7 +1,17 @@
 import type { ReactNode } from "react";
 import { Tooltip } from "./Tooltip";
 
-export type ToolbarIconButtonColor = "neutral" | "amber" | "green" | "blue" | "red" | "violet";
+export type ToolbarIconButtonColor =
+  | "neutral"
+  | "amber"
+  | "green"
+  | "blue"
+  | "red"
+  | "violet"
+  | "teal"
+  | "orange"
+  | "pink"
+  | "lime";
 
 const COLOR_CLASSES: Record<ToolbarIconButtonColor, string> = {
   neutral:
@@ -14,6 +24,12 @@ const COLOR_CLASSES: Record<ToolbarIconButtonColor, string> = {
   red: "text-red-500 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-950/40",
   violet:
     "text-violet-500 hover:bg-violet-50 hover:text-violet-600 dark:text-violet-400 dark:hover:bg-violet-950/40",
+  teal: "text-teal-600 hover:bg-teal-50 hover:text-teal-700 dark:text-teal-400 dark:hover:bg-teal-950/40",
+  orange:
+    "text-orange-500 hover:bg-orange-50 hover:text-orange-600 dark:text-orange-400 dark:hover:bg-orange-950/40",
+  // Close to Bitbucket's own PR green (#94C748) — used by "Open PR".
+  lime: "text-lime-600 hover:bg-lime-50 hover:text-lime-700 dark:text-lime-400 dark:hover:bg-lime-950/40",
+  pink: "text-pink-500 hover:bg-pink-50 hover:text-pink-600 dark:text-pink-400 dark:hover:bg-pink-950/40",
 };
 
 type ToolbarIconButtonProps = {
