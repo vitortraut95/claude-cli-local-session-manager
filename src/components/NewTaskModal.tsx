@@ -132,6 +132,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   // the auto-suggestion stops overwriting it until a different folder is chosen.
   const [useWorktree, setUseWorktree] = useState(false);
   const [useWorktreeTouched, setUseWorktreeTouched] = useState(false);
+
   const [useWorktreeDefault, setUseWorktreeDefault] = useState(false);
   const [savingWorktreeDefault, setSavingWorktreeDefault] = useState(false);
   // null = not yet known for the current folder (no folder chosen, still loading, or the repo-info
@@ -208,6 +209,41 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // The settings modal can change these stored defaults while this (always-mounted) modal keeps
+  // its own copy — reload them when it says so. Drafts follow along only when they still equal
+  // the old stored value (i.e. the user never touched them), so in-progress edits survive.
+  const latestRef = useRef({ defaultPrompt: defaultPromptLoaded, useWorktreeTouched });
+  useEffect(() => {
+    latestRef.current = { defaultPrompt: defaultPromptLoaded, useWorktreeTouched };
+  }, [defaultPromptLoaded, useWorktreeTouched]);
+  useEffect(() => {
+    const onChanged = () => {
+      tasksApi
+        .fetchPreferences()
+        .then((prefs) => {
+          const previous = latestRef.current;
+          setDefaultPromptLoaded(prefs.defaultPrompt);
+          setPromptText((current) =>
+            current === (previous.defaultPrompt ?? "") ? prefs.defaultPrompt : current,
+          );
+          const loadedBranchTypes =
+            prefs.branchTypes.length > 0 ? prefs.branchTypes : FALLBACK_BRANCH_TYPES;
+          setBranchTypes(loadedBranchTypes);
+          setPrefixChoice((current) =>
+            current === OTHER_PREFIX_VALUE || loadedBranchTypes.includes(current)
+              ? current
+              : (loadedBranchTypes[0] ?? "feature"),
+          );
+          setUseWorktreeDefault(prefs.useWorktreeByDefault);
+          if (!previous.useWorktreeTouched) setUseWorktree(prefs.useWorktreeByDefault);
+          setPermissionModeAuto(prefs.useAutoPermissionModeByDefault);
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, onChanged);
   }, []);
 
   const effectivePrefix = prefixChoice === OTHER_PREFIX_VALUE ? customPrefix.trim() : prefixChoice;

@@ -945,6 +945,18 @@ async function openDirInVSCode(dir: string): Promise<void> {
  * and checking it out here could collide with another Claude session or terminal still working in
  * that same directory.
  */
+/** Opens a single file (not a folder window) — used for the settings modal's "edit the raw file"
+ *  escape hatch. */
+export async function openFileInVSCode(filePath: string): Promise<void> {
+  if (!(await trySpawnDetached("code", [filePath]))) {
+    throw new AppError(
+      "VSCODE_COMMAND_NOT_FOUND",
+      `Could not open VS Code — the "code" command wasn't found on PATH. In VS Code, run ` +
+        `"Shell Command: Install 'code' command in PATH" from the Command Palette.`,
+    );
+  }
+}
+
 export async function openInVSCode(id: string): Promise<void> {
   if (!isSafeSessionId(id)) {
     throw invalidSessionIdError(id);

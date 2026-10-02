@@ -1,9 +1,12 @@
 import { Router } from "express";
 import {
+  getPreferencesPath,
   getUserPreferences,
   saveUserPreferences,
   type UserPreferences,
 } from "../services/preferencesService.js";
+import { openFileInVSCode } from "../services/sessionService.js";
+import { inspectWorkspaceDirs, suggestWorkspaceDirs } from "../services/workspaceService.js";
 import {
   createTaskWorktree,
   getRecentProjectFolders,
@@ -16,7 +19,12 @@ import { AppError, errorCode } from "../utils/httpError.js";
 
 export const tasksRouter = Router();
 
-function isValidPreferences(body: unknown): body is UserPreferences {
+/** `workspaceDirs` is optional on purpose: a browser tab still running the frontend bundle from
+ *  before that field existed (see CLAUDE.md's update-safety policy) sends the full object without
+ *  it — the PUT handler below keeps the stored value instead of rejecting or wiping it. */
+function isValidPreferences(
+  body: unknown,
+): body is Omit<UserPreferences, "workspaceDirs"> & Partial<Pick<UserPreferences, "workspaceDirs">> {
   if (typeof body !== "object" || body === null) return false;
   const candidate = body as Record<string, unknown>;
   return (
@@ -34,7 +42,11 @@ function isValidPreferences(body: unknown): body is UserPreferences {
     candidate.recentProjectPaths.every((item) => typeof item === "string") &&
     typeof candidate.keepRecentSessionsPerProject === "number" &&
     Number.isInteger(candidate.keepRecentSessionsPerProject) &&
-    candidate.keepRecentSessionsPerProject >= 0
+    candidate.keepRecentSessionsPerProject >= 0 &&
+    (candidate.workspaceDirs === undefined ||
+      candidate.workspaceDirs === null ||
+      (Array.isArray(candidate.workspaceDirs) &&
+        candidate.workspaceDirs.every((item) => typeof item === "string")))
   );
 }
 
@@ -64,10 +76,12 @@ tasksRouter.put("/preferences", async (req, res) => {
         "Malformed preferences payload — expected { defaultPrompt: string, branchTypes: string[], " +
           "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
           "language: \"en\"|\"pt\"|\"es\"|null, hasSeenOnboarding: boolean, " +
-          "recentProjectPaths: string[], keepRecentSessionsPerProject: number }.",
+          "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
+          "workspaceDirs?: string[] | null }.",
       );
     }
-    await saveUserPreferences(req.body);
+    const stored = await getUserPreferences();
+    await saveUserPreferences({ ...stored, ...req.body });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({
@@ -75,6 +89,36 @@ tasksRouter.put("/preferences", async (req, res) => {
       error: err instanceof Error ? err.message : String(err),
       code: errorCode(err),
     });
+  }
+});
+
+/** Escape hatch from the settings modal — opens the raw file, writing the defaults out first if
+ *  it was never saved (it's created lazily, see `saveUserPreferences`). */
+tasksRouter.post("/preferences/open-in-editor", async (_req, res) => {
+  try {
+    await saveUserPreferences(await getUserPreferences());
+    await openFileInVSCode(getPreferencesPath());
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  }
+});
+
+tasksRouter.get("/workspace-dirs/suggestions", async (_req, res) => {
+  try {
+    res.json({ suggestions: await suggestWorkspaceDirs() });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  }
+});
+
+tasksRouter.post("/workspace-dirs/inspect", async (req, res) => {
+  try {
+    const raw: unknown = (req.body as { dirs?: unknown } | null)?.dirs;
+    const dirs = Array.isArray(raw) ? raw.filter((d): d is string => typeof d === "string") : [];
+    res.json({ dirs: await inspectWorkspaceDirs(dirs) });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 

@@ -1,4 +1,4 @@
-import { Bot, Globe, HelpCircle, Import, Plus, Sparkles } from "lucide-react";
+import { Bot, Globe, HelpCircle, Import, Plus, Settings, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
@@ -10,11 +10,15 @@ import { CleanupModal } from "./CleanupModal";
 import { ImportSessionModal } from "./ImportSessionModal";
 import { NewTaskModal } from "./NewTaskModal";
 import { OnboardingModal } from "./OnboardingModal";
+import { SettingsModal } from "./SettingsModal";
 import { Select } from "./Select";
 import { ThemeToggle } from "./ThemeToggle";
+import { Tooltip } from "./Tooltip";
 import { UpdateButton } from "./UpdateButton";
 import { UpdateOverlay } from "./UpdateOverlay";
 import { UsageLimitsBadge } from "./UsageLimitsBadge";
+import { WorkspaceDirsPromptModal } from "./WorkspaceDirsPromptModal";
+import * as tasksApi from "../services/tasksApi";
 
 type HeaderProps = {
   /** Fired after a new task is successfully created via the "New Task" modal, so the page's
@@ -50,6 +54,41 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  // `workspaceDirs` never saved (null) → ask on every start until it is; "not now" only skips it
+  // for this page load. Re-checked whenever the settings modal saves something.
+  const [needsWorkspaceDirs, setNeedsWorkspaceDirs] = useState(false);
+  const [workspacePromptSkipped, setWorkspacePromptSkipped] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const check = () => {
+      tasksApi
+        .fetchPreferences()
+        .then((prefs) => {
+          if (!cancelled) setNeedsWorkspaceDirs(prefs.workspaceDirs == null);
+        })
+        .catch(() => undefined);
+    };
+    check();
+    window.addEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, check);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, check);
+    };
+  }, []);
+
+  // After onboarding (a first-time user sees that first, then this) and never on top of another
+  // header modal. `hasSeenOnboarding` turns true the moment onboarding opens (see below), and
+  // `showOnboarding` holds it back until onboarding is closed.
+  const showWorkspacePrompt =
+    loaded &&
+    hasSeenOnboarding &&
+    needsWorkspaceDirs &&
+    !workspacePromptSkipped &&
+    !showOnboarding &&
+    !showSettings &&
+    !showNewTaskModal;
 
   // Opens once per install/machine — gated on `loaded` so this can't fire before the real
   // preferences value comes back (which would otherwise flash it open for returning users too).
@@ -123,6 +162,15 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
             error={usageError}
             onRefresh={() => refreshUsage(true)}
           />
+          <Tooltip content={t("header.settings")}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowSettings(true)}
+              aria-label={t("header.settings")}
+              icon={<Settings className="h-4 w-4" />}
+            />
+          </Tooltip>
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <UpdateButton
             status={updateStatus}
@@ -152,6 +200,21 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         />
       )}
       <OnboardingModal open={showOnboarding} onClose={() => setShowOnboarding(false)} />
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          onShowOnboarding={() => {
+            setShowSettings(false);
+            setShowOnboarding(true);
+          }}
+        />
+      )}
+      {showWorkspacePrompt && (
+        <WorkspaceDirsPromptModal
+          onSaved={() => setNeedsWorkspaceDirs(false)}
+          onSkip={() => setWorkspacePromptSkipped(true)}
+        />
+      )}
       <UpdateOverlay
         updating={autoUpdating}
         error={autoUpdateError}

@@ -28,14 +28,17 @@ export type UserPreferences = {
   /** Repo roots used via the "new task" modal, most-recently-used first — see
    *  `taskService.ts`'s `recordUsedProjectPath`. Lets `getKnownProjectFolders()` offer a project
    *  folder before it has any session/`.jsonl` of its own yet, and (once cached listing lands)
-   *  without needing the full session scan at all. No management UI — hand-edit this file to
-   *  remove a stale entry, same convention as `branchTypes`. */
+   *  without needing the full session scan at all. Editable from the header's settings modal. */
   recentProjectPaths: string[];
   /** How many of a project's most-recently-updated sessions the "Cleanup" modal's
    *  `prune-old-sessions` finding always keeps — the rest become deletion candidates (see
-   *  `cleanupService.ts`). No management UI by design (same as `branchTypes`) — hand-edit this
-   *  file to change it. */
+   *  `cleanupService.ts`). Editable from the header's settings modal. */
   keepRecentSessionsPerProject: number;
+  /** Folders holding the user's repos (e.g. `~/git`), each scanned one level deep for git repos
+   *  (see `workspaceService.ts`). Null means "never set" — the frontend asks for it on startup
+   *  until it is (an explicit empty list is a valid, saved answer too, but the prompt treats it
+   *  the same). Added after the file's first release, so an older file simply lacks it. */
+  workspaceDirs: string[] | null;
 };
 
 const PREFERENCES_PATH = path.join(REPO_ROOT, "userPreferences.json");
@@ -49,6 +52,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   hasSeenOnboarding: false,
   recentProjectPaths: [],
   keepRecentSessionsPerProject: 5,
+  workspaceDirs: null,
 };
 
 function isLanguage(value: unknown): value is Language {
@@ -101,10 +105,17 @@ export async function getUserPreferences(): Promise<UserPreferences> {
         parsed.keepRecentSessionsPerProject >= 0
           ? parsed.keepRecentSessionsPerProject
           : DEFAULT_PREFERENCES.keepRecentSessionsPerProject,
+      workspaceDirs: isStringArray(parsed.workspaceDirs)
+        ? parsed.workspaceDirs
+        : DEFAULT_PREFERENCES.workspaceDirs,
     };
   } catch {
     return DEFAULT_PREFERENCES;
   }
+}
+
+export function getPreferencesPath(): string {
+  return PREFERENCES_PATH;
 }
 
 export async function saveUserPreferences(preferences: UserPreferences): Promise<void> {
