@@ -573,6 +573,37 @@ export const translations = {
   ),
   "nicknameModal.placeholder": dict("Nickname", "Apelido", "Apodo"),
 
+  "jenkinsLinksModal.title": dict("Jenkins", "Jenkins", "Jenkins"),
+  "jenkinsLinksModal.intro": dict(
+    "Links built from the usual naming conventions — not every one necessarily exists. Open whichever fits; this window stays open so you can try another.",
+    "Links montados pelos padrões de nome mais comuns — nem todos existem necessariamente. Abra o que fizer sentido; esta janela continua aberta para você tentar outro.",
+    "Enlaces armados según las convenciones de nombre habituales — no todos existen necesariamente. Abre el que corresponda; esta ventana sigue abierta para que pruebes otro.",
+  ),
+  "jenkinsLinksModal.section.currentBranch": dict(
+    "Current branch",
+    "Branch atual",
+    "Rama actual",
+  ),
+  "jenkinsLinksModal.section.originBranch": dict(
+    "Branch it was created from",
+    "Branch de origem",
+    "Rama de origen",
+  ),
+  "jenkinsLinksModal.section.variants": dict(
+    "Same ticket, other prefixes",
+    "Mesmo ticket, outros prefixos",
+    "Mismo ticket, otros prefijos",
+  ),
+  "jenkinsLinksModal.section.views": dict("Project", "Projeto", "Proyecto"),
+  "jenkinsLinksModal.project": dict(
+    "{project} (all branches)",
+    "{project} (todas as branches)",
+    "{project} (todas las ramas)",
+  ),
+  "jenkinsLinksModal.pullRequests": dict("Pull requests", "Pull requests", "Pull requests"),
+  "jenkinsLinksModal.tags": dict("Tags", "Tags", "Tags"),
+  "jenkinsLinksModal.close": dict("Close", "Fechar", "Cerrar"),
+
   "exportSessionModal.title": dict("Export session", "Exportar sessão", "Exportar sesión"),
   "exportSessionModal.intro": dict(
     "Downloads this session as a single .claude-session.json.gz file. Send it to another dev (Teams, Slack, e-mail…) and they can import it with \"Import session\" in their own Claude Session Manager.",
@@ -1137,14 +1168,14 @@ export const translations = {
     "Restablecer carpeta raíz",
   ),
   "sessionCard.openJenkinsTooltip": dict(
-    "Open this branch's Jenkins pipeline",
-    "Abrir a pipeline do Jenkins desta branch",
-    "Abrir el pipeline de Jenkins de esta rama",
+    "Jenkins links for this project and branch",
+    "Links do Jenkins deste projeto e branch",
+    "Enlaces de Jenkins de este proyecto y rama",
   ),
   "sessionCard.openJenkinsAriaLabel": dict(
-    "Open Jenkins pipeline",
-    "Abrir pipeline do Jenkins",
-    "Abrir pipeline de Jenkins",
+    "Jenkins links",
+    "Links do Jenkins",
+    "Enlaces de Jenkins",
   ),
   "sessionCard.openPrTooltip": dict(
     "Open this branch's compare/PR page (GitHub or Bitbucket)",

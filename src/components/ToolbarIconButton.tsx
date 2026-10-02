@@ -44,7 +44,8 @@ type ToolbarIconButtonProps = {
 /**
  * One entry in a card's action toolbar (see SessionCard) — same footprint and interaction for
  * every icon, distinguished only by its color, so the row keeps reading consistently as more
- * actions get added to it over time.
+ * actions get added to it over time. Icon size is forced here (`[&_svg]` below) rather than by
+ * each caller's own `h-4 w-4`, so the whole toolbar resizes from one place.
  */
 export function ToolbarIconButton({
   tooltip,
@@ -65,7 +66,7 @@ export function ToolbarIconButton({
           onClick={onClick}
           disabled={disabled}
           aria-label={ariaLabel}
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${COLOR_CLASSES[color]}`}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 [&_svg]:h-5 [&_svg]:w-5 ${COLOR_CLASSES[color]}`}
         >
           {icon}
         </button>
