@@ -6,7 +6,6 @@ import {
   Copy,
   CornerUpLeft,
   CornerUpRight,
-  Download,
   Factory,
   Folder,
   GitFork,
@@ -18,6 +17,7 @@ import {
   Play,
   RotateCcw,
   Scissors,
+  Share,
   Sparkles,
   Trash2,
   TriangleAlert,
@@ -551,7 +551,7 @@ export function SessionCard({
           ariaLabel={t("sessionCard.exportAriaLabel")}
           color="neutral"
           onClick={() => setShowExportModal(true)}
-          icon={<Download className="h-4 w-4" />}
+          icon={<Share className="h-4 w-4" />}
         />
         {session.isWorktree && !session.directoryMissing && (
           <ToolbarIconButton

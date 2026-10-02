@@ -1,4 +1,13 @@
-import { Copy, FileUp, GitBranch, Info, Loader2, Replace, TriangleAlert } from "lucide-react";
+import {
+  Copy,
+  FolderOpen,
+  GitBranch,
+  Import,
+  Info,
+  Loader2,
+  Replace,
+  TriangleAlert,
+} from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -147,7 +156,7 @@ export function ImportSessionModal({ onClose, onImported }: ImportSessionModalPr
       isConfirmLoading={importing}
       isConfirmDisabled={!targetDir || conflictUnresolved}
       size="lg"
-      icon={<FileUp className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
+      icon={<Import className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
     >
       <p className="text-sm text-gray-600 dark:text-gray-400">{t("importSessionModal.intro")}</p>
 
@@ -171,7 +180,7 @@ export function ImportSessionModal({ onClose, onImported }: ImportSessionModalPr
             inspecting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <FileUp className="h-4 w-4" />
+              <FolderOpen className="h-4 w-4" />
             )
           }
         >
