@@ -64,6 +64,8 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   CLEANUP_TARGET_GONE: "apiError.cleanupTargetGone",
   CLEANUP_BRANCH_NOT_MERGED: "apiError.cleanupBranchNotMerged",
   CLEANUP_UNCOMMITTED_CHANGES: "apiError.cleanupUncommittedChanges",
+  CLEANUP_BRANCH_HAS_COMMITS: "apiError.cleanupBranchHasCommits",
+  CLEANUP_WORKTREE_HAS_SESSION: "apiError.cleanupWorktreeHasSession",
   MALFORMED_CLEANUP_FINDING: "apiError.malformedCleanupFinding",
   TASK_BASE_BRANCH_NOT_FOUND: "apiError.taskBaseBranchNotFound",
   NOT_A_GIT_WORKTREE: "apiError.notAGitWorktree",
