@@ -574,11 +574,6 @@ export const translations = {
   "nicknameModal.placeholder": dict("Nickname", "Apelido", "Apodo"),
 
   "jenkinsLinksModal.title": dict("Jenkins", "Jenkins", "Jenkins"),
-  "jenkinsLinksModal.intro": dict(
-    "Links built from the usual naming conventions — not every one necessarily exists. Open whichever fits; this window stays open so you can try another.",
-    "Links montados pelos padrões de nome mais comuns — nem todos existem necessariamente. Abra o que fizer sentido; esta janela continua aberta para você tentar outro.",
-    "Enlaces armados según las convenciones de nombre habituales — no todos existen necesariamente. Abre el que corresponda; esta ventana sigue abierta para que pruebes otro.",
-  ),
   "jenkinsLinksModal.section.currentBranch": dict(
     "Current branch",
     "Branch atual",
@@ -589,6 +584,12 @@ export const translations = {
     "Branch de origem",
     "Rama de origen",
   ),
+  "jenkinsLinksModal.section.envPreviews": dict(
+    "Previews of {branch}",
+    "Previews de {branch}",
+    "Previews de {branch}",
+  ),
+  "jenkinsLinksModal.openPreview": dict("Open", "Abrir", "Abrir"),
   "jenkinsLinksModal.section.variants": dict(
     "Same ticket, other prefixes",
     "Mesmo ticket, outros prefixos",

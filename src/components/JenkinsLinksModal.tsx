@@ -1,13 +1,16 @@
-import { ExternalLink, GitBranch, GitPullRequest, Home, Tag } from "lucide-react";
-import type { ReactNode } from "react";
+import { ExternalLink, Eye, GitBranch, GitPullRequest, Home, Tag } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import jenkinsIcon from "../assets/jenkins.svg";
 import { useLanguage } from "../hooks/useLanguage";
-import type { JenkinsLink } from "../utils/jenkins";
+import type { EnvPreviewGroup, JenkinsLink } from "../utils/jenkins";
+import { Button } from "./Button";
 import { Modal } from "./Modal";
+import { Select } from "./Select";
 
 type JenkinsLinksModalProps = {
   project: string;
   links: JenkinsLink[];
+  envPreviews: EnvPreviewGroup[];
   onClose: () => void;
 };
 
@@ -18,7 +21,12 @@ type JenkinsLinksModalProps = {
  * deliberately stays open after a click: if one turns out to be a 404, the next candidate is right
  * there.
  */
-export function JenkinsLinksModal({ project, links, onClose }: JenkinsLinksModalProps) {
+export function JenkinsLinksModal({
+  project,
+  links,
+  envPreviews,
+  onClose,
+}: JenkinsLinksModalProps) {
   const { t } = useLanguage();
   const current = links.filter((l) => l.kind === "branch" && l.role === "current");
   const origin = links.filter((l) => l.kind === "branch" && l.role === "origin");
@@ -80,7 +88,7 @@ export function JenkinsLinksModal({ project, links, onClose }: JenkinsLinksModal
 
   const section = (title: string, items: JenkinsLink[]) =>
     items.length > 0 && (
-      <section className="mt-4">
+      <section className="mt-4 first:mt-0">
         <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           {title}
         </h3>
@@ -98,11 +106,46 @@ export function JenkinsLinksModal({ project, links, onClose }: JenkinsLinksModal
       size="md"
       icon={<img src={jenkinsIcon} alt="" className="h-5 w-5" />}
     >
-      <p className="text-sm text-gray-600 dark:text-gray-400">{t("jenkinsLinksModal.intro")}</p>
+      {envPreviews.map((group) => (
+        <EnvPreviewPicker key={group.branch} group={group} />
+      ))}
       {section(t("jenkinsLinksModal.section.currentBranch"), current)}
       {section(t("jenkinsLinksModal.section.originBranch"), origin)}
       {section(t("jenkinsLinksModal.section.variants"), variants)}
       {section(t("jenkinsLinksModal.section.views"), views)}
     </Modal>
+  );
+}
+
+/** One `env/*` branch's preview sites as a dropdown + "open" button — pick a locale, open it, pick
+ *  the next; the modal stays open throughout, same as the links below. */
+function EnvPreviewPicker({ group }: { group: EnvPreviewGroup }) {
+  const { t } = useLanguage();
+  const [url, setUrl] = useState(group.previews[0]?.url ?? "");
+  return (
+    <section className="mt-4 first:mt-0 rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <Eye className="h-3.5 w-3.5" />
+        {t("jenkinsLinksModal.section.envPreviews", { branch: group.branch })}
+      </h3>
+      <div className="flex gap-2">
+        <div className="min-w-0 flex-1">
+          <Select value={url} onChange={(event) => setUrl(event.target.value)}>
+            {group.previews.map((preview) => (
+              <option key={preview.url} value={preview.url}>
+                {preview.label} — {preview.url}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+          icon={<ExternalLink className="h-4 w-4" />}
+        >
+          {t("jenkinsLinksModal.openPreview")}
+        </Button>
+      </div>
+    </section>
   );
 }

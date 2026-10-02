@@ -46,7 +46,7 @@ import { Tooltip } from "./Tooltip";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
-import { getJenkinsLinks } from "../utils/jenkins";
+import { getEnvPreviewGroups, getJenkinsLinks } from "../utils/jenkins";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 
@@ -724,6 +724,7 @@ export function SessionCard({
         <JenkinsLinksModal
           project={session.project}
           links={jenkinsLinks}
+          envPreviews={getEnvPreviewGroups(session.project, [taskBranch ?? null, originBranch])}
           onClose={() => setShowJenkinsModal(false)}
         />
       )}
