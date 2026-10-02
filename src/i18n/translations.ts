@@ -1121,9 +1121,9 @@ export const translations = {
   ),
   "sessionCard.previewAriaLabel": dict("Preview prompts", "Ver prompts", "Vista previa de prompts"),
   "sessionCard.exportTooltip": dict(
-    "Export session — download it as a file to send to another dev or machine",
-    "Exportar sessão — baixa como arquivo para enviar a outro dev ou máquina",
-    "Exportar sesión — descárgala como archivo para enviarla a otro dev o máquina",
+    "Export session as a file",
+    "Exportar sessão como arquivo",
+    "Exportar sesión como archivo",
   ),
   "sessionCard.exportAriaLabel": dict("Export session", "Exportar sessão", "Exportar sesión"),
   "sessionCard.resetRootTooltip": dict(
