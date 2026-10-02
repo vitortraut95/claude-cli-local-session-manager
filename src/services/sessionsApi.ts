@@ -1,6 +1,13 @@
 import axios from "axios";
-import type { RootStatus, Session, SubagentDetail, WorktreeToRootPreview } from "../types/session";
-import { withServerErrorMessage } from "../utils/apiClient";
+import type {
+  RootStatus,
+  Session,
+  SessionImportPreview,
+  SessionImportResult,
+  SubagentDetail,
+  WorktreeToRootPreview,
+} from "../types/session";
+import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
 
 const client = axios.create({
   baseURL: "/sessions",
@@ -222,4 +229,78 @@ export async function removeWorktreeAndCheckoutRoot(
     ),
   );
   return { previousRootBranch: data.previousRootBranch, newBranch: data.newBranch };
+}
+
+/** `withServerErrorMessage` for a `responseType: "blob"` request — the server's JSON error body
+ *  arrives as a Blob too there, so it has to be read back as text before the usual
+ *  error/code unwrapping can see it. */
+async function withBlobServerErrorMessage<T>(request: () => Promise<T>): Promise<T> {
+  try {
+    return await request();
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.data instanceof Blob) {
+      const body = await err.response.data
+        .text()
+        .then((text) => JSON.parse(text) as { error?: unknown; code?: unknown })
+        .catch(() => null);
+      if (typeof body?.error === "string") {
+        const apiError: ApiError = new Error(body.error, { cause: err });
+        if (typeof body.code === "string") apiError.code = body.code;
+        throw apiError;
+      }
+    }
+    throw err;
+  }
+}
+
+/** Downloads the session as a single `.claude-session.json.gz` file (see server-side
+ *  `exportSession`) by handing the browser an object URL — goes through axios rather than a
+ *  plain `<a href download>` so a server error surfaces as a toast instead of a downloaded file
+ *  full of error JSON. */
+export async function exportSession(id: string): Promise<void> {
+  const response = await withBlobServerErrorMessage(() =>
+    client.get<Blob>(`/${encodeURIComponent(id)}/export`, { responseType: "blob" }),
+  );
+  const disposition = String(response.headers["content-disposition"] ?? "");
+  const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `${id}.claude-session.json.gz`;
+  const url = URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const RAW_BUNDLE_HEADERS = { "Content-Type": "application/octet-stream" };
+
+/** Reads an exported session file and reports what's in it plus where it could go on this
+ *  machine — nothing is written yet (see `importSession`). */
+export async function inspectSessionImport(file: Blob): Promise<SessionImportPreview> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ preview: SessionImportPreview }>("/import/inspect", file, {
+      headers: RAW_BUNDLE_HEADERS,
+    }),
+  );
+  return data.preview;
+}
+
+export type ImportConflictResolution = "overwrite" | "copy";
+
+/** `onConflict` is required by the server only when the session id already exists locally
+ *  (`SessionImportPreview.existingSession`); null otherwise. */
+export async function importSession(
+  file: Blob,
+  targetDir: string,
+  checkoutBranch: boolean,
+  onConflict: ImportConflictResolution | null,
+): Promise<SessionImportResult> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<SessionImportResult & { success: true }>("/import", file, {
+      headers: RAW_BUNDLE_HEADERS,
+      params: { targetDir, checkoutBranch, ...(onConflict ? { onConflict } : {}) },
+    }),
+  );
+  return data;
 }

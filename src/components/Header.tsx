@@ -1,4 +1,4 @@
-import { Bot, Globe, HelpCircle, Plus, Sparkles } from "lucide-react";
+import { Bot, FileUp, Globe, HelpCircle, Plus, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
@@ -7,6 +7,7 @@ import { useUsageLimits } from "../hooks/useUsageLimits";
 import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
 import { Button } from "./Button";
 import { CleanupModal } from "./CleanupModal";
+import { ImportSessionModal } from "./ImportSessionModal";
 import { NewTaskModal } from "./NewTaskModal";
 import { OnboardingModal } from "./OnboardingModal";
 import { Select } from "./Select";
@@ -23,9 +24,11 @@ type HeaderProps = {
    *  actually changes the session list, but refreshing unconditionally keeps this as simple as
    *  `onSessionCreated` above. */
   onSessionsChanged?: () => void;
+  /** Fired with the new session's id after an exported session file is imported. */
+  onSessionImported?: (sessionId: string) => void;
 };
 
-export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
+export function Header({ onSessionCreated, onSessionsChanged, onSessionImported }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const {
     status: updateStatus,
@@ -45,6 +48,7 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
   const { language, setLanguage, hasSeenOnboarding, markOnboardingSeen, loaded, t } = useLanguage();
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [showCleanupModal, setShowCleanupModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Opens once per install/machine — gated on `loaded` so this can't fire before the real
@@ -78,6 +82,13 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button onClick={() => setShowNewTaskModal(true)} icon={<Plus className="h-4 w-4" />}>
             {t("header.newTask")}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowImportModal(true)}
+            icon={<FileUp className="h-4 w-4" />}
+          >
+            {t("header.importSession")}
           </Button>
           <Button
             variant="outline"
@@ -134,6 +145,12 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
         onClose={() => setShowCleanupModal(false)}
         onFindingExecuted={onSessionsChanged}
       />
+      {showImportModal && (
+        <ImportSessionModal
+          onClose={() => setShowImportModal(false)}
+          onImported={(sessionId) => onSessionImported?.(sessionId)}
+        />
+      )}
       <OnboardingModal open={showOnboarding} onClose={() => setShowOnboarding(false)} />
       <UpdateOverlay
         updating={autoUpdating}

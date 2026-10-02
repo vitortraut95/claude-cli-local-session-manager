@@ -40,7 +40,6 @@ export function NicknameModal({ currentNickname, onSave, onCancel }: NicknameMod
           if (event.key === "Enter") onSave(nickname);
         }}
         autoFocus
-        maxLength={100}
         placeholder={t("nicknameModal.placeholder")}
         className="mt-4"
       />

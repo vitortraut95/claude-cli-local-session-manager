@@ -82,6 +82,15 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   REPO_ROOT_UNRESOLVED: "apiError.repoRootUnresolved",
   WORKTREE_BRANCH_UNKNOWN: "apiError.worktreeBranchUnknown",
   WORKTREE_TO_ROOT_CHECKOUT_FAILED: "apiError.worktreeToRootCheckoutFailed",
+  IMPORT_INVALID_BUNDLE: "apiError.importInvalidBundle",
+  IMPORT_UNSUPPORTED_VERSION: "apiError.importUnsupportedVersion",
+  IMPORT_TARGET_REQUIRED: "apiError.importTargetRequired",
+  IMPORT_TARGET_MISSING: "apiError.importTargetMissing",
+  IMPORT_CHECKOUT_BLOCKED_ACTIVE: "apiError.importCheckoutBlockedActive",
+  IMPORT_SESSION_EXISTS: "apiError.importSessionExists",
+  IMPORT_OVERWRITE_ACTIVE: "apiError.importOverwriteActive",
+  // IMPORT_CHECKOUT_FAILED deliberately unmapped — its message carries git's own reason (e.g.
+  // "your local changes would be overwritten"), which a fixed translated string would drop.
 };
 
 /**

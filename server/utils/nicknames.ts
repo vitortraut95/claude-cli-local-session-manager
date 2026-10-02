@@ -2,8 +2,6 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { REPO_ROOT } from "./repoRoot.js";
 
-const NICKNAME_MAX_LENGTH = 100;
-
 /**
  * Local nicknames, stored in this app's own gitignored sidecar file at the repo root (same
  * convention as `userPreferences.json`, so it's visible/editable/deletable right alongside the
@@ -34,7 +32,7 @@ export async function getNicknames(): Promise<Record<string, string>> {
 /** Blank/whitespace-only `nickname` clears the override. */
 export async function setNickname(id: string, nickname: string): Promise<void> {
   const nicknames = await getNicknames();
-  const trimmed = nickname.trim().slice(0, NICKNAME_MAX_LENGTH);
+  const trimmed = nickname.trim();
 
   if (trimmed) {
     nicknames[id] = trimmed;

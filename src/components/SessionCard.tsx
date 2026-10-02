@@ -6,6 +6,7 @@ import {
   Copy,
   CornerUpLeft,
   CornerUpRight,
+  Download,
   Factory,
   Folder,
   GitFork,
@@ -30,7 +31,9 @@ import * as sessionsApi from "../services/sessionsApi";
 import type { Session } from "../types/session";
 import { Button } from "./Button";
 import { CompactContinueModal } from "./CompactContinueModal";
+import { ExportSessionModal } from "./ExportSessionModal";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { LinkifiedText } from "./LinkifiedText";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { NicknameModal } from "./NicknameModal";
 import { OpenPrBaseChoiceModal } from "./OpenPrBaseChoiceModal";
@@ -120,6 +123,7 @@ export function SessionCard({
   const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
   const [showCompactContinueModal, setShowCompactContinueModal] = useState(false);
   const [showOpenPrBaseChoice, setShowOpenPrBaseChoice] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [openingPrUrl, setOpeningPrUrl] = useState(false);
   const { showToast } = useToast();
   const resumeCommand = `claude --resume ${session.id}`;
@@ -281,10 +285,10 @@ export function SessionCard({
           </h2>
           {session.nickname && (
             <span
-              className="line-clamp-1 text-xs italic text-gray-500 dark:text-gray-400"
-              title={t("sessionCard.nickname.localOnly")}
+              className="line-clamp-3 break-words text-xs italic text-gray-500 dark:text-gray-400"
+              title={`${session.nickname}\n\n${t("sessionCard.nickname.localOnly")}`}
             >
-              {session.nickname}
+              <LinkifiedText text={session.nickname} />
             </span>
           )}
         </div>
@@ -542,6 +546,13 @@ export function SessionCard({
             icon={<MessageSquare className="h-4 w-4" />}
           />
         )}
+        <ToolbarIconButton
+          tooltip={t("sessionCard.exportTooltip")}
+          ariaLabel={t("sessionCard.exportAriaLabel")}
+          color="neutral"
+          onClick={() => setShowExportModal(true)}
+          icon={<Download className="h-4 w-4" />}
+        />
         {session.isWorktree && !session.directoryMissing && (
           <ToolbarIconButton
             tooltip={t("sessionCard.resetRootTooltip")}
@@ -706,6 +717,9 @@ export function SessionCard({
           onClose={() => setShowCompactContinueModal(false)}
           onLaunched={() => onCompactContinueLaunched(session)}
         />
+      )}
+      {showExportModal && (
+        <ExportSessionModal session={session} onClose={() => setShowExportModal(false)} />
       )}
       {showOpenPrBaseChoice && (
         <OpenPrBaseChoiceModal session={session} onClose={() => setShowOpenPrBaseChoice(false)} />

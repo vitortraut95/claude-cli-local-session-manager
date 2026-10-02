@@ -42,6 +42,7 @@ export const translations = {
   ),
   "header.newTask": dict("New task", "Nova tarefa", "Nueva tarea"),
   "header.cleanup": dict("Cleanup", "Limpeza", "Limpieza"),
+  "header.importSession": dict("Import session", "Importar sessão", "Importar sesión"),
   "header.help": dict("How this works", "Como funciona", "Cómo funciona"),
   "header.language": dict("Language", "Idioma", "Idioma"),
 
@@ -508,6 +509,41 @@ export const translations = {
     "El worktree fue eliminado, pero el checkout de su rama en la carpeta raíz falló — los " +
       "commits de la rama están seguros, termina el checkout manualmente desde una terminal ahí.",
   ),
+  "apiError.importInvalidBundle": dict(
+    "This file isn't a session exported by Claude Session Manager.",
+    "Este arquivo não é uma sessão exportada pelo Claude Session Manager.",
+    "Este archivo no es una sesión exportada por Claude Session Manager.",
+  ),
+  "apiError.importUnsupportedVersion": dict(
+    "This session was exported by a newer version of the app — update it first.",
+    "Esta sessão foi exportada por uma versão mais nova do app — atualize-o primeiro.",
+    "Esta sesión fue exportada por una versión más nueva de la app — actualízala primero.",
+  ),
+  "apiError.importTargetRequired": dict(
+    "Choose the folder to import the session into.",
+    "Escolha a pasta para onde importar a sessão.",
+    "Elige la carpeta a la que importar la sesión.",
+  ),
+  "apiError.importTargetMissing": dict(
+    "That folder doesn't exist on this machine.",
+    "Essa pasta não existe nesta máquina.",
+    "Esa carpeta no existe en esta máquina.",
+  ),
+  "apiError.importSessionExists": dict(
+    "This session already exists here — choose whether to overwrite it or import a copy.",
+    "Esta sessão já existe aqui — escolha entre sobrescrever ou importar uma cópia.",
+    "Esta sesión ya existe aquí — elige entre sobrescribirla o importar una copia.",
+  ),
+  "apiError.importOverwriteActive": dict(
+    "The local session is active in a terminal — close it before overwriting, or import a copy.",
+    "A sessão local está ativa num terminal — feche-a antes de sobrescrever, ou importe uma cópia.",
+    "La sesión local está activa en una terminal — ciérrala antes de sobrescribir, o importa una copia.",
+  ),
+  "apiError.importCheckoutBlockedActive": dict(
+    "Another Claude session is active in that folder — close it before switching branches, or import without checking out.",
+    "Outra sessão do Claude está ativa nessa pasta — feche-a antes de trocar de branch, ou importe sem fazer checkout.",
+    "Otra sesión de Claude está activa en esa carpeta — ciérrala antes de cambiar de rama, o importa sin hacer checkout.",
+  ),
   "apiError.worktreeUncommittedChanges": dict(
     "That worktree still has uncommitted changes, so it wasn't removed — commit or discard them " +
       'first (or use "copy" mode instead, which doesn\'t require the worktree to be clean).',
@@ -536,6 +572,203 @@ export const translations = {
     "Solo se muestra en la lista de sesiones de esta app, junto al título real de la sesión — no renombra la sesión ni cambia lo que muestra cualquier terminal (incluido Warp). Déjalo en blanco para quitar el apodo.",
   ),
   "nicknameModal.placeholder": dict("Nickname", "Apelido", "Apodo"),
+
+  "exportSessionModal.title": dict("Export session", "Exportar sessão", "Exportar sesión"),
+  "exportSessionModal.intro": dict(
+    "Downloads this session as a single .claude-session.json.gz file. Send it to another dev (Teams, Slack, e-mail…) and they can import it with \"Import session\" in their own Claude Session Manager.",
+    "Baixa esta sessão como um único arquivo .claude-session.json.gz. Envie para outro dev (Teams, Slack, e-mail…) e ele pode importar com \"Importar sessão\" no próprio Claude Session Manager.",
+    "Descarga esta sesión como un único archivo .claude-session.json.gz. Envíalo a otro dev (Teams, Slack, e-mail…) y podrá importarlo con \"Importar sesión\" en su propio Claude Session Manager.",
+  ),
+  "exportSessionModal.sensitiveWarning": dict(
+    "The file holds the whole conversation, including the contents of every file Claude read and every command output it saw. Make sure it doesn't contain passwords, tokens or other secrets before sending it — you can review it with: zcat <file> | less",
+    "O arquivo contém a conversa inteira, incluindo o conteúdo de todo arquivo que o Claude leu e toda saída de comando que ele viu. Confira se não há senhas, tokens ou outros segredos antes de enviar — dá pra revisar com: zcat <arquivo> | less",
+    "El archivo contiene la conversación completa, incluido el contenido de cada archivo que Claude leyó y cada salida de comando que vio. Asegúrate de que no contenga contraseñas, tokens u otros secretos antes de enviarlo — puedes revisarlo con: zcat <archivo> | less",
+  ),
+  "exportSessionModal.recipientHint": dict(
+    "Whoever imports it needs a clone of the same repository; the app finds it by the origin URL and rewrites the paths to theirs.",
+    "Quem importar precisa ter um clone do mesmo repositório; o app encontra pelo URL do origin e reescreve os caminhos para os dele.",
+    "Quien la importe necesita un clon del mismo repositorio; la app lo encuentra por la URL de origin y reescribe las rutas a las suyas.",
+  ),
+  "exportSessionModal.confirm": dict("Download file", "Baixar arquivo", "Descargar archivo"),
+  "exportSessionModal.cancel": dict("Cancel", "Cancelar", "Cancelar"),
+  "exportSessionModal.success": dict("Session exported.", "Sessão exportada.", "Sesión exportada."),
+  "exportSessionModal.error": dict(
+    "Could not export the session.",
+    "Não foi possível exportar a sessão.",
+    "No se pudo exportar la sesión.",
+  ),
+
+  "importSessionModal.title": dict("Import session", "Importar sessão", "Importar sesión"),
+  "importSessionModal.intro": dict(
+    "Pick a .claude-session.json.gz file exported from another machine. Nothing is written until you confirm.",
+    "Escolha um arquivo .claude-session.json.gz exportado de outra máquina. Nada é gravado até você confirmar.",
+    "Elige un archivo .claude-session.json.gz exportado desde otra máquina. No se escribe nada hasta que confirmes.",
+  ),
+  "importSessionModal.chooseFile": dict("Choose file…", "Escolher arquivo…", "Elegir archivo…"),
+  "importSessionModal.chooseAnother": dict(
+    "Choose another file…",
+    "Escolher outro arquivo…",
+    "Elegir otro archivo…",
+  ),
+  "importSessionModal.inspectError": dict(
+    "Could not read this file.",
+    "Não foi possível ler este arquivo.",
+    "No se pudo leer este archivo.",
+  ),
+  "importSessionModal.importError": dict(
+    "Could not import the session.",
+    "Não foi possível importar a sessão.",
+    "No se pudo importar la sesión.",
+  ),
+  "importSessionModal.success": dict(
+    "Session imported.",
+    "Sessão importada.",
+    "Sesión importada.",
+  ),
+  "importSessionModal.successCopy": dict(
+    "Session imported as a copy (it already existed here).",
+    "Sessão importada como cópia (ela já existia aqui).",
+    "Sesión importada como copia (ya existía aquí).",
+  ),
+  "importSessionModal.confirm": dict("Import", "Importar", "Importar"),
+  "importSessionModal.confirmOverwrite": dict(
+    "Overwrite and import",
+    "Sobrescrever e importar",
+    "Sobrescribir e importar",
+  ),
+  "importSessionModal.successOverwrite": dict(
+    "Session imported, replacing the local copy.",
+    "Sessão importada, substituindo a cópia local.",
+    "Sesión importada, reemplazando la copia local.",
+  ),
+  "importSessionModal.cancel": dict("Cancel", "Cancelar", "Cancelar"),
+  "importSessionModal.field.title": dict("Title", "Título", "Título"),
+  "importSessionModal.field.nickname": dict("Nickname", "Apelido", "Apodo"),
+  "importSessionModal.field.branch": dict("Branch", "Branch", "Rama"),
+  "importSessionModal.field.remote": dict("Repository", "Repositório", "Repositorio"),
+  "importSessionModal.field.originalFolder": dict(
+    "Original folder",
+    "Pasta original",
+    "Carpeta original",
+  ),
+  "importSessionModal.field.lastActivity": dict(
+    "Last activity",
+    "Última atividade",
+    "Última actividad",
+  ),
+  "importSessionModal.field.size": dict("Size", "Tamanho", "Tamaño"),
+  "importSessionModal.subagents": dict(
+    "{count} subagent(s)",
+    "{count} subagente(s)",
+    "{count} subagente(s)",
+  ),
+  "importSessionModal.conflict.title": dict(
+    "This session already exists on this machine. Choose what to do:",
+    "Esta sessão já existe nesta máquina. Escolha o que fazer:",
+    "Esta sesión ya existe en esta máquina. Elige qué hacer:",
+  ),
+  "importSessionModal.conflict.local": dict("Here now", "Aqui agora", "Aquí ahora"),
+  "importSessionModal.conflict.incoming": dict("In the file", "No arquivo", "En el archivo"),
+  "importSessionModal.conflict.incomingNewer": dict(
+    "The file is newer.",
+    "O arquivo é mais recente.",
+    "El archivo es más reciente.",
+  ),
+  "importSessionModal.conflict.incomingOlder": dict(
+    "The file is older than the local copy.",
+    "O arquivo é mais antigo que a cópia local.",
+    "El archivo es más antiguo que la copia local.",
+  ),
+  "importSessionModal.conflict.incomingSame": dict(
+    "Same version as the local copy.",
+    "Mesma versão da cópia local.",
+    "Misma versión que la copia local.",
+  ),
+  "importSessionModal.conflict.copy.title": dict(
+    "Import as a copy (new id)",
+    "Importar como cópia (novo id)",
+    "Importar como copia (id nuevo)",
+  ),
+  "importSessionModal.conflict.copy.body": dict(
+    "Both stay: the local session is untouched and the imported one gets a new id.",
+    "As duas ficam: a sessão local não é alterada e a importada ganha um novo id.",
+    "Quedan las dos: la sesión local no se modifica y la importada recibe un id nuevo.",
+  ),
+  "importSessionModal.conflict.overwrite.title": dict(
+    "Overwrite the local session",
+    "Sobrescrever a sessão local",
+    "Sobrescribir la sesión local",
+  ),
+  "importSessionModal.conflict.overwrite.body": dict(
+    "Replaces the local conversation (and its subagents) with the file's, keeping the same id. The local version is lost.",
+    "Substitui a conversa local (e seus subagentes) pela do arquivo, mantendo o mesmo id. A versão local é perdida.",
+    "Reemplaza la conversación local (y sus subagentes) por la del archivo, manteniendo el mismo id. La versión local se pierde.",
+  ),
+  "importSessionModal.conflict.overwrite.blockedActive": dict(
+    "Unavailable — the local session is active in a terminal. Close it first, or import a copy.",
+    "Indisponível — a sessão local está ativa num terminal. Feche-a antes, ou importe uma cópia.",
+    "No disponible — la sesión local está activa en una terminal. Ciérrala antes, o importa una copia.",
+  ),
+  "importSessionModal.targetLabel": dict(
+    "Import into this local clone",
+    "Importar neste clone local",
+    "Importar en este clon local",
+  ),
+  "importSessionModal.sameRepoOption": dict(
+    "{path} (same repository)",
+    "{path} (mesmo repositório)",
+    "{path} (mismo repositorio)",
+  ),
+  "importSessionModal.otherFolderOption": dict(
+    "Other folder…",
+    "Outra pasta…",
+    "Otra carpeta…",
+  ),
+  "importSessionModal.otherFolderPlaceholder": dict(
+    "/absolute/path/to/your/clone",
+    "/caminho/absoluto/do/seu/clone",
+    "/ruta/absoluta/de/tu/clon",
+  ),
+  "importSessionModal.subfolderHint": dict(
+    "The session ran in a subfolder — it will be resumed from:",
+    "A sessão rodou numa subpasta — ela será retomada a partir de:",
+    "La sesión se ejecutó en una subcarpeta — se reanudará desde:",
+  ),
+  "importSessionModal.remoteMismatch": dict(
+    "This folder's origin doesn't match the exported session's repository — Claude may refer to files that don't exist here.",
+    "O origin desta pasta não bate com o repositório da sessão exportada — o Claude pode citar arquivos que não existem aqui.",
+    "El origin de esta carpeta no coincide con el repositorio de la sesión exportada — Claude puede mencionar archivos que no existen aquí.",
+  ),
+  "importSessionModal.commitMissing": dict(
+    "Commit {commit} (where the session left off) isn't in this clone yet — run git fetch, or the branch may not have been pushed.",
+    "O commit {commit} (onde a sessão parou) ainda não está neste clone — rode git fetch, ou a branch pode não ter sido enviada (push).",
+    "El commit {commit} (donde quedó la sesión) aún no está en este clon — ejecuta git fetch, o puede que la rama no se haya subido (push).",
+  ),
+  "importSessionModal.checkoutLabel": dict(
+    "Check out {branch} before importing",
+    "Fazer checkout de {branch} antes de importar",
+    "Hacer checkout de {branch} antes de importar",
+  ),
+  "importSessionModal.checkoutHint": dict(
+    "Fetched from origin if you don't have it locally. Uncommitted changes that would be overwritten block the checkout.",
+    "Busca no origin se você não tiver localmente. Alterações não commitadas que seriam sobrescritas bloqueiam o checkout.",
+    "Se busca en origin si no la tienes localmente. Los cambios sin commit que se sobrescribirían bloquean el checkout.",
+  ),
+  "importSessionModal.checkoutHintWithCurrent": dict(
+    "This folder is on {current} now. Fetched from origin if you don't have it locally; uncommitted changes that would be overwritten block the checkout.",
+    "Esta pasta está em {current} agora. Busca no origin se você não tiver localmente; alterações não commitadas que seriam sobrescritas bloqueiam o checkout.",
+    "Esta carpeta está en {current} ahora. Se busca en origin si no la tienes localmente; los cambios sin commit que se sobrescribirían bloquean el checkout.",
+  ),
+  "importSessionModal.checkoutBlocked": dict(
+    "Unavailable — another Claude session is active in this folder.",
+    "Indisponível — outra sessão do Claude está ativa nesta pasta.",
+    "No disponible — otra sesión de Claude está activa en esta carpeta.",
+  ),
+  "importSessionModal.alreadyOnBranch": dict(
+    "This folder is already on {branch}.",
+    "Esta pasta já está em {branch}.",
+    "Esta carpeta ya está en {branch}.",
+  ),
 
   "promptPreviewModal.loading": dict(
     "Loading prompts…",
@@ -887,6 +1120,12 @@ export const translations = {
     "Vista previa de los prompts enviados en esta sesión",
   ),
   "sessionCard.previewAriaLabel": dict("Preview prompts", "Ver prompts", "Vista previa de prompts"),
+  "sessionCard.exportTooltip": dict(
+    "Export session — download it as a file to send to another dev or machine",
+    "Exportar sessão — baixa como arquivo para enviar a outro dev ou máquina",
+    "Exportar sesión — descárgala como archivo para enviarla a otro dev o máquina",
+  ),
+  "sessionCard.exportAriaLabel": dict("Export session", "Exportar sessão", "Exportar sesión"),
   "sessionCard.resetRootTooltip": dict(
     "Reset root — stashes (recoverable) then discards any uncommitted changes in the project's root folder, without touching this worktree. For the copy → test → reset → repeat loop, without opening the full worktree → root wizard each time.",
     "Reset root — guarda no stash (recuperável) e depois descarta as alterações não commitadas na pasta raiz do projeto, sem tocar neste worktree. Serve pro ciclo copiar → testar → resetar → repetir, sem abrir o assistente completo de worktree → root toda vez.",
