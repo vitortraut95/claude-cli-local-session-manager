@@ -1,11 +1,9 @@
 import { ExternalLink, Eye, GitBranch, GitPullRequest, Home, Tag } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import jenkinsIcon from "../assets/jenkins.svg";
 import { useLanguage } from "../hooks/useLanguage";
 import type { EnvPreviewGroup, JenkinsLink } from "../utils/jenkins";
-import { Button } from "./Button";
 import { Modal } from "./Modal";
-import { Select } from "./Select";
 
 type JenkinsLinksModalProps = {
   project: string;
@@ -61,14 +59,14 @@ export function JenkinsLinksModal({
   };
 
   const renderLinks = (items: JenkinsLink[]) => (
-    <ul className="flex flex-col gap-1">
+    <ul className="flex flex-col">
       {items.map((link) => (
         <li key={link.url}>
           <a
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+            className="group flex items-center gap-2 rounded-md px-2 py-1 text-sm text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
           >
             <span className="text-gray-400 dark:text-gray-500">{iconFor(link)}</span>
             <span className="min-w-0 flex-1">
@@ -88,8 +86,8 @@ export function JenkinsLinksModal({
 
   const section = (title: string, items: JenkinsLink[]) =>
     items.length > 0 && (
-      <section className="mt-4 first:mt-0">
-        <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+      <section className="mt-3 first:mt-0">
+        <h3 className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           {title}
         </h3>
         {renderLinks(items)}
@@ -100,14 +98,13 @@ export function JenkinsLinksModal({
     <Modal
       open
       title={t("jenkinsLinksModal.title")}
+      // No footer — just the header's X (no onCancel/onConfirm), to keep the modal short.
       onClose={onClose}
-      onCancel={onClose}
-      cancelLabel={t("jenkinsLinksModal.close")}
-      size="md"
+      size="lg"
       icon={<img src={jenkinsIcon} alt="" className="h-5 w-5" />}
     >
       {envPreviews.map((group) => (
-        <EnvPreviewPicker key={group.branch} group={group} />
+        <EnvPreviewLinks key={group.branch} group={group} />
       ))}
       {section(t("jenkinsLinksModal.section.currentBranch"), current)}
       {section(t("jenkinsLinksModal.section.originBranch"), origin)}
@@ -117,35 +114,26 @@ export function JenkinsLinksModal({
   );
 }
 
-/** One `env/*` branch's preview sites as a dropdown + "open" button — pick a locale, open it, pick
- *  the next; the modal stays open throughout, same as the links below. */
-function EnvPreviewPicker({ group }: { group: EnvPreviewGroup }) {
+/** One `env/*` branch's preview sites as a single line of locale links ("BR · MX · AR ..."), each
+ *  opening its full preview URL in a new tab — everything visible at once, no picker. */
+function EnvPreviewLinks({ group }: { group: EnvPreviewGroup }) {
   const { t } = useLanguage();
-  const [url, setUrl] = useState(group.previews[0]?.url ?? "");
   return (
-    <section className="mt-4 first:mt-0 rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-        <Eye className="h-3.5 w-3.5" />
-        {t("jenkinsLinksModal.section.envPreviews", { branch: group.branch })}
-      </h3>
-      <div className="flex gap-2">
-        <div className="min-w-0 flex-1">
-          <Select value={url} onChange={(event) => setUrl(event.target.value)}>
-            {group.previews.map((preview) => (
-              <option key={preview.url} value={preview.url}>
-                {preview.label} — {preview.url}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
-          icon={<ExternalLink className="h-4 w-4" />}
+    <p className="mt-3 first:mt-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+      <Eye className="h-3.5 w-3.5 shrink-0" />
+      <span>{t("jenkinsLinksModal.section.envPreviews", { branch: group.branch })}</span>
+      {group.previews.map((preview) => (
+        <a
+          key={preview.url}
+          href={preview.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={preview.url}
+          className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
         >
-          {t("jenkinsLinksModal.openPreview")}
-        </Button>
-      </div>
-    </section>
+          {preview.label}
+        </a>
+      ))}
+    </p>
   );
 }
