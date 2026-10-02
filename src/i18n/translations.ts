@@ -43,7 +43,6 @@ export const translations = {
   "header.newTask": dict("New task", "Nova tarefa", "Nueva tarea"),
   "header.cleanup": dict("Cleanup", "Limpeza", "Limpieza"),
   "header.importSession": dict("Import session", "Importar sessão", "Importar sesión"),
-  "header.help": dict("How this works", "Como funciona", "Cómo funciona"),
   "header.settings": dict("Settings", "Configurações", "Configuración"),
   "header.language": dict("Language", "Idioma", "Idioma"),
 
@@ -717,11 +716,11 @@ export const translations = {
     "Quantas das sessões mais recentes de cada projeto a limpeza de \"sessões antigas\" sempre mantém.",
     "Cuántas de las sesiones más recientes de cada proyecto conserva siempre la limpieza de \"sesiones antiguas\".",
   ),
-  "settings.language.title": dict("Language", "Idioma", "Idioma"),
-  "settings.language.description": dict(
-    "Same as the switcher in the header.",
-    "O mesmo do seletor no header.",
-    "El mismo del selector del encabezado.",
+  "settings.theme.title": dict("Theme", "Tema", "Tema"),
+  "settings.theme.description": dict(
+    "Light or dark — saved in this browser, not in userPreferences.json.",
+    "Claro ou escuro — salvo neste navegador, não no userPreferences.json.",
+    "Claro u oscuro — guardado en este navegador, no en userPreferences.json.",
   ),
   "settings.hasSeenOnboarding.title": dict(
     "\"How this works\" walkthrough",

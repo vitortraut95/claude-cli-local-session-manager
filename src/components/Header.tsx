@@ -1,4 +1,4 @@
-import { Bot, Globe, HelpCircle, Import, Plus, Settings, Sparkles } from "lucide-react";
+import { Bot, Globe, Import, Plus, Settings, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
@@ -12,7 +12,6 @@ import { NewTaskModal } from "./NewTaskModal";
 import { OnboardingModal } from "./OnboardingModal";
 import { SettingsModal } from "./SettingsModal";
 import { Select } from "./Select";
-import { ThemeToggle } from "./ThemeToggle";
 import { Tooltip } from "./Tooltip";
 import { UpdateButton } from "./UpdateButton";
 import { UpdateOverlay } from "./UpdateOverlay";
@@ -33,6 +32,8 @@ type HeaderProps = {
 };
 
 export function Header({ onSessionCreated, onSessionsChanged, onSessionImported }: HeaderProps) {
+  // Stays up here (not inside SettingsModal, which only mounts while open) — this is what applies
+  // the stored theme to <html> on load.
   const { theme, toggleTheme } = useTheme();
   const {
     status: updateStatus,
@@ -136,13 +137,6 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           >
             {t("header.cleanup")}
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setShowOnboarding(true)}
-            icon={<HelpCircle className="h-4 w-4" />}
-          >
-            {t("header.help")}
-          </Button>
           <Select
             icon={<Globe className="h-3.5 w-3.5" />}
             value={language}
@@ -150,9 +144,10 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
             aria-label={t("header.language")}
             className="w-auto"
           >
+            {/* Short codes keep the header narrow; the full name shows on hover. */}
             {LANGUAGE_OPTIONS.map((option) => (
-              <option key={option.code} value={option.code}>
-                {option.label}
+              <option key={option.code} value={option.code} title={option.label}>
+                {option.code.toUpperCase()}
               </option>
             ))}
           </Select>
@@ -171,7 +166,6 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
               icon={<Settings className="h-4 w-4" />}
             />
           </Tooltip>
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <UpdateButton
             status={updateStatus}
             checking={checking}
@@ -202,6 +196,8 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
       <OnboardingModal open={showOnboarding} onClose={() => setShowOnboarding(false)} />
       {showSettings && (
         <SettingsModal
+          theme={theme}
+          onToggleTheme={toggleTheme}
           onClose={() => setShowSettings(false)}
           onShowOnboarding={() => {
             setShowSettings(false);
