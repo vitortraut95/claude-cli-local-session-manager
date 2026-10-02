@@ -1,18 +1,20 @@
 import { ArrowDown, ArrowUp, FileCode2, Loader2, Pencil, Plus, Settings, X } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
+import type { Theme } from "../hooks/useTheme";
 import { useToast } from "../hooks/useToast";
-import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
 import * as tasksApi from "../services/tasksApi";
 import type { UserPreferences } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
-import { Select } from "./Select";
+import { ThemeToggle } from "./ThemeToggle";
 import { WorkspaceDirsEditor } from "./WorkspaceDirsEditor";
 
 type SettingsModalProps = {
+  theme: Theme;
+  onToggleTheme: () => void;
   onClose: () => void;
   /** Re-opens the onboarding walkthrough (the `hasSeenOnboarding` row's action). */
   onShowOnboarding: () => void;
@@ -25,12 +27,18 @@ type BigEditorKey = "workspaceDirs" | "defaultPrompt" | "branchTypes" | "recentP
  * Every `userPreferences.json` key, one row each (friendly name, description, the raw key, a
  * one-line preview of the value), with an editor matched to the value's type instead of raw JSON
  * — a malformed value would just be rejected by the server's PUT validation. Text and lists open a
- * big editor modal; booleans, the number and the language are edited right in their row. Every
+ * big editor modal; booleans and the number are edited right in their row. `language` is left out
+ * on purpose — the header's own switcher already covers it. Every
  * save goes through `tasksApi.updatePreferences` (fetch-merge-PUT, serialized) and then
  * `notifyPreferencesChanged`, so components holding their own copy (NewTaskModal) reload it.
  */
-export function SettingsModal({ onClose, onShowOnboarding }: SettingsModalProps) {
-  const { t, language, setLanguage } = useLanguage();
+export function SettingsModal({
+  theme,
+  onToggleTheme,
+  onClose,
+  onShowOnboarding,
+}: SettingsModalProps) {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -203,28 +211,7 @@ export function SettingsModal({ onClose, onShowOnboarding }: SettingsModalProps)
               />
             }
           />
-          <SettingRow
-            title={t("settings.language.title")}
-            description={t("settings.language.description")}
-            keyName="language"
-            control={
-              // Goes through LanguageProvider (not `save`) so the whole UI switches immediately.
-              <Select
-                value={language}
-                onChange={(event) => {
-                  setLanguage(event.target.value as Language);
-                  window.setTimeout(() => void reload(), 300);
-                }}
-                className="w-auto"
-              >
-                {LANGUAGE_OPTIONS.map((option) => (
-                  <option key={option.code} value={option.code}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            }
-          />
+          <ThemeRow theme={theme} onToggle={onToggleTheme} />
           <SettingRow
             title={t("settings.hasSeenOnboarding.title")}
             description={t("settings.hasSeenOnboarding.description")}
@@ -310,6 +297,25 @@ export function SettingsModal({ onClose, onShowOnboarding }: SettingsModalProps)
         />
       )}
     </Modal>
+  );
+}
+
+/** Theme isn't a `userPreferences.json` key — it's per-browser (localStorage, see useTheme) — so
+ *  this row shows no key name, just a note saying where it lives. */
+function ThemeRow({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <li className="flex items-center gap-4 px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          {t("settings.theme.title")}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{t("settings.theme.description")}</p>
+      </div>
+      <div className="shrink-0">
+        <ThemeToggle theme={theme} onToggle={onToggle} />
+      </div>
+    </li>
   );
 }
 
