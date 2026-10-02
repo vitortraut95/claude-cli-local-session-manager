@@ -88,6 +88,9 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | POST   | `/sessions/:id/vscode`         | Open the session's working directory in VS Code  |
 | POST   | `/sessions/:id/compact-summary`  | Draft a summary for "Compact & continue"        |
 | POST   | `/sessions/:id/compact-continue` | Launch the lighter pt2 session from that draft  |
+| GET    | `/sessions/:id/export`         | Download the session as a `.claude-session.json.gz` file |
+| POST   | `/sessions/import/inspect`     | Read an exported file (raw body) and list local target clones |
+| POST   | `/sessions/import`             | Import an exported file into `?targetDir=` (optional `&checkoutBranch=true`) |
 
 ## Changelog
 

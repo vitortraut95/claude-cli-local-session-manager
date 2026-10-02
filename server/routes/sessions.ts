@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import {
   applyWorktreeCopyToRoot,
   continueSession,
@@ -27,6 +27,11 @@ import {
   startFreshSessionAtMissingWorktreeRoot,
   stopSiblingAndResume,
 } from "../services/sessionService.js";
+import {
+  exportSession,
+  importSessionBundle,
+  inspectSessionBundle,
+} from "../services/sessionTransferService.js";
 import { extractStringField } from "../utils/httpBody.js";
 import { AppError, sendErrorResponse } from "../utils/httpError.js";
 
@@ -59,6 +64,70 @@ sessionsRouter.get("/", async (_req, res) => {
  *  rather than per-request. */
 sessionsRouter.get("/scan-progress", (_req, res) => {
   res.json(getScanProgress());
+});
+
+/** Exported session files are sent as the raw (gzipped) file bytes rather than JSON, so the
+ *  global `express.json()` (100kb default) never sees them — a transcript is easily tens of MB. */
+const rawBundleBody = express.raw({ type: "application/octet-stream", limit: "1gb" });
+
+function bundleFromBody(body: unknown): Buffer {
+  return Buffer.isBuffer(body) ? body : Buffer.alloc(0);
+}
+
+function importStatusFor(err: AppError): number | null {
+  if (
+    err.code === "IMPORT_INVALID_BUNDLE" ||
+    err.code === "IMPORT_UNSUPPORTED_VERSION" ||
+    err.code === "IMPORT_TARGET_REQUIRED" ||
+    err.code === "IMPORT_TARGET_MISSING"
+  ) {
+    return 400;
+  }
+  if (
+    err.code === "IMPORT_CHECKOUT_BLOCKED_ACTIVE" ||
+    err.code === "IMPORT_CHECKOUT_FAILED" ||
+    err.code === "IMPORT_SESSION_EXISTS" ||
+    err.code === "IMPORT_OVERWRITE_ACTIVE"
+  ) {
+    return 409;
+  }
+  return null;
+}
+
+sessionsRouter.post("/import/inspect", rawBundleBody, async (req, res) => {
+  try {
+    const preview = await inspectSessionBundle(bundleFromBody(req.body));
+    res.json({ preview });
+  } catch (err) {
+    sendErrorResponse(res, err, importStatusFor);
+  }
+});
+
+sessionsRouter.post("/import", rawBundleBody, async (req, res) => {
+  try {
+    const result = await importSessionBundle(bundleFromBody(req.body), {
+      targetDir: typeof req.query.targetDir === "string" ? req.query.targetDir : "",
+      checkoutBranch: req.query.checkoutBranch === "true",
+      onConflict:
+        req.query.onConflict === "overwrite" || req.query.onConflict === "copy"
+          ? req.query.onConflict
+          : null,
+    });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    sendErrorResponse(res, err, importStatusFor);
+  }
+});
+
+sessionsRouter.get("/:id/export", async (req, res) => {
+  try {
+    const { fileName, data } = await exportSession(req.params.id);
+    res.setHeader("Content-Type", "application/gzip");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    res.send(data);
+  } catch (err) {
+    sendErrorResponse(res, err, notFoundOrActive);
+  }
 });
 
 sessionsRouter.delete("/:id", async (req, res) => {

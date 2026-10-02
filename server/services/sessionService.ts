@@ -169,7 +169,7 @@ function isProcessAlive(pid: number): boolean {
   }
 }
 
-async function getActiveResumeSessionIds(): Promise<Set<string>> {
+export async function getActiveResumeSessionIds(): Promise<Set<string>> {
   const dir = getClaudeSessionsDir();
   let entries: string[];
   try {
@@ -332,11 +332,11 @@ async function listSessionsUncached(): Promise<Session[]> {
 }
 
 /** Session ids are UUID-shaped; reject anything that looks like a path segment. */
-function isSafeSessionId(id: string): boolean {
+export function isSafeSessionId(id: string): boolean {
   return /^[a-zA-Z0-9_-]+$/.test(id);
 }
 
-async function findSessionFilePath(id: string): Promise<string | null> {
+export async function findSessionFilePath(id: string): Promise<string | null> {
   if (!isSafeSessionId(id)) return null;
   const files = await findJsonlFiles(getClaudeProjectsDir());
   const match = files.find((file) => path.basename(file, ".jsonl") === id);

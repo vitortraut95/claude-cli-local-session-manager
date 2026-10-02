@@ -94,3 +94,56 @@ export type RootStatus = {
    *  stays recoverable without the user needing to remember a SHA from a toast that's long gone. */
   appStashes: { sha: string; message: string }[];
 };
+
+/** One local folder an imported session could land in — see `inspectSessionBundle`
+ *  (`server/services/sessionTransferService.ts`). */
+export type SessionImportCandidate = {
+  /** A known repo root on this machine (same list the "New task" modal offers). */
+  repoRoot: string;
+  /** `repoRoot` + the exported session's cwd relative to its own repo top level, when that
+   *  subfolder exists here; `repoRoot` itself otherwise. */
+  targetCwd: string;
+  /** This clone's `origin` matches the exported session's (SSH/HTTPS-insensitive). */
+  remoteMatches: boolean;
+  currentBranch: string | null;
+  branchExistsLocally: boolean;
+  commitExistsLocally: boolean;
+  hasActiveSession: boolean;
+};
+
+/** Returned by `POST /sessions/import/inspect` — what's inside an exported session file, plus
+ *  where it could go on this machine, before anything is written. */
+export type SessionImportPreview = {
+  sessionId: string;
+  title: string;
+  nickname: string | null;
+  gitBranch: string | null;
+  isWorktree: boolean;
+  originalCwd: string | null;
+  remoteUrl: string | null;
+  commit: string | null;
+  exportedAt: string;
+  updatedAt: string;
+  sizeBytes: number;
+  subagentCount: number;
+  /** The local session that already has this id, if any — importing then needs an explicit
+   *  overwrite-or-copy choice (`onConflict`). */
+  existingSession: {
+    title: string;
+    nickname: string | null;
+    updatedAt: string;
+    sizeBytes: number;
+    workingDirectory: string | null;
+    gitBranch: string | null;
+    isActive: boolean;
+  } | null;
+  candidates: SessionImportCandidate[];
+};
+
+export type SessionImportResult = {
+  sessionId: string;
+  workingDirectory: string;
+  importedAsCopy: boolean;
+  overwritten: boolean;
+  checkedOutBranch: string | null;
+};
