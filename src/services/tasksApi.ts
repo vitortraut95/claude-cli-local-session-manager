@@ -34,12 +34,16 @@ export type UserPreferences = {
   language: Language | null;
   /** Whether the onboarding modal (worktree dev workflow walkthrough) has already been shown once. */
   hasSeenOnboarding: boolean;
-  /** Repo roots used via the "new task" modal, most-recently-used first. No dedicated UI —
-   *  hand-edit userPreferences.json to remove a stale entry, same as branchTypes. */
+  /** Repo roots used via the "new task" modal, most-recently-used first. Editable in the
+   *  header's settings modal. */
   recentProjectPaths: string[];
   /** How many of a project's most-recently-updated sessions the Cleanup modal's "old sessions"
-   *  finding always keeps. No dedicated UI — hand-edit userPreferences.json to change it. */
+   *  finding always keeps. Editable in the header's settings modal. */
   keepRecentSessionsPerProject: number;
+  /** Folders holding the user's repos (e.g. `~/git`). Null = never set — the app asks on startup
+   *  until it is (see WorkspaceDirsPromptModal). Optional in the type too: a backend still on the
+   *  version before this field existed simply doesn't send it. */
+  workspaceDirs?: string[] | null;
 };
 
 /** Everything the app remembers between sessions in one JSON file (`userPreferences.json`, see
@@ -87,6 +91,44 @@ export async function updatePreferences(partial: Partial<UserPreferences>): Prom
     () => undefined,
   );
   return result;
+}
+
+/** Fired (on `window`) after the settings modal saves something — components that cache
+ *  preferences in their own state (NewTaskModal) listen for it and reload, so their next own save
+ *  or displayed default isn't a stale copy of what was just changed. */
+export const PREFERENCES_CHANGED_EVENT = "preferences-changed";
+
+export function notifyPreferencesChanged(): void {
+  window.dispatchEvent(new Event(PREFERENCES_CHANGED_EVENT));
+}
+
+export type WorkspaceDirSuggestion = {
+  dir: string;
+  repoCount: number;
+  knownRepoCount: number;
+  recommended: boolean;
+};
+
+export async function fetchWorkspaceDirSuggestions(): Promise<WorkspaceDirSuggestion[]> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ suggestions: WorkspaceDirSuggestion[] }>("/workspace-dirs/suggestions"),
+  );
+  return data.suggestions;
+}
+
+export type WorkspaceDirStatus = { dir: string; exists: boolean; repoCount: number };
+
+/** Normalizes each folder (`~` expanded, absolute) and reports whether it exists and how many
+ *  repos it holds — nothing is saved. */
+export async function inspectWorkspaceDirs(dirs: string[]): Promise<WorkspaceDirStatus[]> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ dirs: WorkspaceDirStatus[] }>("/workspace-dirs/inspect", { dirs }),
+  );
+  return data.dirs;
+}
+
+export async function openPreferencesInEditor(): Promise<void> {
+  await withServerErrorMessage(() => client.post("/preferences/open-in-editor"));
 }
 
 export type RepoInfo = {

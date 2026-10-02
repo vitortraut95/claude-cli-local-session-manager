@@ -44,6 +44,7 @@ export const translations = {
   "header.cleanup": dict("Cleanup", "Limpeza", "Limpieza"),
   "header.importSession": dict("Import session", "Importar sessão", "Importar sesión"),
   "header.help": dict("How this works", "Como funciona", "Cómo funciona"),
+  "header.settings": dict("Settings", "Configurações", "Configuración"),
   "header.language": dict("Language", "Idioma", "Idioma"),
 
   "onboarding.title": dict("How this works", "Como funciona", "Cómo funciona"),
@@ -603,6 +604,188 @@ export const translations = {
   "jenkinsLinksModal.pullRequests": dict("Pull requests", "Pull requests", "Pull requests"),
   "jenkinsLinksModal.tags": dict("Tags", "Tags", "Tags"),
   "jenkinsLinksModal.close": dict("Close", "Fechar", "Cerrar"),
+
+  "settings.title": dict("Settings", "Configurações", "Configuración"),
+  "settings.intro": dict(
+    "Everything this app remembers on this machine (userPreferences.json).",
+    "Tudo o que este app guarda nesta máquina (userPreferences.json).",
+    "Todo lo que esta app guarda en esta máquina (userPreferences.json).",
+  ),
+  "settings.openFile": dict(
+    "Open file in VS Code",
+    "Abrir arquivo no VS Code",
+    "Abrir archivo en VS Code",
+  ),
+  "settings.loading": dict("Loading settings…", "Carregando configurações…", "Cargando configuración…"),
+  "settings.loadError": dict(
+    "Could not load the settings.",
+    "Não foi possível carregar as configurações.",
+    "No se pudo cargar la configuración.",
+  ),
+  "settings.saveError": dict(
+    "Could not save the setting.",
+    "Não foi possível salvar a configuração.",
+    "No se pudo guardar la configuración.",
+  ),
+  "settings.openFileError": dict(
+    "Could not open the file in VS Code.",
+    "Não foi possível abrir o arquivo no VS Code.",
+    "No se pudo abrir el archivo en VS Code.",
+  ),
+  "settings.saved": dict("Setting saved.", "Configuração salva.", "Configuración guardada."),
+  "settings.edit": dict("Edit", "Editar", "Editar"),
+  "settings.save": dict("Save", "Salvar", "Guardar"),
+  "settings.cancel": dict("Cancel", "Cancelar", "Cancelar"),
+  "settings.preview.notSet": dict("Not set yet", "Ainda não configurado", "Aún sin configurar"),
+  "settings.preview.emptyList": dict("(empty)", "(vazio)", "(vacío)"),
+  "settings.preview.emptyText": dict("(empty)", "(vazio)", "(vacío)"),
+  "settings.preview.text": dict(
+    "{firstLine} … ({lines} lines)",
+    "{firstLine} … ({lines} linhas)",
+    "{firstLine} … ({lines} líneas)",
+  ),
+  "settings.list.add": dict("Add", "Adicionar", "Agregar"),
+  "settings.list.remove": dict("Remove", "Remover", "Quitar"),
+  "settings.list.moveUp": dict("Move up", "Mover para cima", "Subir"),
+  "settings.list.moveDown": dict("Move down", "Mover para baixo", "Bajar"),
+  "settings.workspaceDirs.title": dict(
+    "Repository folders",
+    "Pastas de repositórios",
+    "Carpetas de repositorios",
+  ),
+  "settings.workspaceDirs.description": dict(
+    "Folders holding your repos (e.g. ~/git) — every repo directly inside them is known to the app, even ones you never used with Claude.",
+    "Pastas onde ficam seus repos (ex.: ~/git) — todo repo direto dentro delas fica conhecido pelo app, mesmo os que você nunca usou com o Claude.",
+    "Carpetas donde están tus repos (ej.: ~/git) — todo repo directamente dentro de ellas queda conocido por la app, incluso los que nunca usaste con Claude.",
+  ),
+  "settings.defaultPrompt.title": dict("Default prompt", "Prompt padrão", "Prompt predeterminado"),
+  "settings.defaultPrompt.description": dict(
+    "Pre-filled instructions in the \"New task\" modal.",
+    "Instruções que já vêm preenchidas no modal \"Nova tarefa\".",
+    "Instrucciones que vienen precargadas en el modal \"Nueva tarea\".",
+  ),
+  "settings.branchTypes.title": dict("Branch types", "Tipos de branch", "Tipos de rama"),
+  "settings.branchTypes.description": dict(
+    "Options of the \"New task\" branch type select — the first one is the default.",
+    "Opções do seletor de tipo de branch do \"Nova tarefa\" — a primeira é a padrão.",
+    "Opciones del selector de tipo de rama de \"Nueva tarea\" — la primera es la predeterminada.",
+  ),
+  "settings.branchTypes.placeholder": dict("e.g. feature", "ex.: feature", "ej.: feature"),
+  "settings.branchTypes.firstIsDefault": dict("default", "padrão", "predeterminado"),
+  "settings.recentProjectPaths.title": dict(
+    "Recent projects",
+    "Projetos recentes",
+    "Proyectos recientes",
+  ),
+  "settings.recentProjectPaths.description": dict(
+    "Repos used in \"New task\", most recent first — remove the ones that no longer exist.",
+    "Repos usados no \"Nova tarefa\", mais recentes primeiro — remova os que não existem mais.",
+    "Repos usados en \"Nueva tarea\", los más recientes primero — quita los que ya no existen.",
+  ),
+  "settings.recentProjectPaths.placeholder": dict(
+    "/absolute/path/to/repo",
+    "/caminho/absoluto/do/repo",
+    "/ruta/absoluta/del/repo",
+  ),
+  "settings.useWorktreeByDefault.title": dict(
+    "Use a worktree by default",
+    "Usar worktree por padrão",
+    "Usar worktree por defecto",
+  ),
+  "settings.useWorktreeByDefault.description": dict(
+    "\"New task\" fallback before a folder is chosen — once it is, the app suggests a worktree only if the repo root already has an active session.",
+    "Padrão do \"Nova tarefa\" antes de escolher a pasta — depois de escolhida, o app sugere worktree só se a raiz do repo já tiver uma sessão ativa.",
+    "Valor de \"Nueva tarea\" antes de elegir la carpeta — una vez elegida, la app sugiere worktree solo si la raíz del repo ya tiene una sesión activa.",
+  ),
+  "settings.useAutoPermissionModeByDefault.title": dict(
+    "Start tasks with --permission-mode auto",
+    "Iniciar tarefas com --permission-mode auto",
+    "Iniciar tareas con --permission-mode auto",
+  ),
+  "settings.useAutoPermissionModeByDefault.description": dict(
+    "Default state of that checkbox in \"New task\".",
+    "Estado padrão dessa opção no \"Nova tarefa\".",
+    "Estado predeterminado de esa opción en \"Nueva tarea\".",
+  ),
+  "settings.keepRecentSessionsPerProject.title": dict(
+    "Sessions kept by Cleanup",
+    "Sessões mantidas pela Limpeza",
+    "Sesiones conservadas por Limpieza",
+  ),
+  "settings.keepRecentSessionsPerProject.description": dict(
+    "How many of each project's most recent sessions the \"old sessions\" cleanup always keeps.",
+    "Quantas das sessões mais recentes de cada projeto a limpeza de \"sessões antigas\" sempre mantém.",
+    "Cuántas de las sesiones más recientes de cada proyecto conserva siempre la limpieza de \"sesiones antiguas\".",
+  ),
+  "settings.language.title": dict("Language", "Idioma", "Idioma"),
+  "settings.language.description": dict(
+    "Same as the switcher in the header.",
+    "O mesmo do seletor no header.",
+    "El mismo del selector del encabezado.",
+  ),
+  "settings.hasSeenOnboarding.title": dict(
+    "\"How this works\" walkthrough",
+    "Tutorial \"Como funciona\"",
+    "Tutorial \"Cómo funciona\"",
+  ),
+  "settings.hasSeenOnboarding.description": dict(
+    "Shown automatically once, the first time the app opens.",
+    "Aparece sozinho uma vez, na primeira vez que o app abre.",
+    "Aparece solo una vez, la primera vez que se abre la app.",
+  ),
+  "settings.hasSeenOnboarding.action": dict("Show again", "Mostrar de novo", "Mostrar de nuevo"),
+
+  "workspaceDirs.add": dict("Add", "Adicionar", "Agregar"),
+  "workspaceDirs.remove": dict("Remove folder", "Remover pasta", "Quitar carpeta"),
+  "workspaceDirs.empty": dict(
+    "No folder added yet.",
+    "Nenhuma pasta adicionada ainda.",
+    "Todavía no agregaste ninguna carpeta.",
+  ),
+  "workspaceDirs.placeholder": dict(
+    "/absolute/path or ~/folder",
+    "/caminho/absoluto ou ~/pasta",
+    "/ruta/absoluta o ~/carpeta",
+  ),
+  "workspaceDirs.loadingSuggestions": dict(
+    "Looking for where your repos are…",
+    "Procurando onde estão seus repos…",
+    "Buscando dónde están tus repos…",
+  ),
+  "workspaceDirs.suggestionsTitle": dict(
+    "Suggestions, based on the repos you already use:",
+    "Sugestões, com base nos repos que você já usa:",
+    "Sugerencias, según los repos que ya usas:",
+  ),
+  "workspaceDirs.status.repos": dict("{count} repo(s)", "{count} repo(s)", "{count} repo(s)"),
+  "workspaceDirs.status.missing": dict(
+    "Folder doesn't exist",
+    "Pasta não existe",
+    "La carpeta no existe",
+  ),
+
+  "workspaceDirsPrompt.title": dict(
+    "Where are your repos?",
+    "Onde ficam seus repositórios?",
+    "¿Dónde están tus repositorios?",
+  ),
+  "workspaceDirsPrompt.intro": dict(
+    "Pick the folder(s) where you keep your repos. The app uses them to know every project you work on — not only the ones you already used with Claude.",
+    "Escolha a(s) pasta(s) onde você guarda seus repos. O app usa isso para conhecer todos os projetos em que você trabalha — não só os que você já usou com o Claude.",
+    "Elige la(s) carpeta(s) donde guardas tus repos. La app las usa para conocer todos los proyectos en los que trabajas — no solo los que ya usaste con Claude.",
+  ),
+  "workspaceDirsPrompt.laterHint": dict(
+    "You can change this any time in Settings (gear icon in the header).",
+    "Dá para mudar quando quiser em Configurações (ícone de engrenagem no header).",
+    "Puedes cambiarlo cuando quieras en Configuración (ícono de engranaje en el encabezado).",
+  ),
+  "workspaceDirsPrompt.save": dict("Save", "Salvar", "Guardar"),
+  "workspaceDirsPrompt.skip": dict("Not now", "Agora não", "Ahora no"),
+  "workspaceDirsPrompt.saved": dict(
+    "Repository folders saved.",
+    "Pastas de repositórios salvas.",
+    "Carpetas de repositorios guardadas.",
+  ),
 
   "exportSessionModal.title": dict("Export session", "Exportar sessão", "Exportar sesión"),
   "exportSessionModal.intro": dict(
