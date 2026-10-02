@@ -91,6 +91,15 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   const jiraId = useMemo(() => extractJiraId(jiraLink), [jiraLink]);
 
   const [projects, setProjects] = useState<ProjectFolderOption[]>([]);
+  // Grouped only when the workspace dirs contributed anything beyond the recent list — otherwise
+  // the select looks exactly like it did before workspace dirs existed.
+  const { recentProjects, otherProjects } = useMemo(
+    () => ({
+      recentProjects: projects.filter((p) => p.recent !== false),
+      otherProjects: projects.filter((p) => p.recent === false),
+    }),
+    [projects],
+  );
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [folderChoice, setFolderChoice] = useState("");
   const [customFolderPath, setCustomFolderPath] = useState("");
@@ -545,11 +554,32 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
                   ? t("newTaskModal.loadingProjects")
                   : t("newTaskModal.selectProject")}
               </option>
-              {projects.map((project) => (
-                <option key={project.path} value={project.path}>
-                  {project.label}
-                </option>
-              ))}
+              {otherProjects.length === 0 ? (
+                recentProjects.map((project) => (
+                  <option key={project.path} value={project.path}>
+                    {project.label}
+                  </option>
+                ))
+              ) : (
+                <>
+                  {recentProjects.length > 0 && (
+                    <optgroup label={t("newTaskModal.recentProjectsGroup")}>
+                      {recentProjects.map((project) => (
+                        <option key={project.path} value={project.path}>
+                          {project.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <optgroup label={t("newTaskModal.workspaceProjectsGroup")}>
+                    {otherProjects.map((project) => (
+                      <option key={project.path} value={project.path}>
+                        {project.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                </>
+              )}
               <option value={OTHER_FOLDER_VALUE}>{t("newTaskModal.otherFolder")}</option>
             </Select>
           )}

@@ -8,6 +8,9 @@ const client = axios.create({
 export type ProjectFolderOption = {
   path: string;
   label: string;
+  /** True for repos already used via "New task", false for ones only found in a workspace dir.
+   *  Absent from a backend older than that distinction — treated as recent. */
+  recent?: boolean;
 };
 
 export async function fetchProjectFolders(): Promise<ProjectFolderOption[]> {

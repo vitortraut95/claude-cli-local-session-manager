@@ -1624,6 +1624,12 @@ export const translations = {
     "Selecione um projeto",
     "Selecciona un proyecto",
   ),
+  "newTaskModal.recentProjectsGroup": dict("Recent", "Recentes", "Recientes"),
+  "newTaskModal.workspaceProjectsGroup": dict(
+    "Other repos (from your folders)",
+    "Outros repositórios (das suas pastas)",
+    "Otros repositorios (de tus carpetas)",
+  ),
   "newTaskModal.otherFolder": dict(
     "Other (paste folder path)",
     "Outro (cole o caminho da pasta)",

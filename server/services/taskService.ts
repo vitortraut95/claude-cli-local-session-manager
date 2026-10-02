@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { directoryExists, launchInTerminal, listSessions, posixShellQuote } from "./sessionService.js";
 import { getUserPreferences, saveUserPreferences } from "./preferencesService.js";
+import { expandHome, findReposIn } from "./workspaceService.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import {
   branchExists,
@@ -20,6 +21,9 @@ import { recordTaskBaseBranch } from "../utils/taskBaseBranches.js";
 export type ProjectFolderOption = {
   path: string;
   label: string;
+  /** Used via "New task" before (`recentProjectPaths`) — vs. only found in a workspace dir. Only
+   *  set by `getRecentProjectFolders`; `getKnownProjectFolders` leaves it out. */
+  recent?: boolean;
 };
 
 /** Includes one extra path segment (the parent folder's own name) in the label — a bare repo name
@@ -49,25 +53,37 @@ function notGitRepoError(folder: string): AppError {
 }
 
 /**
- * The "new task" form's project select — reads *only* `userPreferences.json`'s
- * `recentProjectPaths` (see `recordUsedProjectPath` below), filtered to still-existing
- * directories. Deliberately does not touch `listSessions()`/git at all: this is called every time
- * the modal opens, and `recentProjectPaths` is kept up to date on every successful "new task"
- * launch — including a repo that has no session/`.jsonl` of its own yet, right after this app
- * just created its worktree — so there's nothing this function needs to (re-)derive from
- * sessions. `getKnownProjectFolders` below is the slower, exhaustive version — used by the
+ * The "new task" form's project select — `userPreferences.json`'s `recentProjectPaths` (see
+ * `recordUsedProjectPath` below, flagged `recent`) plus every repo found directly inside the
+ * user's `workspaceDirs` (see `workspaceService.ts`), filtered to still-existing directories.
+ * Deliberately does not touch `listSessions()`/git at all: this is called every time the modal
+ * opens, and both sources are cheap (a preferences read plus one `readdir` per workspace dir) —
+ * `recentProjectPaths` is kept up to date on every successful "new task" launch, including a repo
+ * with no session/`.jsonl` of its own yet. `getKnownProjectFolders` below is the slower, exhaustive version — used by the
  * Cleanup scan, which does need every project this app has ever seen a session in, not just the
  * ones used via "new task".
  */
 export async function getRecentProjectFolders(): Promise<ProjectFolderOption[]> {
   const preferences = await getUserPreferences();
-  const existing = await Promise.all(
-    preferences.recentProjectPaths.map(async (p) => ((await directoryExists(p)) ? p : null)),
-  );
-  return existing
-    .filter((p): p is string => p !== null)
-    .map((folderPath) => ({ path: folderPath, label: projectLabel(folderPath) }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+  const [existing, workspaceRepos] = await Promise.all([
+    Promise.all(
+      preferences.recentProjectPaths.map(async (p) => ((await directoryExists(p)) ? p : null)),
+    ),
+    Promise.all((preferences.workspaceDirs ?? []).map((dir) => findReposIn(expandHome(dir)))),
+  ]);
+  const recent = existing.filter((p): p is string => p !== null);
+  const recentSet = new Set(recent.map((p) => path.resolve(p)));
+  const others = [...new Set(workspaceRepos.flat())].filter((p) => !recentSet.has(path.resolve(p)));
+  const byLabel = (a: ProjectFolderOption, b: ProjectFolderOption) =>
+    a.label.localeCompare(b.label);
+  return [
+    ...recent
+      .map((folderPath) => ({ path: folderPath, label: projectLabel(folderPath), recent: true }))
+      .sort(byLabel),
+    ...others
+      .map((folderPath) => ({ path: folderPath, label: projectLabel(folderPath), recent: false }))
+      .sort(byLabel),
+  ];
 }
 
 /**
