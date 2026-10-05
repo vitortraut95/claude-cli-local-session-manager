@@ -86,6 +86,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   const { t } = useLanguage();
 
   const jiraLinkInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (open) jiraLinkInputRef.current?.focus();
   }, [open]);
@@ -399,9 +400,6 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     trimmedBase && trimmedBranch
       ? `${trimmedBase} -> ${trimmedBranch}${trimmedJiraLink ? ` - ${trimmedJiraLink}` : ""}`
       : "";
-  const finalPromptPreview = [jiraLink.trim() ? `${t("newTaskModal.taskPrefix")}: ${jiraLink.trim()}` : null, trimmedPrompt]
-    .filter((part): part is string => Boolean(part))
-    .join("\n\n");
   // Every other field is always visible now (no more link-gated reveal — see the render below),
   // but the Jira link is the only one still required to submit: it's the one piece of information
   // the rest of the form can't reasonably default/infer on its own.
@@ -500,6 +498,10 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         // Still usable for the rest of this session even if persisting it failed.
       });
 
+      // A real form submission is what makes the browser save each named input's value to its own
+      // autocomplete history (same as any ordinary site's form) — see the <form> below.
+      formRef.current?.requestSubmit();
+
       showToast(t("newTaskModal.terminalOpened"), "success");
       resetForm();
       onClose();
@@ -535,7 +537,20 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       secondaryLabel={t("newTaskModal.clear")}
       size="xxxl"
     >
-      <div className="flex flex-col gap-4">
+      {/* Native browser autocomplete: the browser only remembers an input's value (keyed by its
+          `name`) when its form is actually submitted, and a React `preventDefault()` submit doesn't
+          count. So after a successful create the form is really submitted — into a hidden iframe
+          pointing at about:blank, so the page itself never navigates. The Modal's own confirm
+          button stays the only way to create a task; with several fields and no submit button,
+          Enter in a field doesn't trigger an implicit submission. */}
+      <iframe name="new-task-autocomplete-sink" title="" hidden />
+      <form
+        ref={formRef}
+        action="about:blank"
+        method="get"
+        target="new-task-autocomplete-sink"
+        className="flex flex-col gap-4"
+      >
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
             {t("newTaskModal.jiraLinkLabel")}
@@ -547,6 +562,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
             value={jiraLink}
             onChange={(event) => setJiraLink(event.target.value)}
             placeholder="https://company.atlassian.net/browse/PROJ-123"
+            name="newTaskJiraLink"
           />
         </div>
 
@@ -602,6 +618,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
               value={customFolderPath}
               onChange={(event) => setCustomFolderPath(event.target.value)}
               placeholder="/absolute/path/to/the/project"
+              name="newTaskFolderPath"
               className={projects.length > 0 ? "mt-2" : ""}
             />
           )}
@@ -644,13 +661,6 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
             rows={5}
             className={TEXTAREA_CLASSNAME}
           />
-          <span className="block whitespace-pre-wrap text-xs">
-            {t("newTaskModal.finalPromptLabel")}{" "}
-            <span className="font-mono text-gray-500 dark:text-gray-400">
-              "{finalPromptPreview.slice(0, 160)}
-              {finalPromptPreview.length > 160 ? "…" : ""}"
-            </span>
-          </span>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -666,6 +676,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
                 setBaseBranchTouched(true);
               }}
               placeholder="master/main/other"
+              name="newTaskBaseBranch"
             />
             <label className="mt-1 flex items-start gap-2 text-xs text-gray-500 dark:text-gray-400">
               <input
@@ -695,6 +706,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
                 value={customPrefix}
                 onChange={(event) => setCustomPrefix(event.target.value)}
                 placeholder={t("newTaskModal.customPrefixPlaceholder")}
+                name="newTaskBranchType"
                 className="mt-2"
               />
             )}
@@ -710,6 +722,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
               value={branchSuffix}
               onChange={(event) => setBranchSuffixManual(event.target.value)}
               placeholder="PROJ-123"
+              name="newTaskBranchName"
             />
             {branchName && (
               <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
@@ -884,7 +897,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
             </ol>
           </div>
         )}
-      </div>
+      </form>
       {skillsHubModalOpen && <SkillsHubModal onClose={() => setSkillsHubModalOpen(false)} />}
     </Modal>
   );
