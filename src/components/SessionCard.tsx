@@ -4,8 +4,6 @@ import {
   Clock,
   Code2,
   Copy,
-  CornerUpLeft,
-  CornerUpRight,
   Folder,
   GitFork,
   GitMerge,
@@ -15,7 +13,6 @@ import {
   Pencil,
   Play,
   RotateCcw,
-  Scissors,
   Share,
   Trash2,
   TriangleAlert,
@@ -29,7 +26,6 @@ import type { PendingAction } from "../hooks/useSessions";
 import * as sessionsApi from "../services/sessionsApi";
 import type { Session } from "../types/session";
 import { Button } from "./Button";
-import { CompactContinueModal } from "./CompactContinueModal";
 import { ExportSessionModal } from "./ExportSessionModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { JenkinsLinksModal } from "./JenkinsLinksModal";
@@ -63,23 +59,6 @@ type SessionCardProps = {
   onStartNewSessionAtMissingWorktreeRoot: (session: Session) => Promise<void>;
   onDeleteWorktree: (session: Session) => void;
   onWorktreeSyncComplete: (session: Session) => void;
-  /** Fired right after a "Compact & continue" launch succeeds — see CompactContinueModal. */
-  onCompactContinueLaunched: (session: Session) => void;
-  /** The session this one is a "Compact & continue" follow-up of, resolved from
-   *  `session.continuesFromSessionId` — null if that session isn't known (e.g. deleted since) or
-   *  this isn't a follow-up at all. */
-  linkedFromSession: Session | null;
-  /** The "Compact & continue" follow-up started from this session, resolved from
-   *  `session.continuedBySessionId` — null if none exists or it's no longer known. */
-  linkedBySession: Session | null;
-  /** Jumps the list to the given session id (search + clearing other filters) — backs a
-   *  continuation badge's click. */
-  onJumpToSession: (id: string) => void;
-  /** True while another card's continuation badge is being hovered and it points at *this*
-   *  session — renders a highlight ring so the pair is visually traceable at a glance. */
-  isHighlighted: boolean;
-  /** Called with this session's linked id on badge hover-enter, and null on hover-leave. */
-  onHoverLinkedSession: (id: string | null) => void;
 };
 
 export function SessionCard({
@@ -96,12 +75,6 @@ export function SessionCard({
   onStartNewSessionAtMissingWorktreeRoot,
   onDeleteWorktree,
   onWorktreeSyncComplete,
-  onCompactContinueLaunched,
-  linkedFromSession,
-  linkedBySession,
-  onJumpToSession,
-  isHighlighted,
-  onHoverLinkedSession,
 }: SessionCardProps) {
   const { t } = useLanguage();
   const isDeleting = pendingAction === "delete";
@@ -121,7 +94,6 @@ export function SessionCard({
   const [showDeleteWorktreeConfirm, setShowDeleteWorktreeConfirm] = useState(false);
   const [showWorktreeToRootModal, setShowWorktreeToRootModal] = useState(false);
   const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
-  const [showCompactContinueModal, setShowCompactContinueModal] = useState(false);
   const [showOpenPrBaseChoice, setShowOpenPrBaseChoice] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showJenkinsModal, setShowJenkinsModal] = useState(false);
@@ -242,9 +214,7 @@ export function SessionCard({
       className={`relative flex flex-col gap-2 justify-between rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-900 ${
         selected
           ? "border-gray-900 ring-2 ring-gray-900/20 dark:border-gray-100 dark:ring-gray-100/20"
-          : isHighlighted
-            ? "border-violet-400 ring-2 ring-violet-400/50 dark:border-violet-500 dark:ring-violet-500/40"
-            : "border-gray-200 dark:border-gray-800"
+          : "border-gray-200 dark:border-gray-800"
       }`}
     >
       {/* The only floating element on the card: active/inactive status stacked directly above
@@ -306,43 +276,6 @@ export function SessionCard({
           {nicknameButton}
         </Tooltip>
       </div>
-
-      {(linkedFromSession ?? linkedBySession) && (
-        <div className="flex flex-col gap-1">
-          {linkedFromSession && (
-            <button
-              type="button"
-              onClick={() => onJumpToSession(linkedFromSession.id)}
-              onMouseEnter={() => onHoverLinkedSession(linkedFromSession.id)}
-              onMouseLeave={() => onHoverLinkedSession(null)}
-              aria-label={t("sessionCard.continuesFrom.ariaLabel", {
-                title: linkedFromSession.title,
-              })}
-              className="flex w-full min-w-0 items-center gap-1 text-left text-xs text-violet-600 hover:underline dark:text-violet-400"
-            >
-              <CornerUpLeft className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">
-                {t("sessionCard.continuesFrom.label", { title: linkedFromSession.title })}
-              </span>
-            </button>
-          )}
-          {linkedBySession && (
-            <button
-              type="button"
-              onClick={() => onJumpToSession(linkedBySession.id)}
-              onMouseEnter={() => onHoverLinkedSession(linkedBySession.id)}
-              onMouseLeave={() => onHoverLinkedSession(null)}
-              aria-label={t("sessionCard.continuedBy.ariaLabel", { title: linkedBySession.title })}
-              className="flex w-full min-w-0 items-center gap-1 text-left text-xs text-violet-600 hover:underline dark:text-violet-400"
-            >
-              <CornerUpRight className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">
-                {t("sessionCard.continuedBy.label", { title: linkedBySession.title })}
-              </span>
-            </button>
-          )}
-        </div>
-      )}
 
       {session.directoryMissing && (
         <div className="flex flex-col gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
@@ -561,20 +494,6 @@ export function SessionCard({
             icon={<RotateCcw className="h-4 w-4" />}
           />
         )}
-        {!session.directoryMissing && (
-          <ToolbarIconButton
-            tooltip={
-              session.isActive
-                ? t("sessionCard.compactContinue.disabledTooltip")
-                : t("sessionCard.compactContinue.tooltip")
-            }
-            ariaLabel={t("sessionCard.compactContinue.ariaLabel")}
-            color="violet"
-            disabled={session.isActive}
-            onClick={() => setShowCompactContinueModal(true)}
-            icon={<Scissors className="h-4 w-4" />}
-          />
-        )}
         {jenkinsLinks && (
           <ToolbarIconButton
             tooltip={t("sessionCard.openJenkinsTooltip")}
@@ -711,13 +630,6 @@ export function SessionCard({
       )}
       {showResetRootConfirm && (
         <ResetRootConfirmModal session={session} onClose={() => setShowResetRootConfirm(false)} />
-      )}
-      {showCompactContinueModal && (
-        <CompactContinueModal
-          session={session}
-          onClose={() => setShowCompactContinueModal(false)}
-          onLaunched={() => onCompactContinueLaunched(session)}
-        />
       )}
       {showJenkinsModal && jenkinsLinks && (
         <JenkinsLinksModal

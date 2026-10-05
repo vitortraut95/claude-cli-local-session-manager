@@ -22,8 +22,7 @@ type OpenPrBaseChoiceModalProps = {
  * every commit already on that base as part of the "diff" too. Offers the accurate compare link
  * (explicit `<base>...<branch>`, see `getSessionPrUrl`) alongside the option to fall back to the
  * default anyway (e.g. the base branch was since merged or deleted, or the default is genuinely
- * what's wanted) — same two-real-choices layout as `SessionSizeGateModal`, not a confirm/cancel
- * pair.
+ * what's wanted) — two real choices, not a confirm/cancel pair.
  */
 export function OpenPrBaseChoiceModal({ session, onClose }: OpenPrBaseChoiceModalProps) {
   const { t } = useLanguage();

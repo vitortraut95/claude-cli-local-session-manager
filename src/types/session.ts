@@ -38,14 +38,6 @@ export type Session = {
   /** Sum of the CLI's own `turn_duration` entries — actual time spent processing, a more honest
    *  signal than `updatedAt` (the file's mtime, which only says when it was last written). */
   activeTimeMs: number;
-  /** Id of the session this one is a "Compact & continue" follow-up of, from this app's own
-   *  `session-continuations.json` sidecar — null for an ordinary session. See
-   *  `continuedBySessionId` for the reverse link. */
-  continuesFromSessionId: string | null;
-  /** Id of the "Compact & continue" follow-up session started from this one, if any — the
-   *  reverse of `continuesFromSessionId`, computed by scanning the same sidecar file for an
-   *  entry whose `continuesFrom` points at this session. */
-  continuedBySessionId: string | null;
   /** The branch this session's worktree was branched off, from this app's own
    *  `task-base-branches.json` sidecar — only ever set for a "New task"-created worktree whose
    *  chosen base branch differed from the repo's own default (main/master or whatever `origin/HEAD`

@@ -9,8 +9,6 @@ and clean them up. Everything runs on your machine — no external server involv
 - **Session list** — title, project, branch, last-updated/active time, and a session-size meter
   (green → amber → red)
 - **Resume** any session in a new terminal (`claude --resume`), Warp preferred if installed
-- **Compact & continue** — when a session's `.jsonl` gets large, draft a summary (editable) and
-  start a fresh, lighter session in the same folder, linked back to the original
 - **New task** — paste a Jira link + instructions, pick a project, and it opens a terminal
   already running Claude with that prompt — optionally in an isolated git worktree
 - **Team skills** — optional [skills-hub](https://example.com/team/skills-hub/)
@@ -90,8 +88,6 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | DELETE | `/sessions/:id`                | Delete the session's `.jsonl` file                |
 | POST   | `/sessions/:id/continue`       | Open a terminal running `claude --resume <id>`    |
 | POST   | `/sessions/:id/vscode`         | Open the session's working directory in VS Code  |
-| POST   | `/sessions/:id/compact-summary`  | Draft a summary for "Compact & continue"        |
-| POST   | `/sessions/:id/compact-continue` | Launch the lighter pt2 session from that draft  |
 | GET    | `/sessions/:id/export`         | Download the session as a `.claude-session.json.gz` file |
 | POST   | `/sessions/import/inspect`     | Read an exported file (raw body) and list local target clones |
 | POST   | `/sessions/import`             | Import an exported file into `?targetDir=` (optional `&checkoutBranch=true`) |

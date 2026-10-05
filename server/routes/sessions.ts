@@ -6,7 +6,6 @@ import {
   deleteSession,
   deleteSessionBranch,
   deleteSessionWorktree,
-  getCompactionDraft,
   getSessionPrUrl,
   getSessionPrompts,
   getRootStatus,
@@ -23,7 +22,6 @@ import {
   setSessionNickname,
   SessionActiveError,
   SessionNotFoundError,
-  startCompactedContinuation,
   startFreshSessionAtMissingWorktreeRoot,
   stopSiblingAndResume,
 } from "../services/sessionService.js";
@@ -197,27 +195,6 @@ sessionsRouter.post("/:id/continue", async (req, res) => {
   try {
     await continueSession(req.params.id);
     res.json({ success: true });
-  } catch (err) {
-    sendErrorResponse(res, err, notFoundOrActive);
-  }
-});
-
-sessionsRouter.post("/:id/compact-summary", async (req, res) => {
-  try {
-    const draft = await getCompactionDraft(req.params.id);
-    res.json({ draft });
-  } catch (err) {
-    sendErrorResponse(res, err, notFoundOrActive);
-  }
-});
-
-sessionsRouter.post("/:id/compact-continue", async (req, res) => {
-  try {
-    const { newSessionId } = await startCompactedContinuation(
-      req.params.id,
-      extractStringField(req.body, "summary"),
-    );
-    res.json({ success: true, newSessionId });
   } catch (err) {
     sendErrorResponse(res, err, notFoundOrActive);
   }

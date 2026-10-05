@@ -5,7 +5,7 @@ import { REPO_ROOT } from "./repoRoot.js";
 /**
  * Local record of the base branch a "New task" branch was branched off, stored in this app's own
  * gitignored sidecar file at the repo root — same pattern as
- * `nicknames.ts`/`sessionContinuations.ts`/`userPreferences.json`. Nested by repo root, then by
+ * `nicknames.ts`/`userPreferences.json`. Nested by repo root, then by
  * branch name (`{ [repoRoot]: { [branch]: entry } }`) rather than by worktree path: a branch name
  * is unique within a repo regardless of whether the task used a worktree or checked the branch out
  * directly in the repo root (the "skip worktree" checkbox) — unlike a worktree-path key, this
@@ -21,7 +21,7 @@ import { REPO_ROOT } from "./repoRoot.js";
  * (worktree-backed tasks) and `deleteSessionBranch` (the non-worktree "delete branch" action) in
  * sessionService.ts each best-effort forget the entry right after their respective git branch
  * deletion succeeds, so this sidecar can't accumulate entries for branches that no longer exist —
- * unlike `nicknames.ts`/`sessionContinuations.ts`, which have no such cleanup today (see CLAUDE.md).
+ * unlike `nicknames.ts`, which has no such cleanup today (see CLAUDE.md).
  */
 export type BaseBranchEntry = {
   baseBranch: string;
