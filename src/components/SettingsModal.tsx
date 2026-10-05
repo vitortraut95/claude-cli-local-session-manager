@@ -1,6 +1,17 @@
-import { ArrowDown, ArrowUp, FileCode2, Loader2, Pencil, Plus, Settings, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  FileCode2,
+  Loader2,
+  Pencil,
+  Plus,
+  Settings,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
+import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import type { Theme } from "../hooks/useTheme";
 import { useToast } from "../hooks/useToast";
 import * as tasksApi from "../services/tasksApi";
@@ -9,6 +20,7 @@ import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
+import { SkillsHubModal } from "./SkillsHubModal";
 import { ThemeToggle } from "./ThemeToggle";
 import { WorkspaceDirsEditor } from "./WorkspaceDirsEditor";
 
@@ -45,6 +57,8 @@ export function SettingsModal({
   const [editing, setEditing] = useState<BigEditorKey | null>(null);
   const [savingKey, setSavingKey] = useState<keyof UserPreferences | null>(null);
   const [openingFile, setOpeningFile] = useState(false);
+  const [skillsHubOpen, setSkillsHubOpen] = useState(false);
+  const { status: skillsHub } = useSkillsHubStatus(true);
 
   const reload = useCallback(async () => {
     try {
@@ -98,7 +112,7 @@ export function SettingsModal({
       title={t("settings.title")}
       // Escape would otherwise close this modal too while a big editor is open on top of it.
       onClose={() => {
-        if (!editing) onClose();
+        if (!editing && !skillsHubOpen) onClose();
       }}
       size="xl"
       icon={<Settings className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
@@ -146,6 +160,34 @@ export function SettingsModal({
               )
             }
             control={<EditButton onClick={() => setEditing("workspaceDirs")} />}
+          />
+          <SettingRow
+            title={t("settings.skillsHub.title")}
+            description={t("settings.skillsHub.description")}
+            keyName="skillsHub"
+            preview={
+              skillsHub === null ? undefined : !skillsHub.found ? (
+                <span className="text-amber-600 dark:text-amber-400">
+                  {t("settings.skillsHub.notInstalled")}
+                </span>
+              ) : (
+                `${skillsHub.path ?? ""} · ${
+                  skillsHub.selectedCatalogs.length > 0
+                    ? skillsHub.selectedCatalogs.join(", ")
+                    : t("settings.skillsHub.noCatalogs")
+                }`
+              )
+            }
+            control={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSkillsHubOpen(true)}
+                icon={<Sparkles className="h-3.5 w-3.5" />}
+              >
+                {t("settings.skillsHub.manage")}
+              </Button>
+            }
           />
           <SettingRow
             title={t("settings.defaultPrompt.title")}
@@ -237,6 +279,7 @@ export function SettingsModal({
           render={(value, setValue) => <WorkspaceDirsEditor value={value} onChange={setValue} />}
         />
       )}
+      {skillsHubOpen && <SkillsHubModal onClose={() => setSkillsHubOpen(false)} />}
       {prefs && editing === "defaultPrompt" && (
         <BigEditorModal
           title={t("settings.defaultPrompt.title")}

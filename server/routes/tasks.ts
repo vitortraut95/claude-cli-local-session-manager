@@ -2,11 +2,21 @@ import { Router } from "express";
 import {
   getPreferencesPath,
   getUserPreferences,
+  isSkillsHubPreferences,
   saveUserPreferences,
   type UserPreferences,
 } from "../services/preferencesService.js";
 import { openFileInVSCode } from "../services/sessionService.js";
 import { inspectWorkspaceDirs, suggestWorkspaceDirs } from "../services/workspaceService.js";
+import {
+  cloneSkillsHub,
+  getSkillDetails,
+  getSkillsHubStatus,
+  setSkillsHubFlags,
+  setSkillsHubPath,
+  setSkillsHubSelection,
+  syncSkillsHub,
+} from "../services/skillsHubService.js";
 import {
   createTaskWorktree,
   getRecentProjectFolders,
@@ -19,12 +29,14 @@ import { AppError, errorCode } from "../utils/httpError.js";
 
 export const tasksRouter = Router();
 
-/** `workspaceDirs` is optional on purpose: a browser tab still running the frontend bundle from
- *  before that field existed (see CLAUDE.md's update-safety policy) sends the full object without
- *  it — the PUT handler below keeps the stored value instead of rejecting or wiping it. */
+/** `workspaceDirs`/`skillsHub` are optional on purpose: a browser tab still running the frontend
+ *  bundle from before those fields existed (see CLAUDE.md's update-safety policy) sends the full
+ *  object without them — the PUT handler below keeps the stored value instead of rejecting or
+ *  wiping it. */
 function isValidPreferences(
   body: unknown,
-): body is Omit<UserPreferences, "workspaceDirs"> & Partial<Pick<UserPreferences, "workspaceDirs">> {
+): body is Omit<UserPreferences, "workspaceDirs" | "skillsHub"> &
+  Partial<Pick<UserPreferences, "workspaceDirs" | "skillsHub">> {
   if (typeof body !== "object" || body === null) return false;
   const candidate = body as Record<string, unknown>;
   return (
@@ -46,7 +58,8 @@ function isValidPreferences(
     (candidate.workspaceDirs === undefined ||
       candidate.workspaceDirs === null ||
       (Array.isArray(candidate.workspaceDirs) &&
-        candidate.workspaceDirs.every((item) => typeof item === "string")))
+        candidate.workspaceDirs.every((item) => typeof item === "string"))) &&
+    (candidate.skillsHub === undefined || isSkillsHubPreferences(candidate.skillsHub))
   );
 }
 
@@ -77,7 +90,7 @@ tasksRouter.put("/preferences", async (req, res) => {
           "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
           "language: \"en\"|\"pt\"|\"es\"|null, hasSeenOnboarding: boolean, " +
           "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
-          "workspaceDirs?: string[] | null }.",
+          "workspaceDirs?: string[] | null, skillsHub?: { path, catalogs, skills?, inviteDismissed } }.",
       );
     }
     const stored = await getUserPreferences();
@@ -176,5 +189,76 @@ tasksRouter.post("/launch", async (req, res) => {
       error: err instanceof Error ? err.message : String(err),
       code: errorCode(err),
     });
+  }
+});
+
+// Team skills (skills-hub) — see skillsHubService.ts. All optional: nothing here is ever run
+// as part of creating a task.
+
+tasksRouter.get("/skills-hub/status", async (_req, res) => {
+  try {
+    res.json(await getSkillsHubStatus());
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  }
+});
+
+tasksRouter.get("/skills-hub/skill", async (req, res) => {
+  try {
+    const catalog = typeof req.query.catalog === "string" ? req.query.catalog : "";
+    const name = typeof req.query.name === "string" ? req.query.name : "";
+    res.json(await getSkillDetails(catalog, name));
+  } catch (err) {
+    res.status(404).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  }
+});
+
+tasksRouter.post("/skills-hub/sync", async (_req, res) => {
+  try {
+    res.json(await syncSkillsHub());
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  }
+});
+
+tasksRouter.post("/skills-hub/clone", async (req, res) => {
+  try {
+    const hubPath = await cloneSkillsHub(extractStringField(req.body, "parentDir"));
+    res.json({ path: hubPath });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  }
+});
+
+tasksRouter.put("/skills-hub/selection", async (req, res) => {
+  try {
+    const body = (req.body ?? {}) as { catalogs?: unknown; skills?: unknown };
+    const strings = (raw: unknown) =>
+      Array.isArray(raw) ? raw.filter((c): c is string => typeof c === "string") : [];
+    res.json(await setSkillsHubSelection({ catalogs: strings(body.catalogs), skills: strings(body.skills) }));
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  }
+});
+
+tasksRouter.put("/skills-hub/path", async (req, res) => {
+  try {
+    const raw: unknown = (req.body as { path?: unknown } | null)?.path;
+    await setSkillsHubPath(typeof raw === "string" ? raw : null);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  }
+});
+
+tasksRouter.put("/skills-hub/flags", async (req, res) => {
+  try {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    await setSkillsHubFlags(
+      typeof body.inviteDismissed === "boolean" ? { inviteDismissed: body.inviteDismissed } : {},
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
