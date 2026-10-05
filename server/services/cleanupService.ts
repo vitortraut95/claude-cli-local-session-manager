@@ -226,9 +226,7 @@ function resolveOwningRepoRoot(session: Session, repoRoots: string[]): string | 
  * Per project, keeps the `keepRecentSessionsPerProject` most-recently-updated sessions and offers
  * to delete the rest — but only the ones that are safe to lose outright: never the active session
  * (defense in depth, `executeCleanupFinding`/`deleteSession` re-check this again right before
- * acting), and never one linked to a "Compact & continue" pair (`continuesFromSessionId`/
- * `continuedBySessionId`) in either direction, since deleting either half of that pair would break
- * the other's back-reference. A session that's merely old but *not* in the deletable set still
+ * acting). A session that's merely old but *not* in the deletable set still
  * counts toward "kept" — it just doesn't get suggested for deletion.
  */
 async function scanForOldSessionFindings(
@@ -256,9 +254,7 @@ async function scanForOldSessionFindings(
     const sorted = [...repoSessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
     const beyondKeepCount = sorted.slice(keepCount);
-    const deletable = beyondKeepCount.filter(
-      (s) => !s.isActive && !s.continuesFromSessionId && !s.continuedBySessionId,
-    );
+    const deletable = beyondKeepCount.filter((s) => !s.isActive);
     if (deletable.length === 0) continue;
 
     findings.push({

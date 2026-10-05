@@ -360,9 +360,9 @@ export async function createTaskWorktree(
  * fine and just skips that, since it's a UX nice-to-have, not something the launch itself needs.
  *
  * `nickname`, when non-blank, is written to the new session's local nickname (same sidecar
- * `setSessionNickname` uses) *before* the terminal opens — same `--session-id <uuid>` trick
- * `startCompactedContinuation` uses to know the new session's id up front (see its own doc
- * comment), since there'd otherwise be nothing to discover the id from afterward. Skipped
+ * `setSessionNickname` uses) *before* the terminal opens — the CLI's `--session-id <uuid>` flag
+ * lets this app choose the new session's id up front, since there'd otherwise be nothing to
+ * discover the id from afterward. Skipped
  * entirely (no `--session-id` flag added) when `nickname` is blank, so a task created without one
  * still gets a plain CLI-assigned session id exactly as before this existed.
  */

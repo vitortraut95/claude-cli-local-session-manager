@@ -27,22 +27,12 @@ export function sessionSizeStatus(bytes: number): SessionSizeStatus {
 
 const STATUS_MESSAGES: Record<SessionSizeStatus, string> = {
   healthy: "Healthy size for resuming.",
-  caution: "Getting large — try \"Compact & continue\" to start a lighter follow-up soon.",
-  critical: "Very large — use \"Compact & continue\" to start a fresh, lighter session with a summary of this one.",
+  caution: "Getting large — consider running /compact in Claude.",
+  critical: "Very large — run /compact in Claude or start a fresh session.",
 };
 
 export function sessionSizeMessage(bytes: number): string {
   return STATUS_MESSAGES[sessionSizeStatus(bytes)];
-}
-
-/**
- * True once the size meter is "fully red" (`sessionSizeFraction` has saturated at 1) — the
- * resume-time size gate (`useSessions.ts`) only interrupts at this point, not at the earlier
- * amber/early-red "caution"/"critical" statuses, so a session has to actually be huge before
- * resuming gets interrupted.
- */
-export function isSessionFullyRed(bytes: number): boolean {
-  return bytes >= CRITICAL_REFERENCE_BYTES;
 }
 
 /**

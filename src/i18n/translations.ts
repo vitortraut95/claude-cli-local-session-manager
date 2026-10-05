@@ -197,38 +197,11 @@ export const translations = {
   ),
 
   "onboarding.step7.title": dict(
-    "7. Session too big? Compact & continue",
-    "7. Sessão grande demais? Compactar e continuar",
-    "7. ¿Sesión demasiado grande? Compactar y continuar",
+    "7. If a worktree folder disappears",
+    "7. Se a pasta do worktree desaparecer",
+    "7. Si la carpeta del worktree desaparece",
   ),
   "onboarding.step7.body": dict(
-    "Running /compact inside Claude doesn't shrink a session's .jsonl file — it's append-only, " +
-      "so the size meter just keeps climbing regardless. Once a card turns amber/red, click the " +
-      'scissors icon (or "Compact & continue" if it\'s offered when you try to resume) to draft a ' +
-      "summary of the session — review or edit it — then start a brand-new, lighter session in " +
-      "the same folder, seeded with that summary and linked back to the original (shown as a " +
-      "small badge on both cards).",
-    "Rodar /compact dentro do Claude não diminui o arquivo .jsonl da sessão — ele só recebe " +
-      "novas linhas, então o medidor de tamanho continua subindo do mesmo jeito. Quando um card " +
-      "ficar âmbar/vermelho, clique no ícone de tesoura (ou em \"Compactar e continuar\", se for " +
-      "oferecido ao tentar retomar) pra gerar um rascunho de resumo da sessão — revise ou edite — " +
-      "e então uma sessão nova e mais leve é iniciada na mesma pasta, alimentada com esse resumo " +
-      "e linkada à original (aparece como uma etiqueta pequena nos dois cards).",
-    "Ejecutar /compact dentro de Claude no reduce el archivo .jsonl de la sesión — solo recibe " +
-      "líneas nuevas, así que el medidor de tamaño sigue subiendo igual. Cuando una tarjeta se " +
-      "ponga ámbar/roja, haz clic en el ícono de tijeras (o en \"Compactar y continuar\", si se " +
-      "ofrece al intentar reanudar) para generar un borrador de resumen de la sesión — revísalo o " +
-      "edítalo — y luego se inicia una sesión nueva y más ligera en la misma carpeta, alimentada " +
-      "con ese resumen y enlazada a la original (aparece como una etiqueta pequeña en ambas " +
-      "tarjetas).",
-  ),
-
-  "onboarding.step8.title": dict(
-    "8. If a worktree folder disappears",
-    "8. Se a pasta do worktree desaparecer",
-    "8. Si la carpeta del worktree desaparece",
-  ),
-  "onboarding.step8.body": dict(
     'After a checkout, that session\'s card shows "Original folder missing" — expected, since ' +
       "the worktree was removed on purpose. If the project's root folder still exists, the card " +
       "offers to open it in VS Code, or to continue working there: resuming an existing session " +
@@ -1511,16 +1484,16 @@ export const translations = {
   "cleanupModal.finding.oldSessions.body": dict(
     "once a project has more sessions than the configured limit (5 by default — edit " +
       '"keepRecentSessionsPerProject" in userPreferences.json to change it), the oldest ones ' +
-      "can be deleted to free disk space and speed up the session list. The active session and " +
-      'any session linked via "Compact & continue" are never suggested.',
+      "can be deleted to free disk space and speed up the session list. The active session is never " +
+      "suggested.",
     'quando um projeto tem mais sessões do que o limite configurado (5 por padrão — edite ' +
       '"keepRecentSessionsPerProject" no userPreferences.json para mudar isso), as mais antigas ' +
       "podem ser excluídas para liberar espaço em disco e acelerar a listagem de sessões. A " +
-      'sessão ativa e qualquer sessão ligada via "Compactar e continuar" nunca são sugeridas.',
+      "sessão ativa nunca é sugerida.",
     'cuando un proyecto tiene más sesiones que el límite configurado (5 por defecto — edita ' +
       '"keepRecentSessionsPerProject" en userPreferences.json para cambiarlo), las más antiguas ' +
       "se pueden eliminar para liberar espacio en disco y acelerar el listado de sesiones. La " +
-      'sesión activa y cualquier sesión vinculada mediante "Compactar y continuar" nunca se sugieren.',
+      "sesión activa nunca se sugiere.",
   ),
   "cleanupModal.finding.oldSessions.title": dict(
     '{count} old session(s) in "{project}"',
@@ -2544,162 +2517,8 @@ export const translations = {
   ),
   "resumeConflictModal.cancel": dict("Cancel", "Cancelar", "Cancelar"),
 
-  "sessionCard.compactContinue.tooltip": dict(
-    "Compact & continue — summarize this session and start a lighter pt2, linked back to it",
-    "Compactar e continuar — resume esta sessão e inicia uma pt2 mais leve, linkada a ela",
-    "Compactar y continuar — resume esta sesión e inicia una pt2 más ligera, enlazada a ella",
-  ),
-  "sessionCard.compactContinue.disabledTooltip": dict(
-    "Can't compact an active session — stop its terminal first",
-    "Não é possível compactar uma sessão ativa — pare o terminal dela primeiro",
-    "No se puede compactar una sesión activa — detén su terminal primero",
-  ),
-  "sessionCard.compactContinue.ariaLabel": dict(
-    "Compact & continue",
-    "Compactar e continuar",
-    "Compactar y continuar",
-  ),
-  "sessionCard.continuesFrom.label": dict(
-    "Compacted from: {title}",
-    "Compactada a partir de: {title}",
-    "Compactada a partir de: {title}",
-  ),
-  "sessionCard.continuesFrom.ariaLabel": dict(
-    "Jump to the session this was compacted from: {title}",
-    "Ir para a sessão que originou esta compactação: {title}",
-    "Ir a la sesión que originó esta compactación: {title}",
-  ),
-  "sessionCard.continuedBy.label": dict(
-    "Continued in: {title}",
-    "Continuada em: {title}",
-    "Continuada en: {title}",
-  ),
-  "sessionCard.continuedBy.ariaLabel": dict(
-    "Jump to the pt2 session this was compacted into: {title}",
-    "Ir para a sessão pt2 gerada a partir desta: {title}",
-    "Ir a la sesión pt2 generada a partir de esta: {title}",
-  ),
 
-  "compactContinueModal.title": dict(
-    "Compact & continue",
-    "Compactar e continuar",
-    "Compactar y continuar",
-  ),
-  "compactContinueModal.step.summary": dict(
-    "Generate a summary from this session",
-    "Gerar um resumo a partir desta sessão",
-    "Generar un resumen a partir de esta sesión",
-  ),
-  "compactContinueModal.step.launch": dict(
-    "Start the pt2 session",
-    "Iniciar a sessão pt2",
-    "Iniciar la sesión pt2",
-  ),
-  "compactContinueModal.cancel": dict("Cancel", "Cancelar", "Cancelar"),
-  "compactContinueModal.generateButton": dict(
-    "Generate summary",
-    "Gerar resumo",
-    "Generar resumen",
-  ),
-  "compactContinueModal.launchButton": dict(
-    "Start pt2 session",
-    "Iniciar sessão pt2",
-    "Iniciar sesión pt2",
-  ),
-  "compactContinueModal.whatWillHappen": dict("What this does", "O que isso faz", "Qué hace esto"),
-  "compactContinueModal.explain.summary": dict(
-    "Asks Claude (non-interactively, in a read-only mode that can't edit anything) to summarize this session: what was done, decisions made, and what's left.",
-    "Pede ao Claude (de forma não interativa, em um modo somente leitura que não pode editar nada) para resumir esta sessão: o que foi feito, decisões tomadas e o que falta.",
-    "Le pide a Claude (de forma no interactiva, en un modo de solo lectura que no puede editar nada) que resuma esta sesión: qué se hizo, decisiones tomadas y qué falta.",
-  ),
-  "compactContinueModal.explain.review": dict(
-    "Shows you that draft so you can review or edit it before anything is created.",
-    "Mostra esse rascunho para você revisar ou editar antes de qualquer coisa ser criada.",
-    "Muestra ese borrador para que lo revises o edites antes de crear nada.",
-  ),
-  "compactContinueModal.explain.launch": dict(
-    "Starts a brand-new, lighter session in the same folder, seeded with that summary and linked back to this one.",
-    "Inicia uma sessão nova e mais leve na mesma pasta, iniciada com esse resumo e linkada a esta sessão.",
-    "Inicia una sesión nueva y más ligera en la misma carpeta, iniciada con ese resumen y enlazada a esta sesión.",
-  ),
-  "compactContinueModal.continuingFrom": dict(
-    "Continuing from:",
-    "Continuando a partir de:",
-    "Continuando a partir de:",
-  ),
-  "compactContinueModal.summaryLabel": dict(
-    "Summary (edit before starting pt2)",
-    "Resumo (edite antes de iniciar a pt2)",
-    "Resumen (edita antes de iniciar la pt2)",
-  ),
-  "compactContinueModal.summaryHint": dict(
-    "This becomes the first message of the new session — add anything the summary missed.",
-    "Isso se torna a primeira mensagem da nova sessão — adicione qualquer coisa que o resumo tenha deixado de fora.",
-    "Esto se convierte en el primer mensaje de la nueva sesión — agrega cualquier cosa que el resumen no haya cubierto.",
-  ),
-  "compactContinueModal.progressLabel": dict("Progress", "Andamento", "Progreso"),
-  "compactContinueModal.unexpectedFailure": dict(
-    "Unexpected failure",
-    "Falha inesperada",
-    "Fallo inesperado",
-  ),
-  "compactContinueModal.generateFailed": dict(
-    "Couldn't generate a summary: {message}",
-    "Não foi possível gerar o resumo: {message}",
-    "No se pudo generar el resumen: {message}",
-  ),
-  "compactContinueModal.launchFailed": dict(
-    "Couldn't start the pt2 session: {message}",
-    "Não foi possível iniciar a sessão pt2: {message}",
-    "No se pudo iniciar la sesión pt2: {message}",
-  ),
-  "compactContinueModal.launched": dict(
-    "pt2 session started — check your taskbar for the new terminal",
-    "Sessão pt2 iniciada — confira a barra de tarefas pelo novo terminal",
-    "Sesión pt2 iniciada — revisa la barra de tareas por la nueva terminal",
-  ),
 
-  "sizeGateModal.title": dict(
-    "This session is large",
-    "Esta sessão está grande",
-    "Esta sesión es grande",
-  ),
-  "sizeGateModal.body": dict(
-    "This session's file is {size}. You can continue in it as-is, or start a lighter follow-up first.",
-    "O arquivo desta sessão está com {size}. Você pode continuar nela do jeito que está, ou iniciar uma continuação mais leve primeiro.",
-    "El archivo de esta sesión pesa {size}. Puedes continuar en ella tal como está, o iniciar antes una continuación más ligera.",
-  ),
-  "sizeGateModal.compact.title": dict(
-    "Compact & continue",
-    "Compactar e continuar",
-    "Compactar y continuar",
-  ),
-  "sizeGateModal.compact.body": dict(
-    "Summarizes this session and opens a new, lighter pt2 in the same folder, linked back to this one.",
-    "Resume esta sessão e abre uma pt2 nova e mais leve na mesma pasta, linkada a esta.",
-    "Resume esta sesión y abre una pt2 nueva y más ligera en la misma carpeta, enlazada a esta.",
-  ),
-  "sizeGateModal.compact.button": dict(
-    "Compact & continue instead",
-    "Compactar e continuar em vez disso",
-    "Compactar y continuar en su lugar",
-  ),
-  "sizeGateModal.continueAnyway.title": dict(
-    "Continue in this session anyway",
-    "Continuar nesta sessão mesmo assim",
-    "Continuar en esta sesión de todos modos",
-  ),
-  "sizeGateModal.continueAnyway.body": dict(
-    "Opens a terminal resuming this exact session, large file and all.",
-    "Abre um terminal retomando esta sessão exata, com o arquivo grande e tudo.",
-    "Abre una terminal reanudando esta sesión exacta, con el archivo grande y todo.",
-  ),
-  "sizeGateModal.continueAnyway.button": dict(
-    "Continue anyway",
-    "Continuar mesmo assim",
-    "Continuar de todos modos",
-  ),
-  "sizeGateModal.cancel": dict("Cancel", "Cancelar", "Cancelar"),
   "settings.skillsHub.title": dict(
     "Team skills (skills-hub)",
     "Skills do time (skills-hub)",
