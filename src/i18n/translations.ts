@@ -1700,7 +1700,6 @@ export const translations = {
     "Instruções para o Claude…",
     "Instrucciones para Claude…",
   ),
-  "newTaskModal.finalPromptLabel": dict("Final prompt:", "Prompt final:", "Prompt final:"),
   "newTaskModal.baseBranchLabel": dict("Base branch", "Branch base", "Rama base"),
   "newTaskModal.useLocalBaseBranchLabel": dict(
     "Use the local branch instead of fetching the latest from the remote.",
