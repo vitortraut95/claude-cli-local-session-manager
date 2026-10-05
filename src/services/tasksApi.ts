@@ -47,6 +47,8 @@ export type UserPreferences = {
    *  until it is (see WorkspaceDirsPromptModal). Optional in the type too: a backend still on the
    *  version before this field existed simply doesn't send it. */
   workspaceDirs?: string[] | null;
+  /** Team skills setup (skills-hub). Optional for the same reason as `workspaceDirs`. */
+  skillsHub?: SkillsHubPreferences;
 };
 
 /** Everything the app remembers between sessions in one JSON file (`userPreferences.json`, see
@@ -206,4 +208,129 @@ export async function launchTaskTerminal(
   await withServerErrorMessage(() =>
     client.post("/launch", { worktreePath, prompt, permissionModeAuto, repoRoot, nickname }),
   );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Team skills (skills-hub) — see server/services/skillsHubService.ts. Every call here is
+// optional from the UI's point of view: a failure (or a backend older than these routes, which
+// answers 404) only hides/degrades the skills panel, never blocks a task.
+
+export type SkillsHubPreferences = {
+  path: string | null;
+  catalogs: string[] | null;
+  /** `<catalog>/<skill>` picks on top of whole catalogs. Optional: older backends don't send it. */
+  skills?: string[];
+  inviteDismissed: boolean;
+};
+
+export type HubSkill = { name: string; description: string; dir: string };
+export type HubCatalog = { name: string; skills: HubSkill[] };
+export type SkillLinkState = "linked" | "missing" | "broken" | "conflict";
+export type SkillStatus = {
+  name: string;
+  catalog: string;
+  description: string;
+  state: SkillLinkState;
+  conflictWith?: string;
+};
+
+export type SkillsHubStatus = {
+  found: boolean;
+  path: string | null;
+  configuredPathInvalid: boolean;
+  branch: string | null;
+  defaultBranch: string | null;
+  upstream: string | null;
+  dirty: boolean;
+  behind: number | null;
+  ahead: number | null;
+  catalogs: HubCatalog[];
+  /** Whole catalogs (future skills included). */
+  selectedCatalogs: string[];
+  /** Individually picked skills, as `<catalog>/<skill>`. */
+  selectedSkills: string[];
+  catalogsChosen: boolean;
+  skills: SkillStatus[];
+  userSkillsDir: string;
+  inviteDismissed: boolean;
+  cloneUrl: string;
+  webUrl: string;
+  cloneParentDirs: string[];
+};
+
+export type SkillsLinkResult = { linked: string[]; unlinked: string[]; conflicts: string[] };
+
+export type SkillsHubSyncResult = {
+  status: SkillsHubStatus;
+  fetched: boolean;
+  fetchError: string | null;
+  pulledCommits: number;
+  pullSkippedReason: "dirty" | "diverged" | "failed" | null;
+  links: SkillsLinkResult;
+};
+
+export async function fetchSkillsHubStatus(): Promise<SkillsHubStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<SkillsHubStatus>("/skills-hub/status"),
+  );
+  return data;
+}
+
+export async function syncSkillsHub(): Promise<SkillsHubSyncResult> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<SkillsHubSyncResult>("/skills-hub/sync"),
+  );
+  return data;
+}
+
+export async function cloneSkillsHub(parentDir: string): Promise<{ path: string }> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ path: string }>("/skills-hub/clone", { parentDir }),
+  );
+  return data;
+}
+
+export type SkillDetails = {
+  catalog: string;
+  name: string;
+  description: string;
+  requiresSkills: string[];
+  /** SKILL.md without its frontmatter (markdown). */
+  body: string;
+  files: string[];
+  dir: string;
+};
+
+export async function fetchSkillDetails(catalog: string, name: string): Promise<SkillDetails> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<SkillDetails>("/skills-hub/skill", { params: { catalog, name } }),
+  );
+  return data;
+}
+
+export type SkillsSelection = { catalogs: string[]; skills: string[] };
+
+export async function setSkillsHubSelection(selection: SkillsSelection): Promise<SkillsLinkResult> {
+  const { data } = await withServerErrorMessage(() =>
+    client.put<SkillsLinkResult>("/skills-hub/selection", selection),
+  );
+  return data;
+}
+
+export async function setSkillsHubPath(path: string | null): Promise<void> {
+  await withServerErrorMessage(() => client.put("/skills-hub/path", { path }));
+}
+
+export async function setSkillsHubFlags(
+  flags: Partial<Pick<SkillsHubPreferences, "inviteDismissed">>,
+): Promise<void> {
+  await withServerErrorMessage(() => client.put("/skills-hub/flags", flags));
+}
+
+/** Fired after anything changes the hub setup (clone, catalogs, path, flags) so both the New Task
+ *  panel and the settings row reload their copy of the status. */
+export const SKILLS_HUB_CHANGED_EVENT = "skills-hub-changed";
+
+export function notifySkillsHubChanged(): void {
+  window.dispatchEvent(new Event(SKILLS_HUB_CHANGED_EVENT));
 }

@@ -48,6 +48,14 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   TASK_WORKTREE_PATH_REQUIRED: "apiError.taskWorktreePathRequired",
   TASK_PROMPT_REQUIRED: "apiError.taskPromptRequired",
   MALFORMED_PREFERENCES: "apiError.malformedPreferences",
+  SKILLS_HUB_NOT_FOUND: "apiError.skillsHubNotFound",
+  SKILLS_HUB_INVALID_PATH: "apiError.skillsHubInvalidPath",
+  SKILLS_HUB_CLONE_PARENT_MISSING: "apiError.skillsHubCloneParentMissing",
+  SKILLS_HUB_CLONE_TARGET_EXISTS: "apiError.skillsHubCloneTargetExists",
+  SKILLS_DIR_UNWRITABLE: "apiError.skillsDirUnwritable",
+  SKILL_NOT_FOUND: "apiError.skillNotFound",
+  // SKILLS_HUB_CLONE_FAILED deliberately unmapped: its message carries git's own stderr (e.g.
+  // "Permission denied (publickey)"), which is the useful part to show.
   USAGE_NO_CREDENTIALS: "apiError.usageNoCredentials",
   USAGE_CREDENTIALS_UNREADABLE: "apiError.usageCredentialsUnreadable",
   USAGE_NO_TOKEN: "apiError.usageNoToken",

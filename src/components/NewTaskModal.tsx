@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
+import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
 import * as tasksApi from "../services/tasksApi";
@@ -19,6 +20,8 @@ import { Button } from "./Button";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
 import { Select } from "./Select";
+import { SkillsHubModal } from "./SkillsHubModal";
+import { SkillsHubPanel } from "./SkillsHubPanel";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 
 type NewTaskModalProps = {
@@ -158,6 +161,12 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   // all four steps (each "pending") right when a create attempt starts, so the modal always shows
   // exactly which step is running, finished, or failed rather than one opaque success/failure.
   const [steps, setSteps] = useState<Step[]>([]);
+
+  // Team skills (skills-hub): status reloaded on every open, shown as a panel only — never
+  // updated as part of creating a task (someone may not want their clone pulled); updating is an
+  // explicit "Update now" in the skills modal.
+  const { status: skillsHub } = useSkillsHubStatus(open);
+  const [skillsHubModalOpen, setSkillsHubModalOpen] = useState(false);
 
   // Re-fetched every time the modal opens (not just once on mount) — a project folder typed by
   // hand into "Outro" during task creation only becomes a known option once its new session's
@@ -512,7 +521,10 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     <Modal
       open={open}
       title={t("newTaskModal.title")}
-      onClose={onClose}
+      // Escape would otherwise close this modal too while the skills modal is open on top of it.
+      onClose={() => {
+        if (!skillsHubModalOpen) onClose();
+      }}
       onCancel={onClose}
       onConfirm={handleCreate}
       confirmLabel={t("newTaskModal.confirm")}
@@ -602,6 +614,8 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
             <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{repoError}</p>
           )}
         </div>
+
+        <SkillsHubPanel status={skillsHub} onManage={() => setSkillsHubModalOpen(true)} />
 
         <div>
           <div className="mb-1 flex items-center justify-between">
@@ -871,6 +885,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           </div>
         )}
       </div>
+      {skillsHubModalOpen && <SkillsHubModal onClose={() => setSkillsHubModalOpen(false)} />}
     </Modal>
   );
 }

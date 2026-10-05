@@ -13,6 +13,10 @@ and clean them up. Everything runs on your machine — no external server involv
   start a fresh, lighter session in the same folder, linked back to the original
 - **New task** — paste a Jira link + instructions, pick a project, and it opens a terminal
   already running Claude with that prompt — optionally in an isolated git worktree
+- **Team skills** — optional [skills-hub](https://example.com/team/skills-hub/)
+  integration: the New Task modal invites you to clone it, you pick whole catalogs and/or single skills, and
+  their skills get linked into `~/.claude/skills`; "Update now" (never automatic) fetches/
+  fast-forwards the hub and links new skills (Settings → "Team skills" to manage)
 - **Worktree → root** — copy a worktree's files into the project root to test locally, or move
   the branch there for real once it's ready to push
 - Full-text search across every prompt, plus project/date filters
@@ -91,6 +95,13 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | GET    | `/sessions/:id/export`         | Download the session as a `.claude-session.json.gz` file |
 | POST   | `/sessions/import/inspect`     | Read an exported file (raw body) and list local target clones |
 | POST   | `/sessions/import`             | Import an exported file into `?targetDir=` (optional `&checkoutBranch=true`) |
+| GET    | `/tasks/skills-hub/status`     | Team skills: hub location/branch, catalogs, link state per skill |
+| GET    | `/tasks/skills-hub/skill`      | One hub skill's SKILL.md content (`?catalog=&name=`) |
+| POST   | `/tasks/skills-hub/sync`       | Fetch + fast-forward the hub (when clean) and link new skills |
+| POST   | `/tasks/skills-hub/clone`      | Clone skills-hub into `{ parentDir }` |
+| PUT    | `/tasks/skills-hub/selection`  | Save `{ catalogs, skills }` (whole catalogs + single skills) and (un)link them |
+| PUT    | `/tasks/skills-hub/path`       | Point at an existing clone (`null` = auto-detect) |
+| PUT    | `/tasks/skills-hub/flags`      | `{ inviteDismissed? }` |
 
 ## Changelog
 

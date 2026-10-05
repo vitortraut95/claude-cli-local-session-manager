@@ -4,6 +4,21 @@ import { REPO_ROOT } from "../utils/repoRoot.js";
 
 export type Language = "en" | "pt" | "es";
 
+/** The team-skills integration (`skillsHubService.ts`). Added after the file's first release — an
+ *  older file lacks it entirely, and every sub-field falls back individually. */
+export type SkillsHubPreferences = {
+  /** Explicit clone location; null = auto-detect among the workspace repos by `origin`. */
+  path: string | null;
+  /** Catalogs whose skills are kept linked; null = never chosen (the selection is then inferred
+   *  from whatever is already linked, so nothing set up by hand gets undone). */
+  catalogs: string[] | null;
+  /** Individually picked skills (`<catalog>/<skill>`) on top of the whole `catalogs` — only
+   *  meaningful once `catalogs` is non-null (an explicit choice was made). */
+  skills: string[];
+  /** "Not now" on the New Task modal's invite to install the hub. */
+  inviteDismissed: boolean;
+};
+
 export type UserPreferences = {
   defaultPrompt: string;
   branchTypes: string[];
@@ -39,6 +54,7 @@ export type UserPreferences = {
    *  until it is (an explicit empty list is a valid, saved answer too, but the prompt treats it
    *  the same). Added after the file's first release, so an older file simply lacks it. */
   workspaceDirs: string[] | null;
+  skillsHub: SkillsHubPreferences;
 };
 
 const PREFERENCES_PATH = path.join(REPO_ROOT, "userPreferences.json");
@@ -53,10 +69,36 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   recentProjectPaths: [],
   keepRecentSessionsPerProject: 5,
   workspaceDirs: null,
+  skillsHub: { path: null, catalogs: null, skills: [], inviteDismissed: false },
 };
 
 function isLanguage(value: unknown): value is Language {
   return value === "en" || value === "pt" || value === "es";
+}
+
+function parseSkillsHub(value: unknown): SkillsHubPreferences {
+  const fallback = DEFAULT_PREFERENCES.skillsHub;
+  if (typeof value !== "object" || value === null) return fallback;
+  const raw = value as Record<string, unknown>;
+  return {
+    path: typeof raw.path === "string" && raw.path.trim() ? raw.path : fallback.path,
+    catalogs: isStringArray(raw.catalogs) ? raw.catalogs : fallback.catalogs,
+    skills: isStringArray(raw.skills) ? raw.skills : fallback.skills,
+    inviteDismissed:
+      typeof raw.inviteDismissed === "boolean" ? raw.inviteDismissed : fallback.inviteDismissed,
+  };
+}
+
+export function isSkillsHubPreferences(value: unknown): value is SkillsHubPreferences {
+  if (typeof value !== "object" || value === null) return false;
+  const raw = value as Record<string, unknown>;
+  return (
+    (raw.path === null || typeof raw.path === "string") &&
+    (raw.catalogs === null || isStringArray(raw.catalogs)) &&
+    // Optional: a frontend bundle from before per-skill picks existed doesn't send it.
+    (raw.skills === undefined || isStringArray(raw.skills)) &&
+    typeof raw.inviteDismissed === "boolean"
+  );
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -108,6 +150,7 @@ export async function getUserPreferences(): Promise<UserPreferences> {
       workspaceDirs: isStringArray(parsed.workspaceDirs)
         ? parsed.workspaceDirs
         : DEFAULT_PREFERENCES.workspaceDirs,
+      skillsHub: parseSkillsHub(parsed.skillsHub),
     };
   } catch {
     return DEFAULT_PREFERENCES;

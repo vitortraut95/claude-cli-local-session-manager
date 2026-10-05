@@ -2701,6 +2701,431 @@ export const translations = {
     "Continuar de todos modos",
   ),
   "sizeGateModal.cancel": dict("Cancel", "Cancelar", "Cancelar"),
+  "settings.skillsHub.title": dict(
+    "Team skills (skills-hub)",
+    "Skills do time (skills-hub)",
+    "Skills del equipo (skills-hub)",
+  ),
+  "settings.skillsHub.description": dict(
+    "Shared Claude skills from the skills-hub repo, linked into ~/.claude/skills. Updated only when you click \"Update now\".",
+    "Skills do Claude compartilhadas pelo repo skills-hub, linkadas em ~/.claude/skills. Atualizadas só quando você clica em \"Atualizar agora\".",
+    "Skills de Claude compartidas por el repo skills-hub, enlazadas en ~/.claude/skills. Se actualizan solo cuando haces clic en \"Actualizar ahora\".",
+  ),
+  "settings.skillsHub.manage": dict(
+    "Manage",
+    "Gerenciar",
+    "Gestionar",
+  ),
+  "settings.skillsHub.noCatalogs": dict(
+    "no catalogs chosen",
+    "nenhum catálogo escolhido",
+    "ningún catálogo elegido",
+  ),
+  "settings.skillsHub.notInstalled": dict(
+    "not installed",
+    "não instalado",
+    "no instalado",
+  ),
+  "skillsHub.autoDetect": dict(
+    "Auto-detect",
+    "Detectar automaticamente",
+    "Detectar automáticamente",
+  ),
+  "skillsHub.catalogsApplied": dict(
+    "Selection applied: {linked} linked, {unlinked} removed.",
+    "Seleção aplicada: {linked} linkadas, {unlinked} removidas.",
+    "Selección aplicada: {linked} enlazadas, {unlinked} eliminadas.",
+  ),
+  "skillsHub.catalogsApplyError": dict(
+    "Couldn't apply the selection.",
+    "Não foi possível aplicar a seleção.",
+    "No se pudo aplicar la selección.",
+  ),
+  "skillsHub.cloned": dict(
+    "skills-hub cloned. Now choose your catalogs.",
+    "skills-hub clonado. Agora escolha seus catálogos.",
+    "skills-hub clonado. Ahora elige tus catálogos.",
+  ),
+  "skillsHub.cloneError": dict(
+    "Couldn't clone skills-hub.",
+    "Não foi possível clonar o skills-hub.",
+    "No se pudo clonar skills-hub.",
+  ),
+  "skillsHub.configuredPathInvalid": dict(
+    "The folder saved in the preferences isn't an skills-hub clone anymore — clone it again or point to the right folder.",
+    "A pasta salva nas preferências não é mais um clone do skills-hub — clone de novo ou aponte a pasta certa.",
+    "La carpeta guardada en las preferencias ya no es un clon de skills-hub — clónalo de nuevo o indica la carpeta correcta.",
+  ),
+  "skillsHub.copy": dict(
+    "Copy",
+    "Copiar",
+    "Copiar",
+  ),
+  "skillsHub.copyFailed": dict(
+    "Couldn't copy to the clipboard.",
+    "Não foi possível copiar.",
+    "No se pudo copiar.",
+  ),
+  "skillsHub.install.cloneButton": dict(
+    "Clone into {target}",
+    "Clonar em {target}",
+    "Clonar en {target}",
+  ),
+  "skillsHub.install.cloneTitle": dict(
+    "Clone it with one click",
+    "Clone com um clique",
+    "Clónalo con un clic",
+  ),
+  "skillsHub.install.existingTitle": dict(
+    "Already have it cloned somewhere else?",
+    "Já tem clonado em outra pasta?",
+    "¿Ya lo tienes clonado en otra carpeta?",
+  ),
+  "skillsHub.install.manualBody": dict(
+    "If the clone fails (e.g. no SSH key for Bitbucket), run this in a terminal, then reopen this window:",
+    "Se o clone falhar (ex.: sem chave SSH no Bitbucket), rode isto num terminal e depois reabra esta janela:",
+    "Si el clon falla (p. ej. sin clave SSH en Bitbucket), ejecuta esto en una terminal y luego vuelve a abrir esta ventana:",
+  ),
+  "skillsHub.install.manualTitle": dict(
+    "Or clone it by hand",
+    "Ou clone na mão",
+    "O clónalo a mano",
+  ),
+  "skillsHub.install.openRepo": dict(
+    "Open the repo on Bitbucket",
+    "Abrir o repo no Bitbucket",
+    "Abrir el repo en Bitbucket",
+  ),
+  "skillsHub.install.sshNote": dict(
+    "Uses your own SSH access to Bitbucket (team workspace).",
+    "Usa o seu próprio acesso SSH ao Bitbucket (workspace team).",
+    "Usa tu propio acceso SSH a Bitbucket (workspace team).",
+  ),
+  "skillsHub.invite.body": dict(
+    "skills-hub is where the team keeps reusable Claude skills (Figma with cache, QA of a task, preview links, ...). Once installed and linked, every Claude session on this machine can use them.",
+    "O skills-hub é onde o time guarda skills reutilizáveis do Claude (Figma com cache, QA de tarefa, links de preview, ...). Instalado e linkado, toda sessão do Claude nesta máquina pode usá-las.",
+    "skills-hub es donde el equipo guarda skills reutilizables de Claude (Figma con caché, QA de tarea, links de preview, ...). Instalado y enlazado, toda sesión de Claude en esta máquina puede usarlas.",
+  ),
+  "skillsHub.invite.optional": dict(
+    "Optional — tasks work the same without it.",
+    "Opcional — as tarefas funcionam igual sem ele.",
+    "Opcional — las tareas funcionan igual sin él.",
+  ),
+  "skillsHub.invite.title": dict(
+    "Use the team's Claude skills",
+    "Use as skills do Claude do time",
+    "Usa las skills de Claude del equipo",
+  ),
+  "skillsHub.loadError": dict(
+    "Couldn't read the skills status.",
+    "Não foi possível ler o status das skills.",
+    "No se pudo leer el estado de las skills.",
+  ),
+  "skillsHub.loading": dict(
+    "Checking skills-hub…",
+    "Verificando o skills-hub…",
+    "Verificando skills-hub…",
+  ),
+  "skillsHub.manage.ahead": dict(
+    "{count} local commit(s) not pushed",
+    "{count} commit(s) local(is) sem push",
+    "{count} commit(s) local(es) sin push",
+  ),
+  "skillsHub.manage.applyCatalogs": dict(
+    "Apply",
+    "Aplicar",
+    "Aplicar",
+  ),
+  "skillsHub.manage.behind": dict(
+    "{count} commit(s) behind",
+    "{count} commit(s) atrás",
+    "{count} commit(s) atrás",
+  ),
+  "skillsHub.manage.branch": dict(
+    "Branch:",
+    "Branch:",
+    "Rama:",
+  ),
+  "skillsHub.manage.catalogsHelp": dict(
+    "Check a catalog to take all of it (skills added to it later included), or click individual skills to pick just those. Everything picked is linked into {dir} and works in any repo/worktree.",
+    "Marque um catálogo pra levar ele inteiro (incluindo skills adicionadas depois), ou clique em skills soltas pra pegar só elas. Tudo o que estiver marcado é linkado em {dir} e vale em qualquer repo/worktree.",
+    "Marca un catálogo para llevarlo completo (incluidas las skills que se agreguen después), o haz clic en skills sueltas para tomar solo esas. Todo lo marcado se enlaza en {dir} y vale en cualquier repo/worktree.",
+  ),
+  "skillsHub.manage.catalogsInferred": dict(
+    "Preselected from the skills you already have linked — click Apply to confirm.",
+    "Pré-selecionado a partir das skills que você já tem linkadas — clique em Aplicar para confirmar.",
+    "Preseleccionado a partir de las skills que ya tienes enlazadas — haz clic en Aplicar para confirmar.",
+  ),
+  "skillsHub.manage.catalogsNone": dict(
+    "Check whole catalogs or click individual skills. Nothing is linked until you apply.",
+    "Marque catálogos inteiros ou clique em skills soltas. Nada é linkado até você aplicar.",
+    "Marca catálogos completos o haz clic en skills sueltas. Nada se enlaza hasta que apliques.",
+  ),
+  "skillsHub.manage.catalogsTitle": dict(
+    "Catalogs and skills",
+    "Catálogos e skills",
+    "Catálogos y skills",
+  ),
+  "skillsHub.manage.changePath": dict(
+    "Change folder",
+    "Trocar pasta",
+    "Cambiar carpeta",
+  ),
+  "skillsHub.manage.detached": dict(
+    "(detached)",
+    "(detached)",
+    "(detached)",
+  ),
+  "skillsHub.manage.dirty": dict(
+    "local changes",
+    "mudanças locais",
+    "cambios locales",
+  ),
+  "skillsHub.manage.duplicates": dict(
+    "Same skill name in more than one checked catalog: {names} — only the first catalog's is linked.",
+    "Mesmo nome de skill em mais de um catálogo marcado: {names} — só a do primeiro catálogo é linkada.",
+    "Mismo nombre de skill en más de un catálogo marcado: {names} — solo se enlaza la del primer catálogo.",
+  ),
+  "skillsHub.manage.intro": dict(
+    "Skills are linked (not copied) from your clone, so updating the clone updates them. The clone is never reset or forced — only fetch + fast-forward when it's clean.",
+    "As skills são linkadas (não copiadas) do seu clone, então atualizar o clone já as atualiza. O clone nunca é resetado nem forçado — só fetch + fast-forward quando está limpo.",
+    "Las skills se enlazan (no se copian) desde tu clon, así que actualizar el clon las actualiza. El clon nunca se resetea ni se fuerza — solo fetch + fast-forward cuando está limpio.",
+  ),
+  "skillsHub.manage.newSessionsNote": dict(
+    "Claude loads skills when a session starts — sessions already open only see new skills after a restart.",
+    "O Claude carrega as skills quando a sessão começa — sessões já abertas só veem skills novas depois de reiniciar.",
+    "Claude carga las skills al iniciar la sesión — las sesiones ya abiertas solo ven skills nuevas tras reiniciar.",
+  ),
+  "skillsHub.manage.notDefaultBranch": dict(
+    "The clone is not on {defaultBranch}: you get this branch's skills, and updates follow its own upstream.",
+    "O clone não está na {defaultBranch}: você usa as skills desta branch, e as atualizações seguem o upstream dela.",
+    "El clon no está en {defaultBranch}: usas las skills de esta rama, y las actualizaciones siguen su propio upstream.",
+  ),
+  "skillsHub.manage.syncNow": dict(
+    "Update now",
+    "Atualizar agora",
+    "Actualizar ahora",
+  ),
+  "skillsHub.modal.title": dict(
+    "Team skills (skills-hub)",
+    "Skills do time (skills-hub)",
+    "Skills del equipo (skills-hub)",
+  ),
+  "skillsHub.panel.choose": dict(
+    "Choose",
+    "Escolher",
+    "Elegir",
+  ),
+  "skillsHub.panel.chooseCatalogs": dict(
+    "skills-hub found — pick your team's catalog(s) or individual skills to use them in your tasks.",
+    "skills-hub encontrado — escolha catálogo(s) do seu time ou skills soltas pra usar nas tarefas.",
+    "skills-hub encontrado — elige catálogo(s) de tu equipo o skills sueltas para usarlas en tus tareas.",
+  ),
+  "skillsHub.panel.conflicts": dict(
+    "{count} name conflict(s)",
+    "{count} conflito(s) de nome",
+    "{count} conflicto(s) de nombre",
+  ),
+  "skillsHub.panel.inviteShort": dict(
+    "Install skills-hub so your tasks can use the team's shared skills.",
+    "Instale o skills-hub pra que suas tarefas usem as skills compartilhadas do time.",
+    "Instala skills-hub para que tus tareas usen las skills compartidas del equipo.",
+  ),
+  "skillsHub.panel.manage": dict(
+    "Manage",
+    "Gerenciar",
+    "Gestionar",
+  ),
+  "skillsHub.panel.notNow": dict(
+    "Not now",
+    "Agora não",
+    "Ahora no",
+  ),
+  "skillsHub.panel.offDefault": dict(
+    "hub on {branch}",
+    "hub na {branch}",
+    "hub en {branch}",
+  ),
+  "skillsHub.panel.pending": dict(
+    "{count} new to link — update in Manage",
+    "{count} nova(s) a linkar — atualize em Gerenciar",
+    "{count} nueva(s) por enlazar — actualiza en Gestionar",
+  ),
+  "skillsHub.panel.setup": dict(
+    "Set up",
+    "Configurar",
+    "Configurar",
+  ),
+  "skillsHub.panel.setupLink": dict(
+    "Team skills (skills-hub): set up",
+    "Skills do time (skills-hub): configurar",
+    "Skills del equipo (skills-hub): configurar",
+  ),
+  "skillsHub.panel.summary": dict(
+    "Skills: {count} linked ({catalogs})",
+    "Skills: {count} linkadas ({catalogs})",
+    "Skills: {count} enlazadas ({catalogs})",
+  ),
+  "skillsHub.pathSaved": dict(
+    "skills-hub folder saved.",
+    "Pasta do skills-hub salva.",
+    "Carpeta de skills-hub guardada.",
+  ),
+  "skillsHub.pathSaveError": dict(
+    "Couldn't use that folder.",
+    "Não foi possível usar essa pasta.",
+    "No se pudo usar esa carpeta.",
+  ),
+  "skillsHub.state.broken": dict(
+    "broken link",
+    "link quebrado",
+    "link roto",
+  ),
+  "skillsHub.state.conflict": dict(
+    "conflict",
+    "conflito",
+    "conflicto",
+  ),
+  "skillsHub.state.linked": dict(
+    "linked",
+    "linkada",
+    "enlazada",
+  ),
+  "skillsHub.state.missing": dict(
+    "new",
+    "nova",
+    "nueva",
+  ),
+  "skillsHub.sync.conflicts": dict(
+    "not linked (name already taken): {names}",
+    "não linkadas (nome já usado): {names}",
+    "no enlazadas (nombre ya usado): {names}",
+  ),
+  "skillsHub.syncError": dict(
+    "Couldn't update the skills.",
+    "Não foi possível atualizar as skills.",
+    "No se pudieron actualizar las skills.",
+  ),
+  "skillsHub.sync.fetchFailed": dict(
+    "couldn't reach Bitbucket (offline or no SSH access) — using the local version",
+    "sem acesso ao Bitbucket (offline ou sem SSH) — usando a versão local",
+    "sin acceso a Bitbucket (offline o sin SSH) — usando la versión local",
+  ),
+  "skillsHub.sync.linked": dict(
+    "linked: {names}",
+    "linkadas: {names}",
+    "enlazadas: {names}",
+  ),
+  "skillsHub.sync.pulled": dict(
+    "updated (+{count} commit(s))",
+    "atualizado (+{count} commit(s))",
+    "actualizado (+{count} commit(s))",
+  ),
+  "skillsHub.sync.skippedDirty": dict(
+    "update available but not applied: the clone has local changes",
+    "atualização disponível mas não aplicada: o clone tem mudanças locais",
+    "actualización disponible pero no aplicada: el clon tiene cambios locales",
+  ),
+  "skillsHub.sync.skippedDiverged": dict(
+    "update available but not applied: the branch has local commits (diverged)",
+    "atualização disponível mas não aplicada: a branch tem commits locais (divergiu)",
+    "actualización disponible pero no aplicada: la rama tiene commits locales (divergió)",
+  ),
+  "skillsHub.sync.skippedFailed": dict(
+    "update available but the fast-forward failed",
+    "atualização disponível mas o fast-forward falhou",
+    "actualización disponible pero el fast-forward falló",
+  ),
+  "skillsHub.sync.upToDate": dict(
+    "already up to date",
+    "já atualizado",
+    "ya actualizado",
+  ),
+  "skillsHub.usePath": dict(
+    "Use this folder",
+    "Usar esta pasta",
+    "Usar esta carpeta",
+  ),
+  "apiError.skillsHubNotFound": dict(
+    "skills-hub clone not found.",
+    "Clone do skills-hub não encontrado.",
+    "No se encontró el clon de skills-hub.",
+  ),
+  "apiError.skillsHubInvalidPath": dict(
+    "That folder isn't an skills-hub clone (needs a catalog/ folder and the team/skills-hub origin).",
+    "Essa pasta não é um clone do skills-hub (precisa ter a pasta catalog/ e o origin team/skills-hub).",
+    "Esa carpeta no es un clon de skills-hub (necesita la carpeta catalog/ y el origin team/skills-hub).",
+  ),
+  "apiError.skillsHubCloneParentMissing": dict(
+    "The destination folder doesn't exist.",
+    "A pasta de destino não existe.",
+    "La carpeta de destino no existe.",
+  ),
+  "apiError.skillsHubCloneTargetExists": dict(
+    "There's already a folder named skills-hub there (and it isn't the hub).",
+    "Já existe uma pasta skills-hub ali (e ela não é o hub).",
+    "Ya existe una carpeta skills-hub ahí (y no es el hub).",
+  ),
+  "apiError.skillsDirUnwritable": dict(
+    "Couldn't create Claude's skills folder (~/.claude/skills).",
+    "Não foi possível criar a pasta de skills do Claude (~/.claude/skills).",
+    "No se pudo crear la carpeta de skills de Claude (~/.claude/skills).",
+  ),
+  "skillsHub.manage.syncHelp": dict(
+    "Nothing is updated automatically: \"Update now\" runs git fetch, fast-forwards the clone when it's clean, and links new skills.",
+    "Nada é atualizado automaticamente: \"Atualizar agora\" roda git fetch, avança o clone (fast-forward) quando ele está limpo e linka as skills novas.",
+    "Nada se actualiza automáticamente: \"Actualizar ahora\" ejecuta git fetch, avanza el clon (fast-forward) cuando está limpio y enlaza las skills nuevas.",
+  ),
+  "skillsHub.panel.behind": dict(
+    "hub {count} commit(s) behind — update it in Manage",
+    "hub {count} commit(s) atrás — atualize em Gerenciar",
+    "hub {count} commit(s) atrás — actualízalo en Gestionar",
+  ),
+  "skillsHub.manage.wholeCatalog": dict(
+    "whole catalog · {count} skill(s), new ones included",
+    "catálogo inteiro · {count} skill(s), incluindo as novas",
+    "catálogo completo · {count} skill(s), incluidas las nuevas",
+  ),
+  "skillsHub.manage.pickedCount": dict(
+    "{picked} of {count} skill(s)",
+    "{picked} de {count} skill(s)",
+    "{picked} de {count} skill(s)",
+  ),
+  "skillsHub.preview.open": dict(
+    "Show the content of {name}",
+    "Ver o conteúdo de {name}",
+    "Ver el contenido de {name}",
+  ),
+  "skillsHub.preview.noDescription": dict(
+    "No description.",
+    "Sem descrição.",
+    "Sin descripción.",
+  ),
+  "skillsHub.preview.whenUsed": dict(
+    "When Claude uses it",
+    "Quando o Claude usa",
+    "Cuándo la usa Claude",
+  ),
+  "skillsHub.preview.requires": dict(
+    "Depends on:",
+    "Depende de:",
+    "Depende de:",
+  ),
+  "skillsHub.preview.files": dict(
+    "Files that come with it",
+    "Arquivos que vêm junto",
+    "Archivos que vienen con ella",
+  ),
+  "skillsHub.preview.loadError": dict(
+    "Couldn't read this skill.",
+    "Não foi possível ler esta skill.",
+    "No se pudo leer esta skill.",
+  ),
+  "apiError.skillNotFound": dict(
+    "Skill not found in skills-hub (maybe removed by the last update).",
+    "Skill não encontrada no skills-hub (talvez removida na última atualização).",
+    "Skill no encontrada en skills-hub (quizá eliminada en la última actualización).",
+  ),
 } satisfies Record<string, Dict>;
 
 export type TranslationKey = keyof typeof translations;
