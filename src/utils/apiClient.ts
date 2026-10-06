@@ -49,6 +49,7 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   TASK_PROMPT_REQUIRED: "apiError.taskPromptRequired",
   MALFORMED_PREFERENCES: "apiError.malformedPreferences",
   SKILLS_HUB_NOT_FOUND: "apiError.skillsHubNotFound",
+  SKILLS_HUB_REPO_URL_MISSING: "apiError.skillsHubRepoUrlMissing",
   SKILLS_HUB_INVALID_PATH: "apiError.skillsHubInvalidPath",
   SKILLS_HUB_CLONE_PARENT_MISSING: "apiError.skillsHubCloneParentMissing",
   SKILLS_HUB_CLONE_TARGET_EXISTS: "apiError.skillsHubCloneTargetExists",

@@ -750,6 +750,56 @@ export const translations = {
     "Dá para mudar quando quiser em Configurações (ícone de engrenagem no header).",
     "Puedes cambiarlo cuando quieras en Configuración (ícono de engranaje en el encabezado).",
   ),
+  "teamPrompt.title": dict(
+    "Team integrations",
+    "Integrações do time",
+    "Integraciones del equipo",
+  ),
+  "teamPrompt.intro": dict(
+    "Optional, per-machine settings for your team's tools. They live only in your local userPreferences.json — never in this app's public repo.",
+    "Configurações opcionais e locais das ferramentas do seu time. Ficam só no seu userPreferences.json local — nunca no repo público deste app.",
+    "Configuraciones opcionales y locales de las herramientas de tu equipo. Quedan solo en tu userPreferences.json local — nunca en el repo público de esta app.",
+  ),
+  "teamPrompt.prefilled": dict(
+    "Pre-filled from your current setup — just confirm.",
+    "Pré-preenchido com a sua configuração atual — é só confirmar.",
+    "Prellenado con tu configuración actual — solo confirma.",
+  ),
+  "teamPrompt.jenkins.label": dict(
+    "Jenkins base URL",
+    "URL base do Jenkins",
+    "URL base de Jenkins",
+  ),
+  "teamPrompt.jenkins.hint": dict(
+    "Enables the Jenkins button on session cards. Leave empty if your team doesn't use Jenkins.",
+    "Habilita o botão do Jenkins nos cards de sessão. Deixe vazio se o seu time não usa Jenkins.",
+    "Habilita el botón de Jenkins en las tarjetas de sesión. Déjalo vacío si tu equipo no usa Jenkins.",
+  ),
+  "teamPrompt.skillsHub.label": dict(
+    "Team skills repo (clone URL)",
+    "Repo de skills do time (URL de clone)",
+    "Repo de skills del equipo (URL de clonado)",
+  ),
+  "teamPrompt.skillsHub.hint": dict(
+    "A git repo with a catalog/ folder of Claude skills, e.g. git@host:team/skills-repo.git. Ask your team. Leave empty if there's none.",
+    "Um repo git com uma pasta catalog/ de skills do Claude, ex.: git@host:time/repo-de-skills.git. Pergunte ao seu time. Deixe vazio se não houver.",
+    "Un repo git con una carpeta catalog/ de skills de Claude, p. ej. git@host:equipo/repo-de-skills.git. Pregunta a tu equipo. Déjalo vacío si no hay.",
+  ),
+  "teamPrompt.save": dict(
+    "Save",
+    "Salvar",
+    "Guardar",
+  ),
+  "teamPrompt.skip": dict(
+    "Not now",
+    "Agora não",
+    "Ahora no",
+  ),
+  "teamPrompt.saved": dict(
+    "Team integrations saved.",
+    "Integrações do time salvas.",
+    "Integraciones del equipo guardadas.",
+  ),
   "workspaceDirsPrompt.save": dict("Save", "Salvar", "Guardar"),
   "workspaceDirsPrompt.skip": dict("Not now", "Agora não", "Ahora no"),
   "workspaceDirsPrompt.saved": dict(
@@ -2519,15 +2569,55 @@ export const translations = {
 
 
 
+  "settings.jenkinsBaseUrl.title": dict(
+    "Jenkins base URL",
+    "URL base do Jenkins",
+    "URL base de Jenkins",
+  ),
+  "settings.jenkinsBaseUrl.description": dict(
+    "Your team's Jenkins, used by the Jenkins button on session cards. Empty = button hidden.",
+    "O Jenkins do seu time, usado pelo botão do Jenkins nos cards de sessão. Vazio = botão escondido.",
+    "El Jenkins de tu equipo, usado por el botón de Jenkins en las tarjetas de sesión. Vacío = botón oculto.",
+  ),
+  "settings.envPreviews.title": dict(
+    "env/* preview links",
+    "Links de preview de env/*",
+    "Links de preview de env/*",
+  ),
+  "settings.envPreviews.description": dict(
+    "Preview sites an env/* branch deploys, per project folder name, shown in the Jenkins modal. JSON: { \"<project>\": [{ \"label\": \"BR\", \"url\": \"http://{env}.example.com/\" }] } — {env} becomes the branch slug (env/PROJ-1 → env-proj-1).",
+    "Sites de preview que uma branch env/* publica, por nome da pasta do projeto, mostrados no modal do Jenkins. JSON: { \"<projeto>\": [{ \"label\": \"BR\", \"url\": \"http://{env}.example.com/\" }] } — {env} vira o slug da branch (env/PROJ-1 → env-proj-1).",
+    "Sitios de preview que publica una rama env/*, por nombre de carpeta del proyecto, mostrados en el modal de Jenkins. JSON: { \"<proyecto>\": [{ \"label\": \"BR\", \"url\": \"http://{env}.example.com/\" }] } — {env} se convierte en el slug de la rama (env/PROJ-1 → env-proj-1).",
+  ),
+  "settings.envPreviews.preview": dict(
+    "{count} project(s): {projects}",
+    "{count} projeto(s): {projects}",
+    "{count} proyecto(s): {projects}",
+  ),
+  "settings.envPreviews.invalid": dict(
+    "Invalid JSON or shape — expected an object of { label, url } lists.",
+    "JSON ou formato inválido — esperado um objeto de listas { label, url }.",
+    "JSON o formato inválido — se espera un objeto de listas { label, url }.",
+  ),
+  "settings.preview.notUsed": dict(
+    "not used",
+    "não usado",
+    "no usado",
+  ),
+  "settings.skillsHub.noRepo": dict(
+    "repo not configured",
+    "repo não configurado",
+    "repo no configurado",
+  ),
   "settings.skillsHub.title": dict(
-    "Team skills (skills-hub)",
-    "Skills do time (skills-hub)",
-    "Skills del equipo (skills-hub)",
+    "Team skills",
+    "Skills do time",
+    "Skills del equipo",
   ),
   "settings.skillsHub.description": dict(
-    "Shared Claude skills from the skills-hub repo, linked into ~/.claude/skills. Updated only when you click \"Update now\".",
-    "Skills do Claude compartilhadas pelo repo skills-hub, linkadas em ~/.claude/skills. Atualizadas só quando você clica em \"Atualizar agora\".",
-    "Skills de Claude compartidas por el repo skills-hub, enlazadas en ~/.claude/skills. Se actualizan solo cuando haces clic en \"Actualizar ahora\".",
+    "Shared Claude skills from your team's skills repo, linked into ~/.claude/skills. Updated only when you click \"Update now\".",
+    "Skills do Claude compartilhadas pelo repo de skills do time, linkadas em ~/.claude/skills. Atualizadas só quando você clica em \"Atualizar agora\".",
+    "Skills de Claude compartidas por el repo de skills del equipo, enlazadas en ~/.claude/skills. Se actualizan solo cuando haces clic en \"Actualizar ahora\".",
   ),
   "settings.skillsHub.manage": dict(
     "Manage",
@@ -2560,19 +2650,19 @@ export const translations = {
     "No se pudo aplicar la selección.",
   ),
   "skillsHub.cloned": dict(
-    "skills-hub cloned. Now choose your catalogs.",
-    "skills-hub clonado. Agora escolha seus catálogos.",
-    "skills-hub clonado. Ahora elige tus catálogos.",
+    "Skills hub cloned. Now choose your catalogs.",
+    "Hub de skills clonado. Agora escolha seus catálogos.",
+    "Hub de skills clonado. Ahora elige tus catálogos.",
   ),
   "skillsHub.cloneError": dict(
-    "Couldn't clone skills-hub.",
-    "Não foi possível clonar o skills-hub.",
-    "No se pudo clonar skills-hub.",
+    "Couldn't clone the skills hub.",
+    "Não foi possível clonar o hub de skills.",
+    "No se pudo clonar el hub de skills.",
   ),
   "skillsHub.configuredPathInvalid": dict(
-    "The folder saved in the preferences isn't an skills-hub clone anymore — clone it again or point to the right folder.",
-    "A pasta salva nas preferências não é mais um clone do skills-hub — clone de novo ou aponte a pasta certa.",
-    "La carpeta guardada en las preferencias ya no es un clon de skills-hub — clónalo de nuevo o indica la carpeta correcta.",
+    "The folder saved in the preferences isn't a clone of the skills hub anymore — clone it again or point to the right folder.",
+    "A pasta salva nas preferências não é mais um clone do hub de skills — clone de novo ou aponte a pasta certa.",
+    "La carpeta guardada en las preferencias ya no es un clon del hub de skills — clónalo de nuevo o indica la carpeta correcta.",
   ),
   "skillsHub.copy": dict(
     "Copy",
@@ -2600,9 +2690,9 @@ export const translations = {
     "¿Ya lo tienes clonado en otra carpeta?",
   ),
   "skillsHub.install.manualBody": dict(
-    "If the clone fails (e.g. no SSH key for Bitbucket), run this in a terminal, then reopen this window:",
-    "Se o clone falhar (ex.: sem chave SSH no Bitbucket), rode isto num terminal e depois reabra esta janela:",
-    "Si el clon falla (p. ej. sin clave SSH en Bitbucket), ejecuta esto en una terminal y luego vuelve a abrir esta ventana:",
+    "If the clone fails (e.g. no SSH key for the repo's host), run this in a terminal, then reopen this window:",
+    "Se o clone falhar (ex.: sem chave SSH no host do repo), rode isto num terminal e depois reabra esta janela:",
+    "Si el clon falla (p. ej. sin clave SSH en el host del repo), ejecuta esto en una terminal y luego vuelve a abrir esta ventana:",
   ),
   "skillsHub.install.manualTitle": dict(
     "Or clone it by hand",
@@ -2610,19 +2700,19 @@ export const translations = {
     "O clónalo a mano",
   ),
   "skillsHub.install.openRepo": dict(
-    "Open the repo on Bitbucket",
-    "Abrir o repo no Bitbucket",
-    "Abrir el repo en Bitbucket",
+    "Open the repo in the browser",
+    "Abrir o repo no navegador",
+    "Abrir el repo en el navegador",
   ),
   "skillsHub.install.sshNote": dict(
-    "Uses your own SSH access to Bitbucket (team workspace).",
-    "Usa o seu próprio acesso SSH ao Bitbucket (workspace team).",
-    "Usa tu propio acceso SSH a Bitbucket (workspace team).",
+    "Uses your own access (SSH key) to the repo's host.",
+    "Usa o seu próprio acesso (chave SSH) ao host do repo.",
+    "Usa tu propio acceso (clave SSH) al host del repo.",
   ),
   "skillsHub.invite.body": dict(
-    "skills-hub is where the team keeps reusable Claude skills (Figma with cache, QA of a task, preview links, ...). Once installed and linked, every Claude session on this machine can use them.",
-    "O skills-hub é onde o time guarda skills reutilizáveis do Claude (Figma com cache, QA de tarefa, links de preview, ...). Instalado e linkado, toda sessão do Claude nesta máquina pode usá-las.",
-    "skills-hub es donde el equipo guarda skills reutilizables de Claude (Figma con caché, QA de tarea, links de preview, ...). Instalado y enlazado, toda sesión de Claude en esta máquina puede usarlas.",
+    "The skills hub is the repo where your team keeps reusable Claude skills. Once installed and linked, every Claude session on this machine can use them.",
+    "O hub de skills é o repo onde o seu time guarda skills reutilizáveis do Claude. Instalado e linkado, toda sessão do Claude nesta máquina pode usá-las.",
+    "El hub de skills es el repo donde tu equipo guarda skills reutilizables de Claude. Instalado y enlazado, toda sesión de Claude en esta máquina puede usarlas.",
   ),
   "skillsHub.invite.optional": dict(
     "Optional — tasks work the same without it.",
@@ -2640,9 +2730,9 @@ export const translations = {
     "No se pudo leer el estado de las skills.",
   ),
   "skillsHub.loading": dict(
-    "Checking skills-hub…",
-    "Verificando o skills-hub…",
-    "Verificando skills-hub…",
+    "Checking the skills hub…",
+    "Verificando o hub de skills…",
+    "Verificando el hub de skills…",
   ),
   "skillsHub.manage.ahead": dict(
     "{count} local commit(s) not pushed",
@@ -2725,9 +2815,9 @@ export const translations = {
     "Actualizar ahora",
   ),
   "skillsHub.modal.title": dict(
-    "Team skills (skills-hub)",
-    "Skills do time (skills-hub)",
-    "Skills del equipo (skills-hub)",
+    "Team skills",
+    "Skills do time",
+    "Skills del equipo",
   ),
   "skillsHub.panel.choose": dict(
     "Choose",
@@ -2735,9 +2825,9 @@ export const translations = {
     "Elegir",
   ),
   "skillsHub.panel.chooseCatalogs": dict(
-    "skills-hub found — pick your team's catalog(s) or individual skills to use them in your tasks.",
-    "skills-hub encontrado — escolha catálogo(s) do seu time ou skills soltas pra usar nas tarefas.",
-    "skills-hub encontrado — elige catálogo(s) de tu equipo o skills sueltas para usarlas en tus tareas.",
+    "Skills hub found — pick your team's catalog(s) or individual skills to use them in your tasks.",
+    "Hub de skills encontrado — escolha catálogo(s) do seu time ou skills soltas pra usar nas tarefas.",
+    "Hub de skills encontrado — elige catálogo(s) de tu equipo o skills sueltas para usarlas en tus tareas.",
   ),
   "skillsHub.panel.conflicts": dict(
     "{count} name conflict(s)",
@@ -2745,9 +2835,9 @@ export const translations = {
     "{count} conflicto(s) de nombre",
   ),
   "skillsHub.panel.inviteShort": dict(
-    "Install skills-hub so your tasks can use the team's shared skills.",
-    "Instale o skills-hub pra que suas tarefas usem as skills compartilhadas do time.",
-    "Instala skills-hub para que tus tareas usen las skills compartidas del equipo.",
+    "Install your team's skills hub so your tasks can use the team's shared skills.",
+    "Instale o hub de skills do time pra que suas tarefas usem as skills compartilhadas do time.",
+    "Instala el hub de skills del equipo para que tus tareas usen las skills compartidas del equipo.",
   ),
   "skillsHub.panel.manage": dict(
     "Manage",
@@ -2775,9 +2865,9 @@ export const translations = {
     "Configurar",
   ),
   "skillsHub.panel.setupLink": dict(
-    "Team skills (skills-hub): set up",
-    "Skills do time (skills-hub): configurar",
-    "Skills del equipo (skills-hub): configurar",
+    "Team skills: set up",
+    "Skills do time: configurar",
+    "Skills del equipo: configurar",
   ),
   "skillsHub.panel.summary": dict(
     "Skills: {count} linked ({catalogs})",
@@ -2785,9 +2875,9 @@ export const translations = {
     "Skills: {count} enlazadas ({catalogs})",
   ),
   "skillsHub.pathSaved": dict(
-    "skills-hub folder saved.",
-    "Pasta do skills-hub salva.",
-    "Carpeta de skills-hub guardada.",
+    "Skills hub folder saved.",
+    "Pasta do hub de skills salva.",
+    "Carpeta del hub de skills guardada.",
   ),
   "skillsHub.pathSaveError": dict(
     "Couldn't use that folder.",
@@ -2825,9 +2915,9 @@ export const translations = {
     "No se pudieron actualizar las skills.",
   ),
   "skillsHub.sync.fetchFailed": dict(
-    "couldn't reach Bitbucket (offline or no SSH access) — using the local version",
-    "sem acesso ao Bitbucket (offline ou sem SSH) — usando a versão local",
-    "sin acceso a Bitbucket (offline o sin SSH) — usando la versión local",
+    "couldn't reach the repo's host (offline or no SSH access) — using the local version",
+    "sem acesso ao host do repo (offline ou sem SSH) — usando a versão local",
+    "sin acceso al host del repo (offline o sin SSH) — usando la versión local",
   ),
   "skillsHub.sync.linked": dict(
     "linked: {names}",
@@ -2864,15 +2954,50 @@ export const translations = {
     "Usar esta pasta",
     "Usar esta carpeta",
   ),
+  "skillsHub.repoUrl.title": dict(
+    "Skills hub repo",
+    "Repo do hub de skills",
+    "Repo del hub de skills",
+  ),
+  "skillsHub.repoUrl.body": dict(
+    "Clone URL of your team's skills repo (a git repo with a catalog/ folder). Stored only in your local userPreferences.json.",
+    "URL de clone do repo de skills do seu time (um repo git com uma pasta catalog/). Fica só no seu userPreferences.json local.",
+    "URL de clonado del repo de skills de tu equipo (un repo git con una carpeta catalog/). Se guarda solo en tu userPreferences.json local.",
+  ),
+  "skillsHub.repoUrl.detected": dict(
+    "Detected from your existing clone — save to confirm.",
+    "Detectado do clone que você já tem — salve para confirmar.",
+    "Detectado de tu clon existente — guarda para confirmar.",
+  ),
+  "skillsHub.repoUrl.save": dict(
+    "Save",
+    "Salvar",
+    "Guardar",
+  ),
+  "skillsHub.repoUrl.saved": dict(
+    "Skills hub repo saved.",
+    "Repo do hub de skills salvo.",
+    "Repo del hub de skills guardado.",
+  ),
+  "skillsHub.repoUrl.saveError": dict(
+    "Couldn't save the repo URL.",
+    "Não foi possível salvar a URL do repo.",
+    "No se pudo guardar la URL del repo.",
+  ),
+  "apiError.skillsHubRepoUrlMissing": dict(
+    "The skills hub repo URL isn't set.",
+    "A URL do repo do hub de skills não está configurada.",
+    "La URL del repo del hub de skills no está configurada.",
+  ),
   "apiError.skillsHubNotFound": dict(
-    "skills-hub clone not found.",
-    "Clone do skills-hub não encontrado.",
-    "No se encontró el clon de skills-hub.",
+    "Skills hub clone not found.",
+    "Clone do hub de skills não encontrado.",
+    "No se encontró el clon del hub de skills.",
   ),
   "apiError.skillsHubInvalidPath": dict(
-    "That folder isn't an skills-hub clone (needs a catalog/ folder and the team/skills-hub origin).",
-    "Essa pasta não é um clone do skills-hub (precisa ter a pasta catalog/ e o origin team/skills-hub).",
-    "Esa carpeta no es un clon de skills-hub (necesita la carpeta catalog/ y el origin team/skills-hub).",
+    "That folder isn't a clone of the configured skills hub (needs a catalog/ folder and the configured repo as origin).",
+    "Essa pasta não é um clone do hub de skills configurado (precisa ter a pasta catalog/ e o repo configurado como origin).",
+    "Esa carpeta no es un clon del hub de skills configurado (necesita la carpeta catalog/ y el repo configurado como origin).",
   ),
   "apiError.skillsHubCloneParentMissing": dict(
     "The destination folder doesn't exist.",
@@ -2880,9 +3005,9 @@ export const translations = {
     "La carpeta de destino no existe.",
   ),
   "apiError.skillsHubCloneTargetExists": dict(
-    "There's already a folder named skills-hub there (and it isn't the hub).",
-    "Já existe uma pasta skills-hub ali (e ela não é o hub).",
-    "Ya existe una carpeta skills-hub ahí (y no es el hub).",
+    "There's already a folder with that name there (and it isn't the hub).",
+    "Já existe uma pasta com esse nome ali (e ela não é o hub).",
+    "Ya existe una carpeta con ese nombre ahí (y no es el hub).",
   ),
   "apiError.skillsDirUnwritable": dict(
     "Couldn't create Claude's skills folder (~/.claude/skills).",
@@ -2940,9 +3065,9 @@ export const translations = {
     "No se pudo leer esta skill.",
   ),
   "apiError.skillNotFound": dict(
-    "Skill not found in skills-hub (maybe removed by the last update).",
-    "Skill não encontrada no skills-hub (talvez removida na última atualização).",
-    "Skill no encontrada en skills-hub (quizá eliminada en la última actualización).",
+    "Skill not found in the skills hub (maybe removed by the last update).",
+    "Skill não encontrada no hub de skills (talvez removida na última atualização).",
+    "Skill no encontrada en el hub de skills (quizá eliminada en la última actualización).",
   ),
 } satisfies Record<string, Dict>;
 

@@ -47,9 +47,18 @@ export type UserPreferences = {
    *  until it is (see WorkspaceDirsPromptModal). Optional in the type too: a backend still on the
    *  version before this field existed simply doesn't send it. */
   workspaceDirs?: string[] | null;
-  /** Team skills setup (skills-hub). Optional for the same reason as `workspaceDirs`. */
+  /** Team skills hub setup. Optional for the same reason as `workspaceDirs`. */
   skillsHub?: SkillsHubPreferences;
+  /** Base URL of the team's Jenkins. Null = never set (the startup prompt asks, see
+   *  TeamIntegrationsPromptModal); "" = not used. Optional like `workspaceDirs`. */
+  jenkinsBaseUrl?: string | null;
+  /** `env/*` preview sites per project folder name: `{ label, url }` with `{env}` in the URL
+   *  replaced by the branch slug. Optional like `workspaceDirs`. */
+  envPreviews?: EnvPreviews;
 };
+
+export type EnvPreviewTemplate = { label: string; url: string };
+export type EnvPreviews = Record<string, EnvPreviewTemplate[]>;
 
 /** Everything the app remembers between sessions in one JSON file (`userPreferences.json`, see
  *  preferencesService.ts) instead of separate per-field files — originally just the "new task"
@@ -211,11 +220,13 @@ export async function launchTaskTerminal(
 }
 
 // ---------------------------------------------------------------------------------------------
-// Team skills (skills-hub) — see server/services/skillsHubService.ts. Every call here is
+// Team skills hub — see server/services/skillsHubService.ts. Every call here is
 // optional from the UI's point of view: a failure (or a backend older than these routes, which
 // answers 404) only hides/degrades the skills panel, never blocks a task.
 
 export type SkillsHubPreferences = {
+  /** The hub's clone URL. Null = never set; "" = not used. Optional: older backends don't send it. */
+  repoUrl?: string | null;
   path: string | null;
   catalogs: string[] | null;
   /** `<catalog>/<skill>` picks on top of whole catalogs. Optional: older backends don't send it. */
@@ -253,8 +264,16 @@ export type SkillsHubStatus = {
   skills: SkillStatus[];
   userSkillsDir: string;
   inviteDismissed: boolean;
-  cloneUrl: string;
+  /** Null = no hub repo configured (the modal asks for the URL first). Always a string on a
+   *  backend from before the URL became a preference. */
+  cloneUrl: string | null;
+  /** True while `cloneUrl` was detected from an existing clone, not saved. */
+  repoUrlDetected?: boolean;
+  /** The user said there's no hub (`repoUrl` saved as ""). */
+  notUsed?: boolean;
   webUrl: string;
+  /** Folder name a clone gets. Absent on older backends. */
+  cloneFolderName?: string;
   cloneParentDirs: string[];
 };
 
@@ -315,6 +334,19 @@ export async function setSkillsHubSelection(selection: SkillsSelection): Promise
     client.put<SkillsLinkResult>("/skills-hub/selection", selection),
   );
   return data;
+}
+
+/** "" = not used. Changing it also forgets the clone path of the previous repo. */
+export async function setSkillsHubRepoUrl(repoUrl: string): Promise<void> {
+  await withServerErrorMessage(() => client.put("/skills-hub/repo-url", { repoUrl }));
+}
+
+/** The `origin` of a hub clone already on this machine — the startup prompt's prefill. */
+export async function fetchDetectedHubRepoUrl(): Promise<string | null> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ repoUrl: string | null }>("/skills-hub/detected-repo-url"),
+  );
+  return data.repoUrl;
 }
 
 export async function setSkillsHubPath(path: string | null): Promise<void> {

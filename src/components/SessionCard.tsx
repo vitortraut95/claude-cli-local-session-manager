@@ -42,6 +42,7 @@ import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
 import { getEnvPreviewGroups, getJenkinsLinks } from "../utils/jenkins";
+import { useTeamLinks } from "../hooks/useTeamLinks";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 
@@ -115,9 +116,10 @@ export function SessionCard({
   const { origin: originBranch, destination: taskBranch } = resolveSessionBranches(session);
   // Shown for any session whose folder still exists (not just `env/*` branches) — every team's
   // Jenkins follows the same job/<repo>/job/<branch> layout, see getJenkinsLinks.
+  const teamLinks = useTeamLinks();
   const jenkinsLinks = session.directoryMissing
     ? null
-    : getJenkinsLinks(session.project, taskBranch ?? null, originBranch);
+    : getJenkinsLinks(teamLinks.jenkinsBaseUrl, session.project, taskBranch ?? null, originBranch);
 
   const handleCopyCommand = async () => {
     try {
@@ -635,7 +637,10 @@ export function SessionCard({
         <JenkinsLinksModal
           project={session.project}
           links={jenkinsLinks}
-          envPreviews={getEnvPreviewGroups(session.project, [taskBranch ?? null, originBranch])}
+          envPreviews={getEnvPreviewGroups(teamLinks.envPreviews, session.project, [
+            taskBranch ?? null,
+            originBranch,
+          ])}
           onClose={() => setShowJenkinsModal(false)}
         />
       )}

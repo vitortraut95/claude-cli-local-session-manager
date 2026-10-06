@@ -11,7 +11,7 @@ type SkillsHubPanelProps = {
 };
 
 /**
- * The New Task modal's one-glance view of the team skills (skills-hub). Never blocks
+ * The New Task modal's one-glance view of the team skills hub. Never blocks
  * anything: without the hub it's an invite (dismissable — then just a small link), with it a
  * single status line saying what the "update skills" step will do. Renders nothing while the
  * status is unknown (still loading, or a backend without these routes).
@@ -20,7 +20,7 @@ export function SkillsHubPanel({ status, onManage }: SkillsHubPanelProps) {
   const { t } = useLanguage();
   const [dismissing, setDismissing] = useState(false);
 
-  if (!status) return null;
+  if (!status || status.notUsed) return null;
 
   if (!status.found) {
     if (status.inviteDismissed) {

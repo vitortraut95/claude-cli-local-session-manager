@@ -16,6 +16,7 @@ import { Tooltip } from "./Tooltip";
 import { UpdateButton } from "./UpdateButton";
 import { UpdateOverlay } from "./UpdateOverlay";
 import { UsageLimitsBadge } from "./UsageLimitsBadge";
+import { TeamIntegrationsPromptModal } from "./TeamIntegrationsPromptModal";
 import { WorkspaceDirsPromptModal } from "./WorkspaceDirsPromptModal";
 import * as tasksApi from "../services/tasksApi";
 
@@ -60,6 +61,11 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   // for this page load. Re-checked whenever the settings modal saves something.
   const [needsWorkspaceDirs, setNeedsWorkspaceDirs] = useState(false);
   const [workspacePromptSkipped, setWorkspacePromptSkipped] = useState(false);
+  // Same idea for the team integrations (Jenkins URL, skills hub repo): asked while either was never
+  // saved (null — `undefined` means a backend without the field, never asked). Holds the prefs that
+  // triggered it, for the prompt's prefill.
+  const [teamPromptPrefs, setTeamPromptPrefs] = useState<tasksApi.UserPreferences | null>(null);
+  const [teamPromptSkipped, setTeamPromptSkipped] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +73,11 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
       tasksApi
         .fetchPreferences()
         .then((prefs) => {
-          if (!cancelled) setNeedsWorkspaceDirs(prefs.workspaceDirs == null);
+          if (cancelled) return;
+          setNeedsWorkspaceDirs(prefs.workspaceDirs == null);
+          setTeamPromptPrefs(
+            prefs.jenkinsBaseUrl === null || prefs.skillsHub?.repoUrl === null ? prefs : null,
+          );
         })
         .catch(() => undefined);
     };
@@ -87,6 +97,17 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     hasSeenOnboarding &&
     needsWorkspaceDirs &&
     !workspacePromptSkipped &&
+    !showOnboarding &&
+    !showSettings &&
+    !showNewTaskModal;
+  // Only after the workspace prompt is out of the way (saved or skipped) — never both at once.
+  const showTeamPrompt =
+    teamPromptPrefs !== null &&
+    !teamPromptSkipped &&
+    loaded &&
+    hasSeenOnboarding &&
+    !showWorkspacePrompt &&
+    (!needsWorkspaceDirs || workspacePromptSkipped) &&
     !showOnboarding &&
     !showSettings &&
     !showNewTaskModal;
@@ -209,6 +230,13 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         <WorkspaceDirsPromptModal
           onSaved={() => setNeedsWorkspaceDirs(false)}
           onSkip={() => setWorkspacePromptSkipped(true)}
+        />
+      )}
+      {showTeamPrompt && teamPromptPrefs && (
+        <TeamIntegrationsPromptModal
+          prefs={teamPromptPrefs}
+          onSaved={() => setTeamPromptPrefs(null)}
+          onSkip={() => setTeamPromptSkipped(true)}
         />
       )}
       <UpdateOverlay

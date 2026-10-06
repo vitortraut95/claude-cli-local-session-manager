@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getPreferencesPath,
   getUserPreferences,
+  isEnvPreviews,
   isSkillsHubPreferences,
   saveUserPreferences,
   type UserPreferences,
@@ -10,10 +11,12 @@ import { openFileInVSCode } from "../services/sessionService.js";
 import { inspectWorkspaceDirs, suggestWorkspaceDirs } from "../services/workspaceService.js";
 import {
   cloneSkillsHub,
+  detectHubRepoUrl,
   getSkillDetails,
   getSkillsHubStatus,
   setSkillsHubFlags,
   setSkillsHubPath,
+  setSkillsHubRepoUrl,
   setSkillsHubSelection,
   syncSkillsHub,
 } from "../services/skillsHubService.js";
@@ -29,14 +32,14 @@ import { AppError, errorCode } from "../utils/httpError.js";
 
 export const tasksRouter = Router();
 
-/** `workspaceDirs`/`skillsHub` are optional on purpose: a browser tab still running the frontend
- *  bundle from before those fields existed (see CLAUDE.md's update-safety policy) sends the full
- *  object without them — the PUT handler below keeps the stored value instead of rejecting or
- *  wiping it. */
+type LateFields = "workspaceDirs" | "skillsHub" | "jenkinsBaseUrl" | "envPreviews";
+
+/** The fields added after the file's first release are optional on purpose: a browser tab still
+ *  running an older frontend bundle (see CLAUDE.md's update-safety policy) sends the full object
+ *  without them — the PUT handler below keeps the stored value instead of rejecting or wiping it. */
 function isValidPreferences(
   body: unknown,
-): body is Omit<UserPreferences, "workspaceDirs" | "skillsHub"> &
-  Partial<Pick<UserPreferences, "workspaceDirs" | "skillsHub">> {
+): body is Omit<UserPreferences, LateFields> & Partial<Pick<UserPreferences, LateFields>> {
   if (typeof body !== "object" || body === null) return false;
   const candidate = body as Record<string, unknown>;
   return (
@@ -59,7 +62,11 @@ function isValidPreferences(
       candidate.workspaceDirs === null ||
       (Array.isArray(candidate.workspaceDirs) &&
         candidate.workspaceDirs.every((item) => typeof item === "string"))) &&
-    (candidate.skillsHub === undefined || isSkillsHubPreferences(candidate.skillsHub))
+    (candidate.skillsHub === undefined || isSkillsHubPreferences(candidate.skillsHub)) &&
+    (candidate.jenkinsBaseUrl === undefined ||
+      candidate.jenkinsBaseUrl === null ||
+      typeof candidate.jenkinsBaseUrl === "string") &&
+    (candidate.envPreviews === undefined || isEnvPreviews(candidate.envPreviews))
   );
 }
 
@@ -90,11 +97,19 @@ tasksRouter.put("/preferences", async (req, res) => {
           "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
           "language: \"en\"|\"pt\"|\"es\"|null, hasSeenOnboarding: boolean, " +
           "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
-          "workspaceDirs?: string[] | null, skillsHub?: { path, catalogs, skills?, inviteDismissed } }.",
+          "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
+          "inviteDismissed }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
+          "{ label, url }[] } }.",
       );
     }
     const stored = await getUserPreferences();
-    await saveUserPreferences({ ...stored, ...req.body });
+    // skillsHub merged one level deep: an older bundle's skillsHub lacks `repoUrl`, which must
+    // survive its save.
+    await saveUserPreferences({
+      ...stored,
+      ...req.body,
+      skillsHub: { ...stored.skillsHub, ...req.body.skillsHub },
+    });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({
@@ -192,7 +207,7 @@ tasksRouter.post("/launch", async (req, res) => {
   }
 });
 
-// Team skills (skills-hub) — see skillsHubService.ts. All optional: nothing here is ever run
+// Team skills hub — see skillsHubService.ts. All optional: nothing here is ever run
 // as part of creating a task.
 
 tasksRouter.get("/skills-hub/status", async (_req, res) => {
@@ -236,6 +251,25 @@ tasksRouter.put("/skills-hub/selection", async (req, res) => {
     const strings = (raw: unknown) =>
       Array.isArray(raw) ? raw.filter((c): c is string => typeof c === "string") : [];
     res.json(await setSkillsHubSelection({ catalogs: strings(body.catalogs), skills: strings(body.skills) }));
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  }
+});
+
+/** The startup prompt's prefill: the `origin` of a hub clone set up before the URL was a preference. */
+tasksRouter.get("/skills-hub/detected-repo-url", async (_req, res) => {
+  try {
+    res.json({ repoUrl: await detectHubRepoUrl() });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  }
+});
+
+tasksRouter.put("/skills-hub/repo-url", async (req, res) => {
+  try {
+    const raw: unknown = (req.body as { repoUrl?: unknown } | null)?.repoUrl;
+    await setSkillsHubRepoUrl(typeof raw === "string" ? raw : "");
+    res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }

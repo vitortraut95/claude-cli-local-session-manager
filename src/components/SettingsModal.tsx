@@ -15,7 +15,7 @@ import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import type { Theme } from "../hooks/useTheme";
 import { useToast } from "../hooks/useToast";
 import * as tasksApi from "../services/tasksApi";
-import type { UserPreferences } from "../services/tasksApi";
+import type { EnvPreviews, UserPreferences } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Button } from "./Button";
 import { Input } from "./Input";
@@ -33,7 +33,35 @@ type SettingsModalProps = {
 };
 
 /** Keys edited in a big secondary modal rather than inline in their row. */
-type BigEditorKey = "workspaceDirs" | "defaultPrompt" | "branchTypes" | "recentProjectPaths";
+type BigEditorKey =
+  | "workspaceDirs"
+  | "defaultPrompt"
+  | "branchTypes"
+  | "recentProjectPaths"
+  | "jenkinsBaseUrl"
+  | "envPreviews";
+
+/** The envPreviews editor's JSON draft, parsed — null when it isn't valid JSON of the right shape. */
+function parseEnvPreviews(raw: string): EnvPreviews | null {
+  try {
+    const parsed: unknown = JSON.parse(raw.trim() || "{}");
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+    const valid = Object.values(parsed as Record<string, unknown>).every(
+      (list) =>
+        Array.isArray(list) &&
+        list.every(
+          (item: unknown) =>
+            typeof item === "object" &&
+            item !== null &&
+            typeof (item as Record<string, unknown>).label === "string" &&
+            typeof (item as Record<string, unknown>).url === "string",
+        ),
+    );
+    return valid ? (parsed as EnvPreviews) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Every `userPreferences.json` key, one row each (friendly name, description, the raw key, a
@@ -166,7 +194,13 @@ export function SettingsModal({
             description={t("settings.skillsHub.description")}
             keyName="skillsHub"
             preview={
-              skillsHub === null ? undefined : !skillsHub.found ? (
+              skillsHub === null ? undefined : skillsHub.notUsed ? (
+                t("settings.preview.notUsed")
+              ) : skillsHub.cloneUrl === null ? (
+                <span className="text-amber-600 dark:text-amber-400">
+                  {t("settings.skillsHub.noRepo")}
+                </span>
+              ) : !skillsHub.found ? (
                 <span className="text-amber-600 dark:text-amber-400">
                   {t("settings.skillsHub.notInstalled")}
                 </span>
@@ -189,6 +223,39 @@ export function SettingsModal({
               </Button>
             }
           />
+          {prefs.jenkinsBaseUrl !== undefined && (
+            <SettingRow
+              title={t("settings.jenkinsBaseUrl.title")}
+              description={t("settings.jenkinsBaseUrl.description")}
+              keyName="jenkinsBaseUrl"
+              preview={
+                prefs.jenkinsBaseUrl === null ? (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {t("settings.preview.notSet")}
+                  </span>
+                ) : (
+                  prefs.jenkinsBaseUrl || t("settings.preview.notUsed")
+                )
+              }
+              control={<EditButton onClick={() => setEditing("jenkinsBaseUrl")} />}
+            />
+          )}
+          {prefs.envPreviews !== undefined && (
+            <SettingRow
+              title={t("settings.envPreviews.title")}
+              description={t("settings.envPreviews.description")}
+              keyName="envPreviews"
+              preview={
+                Object.keys(prefs.envPreviews).length > 0
+                  ? t("settings.envPreviews.preview", {
+                      count: Object.keys(prefs.envPreviews).length,
+                      projects: Object.keys(prefs.envPreviews).join(", "),
+                    })
+                  : t("settings.preview.emptyList")
+              }
+              control={<EditButton onClick={() => setEditing("envPreviews")} />}
+            />
+          )}
           <SettingRow
             title={t("settings.defaultPrompt.title")}
             description={t("settings.defaultPrompt.description")}
@@ -277,6 +344,57 @@ export function SettingsModal({
             if (await save({ workspaceDirs: value })) setEditing(null);
           }}
           render={(value, setValue) => <WorkspaceDirsEditor value={value} onChange={setValue} />}
+        />
+      )}
+      {prefs && editing === "jenkinsBaseUrl" && (
+        <BigEditorModal
+          title={t("settings.jenkinsBaseUrl.title")}
+          description={t("settings.jenkinsBaseUrl.description")}
+          initial={prefs.jenkinsBaseUrl ?? ""}
+          onCancel={() => setEditing(null)}
+          onSave={async (value) => {
+            if (await save({ jenkinsBaseUrl: value.trim() })) setEditing(null);
+          }}
+          render={(value, setValue) => (
+            <Input
+              type="url"
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              placeholder="https://jenkins.example.com"
+              className="font-mono"
+              autoFocus
+            />
+          )}
+        />
+      )}
+      {prefs && editing === "envPreviews" && (
+        <BigEditorModal
+          title={t("settings.envPreviews.title")}
+          description={t("settings.envPreviews.description")}
+          initial={JSON.stringify(prefs.envPreviews ?? {}, null, 2)}
+          canSave={(value) => parseEnvPreviews(value) !== null}
+          onCancel={() => setEditing(null)}
+          onSave={async (value) => {
+            const parsed = parseEnvPreviews(value);
+            if (parsed && (await save({ envPreviews: parsed }))) setEditing(null);
+          }}
+          render={(value, setValue) => (
+            <>
+              <textarea
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                autoFocus
+                rows={24}
+                spellCheck={false}
+                className="w-full rounded-lg border border-gray-300 bg-white p-3 font-mono text-xs text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              />
+              {parseEnvPreviews(value) === null && (
+                <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                  {t("settings.envPreviews.invalid")}
+                </p>
+              )}
+            </>
+          )}
         />
       )}
       {skillsHubOpen && <SkillsHubModal onClose={() => setSkillsHubOpen(false)} />}

@@ -3,7 +3,7 @@ import * as tasksApi from "../services/tasksApi";
 import type { SkillsHubStatus } from "../services/tasksApi";
 
 /**
- * The team-skills (skills-hub) status, loaded whenever `enabled` turns true and again on
+ * The team skills hub status, loaded whenever `enabled` turns true and again on
  * every `SKILLS_HUB_CHANGED_EVENT` — shared by the New Task panel, the settings row and the
  * management modal so a change made in one shows up in the others. A failed load (including a
  * backend older than these routes) just leaves `status` null: callers hide the feature instead of

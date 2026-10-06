@@ -14,12 +14,11 @@ import { directoryExists } from "./sessionService.js";
 import { expandHome, getWorkspaceRepos } from "./workspaceService.js";
 
 /**
- * Team skills from the shared `skills-hub` repo (Bitbucket, team/skills-hub),
- * made available to every Claude session on this machine by symlinking each skill folder of the
+ * Team skills from a shared skills repo ("the hub" — a git repo with a `catalog/<catalog>/` tree of
+ * skill folders), made available to every Claude session on this machine by symlinking each skill folder of the
  * user's chosen catalogs into the CLI's user-level skills dir (`~/.claude/skills`, or
- * `$CLAUDE_CONFIG_DIR/skills`) — the same scheme the hub's own `catalog/<team>/link-skills.sh`
- * uses, reimplemented here so it works for any catalog (not every catalog ships that script, and
- * the hub's own `agent-hub` CLI installs per-project instead). Because the links point into the
+ * `$CLAUDE_CONFIG_DIR/skills`) — the same scheme a catalog's own link script would use,
+ * reimplemented here so it works for any catalog. Because the links point into the
  * clone, a `git pull` there updates already-linked skills in place; only a brand-new skill needs a
  * new link, which `syncSkillsHub` (run right before every "New task" launch) adds.
  *
@@ -30,10 +29,8 @@ import { expandHome, getWorkspaceRepos } from "./workspaceService.js";
  * Never touches an entry in the skills dir that isn't a link into the hub's `catalog/`.
  */
 
-const HUB_REMOTE_SLUG = "team/skills-hub";
-export const HUB_CLONE_URL = "git@example.com:team/skills-hub.git";
-export const HUB_WEB_URL = "https://example.com/team/skills-hub/";
-const HUB_FOLDER_NAME = "skills-hub";
+/* The hub's URL is per-machine config (`skillsHub.repoUrl` in userPreferences.json), never
+ * hardcoded: this app's repo is public and must not name any team's private repo. */
 
 const FETCH_TIMEOUT_MS = 20_000;
 const CLONE_TIMEOUT_MS = 180_000;
@@ -78,22 +75,75 @@ export function getUserSkillsDir(): string {
   return path.join(configDir, "skills");
 }
 
-async function isHubRepo(dir: string): Promise<boolean> {
+/** The repo's own name (last path segment of its `owner/repo` slug) — the default clone folder. */
+function hubFolderName(repoUrl: string): string {
+  return normalizeRemoteUrl(repoUrl).split("/").pop() ?? "skills-hub";
+}
+
+/** Best-effort browser URL for the repo: `git@host:owner/repo.git` / `https://host/owner/repo.git`
+ *  → `https://host/owner/repo/`. Wrong for an SSH host alias, which is only a convenience link. */
+function hubWebUrl(repoUrl: string): string {
+  const host = /^(?:[a-z+]+:\/\/)?(?:[^@/]+@)?([^/:]+)/i.exec(repoUrl.trim())?.[1] ?? "";
+  return host ? `https://${host}/${normalizeRemoteUrl(repoUrl)}/` : "";
+}
+
+async function readOrigin(dir: string): Promise<string | null> {
+  return tryGit(["remote", "get-url", "origin"], dir);
+}
+
+/** A clone of the configured hub: has a `catalog/` folder and an `origin` matching `repoUrl`
+ *  (host ignored, so SSH aliases match too). */
+async function isHubRepo(dir: string, repoUrl: string): Promise<boolean> {
   if (!(await directoryExists(path.join(dir, "catalog")))) return false;
-  const remote = await tryGit(["remote", "get-url", "origin"], dir);
-  return remote !== null && normalizeRemoteUrl(remote) === HUB_REMOTE_SLUG;
+  const remote = await readOrigin(dir);
+  return remote !== null && normalizeRemoteUrl(remote) === normalizeRemoteUrl(repoUrl);
+}
+
+/** Anything shaped like a hub (a `catalog/` with at least one skill), regardless of origin — only
+ *  used to guess the URL for someone who set the hub up before it became a preference. */
+async function looksLikeHub(dir: string): Promise<boolean> {
+  return (await listCatalogs(dir)).length > 0 && (await readOrigin(dir)) !== null;
+}
+
+/** The `origin` of an already-set-up hub clone — the configured `path` first, then the workspace
+ *  repos. Null when none is found. Feeds the startup prompt's prefill and, until the user confirms
+ *  it, stands in for an unset `repoUrl` so an existing setup keeps working right after the update. */
+export async function detectHubRepoUrl(prefs?: SkillsHubPreferences): Promise<string | null> {
+  const hubPrefs = prefs ?? (await getUserPreferences()).skillsHub;
+  const candidates = [
+    ...(hubPrefs.path ? [expandHome(hubPrefs.path)] : []),
+    ...(await getWorkspaceRepos()),
+  ];
+  for (const candidate of [...new Set(candidates)]) {
+    if (await looksLikeHub(candidate)) return readOrigin(candidate);
+  }
+  return null;
+}
+
+/** The configured `repoUrl`, or the detected one while it was never set; null when there's none
+ *  (or it was explicitly cleared with ""). */
+async function resolveRepoUrl(prefs: SkillsHubPreferences): Promise<string | null> {
+  if (prefs.repoUrl !== null) return prefs.repoUrl.trim() || null;
+  return detectHubRepoUrl(prefs);
 }
 
 /** The configured path wins when it's really the hub; otherwise every workspace repo is checked by
- *  `origin` (host ignored, so SSH aliases match too), plus `~/skills-hub` as a last guess. */
-async function locateHub(prefs: SkillsHubPreferences): Promise<string | null> {
+ *  `origin`, plus `~/<repo name>` as a last guess. */
+async function locateHub(
+  prefs: SkillsHubPreferences,
+  repoUrl: string | null,
+): Promise<string | null> {
+  if (!repoUrl) return null;
   if (prefs.path) {
     const configured = expandHome(prefs.path);
-    if (await isHubRepo(configured)) return configured;
+    if (await isHubRepo(configured, repoUrl)) return configured;
   }
-  const candidates = [...(await getWorkspaceRepos()), path.join(os.homedir(), HUB_FOLDER_NAME)];
+  const candidates = [
+    ...(await getWorkspaceRepos()),
+    path.join(os.homedir(), hubFolderName(repoUrl)),
+  ];
   for (const candidate of [...new Set(candidates)]) {
-    if (await isHubRepo(candidate)) return candidate;
+    if (await isHubRepo(candidate, repoUrl)) return candidate;
   }
   return null;
 }
@@ -263,9 +313,17 @@ export type SkillsHubStatus = {
   skills: SkillStatus[];
   userSkillsDir: string;
   inviteDismissed: boolean;
-  cloneUrl: string;
+  /** The hub repo in use — `skillsHub.repoUrl`, or the detected one while that was never set.
+   *  Null = not configured: the UI asks for it before offering anything else. */
+  cloneUrl: string | null;
+  /** True while `cloneUrl` comes from detection, not from a saved `skillsHub.repoUrl`. */
+  repoUrlDetected: boolean;
+  /** `skillsHub.repoUrl` saved as "" — the user said there's no hub; the UI stays out of the way. */
+  notUsed: boolean;
   webUrl: string;
-  /** Where "Clone" would put it: `<dir>/skills-hub` for each workspace dir (or the home dir
+  /** The folder a clone gets (the repo's own name). */
+  cloneFolderName: string;
+  /** Where "Clone" would put it: `<dir>/<cloneFolderName>` for each workspace dir (or the home dir
    *  when none is set). */
   cloneParentDirs: string[];
 };
@@ -405,12 +463,16 @@ async function getCloneParentDirs(): Promise<string[]> {
 
 export async function getSkillsHubStatus(): Promise<SkillsHubStatus> {
   const prefs = (await getUserPreferences()).skillsHub;
-  const hubPath = await locateHub(prefs);
+  const repoUrl = await resolveRepoUrl(prefs);
+  const hubPath = await locateHub(prefs, repoUrl);
   const common = {
     userSkillsDir: getUserSkillsDir(),
     inviteDismissed: prefs.inviteDismissed,
-    cloneUrl: HUB_CLONE_URL,
-    webUrl: HUB_WEB_URL,
+    cloneUrl: repoUrl,
+    repoUrlDetected: prefs.repoUrl === null && repoUrl !== null,
+    notUsed: prefs.repoUrl === "",
+    webUrl: repoUrl ? hubWebUrl(repoUrl) : "",
+    cloneFolderName: repoUrl ? hubFolderName(repoUrl) : "",
     cloneParentDirs: await getCloneParentDirs(),
     configuredPathInvalid: prefs.path !== null && hubPath !== expandHome(prefs.path),
   };
@@ -532,7 +594,7 @@ export function syncSkillsHub(): Promise<SyncResult> {
 async function runSync(): Promise<SyncResult> {
   const before = await getSkillsHubStatus();
   if (!before.found || !before.path) {
-    throw new AppError("SKILLS_HUB_NOT_FOUND", "skills-hub clone not found.");
+    throw new AppError("SKILLS_HUB_NOT_FOUND", "Skills hub clone not found.");
   }
   const hubPath = before.path;
 
@@ -590,7 +652,7 @@ export async function setSkillsHubSelection(
 ): Promise<SyncResult["links"]> {
   const status = await getSkillsHubStatus();
   if (!status.found || !status.path) {
-    throw new AppError("SKILLS_HUB_NOT_FOUND", "skills-hub clone not found.");
+    throw new AppError("SKILLS_HUB_NOT_FOUND", "Skills hub clone not found.");
   }
   const selection = normalizeSelection(status.catalogs, requested);
   await updateSkillsHubPreferences({ catalogs: selection.catalogs, skills: selection.skills });
@@ -630,8 +692,8 @@ export async function getSkillDetails(
   skillName: string,
 ): Promise<SkillDetails> {
   const prefs = (await getUserPreferences()).skillsHub;
-  const hubPath = await locateHub(prefs);
-  if (!hubPath) throw new AppError("SKILLS_HUB_NOT_FOUND", "skills-hub clone not found.");
+  const hubPath = await locateHub(prefs, await resolveRepoUrl(prefs));
+  if (!hubPath) throw new AppError("SKILLS_HUB_NOT_FOUND", "Skills hub clone not found.");
   const catalog = (await listCatalogs(hubPath)).find((c) => c.name === catalogName);
   const skill = catalog?.skills.find((k) => k.name === skillName);
   if (!skill) {
@@ -660,10 +722,14 @@ export async function setSkillsHubPath(rawPath: string | null): Promise<void> {
     return;
   }
   const resolved = expandHome(rawPath);
-  if (!(await isHubRepo(resolved))) {
+  const repoUrl = await resolveRepoUrl((await getUserPreferences()).skillsHub);
+  if (!repoUrl) {
+    throw new AppError("SKILLS_HUB_REPO_URL_MISSING", "The skills hub repo URL isn't set.");
+  }
+  if (!(await isHubRepo(resolved, repoUrl))) {
     throw new AppError(
       "SKILLS_HUB_INVALID_PATH",
-      `${resolved} isn't an skills-hub clone (needs a catalog/ folder and origin ${HUB_REMOTE_SLUG}).`,
+      `${resolved} isn't a clone of the skills hub (needs a catalog/ folder and origin ${repoUrl}).`,
     );
   }
   await updateSkillsHubPreferences({ path: resolved });
@@ -675,24 +741,40 @@ export async function setSkillsHubFlags(
   await updateSkillsHubPreferences(flags);
 }
 
-/** `git clone` into `<parentDir>/skills-hub`, then remembers that path. Needs the user's own
- *  SSH access to Bitbucket — failing fast (no prompt) when it's missing, so the UI can fall back
+/** Saves the hub repo URL ("" = not used). Clearing or changing it also forgets the clone path,
+ *  which belonged to the previous repo. */
+export async function setSkillsHubRepoUrl(repoUrl: string): Promise<void> {
+  const prefs = (await getUserPreferences()).skillsHub;
+  const next = repoUrl.trim();
+  const samePath =
+    prefs.path !== null &&
+    next !== "" &&
+    (await isHubRepo(expandHome(prefs.path), next).catch(() => false));
+  await updateSkillsHubPreferences({ repoUrl: next, ...(samePath ? {} : { path: null }) });
+}
+
+/** `git clone` into `<parentDir>/<repo name>`, then remembers that path. Needs the user's own
+ *  SSH access to the repo's host — failing fast (no prompt) when it's missing, so the UI can fall back
  *  to showing the command to run by hand. */
 export async function cloneSkillsHub(parentDir: string): Promise<string> {
   const parent = expandHome(parentDir);
   if (!(await directoryExists(parent))) {
     throw new AppError("SKILLS_HUB_CLONE_PARENT_MISSING", `Folder not found: ${parent}`);
   }
-  const target = path.join(parent, HUB_FOLDER_NAME);
+  const repoUrl = await resolveRepoUrl((await getUserPreferences()).skillsHub);
+  if (!repoUrl) {
+    throw new AppError("SKILLS_HUB_REPO_URL_MISSING", "The skills hub repo URL isn't set.");
+  }
+  const target = path.join(parent, hubFolderName(repoUrl));
   if (await directoryExists(target)) {
-    if (await isHubRepo(target)) {
+    if (await isHubRepo(target, repoUrl)) {
       await updateSkillsHubPreferences({ path: target });
       return target;
     }
     throw new AppError("SKILLS_HUB_CLONE_TARGET_EXISTS", `${target} already exists.`);
   }
   try {
-    await git(["clone", HUB_CLONE_URL, target], parent, CLONE_TIMEOUT_MS);
+    await git(["clone", repoUrl, target], parent, CLONE_TIMEOUT_MS);
   } catch (err) {
     throw new AppError(
       "SKILLS_HUB_CLONE_FAILED",

@@ -163,7 +163,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   // exactly which step is running, finished, or failed rather than one opaque success/failure.
   const [steps, setSteps] = useState<Step[]>([]);
 
-  // Team skills (skills-hub): status reloaded on every open, shown as a panel only — never
+  // Team skills hub: status reloaded on every open, shown as a panel only — never
   // updated as part of creating a task (someone may not want their clone pulled); updating is an
   // explicit "Update now" in the skills modal.
   const { status: skillsHub } = useSkillsHubStatus(open);
