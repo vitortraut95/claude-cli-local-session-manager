@@ -1,8 +1,10 @@
+import type { EnvPreviews } from "../services/tasksApi";
+
 // Jenkins multibranch pipeline links. The job name matches the repo's own folder name 1:1 (e.g.
-// "my-app", "my-site") one level below "job/", so `session.project` — already the repo
-// folder's basename — is the job name; no per-project config needed. Base URL is per-machine
-// config, not shared project content — see .env.example.
-const JENKINS_BASE_URL = import.meta.env.VITE_JENKINS_BASE_URL as string | undefined;
+// "my-repo") one level below "job/", so `session.project` — already the repo folder's basename —
+// is the job name; no per-project config needed. The base URL is per-machine config
+// (`jenkinsBaseUrl` in userPreferences.json, see useTeamLinks), never hardcoded — this repo is
+// public.
 
 /** Branch prefixes teams use for Jenkins-built branches — offered as variations of the session's
  *  own ticket, since the branch that actually has a pipeline isn't always the one checked out
@@ -21,7 +23,7 @@ export type JenkinsLink =
 /**
  * Jenkins' multibranch job URLs encode each "/" in the branch name as "%2F" (one path segment per
  * job level), and the browser's own URL-encoding then escapes that "%" to "%25" — so a branch
- * like "feature/PROJ-54351" ends up as ".../job/feature%252FPROJ-54351/" in the address bar.
+ * like "feature/PROJ-123" ends up as ".../job/feature%252FPROJ-123/" in the address bar.
  */
 function branchJobUrl(projectUrl: string, branch: string): string {
   return `${projectUrl}job/${encodeURIComponent(encodeURIComponent(branch))}/`;
@@ -35,12 +37,13 @@ function branchJobUrl(projectUrl: string, branch: string): string {
  * when no Jenkins base URL is configured.
  */
 export function getJenkinsLinks(
+  jenkinsBaseUrl: string | null,
   project: string,
   branch: string | null,
   originBranch: string | null = null,
 ): JenkinsLink[] | null {
-  if (!JENKINS_BASE_URL) return null;
-  const projectUrl = `${JENKINS_BASE_URL.replace(/\/+$/, "")}/job/${encodeURIComponent(project)}/`;
+  if (!jenkinsBaseUrl) return null;
+  const projectUrl = `${jenkinsBaseUrl.replace(/\/+$/, "")}/job/${encodeURIComponent(project)}/`;
   const links: JenkinsLink[] = [{ kind: "project", url: projectUrl }];
 
   if (branch) {
@@ -80,53 +83,30 @@ export function getJenkinsLinks(
 export type EnvPreview = { label: string; url: string };
 export type EnvPreviewGroup = { branch: string; previews: EnvPreview[] };
 
-const S3_WEBSITE_SUFFIX = "s3-website-us-east-1.amazonaws.com";
-
-/**
- * Static S3 preview sites an `env/*` branch's pipeline deploys, per project — one per locale. Kept
- * as data on purpose (rather than derived) since each repo names its buckets differently. Order
- * matters: it's the dropdown's order (BR and MX first, the rest alphabetical).
- */
-const ENV_PREVIEW_BUILDERS: Record<string, (envSlug: string) => EnvPreview[]> = {
-  "my-site": (envSlug) =>
-    ["br", "mx", "ar", "bo", "cl", "co", "do", "ec", "pe", "uy"].map((country) => ({
-      label: country.toUpperCase(),
-      url: `http://${country}-${envSlug}-mainsite-example.${S3_WEBSITE_SUFFIX}/`,
-    })),
-  "my-cart": (envSlug) =>
-    [
-      ["MX", "mx"],
-      ["AR", "ar"],
-      ["BO", "bo"],
-      ["CL", "cl"],
-      ["CO", "co"],
-      ["DO", "do"],
-      ["EC", "net.ec"],
-      ["PE", "pe"],
-      ["UY", "uy"],
-      ["COM", "com"],
-    ].map(([label, domain]) => ({
-      label: label!,
-      url: `http://${envSlug}-cart.example.${domain}.${S3_WEBSITE_SUFFIX}/`,
-    })),
-};
-
 /**
  * Preview URLs for each `env/*` branch among the session's current and origin branches (a
- * `feature/*` task branched off `env/vitrine` still has that env's previews worth opening).
- * `env/PROJ-55474` → bucket slug `env-proj-55474`. Empty for projects with no known preview layout.
+ * `feature/*` task branched off `env/vitrine` still has that env's previews worth opening), from
+ * the per-machine `envPreviews` templates of the session's project: `{env}` in each template's URL
+ * becomes the branch slug (`env/PROJ-123` → `env-proj-123`). Empty for projects without templates.
  */
 export function getEnvPreviewGroups(
+  envPreviews: EnvPreviews,
   project: string,
   branches: (string | null)[],
 ): EnvPreviewGroup[] {
-  const build = ENV_PREVIEW_BUILDERS[project];
-  if (!build) return [];
+  const templates = Object.hasOwn(envPreviews, project) ? envPreviews[project] : undefined;
+  if (!templates || templates.length === 0) return [];
   const envBranches = [...new Set(branches)].filter(
     (b): b is string => typeof b === "string" && b.startsWith("env/"),
   );
-  return envBranches.map((branch) => ({
-    branch,
-    previews: build(branch.replace(/\//g, "-").toLowerCase()),
-  }));
+  return envBranches.map((branch) => {
+    const slug = branch.replace(/\//g, "-").toLowerCase();
+    return {
+      branch,
+      previews: templates.map((template) => ({
+        label: template.label,
+        url: template.url.replaceAll("{env}", slug),
+      })),
+    };
+  });
 }

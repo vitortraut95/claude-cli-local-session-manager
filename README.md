@@ -11,8 +11,9 @@ and clean them up. Everything runs on your machine — no external server involv
 - **Resume** any session in a new terminal (`claude --resume`), Warp preferred if installed
 - **New task** — paste a Jira link + instructions, pick a project, and it opens a terminal
   already running Claude with that prompt — optionally in an isolated git worktree
-- **Team skills** — optional [skills-hub](https://example.com/team/skills-hub/)
-  integration: the New Task modal invites you to clone it, you pick whole catalogs and/or single skills, and
+- **Team skills** — optional integration with your team's own skills repo (a git repo with a
+  `catalog/<catalog>/` tree of skills; its URL is asked on first start and kept only in your local
+  `userPreferences.json`): the New Task modal invites you to clone it, you pick whole catalogs and/or single skills, and
   their skills get linked into `~/.claude/skills`; "Update now" (never automatic) fetches/
   fast-forwards the hub and links new skills (Settings → "Team skills" to manage)
 - **Worktree → root** — copy a worktree's files into the project root to test locally, or move
@@ -21,7 +22,9 @@ and clean them up. Everything runs on your machine — no external server involv
 - Local nicknames, bulk delete, active-session protection (won't let two terminals fight over
   the same session)
 - Subagent browser (per-invocation type/description/duration/result), Claude usage-limits badge
-- One-click "Open in VS Code", Jenkins links (project, branch and ticket variants, PRs, tags), and "Open PR" buttons
+- One-click "Open in VS Code", Jenkins links (project, branch and ticket variants, PRs, tags,
+  optional per-project `env/*` preview links), and "Open PR" buttons — the Jenkins URL and preview
+  templates are per-machine settings (asked on first start / Settings), never part of this repo
 - Self-update button from the header
 - pt/en/es language switcher
 
@@ -94,7 +97,9 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | GET    | `/tasks/skills-hub/status`     | Team skills: hub location/branch, catalogs, link state per skill |
 | GET    | `/tasks/skills-hub/skill`      | One hub skill's SKILL.md content (`?catalog=&name=`) |
 | POST   | `/tasks/skills-hub/sync`       | Fetch + fast-forward the hub (when clean) and link new skills |
-| POST   | `/tasks/skills-hub/clone`      | Clone skills-hub into `{ parentDir }` |
+| POST   | `/tasks/skills-hub/clone`      | Clone the configured hub repo into `{ parentDir }` |
+| GET    | `/tasks/skills-hub/detected-repo-url` | `origin` of a hub clone already on this machine (prompt prefill) |
+| PUT    | `/tasks/skills-hub/repo-url`   | Save the hub's clone URL `{ repoUrl }` (`""` = not used) |
 | PUT    | `/tasks/skills-hub/selection`  | Save `{ catalogs, skills }` (whole catalogs + single skills) and (un)link them |
 | PUT    | `/tasks/skills-hub/path`       | Point at an existing clone (`null` = auto-detect) |
 | PUT    | `/tasks/skills-hub/flags`      | `{ inviteDismissed? }` |

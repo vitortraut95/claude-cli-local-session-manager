@@ -52,7 +52,7 @@ const STATE_CLASSES: Record<SkillLinkState, string> = {
 };
 
 /**
- * Sets up and manages the team skills from skills-hub: clone it (or point at an existing
+ * Sets up and manages the team skills from the skills hub repo: set its URL, clone it (or point at an existing
  * clone), choose catalogs, see each skill's link state, update now. Opened from the New Task
  * modal's skills panel and from the settings modal. Everything here is optional — closing it
  * without doing anything changes nothing.
@@ -82,7 +82,12 @@ export function SkillsHubModal({ onClose }: SkillsHubModalProps) {
       {!status && !loading && (
         <p className="text-sm text-red-600 dark:text-red-400">{t("skillsHub.loadError")}</p>
       )}
-      {status && !status.found && <InstallSection status={status} onDone={reload} />}
+      {status && (status.cloneUrl === null || status.repoUrlDetected) && (
+        <RepoUrlSection status={status} onDone={reload} />
+      )}
+      {status?.cloneUrl != null && !status.found && (
+        <InstallSection status={status} onDone={reload} />
+      )}
       {status?.found && (
         <ManageSection
           status={status}
@@ -125,6 +130,64 @@ function CopyableCommand({ command }: { command: string }) {
         }
       />
     </div>
+  );
+}
+
+/** The hub's clone URL (`skillsHub.repoUrl`) — asked before anything else when unset, and offered
+ *  for confirmation while it's only detected from an existing clone. */
+function RepoUrlSection({
+  status,
+  onDone,
+}: {
+  status: SkillsHubStatus;
+  onDone: () => Promise<void>;
+}) {
+  const { t } = useLanguage();
+  const { showToast } = useToast();
+  const [value, setValue] = useState(status.cloneUrl ?? "");
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    try {
+      await tasksApi.setSkillsHubRepoUrl(value);
+      tasksApi.notifySkillsHubChanged();
+      tasksApi.notifyPreferencesChanged();
+      await onDone();
+      showToast(t("skillsHub.repoUrl.saved"), "success");
+    } catch (err) {
+      showToast(resolveApiErrorMessage(err, t, "skillsHub.repoUrl.saveError"), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <section className="mb-5 text-sm text-gray-700 dark:text-gray-300">
+      <h3 className="mb-1 font-medium text-gray-900 dark:text-gray-100">
+        {t("skillsHub.repoUrl.title")}
+      </h3>
+      <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+        {status.repoUrlDetected ? t("skillsHub.repoUrl.detected") : t("skillsHub.repoUrl.body")}
+      </p>
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <Input
+            type="text"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder="git@github.com:team/skills-repo.git"
+            className="font-mono"
+          />
+        </div>
+        <Button
+          variant="outline"
+          disabled={saving || !value.trim()}
+          onClick={() => void save()}
+          icon={saving ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
+        >
+          {t("skillsHub.repoUrl.save")}
+        </Button>
+      </div>
+    </section>
   );
 }
 
@@ -186,7 +249,7 @@ function InstallSection({
   const [parentDir, setParentDir] = useState(status.cloneParentDirs[0] ?? "~");
   const [cloning, setCloning] = useState(false);
   const [cloneError, setCloneError] = useState<string | null>(null);
-  const target = `${parentDir.replace(/\/+$/, "")}/skills-hub`;
+  const target = `${parentDir.replace(/\/+$/, "")}/${status.cloneFolderName ?? "skills-hub"}`;
 
   const clone = async () => {
     setCloning(true);
@@ -269,16 +332,18 @@ function InstallSection({
         <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
           {t("skillsHub.install.manualBody")}
         </p>
-        <CopyableCommand command={`git clone ${status.cloneUrl} ${target}`} />
-        <a
-          href={status.webUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 inline-flex items-center gap-1 text-xs text-gray-600 underline hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          <ExternalLink className="h-3 w-3" />
-          {t("skillsHub.install.openRepo")}
-        </a>
+        <CopyableCommand command={`git clone ${status.cloneUrl ?? ""} ${target}`} />
+        {status.webUrl && (
+          <a
+            href={status.webUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex items-center gap-1 text-xs text-gray-600 underline hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <ExternalLink className="h-3 w-3" />
+            {t("skillsHub.install.openRepo")}
+          </a>
+        )}
       </section>
 
       <section>

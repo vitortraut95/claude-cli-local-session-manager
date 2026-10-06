@@ -32,7 +32,7 @@ claude-session-manager.desktop
 /session-continuations.json
 /task-base-branches.json
 
-# Per-machine env config (e.g. VITE_JENKINS_BASE_URL) — see .env.example for the shared template.
+# Per-machine env config — see .env.example.
 .env
 
 # Kept local only — mentions internal project/infra details not meant for the public repo.

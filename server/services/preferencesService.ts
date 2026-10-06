@@ -7,6 +7,11 @@ export type Language = "en" | "pt" | "es";
 /** The team-skills integration (`skillsHubService.ts`). Added after the file's first release — an
  *  older file lacks it entirely, and every sub-field falls back individually. */
 export type SkillsHubPreferences = {
+  /** The team's skills repo (clone URL, e.g. `git@host:owner/skills-repo.git`). Per-machine on
+   *  purpose — this app's own repo is public and must not name any team's private repo. Null =
+   *  never set (the startup prompt asks; until then the `origin` of an existing clone is used,
+   *  see `skillsHubService.ts`'s `detectHubRepoUrl`); "" = explicitly not used. */
+  repoUrl: string | null;
   /** Explicit clone location; null = auto-detect among the workspace repos by `origin`. */
   path: string | null;
   /** Catalogs whose skills are kept linked; null = never chosen (the selection is then inferred
@@ -55,7 +60,18 @@ export type UserPreferences = {
    *  the same). Added after the file's first release, so an older file simply lacks it. */
   workspaceDirs: string[] | null;
   skillsHub: SkillsHubPreferences;
+  /** Base URL of the team's Jenkins (the session card's Jenkins button). Null = never set — the
+   *  startup prompt asks, prefilled from the legacy `VITE_JENKINS_BASE_URL` in `.env`, which also
+   *  stays the fallback until then; "" = explicitly not used (button hidden). */
+  jenkinsBaseUrl: string | null;
+  /** Static preview sites an `env/*` branch's pipeline deploys, per project folder name — each a
+   *  label plus a URL template where `{env}` becomes the branch slug (`env/PROJ-1` → `env-proj-1`).
+   *  Shown in the Jenkins modal. Per-machine config for the same reason as `jenkinsBaseUrl`. */
+  envPreviews: EnvPreviews;
 };
+
+export type EnvPreviewTemplate = { label: string; url: string };
+export type EnvPreviews = Record<string, EnvPreviewTemplate[]>;
 
 const PREFERENCES_PATH = path.join(REPO_ROOT, "userPreferences.json");
 
@@ -69,7 +85,9 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   recentProjectPaths: [],
   keepRecentSessionsPerProject: 5,
   workspaceDirs: null,
-  skillsHub: { path: null, catalogs: null, skills: [], inviteDismissed: false },
+  skillsHub: { repoUrl: null, path: null, catalogs: null, skills: [], inviteDismissed: false },
+  jenkinsBaseUrl: null,
+  envPreviews: {},
 };
 
 function isLanguage(value: unknown): value is Language {
@@ -81,6 +99,7 @@ function parseSkillsHub(value: unknown): SkillsHubPreferences {
   if (typeof value !== "object" || value === null) return fallback;
   const raw = value as Record<string, unknown>;
   return {
+    repoUrl: typeof raw.repoUrl === "string" ? raw.repoUrl.trim() : fallback.repoUrl,
     path: typeof raw.path === "string" && raw.path.trim() ? raw.path : fallback.path,
     catalogs: isStringArray(raw.catalogs) ? raw.catalogs : fallback.catalogs,
     skills: isStringArray(raw.skills) ? raw.skills : fallback.skills,
@@ -93,11 +112,28 @@ export function isSkillsHubPreferences(value: unknown): value is SkillsHubPrefer
   if (typeof value !== "object" || value === null) return false;
   const raw = value as Record<string, unknown>;
   return (
+    // Optional: a frontend bundle from before the repo URL moved here doesn't send it.
+    (raw.repoUrl === undefined || raw.repoUrl === null || typeof raw.repoUrl === "string") &&
     (raw.path === null || typeof raw.path === "string") &&
     (raw.catalogs === null || isStringArray(raw.catalogs)) &&
     // Optional: a frontend bundle from before per-skill picks existed doesn't send it.
     (raw.skills === undefined || isStringArray(raw.skills)) &&
     typeof raw.inviteDismissed === "boolean"
+  );
+}
+
+export function isEnvPreviews(value: unknown): value is EnvPreviews {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  return Object.values(value as Record<string, unknown>).every(
+    (templates) =>
+      Array.isArray(templates) &&
+      templates.every(
+        (item) =>
+          typeof item === "object" &&
+          item !== null &&
+          typeof (item as Record<string, unknown>).label === "string" &&
+          typeof (item as Record<string, unknown>).url === "string",
+      ),
   );
 }
 
@@ -151,6 +187,13 @@ export async function getUserPreferences(): Promise<UserPreferences> {
         ? parsed.workspaceDirs
         : DEFAULT_PREFERENCES.workspaceDirs,
       skillsHub: parseSkillsHub(parsed.skillsHub),
+      jenkinsBaseUrl:
+        typeof parsed.jenkinsBaseUrl === "string"
+          ? parsed.jenkinsBaseUrl.trim()
+          : DEFAULT_PREFERENCES.jenkinsBaseUrl,
+      envPreviews: isEnvPreviews(parsed.envPreviews)
+        ? parsed.envPreviews
+        : DEFAULT_PREFERENCES.envPreviews,
     };
   } catch {
     return DEFAULT_PREFERENCES;
