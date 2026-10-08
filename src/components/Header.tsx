@@ -10,7 +10,6 @@ import { CleanupModal } from "./CleanupModal";
 import { ImportSessionModal } from "./ImportSessionModal";
 import { NewSessionModal } from "./NewSessionModal";
 import { NewTaskModal } from "./NewTaskModal";
-import { OnboardingModal } from "./OnboardingModal";
 import { SettingsModal } from "./SettingsModal";
 import { Select } from "./Select";
 import { Tooltip } from "./Tooltip";
@@ -52,12 +51,11 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     error: usageError,
     refresh: refreshUsage,
   } = useUsageLimits();
-  const { language, setLanguage, hasSeenOnboarding, markOnboardingSeen, loaded, t } = useLanguage();
+  const { language, setLanguage, loaded, t } = useLanguage();
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   // `workspaceDirs` never saved (null) → ask on every start until it is; "not now" only skips it
   // for this page load. Re-checked whenever the settings modal saves something.
@@ -91,15 +89,11 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     };
   }, []);
 
-  // After onboarding (a first-time user sees that first, then this) and never on top of another
-  // header modal. `hasSeenOnboarding` turns true the moment onboarding opens (see below), and
-  // `showOnboarding` holds it back until onboarding is closed.
+  // Never on top of another header modal.
   const showWorkspacePrompt =
     loaded &&
-    hasSeenOnboarding &&
     needsWorkspaceDirs &&
     !workspacePromptSkipped &&
-    !showOnboarding &&
     !showSettings &&
     !showNewTaskModal &&
     !showNewSessionModal;
@@ -108,26 +102,11 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     teamPromptPrefs !== null &&
     !teamPromptSkipped &&
     loaded &&
-    hasSeenOnboarding &&
     !showWorkspacePrompt &&
     (!needsWorkspaceDirs || workspacePromptSkipped) &&
-    !showOnboarding &&
     !showSettings &&
     !showNewTaskModal &&
     !showNewSessionModal;
-
-  // Opens once per install/machine — gated on `loaded` so this can't fire before the real
-  // preferences value comes back (which would otherwise flash it open for returning users too).
-  // `showOnboarding` has to be its own state (not derived straight from `hasSeenOnboarding`) so
-  // the modal stays open once shown, rather than snapping shut the instant markOnboardingSeen's
-  // own state update flips `hasSeenOnboarding` back to true.
-  useEffect(() => {
-    if (loaded && !hasSeenOnboarding) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setShowOnboarding(true);
-      markOnboardingSeen();
-    }
-  }, [loaded, hasSeenOnboarding, markOnboardingSeen]);
 
   return (
     <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -230,16 +209,11 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           onImported={(sessionId) => onSessionImported?.(sessionId)}
         />
       )}
-      <OnboardingModal open={showOnboarding} onClose={() => setShowOnboarding(false)} />
       {showSettings && (
         <SettingsModal
           theme={theme}
           onToggleTheme={toggleTheme}
           onClose={() => setShowSettings(false)}
-          onShowOnboarding={() => {
-            setShowSettings(false);
-            setShowOnboarding(true);
-          }}
         />
       )}
       {showWorkspacePrompt && (

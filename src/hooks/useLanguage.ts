@@ -4,15 +4,13 @@ import { t as translateKey, type Language, type TranslationKey } from "../i18n/t
 export type LanguageContextValue = {
   language: Language;
   setLanguage: (next: Language) => void;
-  hasSeenOnboarding: boolean;
-  markOnboardingSeen: () => void;
   loaded: boolean;
 };
 
 export const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 /** Single app-wide source of the current language (see LanguageProvider) — every component that
- *  renders translated text calls this for `t`, not just Header/OnboardingModal, since the
+ *  renders translated text calls this for `t`, not just Header, since the
  *  language choice has to reach the whole tree (SessionCard, every modal, filters, toasts). */
 export function useLanguage(): LanguageContextValue & {
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
@@ -27,7 +25,7 @@ export function useLanguage(): LanguageContextValue & {
   // (and re-fetch) on every render — an infinite loop if the effect itself triggers a re-render
   // (e.g. CleanupModal's fetch-on-open effect setting `loading`/`findings`). Keyed only on
   // `context.language`, not the whole `context` object, so switching some unrelated field
-  // (hasSeenOnboarding) doesn't also invalidate every `t` reference across the app.
+  // (`loaded`) doesn't also invalidate every `t` reference across the app.
   const t = useCallback(
     (key: TranslationKey, params?: Record<string, string | number>) =>
       translateKey(context.language, key, params),
