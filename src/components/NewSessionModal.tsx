@@ -51,7 +51,7 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
   // root so the confirmation's "start anyway" launches exactly what was checked.
   const [pendingRepoRoot, setPendingRepoRoot] = useState<string | null>(null);
 
-  const { status: skillsHub } = useSkillsHubStatus(open);
+  const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(open);
   const [skillsHubModalOpen, setSkillsHubModalOpen] = useState(false);
 
   // Fetched once on mount, not on every open — re-seeding on open would clobber an in-progress
@@ -183,7 +183,11 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
 
         <ProjectFolderField folders={folders} inputName="newSessionFolderPath" />
 
-        <SkillsHubPanel status={skillsHub} onManage={() => setSkillsHubModalOpen(true)} />
+        <SkillsHubPanel
+          status={skillsHub}
+          failed={skillsHubFailed}
+          onManage={() => setSkillsHubModalOpen(true)}
+        />
 
         <div>
           <div className="mb-1 flex items-center justify-between">
