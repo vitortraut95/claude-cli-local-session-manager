@@ -154,7 +154,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   // Team skills hub: status reloaded on every open, shown as a panel only — never
   // updated as part of creating a task (someone may not want their clone pulled); updating is an
   // explicit "Update now" in the skills modal.
-  const { status: skillsHub } = useSkillsHubStatus(open);
+  const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(open);
   const [skillsHubModalOpen, setSkillsHubModalOpen] = useState(false);
 
   // Fetched once on mount (not on every open, unlike the project-folder list above) — the loaded
@@ -528,7 +528,11 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           repoError={repoError}
         />
 
-        <SkillsHubPanel status={skillsHub} onManage={() => setSkillsHubModalOpen(true)} />
+        <SkillsHubPanel
+          status={skillsHub}
+          failed={skillsHubFailed}
+          onManage={() => setSkillsHubModalOpen(true)}
+        />
 
         <div>
           <div className="mb-1 flex items-center justify-between">

@@ -59,7 +59,7 @@ const STATE_CLASSES: Record<SkillLinkState, string> = {
  */
 export function SkillsHubModal({ onClose }: SkillsHubModalProps) {
   const { t } = useLanguage();
-  const { status, loading, reload } = useSkillsHubStatus(true);
+  const { status, failed, reload } = useSkillsHubStatus(true);
   const [preview, setPreview] = useState<{ catalog: string; name: string } | null>(null);
 
   return (
@@ -73,13 +73,13 @@ export function SkillsHubModal({ onClose }: SkillsHubModalProps) {
       size="xl"
       icon={<Sparkles className="h-5 w-5 text-violet-500" />}
     >
-      {!status && loading && (
+      {!status && !failed && (
         <p className="flex items-center gap-2 text-sm text-gray-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t("skillsHub.loading")}
         </p>
       )}
-      {!status && !loading && (
+      {!status && failed && (
         <p className="text-sm text-red-600 dark:text-red-400">{t("skillsHub.loadError")}</p>
       )}
       {status && (status.cloneUrl === null || status.repoUrlDetected) && (
