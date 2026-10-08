@@ -260,6 +260,23 @@ export function SettingsModal({
               </div>
             }
           />
+          {prefs.skillsHub && skillsHub?.notUsed !== true && (
+            <SettingRow
+              title={t("settings.skillsHubAutoUpdate.title")}
+              description={t("settings.skillsHubAutoUpdate.description")}
+              keyName="skillsHub"
+              control={
+                <Toggle
+                  checked={prefs.skillsHub.autoUpdateOnStart ?? true}
+                  busy={savingKey === "skillsHub"}
+                  onChange={(checked) =>
+                    prefs.skillsHub &&
+                    void save({ skillsHub: { ...prefs.skillsHub, autoUpdateOnStart: checked } })
+                  }
+                />
+              }
+            />
+          )}
           {prefs.jenkinsBaseUrl !== undefined && (
             <SettingRow
               title={t("settings.jenkinsBaseUrl.title")}

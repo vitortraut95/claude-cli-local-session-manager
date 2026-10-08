@@ -14,6 +14,7 @@ import {
   detectHubRepoUrl,
   getSkillDetails,
   getSkillsHubStatus,
+  openSkillsFolder,
   setSkillsHubFlags,
   setSkillsHubPath,
   setSkillsHubRepoUrl,
@@ -289,6 +290,19 @@ tasksRouter.put("/skills-hub/path", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  }
+});
+
+tasksRouter.post("/skills-hub/open-folder", async (req, res) => {
+  try {
+    const target: unknown = (req.body as { target?: unknown } | null)?.target;
+    if (target !== "hub" && target !== "userSkills") {
+      res.status(400).json({ error: 'target must be "hub" or "userSkills".' });
+      return;
+    }
+    res.json({ path: await openSkillsFolder(target) });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
