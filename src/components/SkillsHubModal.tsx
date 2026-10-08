@@ -275,7 +275,9 @@ function InstallSection({
         <p className="font-medium text-violet-900 dark:text-violet-200">
           {t("skillsHub.invite.title")}
         </p>
-        <p className="mt-1 text-violet-800 dark:text-violet-300">{t("skillsHub.invite.body")}</p>
+        <p className="mt-1 text-violet-800 dark:text-violet-300">
+          {t("skillsHub.invite.body", { dir: status.userSkillsDir })}
+        </p>
         <p className="mt-1 text-xs text-violet-700 dark:text-violet-400">
           {t("skillsHub.invite.optional")}
         </p>
@@ -486,7 +488,9 @@ function ManageSection({
 
   return (
     <div className="flex flex-col gap-5 text-sm text-gray-700 dark:text-gray-300">
-      <p className="text-gray-600 dark:text-gray-400">{t("skillsHub.manage.intro")}</p>
+      <p className="text-gray-600 dark:text-gray-400">
+        {t("skillsHub.manage.intro", { dir: status.userSkillsDir })}
+      </p>
 
       <section className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -553,7 +557,7 @@ function ManageSection({
           </p>
         )}
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          {t("skillsHub.manage.syncHelp")}
+          {t("skillsHub.manage.syncHelp", { dir: status.userSkillsDir })}
         </p>
       </section>
 
