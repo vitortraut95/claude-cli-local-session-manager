@@ -1,7 +1,5 @@
 import { AlertTriangle, Sparkles } from "lucide-react";
-import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
-import * as tasksApi from "../services/tasksApi";
 import type { SkillsHubStatus } from "../services/tasksApi";
 import { Button } from "./Button";
 
@@ -12,37 +10,16 @@ type SkillsHubPanelProps = {
 
 /**
  * The New Task modal's one-glance view of the team skills hub. Never blocks
- * anything: without the hub it's an invite (dismissable — then just a small link), with it a
- * single status line saying what the "update skills" step will do. Renders nothing while the
+ * anything: without the hub it's a "Set up" invite (always shown, not dismissable — a repo URL
+ * saved as "" is how someone opts out), with it a single status line plus "Manage". Renders nothing while the
  * status is unknown (still loading, or a backend without these routes).
  */
 export function SkillsHubPanel({ status, onManage }: SkillsHubPanelProps) {
   const { t } = useLanguage();
-  const [dismissing, setDismissing] = useState(false);
 
   if (!status || status.notUsed) return null;
 
   if (!status.found) {
-    if (status.inviteDismissed) {
-      return (
-        <p className="text-xs text-gray-400 dark:text-gray-500">
-          <Button variant="link" size="none" className="text-xs underline" onClick={onManage}>
-            {t("skillsHub.panel.setupLink")}
-          </Button>
-        </p>
-      );
-    }
-    const dismiss = async () => {
-      setDismissing(true);
-      try {
-        await tasksApi.setSkillsHubFlags({ inviteDismissed: true });
-        tasksApi.notifySkillsHubChanged();
-      } catch {
-        // Not worth an error toast — the invite just stays visible.
-      } finally {
-        setDismissing(false);
-      }
-    };
     return (
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-violet-200 bg-violet-50 p-3 text-xs dark:border-violet-900/60 dark:bg-violet-950/30">
         <Sparkles className="h-4 w-4 shrink-0 text-violet-500" />
@@ -50,14 +27,9 @@ export function SkillsHubPanel({ status, onManage }: SkillsHubPanelProps) {
           <span className="font-medium">{t("skillsHub.invite.title")}</span>{" "}
           {t("skillsHub.panel.inviteShort")}
         </p>
-        <div className="flex shrink-0 gap-2">
-          <Button variant="ghost" size="sm" onClick={() => void dismiss()} disabled={dismissing}>
-            {t("skillsHub.panel.notNow")}
-          </Button>
-          <Button size="sm" onClick={onManage}>
-            {t("skillsHub.panel.setup")}
-          </Button>
-        </div>
+        <Button size="sm" className="shrink-0" onClick={onManage}>
+          {t("skillsHub.panel.setup")}
+        </Button>
       </div>
     );
   }

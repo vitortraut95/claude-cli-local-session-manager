@@ -356,12 +356,6 @@ export async function setSkillsHubPath(path: string | null): Promise<void> {
   await withServerErrorMessage(() => client.put("/skills-hub/path", { path }));
 }
 
-export async function setSkillsHubFlags(
-  flags: Partial<Pick<SkillsHubPreferences, "inviteDismissed">>,
-): Promise<void> {
-  await withServerErrorMessage(() => client.put("/skills-hub/flags", flags));
-}
-
 /** Fired after anything changes the hub setup (clone, catalogs, path, flags) so both the New Task
  *  panel and the settings row reload their copy of the status. */
 export const SKILLS_HUB_CHANGED_EVENT = "skills-hub-changed";
