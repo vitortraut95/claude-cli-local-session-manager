@@ -40,6 +40,7 @@ type BigEditorKey =
   | "branchTypes"
   | "recentProjectPaths"
   | "jenkinsBaseUrl"
+  | "skillsHubRepoUrl"
   | "envPreviews";
 
 /** The envPreviews editor's JSON draft, parsed — null when it isn't valid JSON of the right shape. */
@@ -118,6 +119,31 @@ export function SettingsModal({
       return false;
     } finally {
       setSavingKey(null);
+    }
+  };
+
+  /** Repo URL + local clone path, through their own routes (not the generic PUT): changing the URL
+   *  also forgets a clone path that belonged to the previous repo, and a path is validated against
+   *  the (new) URL — so the URL goes first. URL "" = not used; path "" = auto-detect. The path is
+   *  only sent when it changed, so an untouched field never pins the auto-detected folder. */
+  const saveHubConfig = async (value: { repoUrl: string; path: string }): Promise<boolean> => {
+    const repoUrl = value.repoUrl.trim();
+    const path = value.path.trim();
+    try {
+      await tasksApi.setSkillsHubRepoUrl(repoUrl);
+      const savedPath = (await tasksApi.fetchPreferences()).skillsHub?.path ?? "";
+      if (repoUrl !== "" && path !== savedPath) {
+        await tasksApi.setSkillsHubPath(path === "" ? null : path);
+      }
+      showToast(t("settings.saved"), "success");
+      return true;
+    } catch (err) {
+      showToast(resolveApiErrorMessage(err, t, "settings.saveError"), "error");
+      return false;
+    } finally {
+      tasksApi.notifyPreferencesChanged();
+      tasksApi.notifySkillsHubChanged();
+      await reload();
     }
   };
 
@@ -201,27 +227,40 @@ export function SettingsModal({
                 <span className="text-amber-600 dark:text-amber-400">
                   {t("settings.skillsHub.noRepo")}
                 </span>
-              ) : !skillsHub.found ? (
-                <span className="text-amber-600 dark:text-amber-400">
-                  {t("settings.skillsHub.notInstalled")}
-                </span>
               ) : (
-                `${skillsHub.path ?? ""} · ${
-                  skillsHub.selectedCatalogs.length > 0
-                    ? skillsHub.selectedCatalogs.join(", ")
-                    : t("settings.skillsHub.noCatalogs")
-                }`
+                <>
+                  {skillsHub.cloneUrl}
+                  {" · "}
+                  {!skillsHub.found ? (
+                    <span className="text-amber-600 dark:text-amber-400">
+                      {t("settings.skillsHub.notInstalled")}
+                    </span>
+                  ) : (
+                    `${skillsHub.path ?? ""} · ${
+                      skillsHub.selectedCatalogs.length > 0
+                        ? skillsHub.selectedCatalogs.join(", ")
+                        : t("settings.skillsHub.noCatalogs")
+                    }`
+                  )}
+                </>
               )
             }
             control={
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSkillsHubOpen(true)}
-                icon={<Sparkles className="h-3.5 w-3.5" />}
-              >
-                {t("settings.skillsHub.manage")}
-              </Button>
+              <div className="flex gap-2">
+                <EditButton onClick={() => setEditing("skillsHubRepoUrl")} />
+                {skillsHub?.cloneUrl != null && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSkillsHubOpen(true)}
+                    icon={<Sparkles className="h-3.5 w-3.5" />}
+                  >
+                    {skillsHub.found
+                      ? t("settings.skillsHub.manage")
+                      : t("settings.skillsHub.setup")}
+                  </Button>
+                )}
+              </div>
             }
           />
           {prefs.jenkinsBaseUrl !== undefined && (
@@ -409,6 +448,59 @@ export function SettingsModal({
                 </p>
               )}
             </>
+          )}
+        />
+      )}
+      {prefs && editing === "skillsHubRepoUrl" && (
+        <BigEditorModal
+          title={t("settings.skillsHub.repoUrlTitle")}
+          description={t("settings.skillsHub.repoUrlDescription")}
+          initial={{
+            repoUrl: prefs.skillsHub?.repoUrl ?? skillsHub?.cloneUrl ?? "",
+            path: prefs.skillsHub?.path ?? "",
+          }}
+          onCancel={() => setEditing(null)}
+          onSave={async (value) => {
+            if (await saveHubConfig(value)) setEditing(null);
+          }}
+          render={(value, setValue) => (
+            <div className="flex flex-col gap-4">
+              <label className="block">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {t("settings.skillsHub.repoUrlLabel")}
+                </span>
+                <div className="mt-1">
+                  <Input
+                    type="text"
+                    value={value.repoUrl}
+                    onChange={(event) => setValue({ ...value, repoUrl: event.target.value })}
+                    placeholder="git@github.com:team/skills-repo.git"
+                    className="font-mono"
+                    autoFocus
+                  />
+                </div>
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {t("settings.skillsHub.pathLabel")}
+                </span>
+                <div className="mt-1">
+                  <Input
+                    type="text"
+                    value={value.path}
+                    onChange={(event) => setValue({ ...value, path: event.target.value })}
+                    placeholder={skillsHub?.path ?? "~/git/skills-repo"}
+                    className="font-mono"
+                    disabled={value.repoUrl.trim() === ""}
+                  />
+                </div>
+                <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+                  {skillsHub?.path && !prefs.skillsHub?.path
+                    ? t("settings.skillsHub.pathDetected", { path: skillsHub.path })
+                    : t("settings.skillsHub.pathHint")}
+                </span>
+              </label>
+            </div>
           )}
         />
       )}

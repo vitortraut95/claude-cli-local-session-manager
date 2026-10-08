@@ -2667,6 +2667,41 @@ export const translations = {
     "Gerenciar",
     "Gestionar",
   ),
+  "settings.skillsHub.setup": dict(
+    "Set up",
+    "Configurar",
+    "Configurar",
+  ),
+  "settings.skillsHub.repoUrlTitle": dict(
+    "Team skills repo",
+    "Repo das skills do time",
+    "Repo de skills del equipo",
+  ),
+  "settings.skillsHub.repoUrlDescription": dict(
+    "Where your team's skills repo comes from (git URL) and where its clone lives on this machine. Leave the git URL empty if your team doesn't use one.",
+    "De onde vem o repo de skills do time (URL git) e onde o clone dele fica nesta máquina. Deixe a URL git vazia se o seu time não usa.",
+    "De dónde viene el repo de skills del equipo (URL git) y dónde está su clon en esta máquina. Deja la URL git vacía si tu equipo no usa uno.",
+  ),
+  "settings.skillsHub.repoUrlLabel": dict(
+    "Git URL (the one you'd pass to git clone)",
+    "URL git (a mesma que você passaria pro git clone)",
+    "URL git (la misma que pasarías a git clone)",
+  ),
+  "settings.skillsHub.pathLabel": dict(
+    "Local clone folder",
+    "Pasta do clone nesta máquina",
+    "Carpeta del clon en esta máquina",
+  ),
+  "settings.skillsHub.pathHint": dict(
+    "Empty = found automatically in your repos folder. It must be a clone of the repo above.",
+    "Vazio = encontrado automaticamente na sua pasta de repositórios. Precisa ser um clone do repo acima.",
+    "Vacío = se encuentra automáticamente en tu carpeta de repositorios. Debe ser un clon del repo de arriba.",
+  ),
+  "settings.skillsHub.pathDetected": dict(
+    "Empty = auto-detect (currently found at {path}). It must be a clone of the repo above.",
+    "Vazio = detectar automaticamente (encontrado agora em {path}). Precisa ser um clone do repo acima.",
+    "Vacío = detectar automáticamente (encontrado ahora en {path}). Debe ser un clon del repo de arriba.",
+  ),
   "settings.skillsHub.noCatalogs": dict(
     "no catalogs chosen",
     "nenhum catálogo escolhido",
@@ -2887,11 +2922,6 @@ export const translations = {
     "Gerenciar",
     "Gestionar",
   ),
-  "skillsHub.panel.notNow": dict(
-    "Not now",
-    "Agora não",
-    "Ahora no",
-  ),
   "skillsHub.panel.offDefault": dict(
     "hub on {branch}",
     "hub na {branch}",
@@ -2906,11 +2936,6 @@ export const translations = {
     "Set up",
     "Configurar",
     "Configurar",
-  ),
-  "skillsHub.panel.setupLink": dict(
-    "Team skills: set up",
-    "Skills do time: configurar",
-    "Skills del equipo: configurar",
   ),
   "skillsHub.panel.summary": dict(
     "Skills: {count} linked ({catalogs})",
