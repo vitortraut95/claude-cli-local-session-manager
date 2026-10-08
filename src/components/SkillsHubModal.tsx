@@ -70,7 +70,7 @@ export function SkillsHubModal({ onClose }: SkillsHubModalProps) {
       onClose={() => {
         if (!preview) onClose();
       }}
-      size="xl"
+      size="xxxl"
       icon={<Sparkles className="h-5 w-5 text-violet-500" />}
     >
       {!status && !failed && (
