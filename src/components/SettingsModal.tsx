@@ -36,6 +36,7 @@ type SettingsModalProps = {
 type BigEditorKey =
   | "workspaceDirs"
   | "defaultPrompt"
+  | "defaultSessionPrompt"
   | "branchTypes"
   | "recentProjectPaths"
   | "jenkinsBaseUrl"
@@ -271,6 +272,20 @@ export function SettingsModal({
             control={<EditButton onClick={() => setEditing("defaultPrompt")} />}
           />
           <SettingRow
+            title={t("settings.defaultSessionPrompt.title")}
+            description={t("settings.defaultSessionPrompt.description")}
+            keyName="defaultSessionPrompt"
+            preview={
+              prefs.defaultSessionPrompt?.trim()
+                ? t("settings.preview.text", {
+                    firstLine: prefs.defaultSessionPrompt.trim().split("\n")[0] ?? "",
+                    lines: prefs.defaultSessionPrompt.split("\n").length,
+                  })
+                : t("settings.preview.emptyText")
+            }
+            control={<EditButton onClick={() => setEditing("defaultSessionPrompt")} />}
+          />
+          <SettingRow
             title={t("settings.branchTypes.title")}
             description={t("settings.branchTypes.description")}
             keyName="branchTypes"
@@ -406,6 +421,26 @@ export function SettingsModal({
           onCancel={() => setEditing(null)}
           onSave={async (value) => {
             if (await save({ defaultPrompt: value })) setEditing(null);
+          }}
+          render={(value, setValue) => (
+            <textarea
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              autoFocus
+              rows={24}
+              className="w-full rounded-lg border border-gray-300 bg-white p-3 font-mono text-xs text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            />
+          )}
+        />
+      )}
+      {prefs && editing === "defaultSessionPrompt" && (
+        <BigEditorModal
+          title={t("settings.defaultSessionPrompt.title")}
+          description={t("settings.defaultSessionPrompt.description")}
+          initial={prefs.defaultSessionPrompt ?? ""}
+          onCancel={() => setEditing(null)}
+          onSave={async (value) => {
+            if (await save({ defaultSessionPrompt: value })) setEditing(null);
           }}
           render={(value, setValue) => (
             <textarea

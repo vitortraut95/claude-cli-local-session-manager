@@ -32,7 +32,12 @@ import { AppError, errorCode } from "../utils/httpError.js";
 
 export const tasksRouter = Router();
 
-type LateFields = "workspaceDirs" | "skillsHub" | "jenkinsBaseUrl" | "envPreviews";
+type LateFields =
+  | "defaultSessionPrompt"
+  | "workspaceDirs"
+  | "skillsHub"
+  | "jenkinsBaseUrl"
+  | "envPreviews";
 
 /** The fields added after the file's first release are optional on purpose: a browser tab still
  *  running an older frontend bundle (see CLAUDE.md's update-safety policy) sends the full object
@@ -44,6 +49,8 @@ function isValidPreferences(
   const candidate = body as Record<string, unknown>;
   return (
     typeof candidate.defaultPrompt === "string" &&
+    (candidate.defaultSessionPrompt === undefined ||
+      typeof candidate.defaultSessionPrompt === "string") &&
     Array.isArray(candidate.branchTypes) &&
     candidate.branchTypes.every((item) => typeof item === "string") &&
     typeof candidate.useWorktreeByDefault === "boolean" &&
@@ -93,7 +100,8 @@ tasksRouter.put("/preferences", async (req, res) => {
     if (!isValidPreferences(req.body)) {
       throw new AppError(
         "MALFORMED_PREFERENCES",
-        "Malformed preferences payload — expected { defaultPrompt: string, branchTypes: string[], " +
+        "Malformed preferences payload — expected { defaultPrompt: string, " +
+          "defaultSessionPrompt?: string, branchTypes: string[], " +
           "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
           "language: \"en\"|\"pt\"|\"es\"|null, hasSeenOnboarding: boolean, " +
           "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +

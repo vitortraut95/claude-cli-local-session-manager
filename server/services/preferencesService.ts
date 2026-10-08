@@ -26,6 +26,10 @@ export type SkillsHubPreferences = {
 
 export type UserPreferences = {
   defaultPrompt: string;
+  /** The "New session" modal's own pre-filled prompt — separate from `defaultPrompt` (the "New
+   *  task" one), since a free-form session has no Jira link/branch to frame. Added after the
+   *  file's first release, so an older file simply lacks it (falls back to ""). */
+  defaultSessionPrompt: string;
   branchTypes: string[];
   /** Fallback only — used before a project folder is chosen/resolved, or if the "is there already
    *  an active session in this repo's root?" check (`taskService.ts`'s `getRepoInfo`,
@@ -77,6 +81,7 @@ const PREFERENCES_PATH = path.join(REPO_ROOT, "userPreferences.json");
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   defaultPrompt: "",
+  defaultSessionPrompt: "",
   branchTypes: ["feature", "fix"],
   useWorktreeByDefault: false,
   useAutoPermissionModeByDefault: false,
@@ -157,6 +162,10 @@ export async function getUserPreferences(): Promise<UserPreferences> {
         typeof parsed.defaultPrompt === "string"
           ? parsed.defaultPrompt
           : DEFAULT_PREFERENCES.defaultPrompt,
+      defaultSessionPrompt:
+        typeof parsed.defaultSessionPrompt === "string"
+          ? parsed.defaultSessionPrompt
+          : DEFAULT_PREFERENCES.defaultSessionPrompt,
       branchTypes:
         isStringArray(parsed.branchTypes) && parsed.branchTypes.length > 0
           ? parsed.branchTypes

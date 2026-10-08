@@ -346,7 +346,9 @@ export async function createTaskWorktree(
 /**
  * Opens a terminal in `worktreePath` running `claude <prompt>` — passing the composed prompt as a
  * positional argument starts an interactive session with it already sent as the first message, so
- * no temp file or stdin piping is needed. The final step of the "new task" flow.
+ * no temp file or stdin piping is needed. The final step of the "new task" flow, and the only
+ * step of the "new session" one (which launches straight in the chosen project folder, and may
+ * send a blank prompt — then it's just a plain interactive `claude`).
  *
  * `permissionModeAuto` appends the CLI's own `--permission-mode auto` flag — the modal's
  * checkbox for reducing how often the launched session stops to ask for a permission approval.
@@ -376,7 +378,6 @@ export async function launchTaskTerminal(
   const trimmedWorktreePath = worktreePath.trim();
   const trimmedPrompt = prompt.trim();
   if (!trimmedWorktreePath) throw new AppError("TASK_WORKTREE_PATH_REQUIRED", "A worktree path is required.");
-  if (!trimmedPrompt) throw new AppError("TASK_PROMPT_REQUIRED", "A prompt is required to start Claude.");
 
   const trimmedNickname = nickname.trim();
   let sessionIdFlag = "";
@@ -387,8 +388,10 @@ export async function launchTaskTerminal(
   }
 
   const permissionFlag = permissionModeAuto ? "--permission-mode auto " : "";
+  // A blank prompt (the "New session" modal allows one) just opens an interactive session.
+  const promptArg = trimmedPrompt ? posixShellQuote(trimmedPrompt) : "";
   await launchInTerminal(
-    `claude ${sessionIdFlag}${permissionFlag}${posixShellQuote(trimmedPrompt)}`,
+    `claude ${sessionIdFlag}${permissionFlag}${promptArg}`.trimEnd(),
     trimmedWorktreePath,
   );
 
