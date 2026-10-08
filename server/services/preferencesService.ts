@@ -46,9 +46,6 @@ export type UserPreferences = {
   /** Null means "never explicitly chosen" — the frontend falls back to the browser's own
    *  language in that case rather than this ever defaulting to a fixed language server-side. */
   language: Language | null;
-  /** Whether the onboarding modal (explains the worktree dev workflow) has already been shown
-   *  once — gates its auto-open on first visit. */
-  hasSeenOnboarding: boolean;
   /** Repo roots used via the "new task" modal, most-recently-used first — see
    *  `taskService.ts`'s `recordUsedProjectPath`. Lets `getKnownProjectFolders()` offer a project
    *  folder before it has any session/`.jsonl` of its own yet, and (once cached listing lands)
@@ -86,7 +83,6 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   useWorktreeByDefault: false,
   useAutoPermissionModeByDefault: false,
   language: null,
-  hasSeenOnboarding: false,
   recentProjectPaths: [],
   keepRecentSessionsPerProject: 5,
   workspaceDirs: null,
@@ -179,10 +175,6 @@ export async function getUserPreferences(): Promise<UserPreferences> {
           ? parsed.useAutoPermissionModeByDefault
           : DEFAULT_PREFERENCES.useAutoPermissionModeByDefault,
       language: isLanguage(parsed.language) ? parsed.language : DEFAULT_PREFERENCES.language,
-      hasSeenOnboarding:
-        typeof parsed.hasSeenOnboarding === "boolean"
-          ? parsed.hasSeenOnboarding
-          : DEFAULT_PREFERENCES.hasSeenOnboarding,
       recentProjectPaths: isStringArray(parsed.recentProjectPaths)
         ? parsed.recentProjectPaths
         : DEFAULT_PREFERENCES.recentProjectPaths,

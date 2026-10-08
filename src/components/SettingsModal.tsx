@@ -28,8 +28,6 @@ type SettingsModalProps = {
   theme: Theme;
   onToggleTheme: () => void;
   onClose: () => void;
-  /** Re-opens the onboarding walkthrough (the `hasSeenOnboarding` row's action). */
-  onShowOnboarding: () => void;
 };
 
 /** Keys edited in a big secondary modal rather than inline in their row. */
@@ -78,7 +76,6 @@ export function SettingsModal({
   theme,
   onToggleTheme,
   onClose,
-  onShowOnboarding,
 }: SettingsModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
@@ -375,16 +372,6 @@ export function SettingsModal({
             }
           />
           <ThemeRow theme={theme} onToggle={onToggleTheme} />
-          <SettingRow
-            title={t("settings.hasSeenOnboarding.title")}
-            description={t("settings.hasSeenOnboarding.description")}
-            keyName="hasSeenOnboarding"
-            control={
-              <Button variant="outline" size="sm" onClick={onShowOnboarding}>
-                {t("settings.hasSeenOnboarding.action")}
-              </Button>
-            }
-          />
         </ul>
       )}
 

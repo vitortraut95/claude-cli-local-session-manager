@@ -47,178 +47,13 @@ export const translations = {
   "header.settings": dict("Settings", "Configurações", "Configuración"),
   "header.language": dict("Language", "Idioma", "Idioma"),
 
-  "onboarding.title": dict("How this works", "Como funciona", "Cómo funciona"),
-  "onboarding.intro": dict(
-    "This app lists every local Claude CLI session it finds and lets you resume, organize, or " +
-      "spin up new ones. Here's the full workflow, from starting a task to cleaning up after it.",
-    "Este app lista todas as sessões locais do Claude CLI que encontra e permite retomar, " +
-      "organizar ou criar novas. Aqui está o fluxo completo, desde iniciar uma tarefa até " +
-      "limpar depois dela.",
-    "Esta app lista todas las sesiones locales de Claude CLI que encuentra y te permite " +
-      "reanudarlas, organizarlas o crear nuevas. Este es el flujo completo, desde iniciar una " +
-      "tarea hasta limpiar después de ella.",
-  ),
 
-  "onboarding.step1.title": dict("1. Start a task", "1. Comece uma tarefa", "1. Inicia una tarea"),
-  "onboarding.step1.body": dict(
-    '"New task" paste a Jira link (or just describe the task), pick the project folder, and ' +
-      "write your instructions — it opens a terminal already running Claude with that prompt. " +
-      'Whatever you type in the prompt box can be kept as your default: click "Save as default" ' +
-      "and it comes pre-filled next time, so recurring instructions don't need retyping.",
-    '"Nova tarefa" cole um link do Jira (ou apenas descreva a tarefa), escolha a pasta do ' +
-      "projeto e escreva suas instruções — isso abre um terminal já rodando o Claude com esse " +
-      'prompt. O que você digitar na caixa de prompt pode ficar salvo como padrão: clique em ' +
-      '"Salvar como padrão" e ele já vem preenchido na próxima vez, então instruções recorrentes ' +
-      "não precisam ser redigitadas.",
-    '"Nueva tarea" pega un enlace de Jira (o simplemente describe la tarea), elige la carpeta ' +
-      "del proyecto y escribe tus instrucciones — esto abre una terminal que ya ejecuta Claude " +
-      'con ese prompt. Lo que escribas en el cuadro de prompt se puede guardar como ' +
-      'predeterminado: haz clic en "Guardar como predeterminado" y aparecerá precargado la ' +
-      "próxima vez, así las instrucciones recurrentes no necesitan volver a escribirse.",
-  ),
 
-  "onboarding.step2.title": dict(
-    "2. Choose whether to isolate it in a worktree",
-    "2. Escolha se quer isolar em um worktree",
-    "2. Elige si aislarla en un worktree",
-  ),
-  "onboarding.step2.body": dict(
-    "By default, the new task checks the new branch out directly in the project's root folder — " +
-      "simpler, and fine as long as nothing else is using that folder. If the root already has an " +
-      'active session, the modal automatically ticks "Use an isolated worktree" on instead, ' +
-      "giving the task its own isolated working folder (a git worktree) on that branch so it can " +
-      "run alongside the other one without either stepping on the other's code — you can always " +
-      'override the suggestion by hand. Either choice has its own "Use as default" link, so the ' +
-      "modal opens pre-set to whichever you use most when there's no active session to react to.",
-    'Por padrão, a nova tarefa faz o checkout da branch direto na pasta raiz do projeto — mais ' +
-      "simples, e tranquilo desde que nada mais esteja usando aquela pasta. Se a raiz já tiver " +
-      'uma sessão ativa, o modal marca "Usar um worktree isolado" automaticamente e dá à ' +
-      "tarefa sua própria pasta de trabalho isolada (um worktree do git) nessa branch, pra ela " +
-      "poder rodar junto com a outra sem que uma pise no código da outra — você sempre pode " +
-      'sobrescrever a sugestão manualmente. Cada escolha tem seu próprio link "Usar como padrão", ' +
-      "então o modal já abre pré-configurado com a opção que você mais usa quando não há sessão " +
-      "ativa pra reagir.",
-    'Por defecto, la nueva tarea hace el checkout de la rama directamente en la carpeta raíz del ' +
-      "proyecto — más simple, y está bien mientras nada más esté usando esa carpeta. Si la raíz " +
-      'ya tiene una sesión activa, el modal marca "Usar un worktree aislado" automáticamente y ' +
-      "le da a la tarea su propia carpeta de trabajo aislada (un worktree de git) en esa " +
-      "rama, para que pueda ejecutarse junto a la otra sin que ninguna interfiera con el código " +
-      'de la otra — siempre puedes anular la sugerencia a mano. Cada opción tiene su propio ' +
-      'enlace "Usar como predeterminado", así el modal se abre preconfigurado con la que más ' +
-      "uses cuando no hay ninguna sesión activa a la que reaccionar.",
-  ),
 
-  "onboarding.step3.title": dict(
-    "3. Test locally without commitment",
-    "3. Teste localmente sem compromisso",
-    "3. Prueba localmente sin compromiso",
-  ),
-  "onboarding.step3.body": dict(
-    'Once a worktree task looks done, use "Worktree → root" → "Copy files only" to copy its ' +
-      "files into the project's root folder so you can test using your usual local setup. This " +
-      "doesn't commit or push anything — it's disposable, and you can repeat it as many times as " +
-      "you like (each copy discards the previous one, recoverably, via git stash).",
-    'Quando uma tarefa em worktree parecer pronta, use "Worktree → raiz" → "Copiar apenas os ' +
-      'arquivos" pra copiar os arquivos dela pra pasta raiz do projeto e testar usando o seu ' +
-      "ambiente local de sempre. Isso não commita nem faz push de nada — é descartável, e você " +
-      "pode repetir quantas vezes quiser (cada cópia descarta a anterior, de forma recuperável, " +
-      "via git stash).",
-    'Cuando una tarea en worktree parezca lista, usa "Worktree → raíz" → "Copiar solo los ' +
-      'archivos" para copiar sus archivos a la carpeta raíz del proyecto y probar usando tu ' +
-      "entorno local habitual. Esto no hace commit ni push de nada — es descartable, y puedes " +
-      "repetirlo tantas veces como quieras (cada copia descarta la anterior, de forma " +
-      "recuperable, vía git stash).",
-  ),
 
-  "onboarding.step4.title": dict(
-    "4. Finish it for real",
-    "4. Finalize de verdade",
-    "4. Finaliza de verdad",
-  ),
-  "onboarding.step4.body": dict(
-    "The real commits live in the worktree's own branch — push and open your PR from a " +
-      "terminal there, not from the root copy (that copy is just uncommitted preview files). " +
-      'Alternatively, "Remove worktree & checkout branch" moves the branch (with full history) ' +
-      "into the root folder in one step — but that's irreversible: the worktree gets deleted, so " +
-      "its session can no longer be resumed afterward.",
-    "Os commits reais ficam na própria branch do worktree — faça push e abra o PR a partir de um " +
-      "terminal ali, não a partir da cópia na raiz (essa cópia é só um preview sem commit). " +
-      'Como alternativa, "Remover worktree e fazer checkout da branch" move a branch (com todo ' +
-      "o histórico) pra pasta raiz de uma vez só — mas isso é irreversível: o worktree é " +
-      "deletado, então a sessão dele não pode mais ser retomada depois.",
-    "Los commits reales están en la propia rama del worktree — haz push y abre tu PR desde una " +
-      "terminal ahí, no desde la copia en la raíz (esa copia es solo una vista previa sin " +
-      'commit). Como alternativa, "Eliminar worktree y hacer checkout de la rama" mueve la ' +
-      "rama (con todo el historial) a la carpeta raíz en un solo paso — pero es irreversible: el " +
-      "worktree se elimina, así que su sesión ya no se puede reanudar después.",
-  ),
 
-  "onboarding.step5.title": dict(
-    "5. Clean up — but only once it's pushed",
-    "5. Limpe — mas só depois do push",
-    "5. Limpia — pero solo después del push",
-  ),
-  "onboarding.step5.body": dict(
-    '"Clean up worktree" removes the folder and force-deletes its local branch. There\'s no ' +
-      "check for unpushed commits, so only delete a worktree after its branch is safely on the " +
-      "remote (ideally after the PR is merged) — otherwise you can lose local commits that " +
-      "reviewers might still ask you to change.",
-    '"Limpar worktree" remove a pasta e força a deleção da branch local. Não existe checagem ' +
-      "de commits não enviados, então só delete um worktree depois que a branch estiver a salvo " +
-      "no remoto (idealmente depois do PR mergeado) — senão você pode perder commits locais que " +
-      "os revisores ainda podem pedir pra mudar.",
-    '"Limpiar worktree" elimina la carpeta y fuerza la eliminación de su rama local. No hay ' +
-      "verificación de commits sin enviar, así que solo elimina un worktree después de que su " +
-      "rama esté a salvo en el remoto (idealmente después de que el PR se haya fusionado) — de " +
-      "lo contrario puedes perder commits locales que los revisores todavía podrían pedirte " +
-      "cambiar.",
-  ),
 
-  "onboarding.step6.title": dict(
-    "6. Resume any session, anytime",
-    "6. Retome qualquer sessão, a qualquer momento",
-    "6. Reanuda cualquier sesión, en cualquier momento",
-  ),
-  "onboarding.step6.body": dict(
-    "Every card on the main page is a session found on disk — worktree-based or not. " +
-      '"Continue" reopens it in a new terminal with claude --resume, picking up right where the ' +
-      "conversation left off. If that session's directory is already busy in another terminal, " +
-      "you'll be offered a worktree for the new one or the option to stop the other session " +
-      "first — never two Claude processes fighting over the same files.",
-    "Cada card na página principal é uma sessão encontrada no disco — baseada em worktree ou " +
-      'não. "Continuar" a reabre em um novo terminal com claude --resume, retomando exatamente ' +
-      "de onde a conversa parou. Se o diretório dessa sessão já estiver ocupado em outro " +
-      "terminal, você recebe a opção de criar um worktree pra nova sessão ou de parar a outra " +
-      "primeiro — nunca dois processos do Claude disputando os mesmos arquivos.",
-    "Cada tarjeta en la página principal es una sesión encontrada en el disco — basada en " +
-      'worktree o no. "Continuar" la reabre en una nueva terminal con claude --resume, ' +
-      "retomando exactamente donde quedó la conversación. Si el directorio de esa sesión ya " +
-      "está ocupado en otra terminal, se te ofrece crear un worktree para la nueva o detener la " +
-      "otra primero — nunca dos procesos de Claude disputando los mismos archivos.",
-  ),
 
-  "onboarding.step7.title": dict(
-    "7. If a worktree folder disappears",
-    "7. Se a pasta do worktree desaparecer",
-    "7. Si la carpeta del worktree desaparece",
-  ),
-  "onboarding.step7.body": dict(
-    'After a checkout, that session\'s card shows "Original folder missing" — expected, since ' +
-      "the worktree was removed on purpose. If the project's root folder still exists, the card " +
-      "offers to open it in VS Code, or to continue working there: resuming an existing session " +
-      "already at the root if one exists, or starting a fresh conversation seeded with a recap " +
-      "of what the old one did.",
-    'Depois de um checkout, o card daquela sessão mostra "Pasta original ausente" — esperado, ' +
-      "já que o worktree foi removido de propósito. Se a pasta raiz do projeto ainda existir, o " +
-      "card oferece abrir ela no VS Code, ou continuar o trabalho ali: retomando uma sessão já " +
-      "existente na raiz, se houver uma, ou começando uma conversa nova alimentada com um resumo " +
-      "do que a antiga fez.",
-    'Después de un checkout, la tarjeta de esa sesión muestra "Falta la carpeta original" — es ' +
-      "esperado, ya que el worktree se eliminó a propósito. Si la carpeta raíz del proyecto " +
-      "todavía existe, la tarjeta ofrece abrirla en VS Code, o continuar trabajando ahí: " +
-      "reanudando una sesión ya existente en la raíz, si hay una, o iniciando una conversación " +
-      "nueva alimentada con un resumen de lo que hizo la anterior.",
-  ),
   "confirmDialog.confirm": dict("Confirm", "Confirmar", "Confirmar"),
   "confirmDialog.cancel": dict("Cancel", "Cancelar", "Cancelar"),
 
@@ -700,17 +535,6 @@ export const translations = {
     "Claro ou escuro — salvo neste navegador, não no userPreferences.json.",
     "Claro u oscuro — guardado en este navegador, no en userPreferences.json.",
   ),
-  "settings.hasSeenOnboarding.title": dict(
-    "\"How this works\" walkthrough",
-    "Tutorial \"Como funciona\"",
-    "Tutorial \"Cómo funciona\"",
-  ),
-  "settings.hasSeenOnboarding.description": dict(
-    "Shown automatically once, the first time the app opens.",
-    "Aparece sozinho uma vez, na primeira vez que o app abre.",
-    "Aparece solo una vez, la primera vez que se abre la app.",
-  ),
-  "settings.hasSeenOnboarding.action": dict("Show again", "Mostrar de novo", "Mostrar de nuevo"),
 
   "workspaceDirs.add": dict("Add", "Adicionar", "Agregar"),
   "workspaceDirs.remove": dict("Remove folder", "Remover pasta", "Quitar carpeta"),

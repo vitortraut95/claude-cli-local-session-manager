@@ -9,7 +9,6 @@ import * as tasksApi from "../services/tasksApi";
  *  clobber these, or vice versa. */
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(detectBrowserLanguage());
-  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -19,10 +18,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       .then((prefs) => {
         if (cancelled) return;
         setLanguageState(prefs.language ?? detectBrowserLanguage());
-        setHasSeenOnboarding(prefs.hasSeenOnboarding);
       })
       .catch(() => {
-        // Keep the browser-detected language and "not seen" default already in state.
+        // Keep the browser-detected language already in state.
       })
       .finally(() => {
         if (!cancelled) setLoaded(true);
@@ -37,15 +35,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     void tasksApi.updatePreferences({ language: next });
   }, []);
 
-  const markOnboardingSeen = useCallback(() => {
-    setHasSeenOnboarding(true);
-    void tasksApi.updatePreferences({ hasSeenOnboarding: true });
-  }, []);
-
   return (
-    <LanguageContext.Provider
-      value={{ language, setLanguage, hasSeenOnboarding, markOnboardingSeen, loaded }}
-    >
+    <LanguageContext.Provider value={{ language, setLanguage, loaded }}>
       {children}
     </LanguageContext.Provider>
   );
