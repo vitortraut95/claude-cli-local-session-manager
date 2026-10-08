@@ -4,6 +4,7 @@ import { cleanupRouter } from "./routes/cleanup.js";
 import { sessionsRouter } from "./routes/sessions.js";
 import { systemRouter } from "./routes/system.js";
 import { tasksRouter } from "./routes/tasks.js";
+import { autoUpdateSkillsHubOnStart } from "./services/skillsHubService.js";
 
 const PORT = Number(process.env.PORT ?? 58231);
 
@@ -18,4 +19,6 @@ app.use("/cleanup", cleanupRouter);
 
 app.listen(PORT, () => {
   console.log(`Claude Session Manager API listening on http://localhost:${PORT}`);
+  // Background, after the server is already answering — never delays startup.
+  void autoUpdateSkillsHubOnStart();
 });

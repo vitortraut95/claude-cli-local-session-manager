@@ -41,6 +41,22 @@ export const translations = {
     "Administra tus sesiones locales",
   ),
   "header.newTask": dict("New task", "Nova tarefa", "Nueva tarea"),
+  "header.skills": dict("Skills", "Skills", "Skills"),
+  "header.skills.active": dict(
+    "{count} team skill(s) active on this machine",
+    "{count} skill(s) do time ativa(s) nesta máquina",
+    "{count} skill(s) del equipo activa(s) en esta máquina",
+  ),
+  "header.skills.notConfigured": dict(
+    "Team skills repo not configured — click to set it up",
+    "Repo de skills do time não configurado — clique pra configurar",
+    "Repo de skills del equipo no configurado — haz clic para configurarlo",
+  ),
+  "header.skills.notInstalled": dict(
+    "Team skills repo configured but not cloned on this machine — click to install",
+    "Repo de skills do time configurado mas não clonado nesta máquina — clique pra instalar",
+    "Repo de skills del equipo configurado pero no clonado en esta máquina — haz clic para instalarlo",
+  ),
   "header.newSession": dict("New session", "Nova sessão", "Nueva sesión"),
   "header.cleanup": dict("Cleanup", "Limpeza", "Limpieza"),
   "header.importSession": dict("Import session", "Importar sessão", "Importar sesión"),
@@ -2491,6 +2507,16 @@ export const translations = {
     "Gerenciar",
     "Gestionar",
   ),
+  "settings.skillsHubAutoUpdate.title": dict(
+    "Update team skills on start",
+    "Atualizar skills do time ao iniciar",
+    "Actualizar skills del equipo al iniciar",
+  ),
+  "settings.skillsHubAutoUpdate.description": dict(
+    "Every time the app starts, updates the skills clone in the background (only a fast-forward when it's clean — never forces anything) and links new skills.",
+    "Toda vez que o app inicia, atualiza o clone de skills em background (só fast-forward quando está limpo — nunca força nada) e linka as skills novas.",
+    "Cada vez que la app inicia, actualiza el clon de skills en segundo plano (solo fast-forward cuando está limpio — nunca fuerza nada) y enlaza las skills nuevas.",
+  ),
   "settings.skillsHub.setup": dict(
     "Set up",
     "Configurar",
@@ -2535,6 +2561,26 @@ export const translations = {
     "not installed",
     "não instalado",
     "no instalado",
+  ),
+  "skillsHub.manage.openFolder": dict(
+    "Open skills in file manager",
+    "Abrir skills no explorador",
+    "Abrir skills en el explorador",
+  ),
+  "skillsHub.manage.openHub": dict(
+    "Team skills repo (git clone)",
+    "Repo de skills do time (clone git)",
+    "Repo de skills del equipo (clon git)",
+  ),
+  "skillsHub.manage.openUserSkills": dict(
+    "This machine's skills folder (where they're linked)",
+    "Pasta de skills desta máquina (onde ficam linkadas)",
+    "Carpeta de skills de esta máquina (donde quedan enlazadas)",
+  ),
+  "skillsHub.manage.openFolderError": dict(
+    "Couldn't open the folder.",
+    "Não deu pra abrir a pasta.",
+    "No se pudo abrir la carpeta.",
   ),
   "skillsHub.autoDetect": dict(
     "Auto-detect",
@@ -2680,6 +2726,11 @@ export const translations = {
     "Change folder",
     "Trocar pasta",
     "Cambiar carpeta",
+  ),
+  "skillsHub.manage.changePathHint": dict(
+    "The repo and the clone folder are changed in one place: the gear (Settings) in the header → \"Team skills\" → Edit.",
+    "O repo e a pasta do clone são trocados num lugar só: na engrenagem (Configurações) do header → \"Skills do time\" → Editar.",
+    "El repo y la carpeta del clon se cambian en un solo lugar: el engranaje (Configuración) del header → \"Skills del equipo\" → Editar.",
   ),
   "skillsHub.manage.detached": dict(
     "(detached)",
@@ -2880,6 +2931,11 @@ export const translations = {
     "The skills hub repo URL isn't set.",
     "A URL do repo do hub de skills não está configurada.",
     "La URL del repo del hub de skills no está configurada.",
+  ),
+  "apiError.skillsFolderOpenFailed": dict(
+    "Couldn't open the folder in the file manager (xdg-open not available?).",
+    "Não deu pra abrir a pasta no explorador de arquivos (xdg-open indisponível?).",
+    "No se pudo abrir la carpeta en el explorador de archivos (¿xdg-open no disponible?).",
   ),
   "apiError.skillsHubNotFound": dict(
     "Skills hub clone not found.",

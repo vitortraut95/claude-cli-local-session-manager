@@ -54,6 +54,7 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   SKILLS_HUB_CLONE_TARGET_EXISTS: "apiError.skillsHubCloneTargetExists",
   SKILLS_DIR_UNWRITABLE: "apiError.skillsDirUnwritable",
   SKILL_NOT_FOUND: "apiError.skillNotFound",
+  SKILLS_FOLDER_OPEN_FAILED: "apiError.skillsFolderOpenFailed",
   // SKILLS_HUB_CLONE_FAILED deliberately unmapped: its message carries git's own stderr (e.g.
   // "Permission denied (publickey)"), which is the useful part to show.
   USAGE_NO_CREDENTIALS: "apiError.usageNoCredentials",

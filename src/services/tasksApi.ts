@@ -233,6 +233,8 @@ export type SkillsHubPreferences = {
   /** `<catalog>/<skill>` picks on top of whole catalogs. Optional: older backends don't send it. */
   skills?: string[];
   inviteDismissed: boolean;
+  /** Background sync on server start. Optional: older backends don't send it (treated as on). */
+  autoUpdateOnStart?: boolean;
 };
 
 export type HubSkill = { name: string; description: string; dir: string };
@@ -294,6 +296,11 @@ export async function fetchSkillsHubStatus(): Promise<SkillsHubStatus> {
     client.get<SkillsHubStatus>("/skills-hub/status"),
   );
   return data;
+}
+
+/** Opens the hub clone or `~/.claude/skills` in the file manager (resolved server-side). */
+export async function openSkillsFolder(target: "hub" | "userSkills"): Promise<void> {
+  await withServerErrorMessage(() => client.post("/skills-hub/open-folder", { target }));
 }
 
 export async function syncSkillsHub(): Promise<SkillsHubSyncResult> {

@@ -1,6 +1,7 @@
 import { Bot, Globe, Import, MessageSquarePlus, Plus, Settings, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
+import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import { useTheme } from "../hooks/useTheme";
 import { useUpdate } from "../hooks/useUpdate";
 import { useUsageLimits } from "../hooks/useUsageLimits";
@@ -11,6 +12,8 @@ import { ImportSessionModal } from "./ImportSessionModal";
 import { NewSessionModal } from "./NewSessionModal";
 import { NewTaskModal } from "./NewTaskModal";
 import { SettingsModal } from "./SettingsModal";
+import { SkillsHeaderButton } from "./SkillsHeaderButton";
+import { SkillsHubModal } from "./SkillsHubModal";
 import { Select } from "./Select";
 import { Tooltip } from "./Tooltip";
 import { UpdateButton } from "./UpdateButton";
@@ -57,6 +60,10 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSkillsModal, setShowSkillsModal] = useState(false);
+  // Always loaded (the header is always mounted) — also keeps the shared cached status warm, so the
+  // New Task / New Session skills panel opens already filled in.
+  const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(true);
   // `workspaceDirs` never saved (null) → ask on every start until it is; "not now" only skips it
   // for this page load. Re-checked whenever the settings modal saves something.
   const [needsWorkspaceDirs, setNeedsWorkspaceDirs] = useState(false);
@@ -96,7 +103,8 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     !workspacePromptSkipped &&
     !showSettings &&
     !showNewTaskModal &&
-    !showNewSessionModal;
+    !showNewSessionModal &&
+    !showSkillsModal;
   // Only after the workspace prompt is out of the way (saved or skipped) — never both at once.
   const showTeamPrompt =
     teamPromptPrefs !== null &&
@@ -106,7 +114,8 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     (!needsWorkspaceDirs || workspacePromptSkipped) &&
     !showSettings &&
     !showNewTaskModal &&
-    !showNewSessionModal;
+    !showNewSessionModal &&
+    !showSkillsModal;
 
   return (
     <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -124,6 +133,11 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-2">
+          <SkillsHeaderButton
+            status={skillsHub}
+            failed={skillsHubFailed}
+            onClick={() => setShowSkillsModal(true)}
+          />
           <Button onClick={() => setShowNewTaskModal(true)} icon={<Plus className="h-4 w-4" />}>
             {t("header.newTask")}
           </Button>
@@ -209,6 +223,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           onImported={(sessionId) => onSessionImported?.(sessionId)}
         />
       )}
+      {showSkillsModal && <SkillsHubModal onClose={() => setShowSkillsModal(false)} />}
       {showSettings && (
         <SettingsModal
           theme={theme}

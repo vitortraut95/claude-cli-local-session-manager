@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { lstat, mkdir, readdir, readFile, readlink, stat, symlink, unlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -837,4 +837,63 @@ export async function cloneSkillsHub(parentDir: string): Promise<string> {
   }
   await updateSkillsHubPreferences({ path: target });
   return target;
+}
+
+export type SkillsFolderTarget = "hub" | "userSkills";
+
+/** Opens the hub clone or the CLI's user-level skills dir in the desktop's file manager
+ *  (`xdg-open`). The folder is resolved here, never taken from the caller. */
+export async function openSkillsFolder(target: SkillsFolderTarget): Promise<string> {
+  let dir: string;
+  if (target === "hub") {
+    const prefs = (await getUserPreferences()).skillsHub;
+    const hubPath = await locateHub(prefs, await resolveRepoUrl(prefs));
+    if (!hubPath) throw new AppError("SKILLS_HUB_NOT_FOUND", "Skills hub clone not found.");
+    dir = hubPath;
+  } else {
+    dir = getUserSkillsDir();
+    try {
+      await mkdir(dir, { recursive: true });
+    } catch (err) {
+      throw new AppError("SKILLS_DIR_UNWRITABLE", `Can't create ${dir}.`, { cause: err });
+    }
+  }
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn("xdg-open", [dir], { detached: true, stdio: "ignore" });
+    child.once("error", (err) =>
+      reject(new AppError("SKILLS_FOLDER_OPEN_FAILED", `Couldn't open ${dir}.`, { cause: err })),
+    );
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
+  });
+  return dir;
+}
+
+/** Background hub sync run once when the server starts — same safe `syncSkillsHub` as "Update
+ *  now" (fetch, fast-forward only when clean and not diverged, refresh links; never forces the
+ *  clone). Skipped when the hub isn't used/configured/cloned here or `autoUpdateOnStart` is off.
+ *  Never throws: it only logs, so a startup without network or SSH access stays quiet. */
+export async function autoUpdateSkillsHubOnStart(): Promise<void> {
+  try {
+    const prefs = (await getUserPreferences()).skillsHub;
+    if (!prefs.autoUpdateOnStart || prefs.repoUrl === "") return;
+    const status = await getSkillsHubStatus();
+    if (!status.found) return;
+    const result = await syncSkillsHub();
+    const parts = [
+      result.fetched ? null : `fetch failed (${result.fetchError ?? "unknown"})`,
+      result.pulledCommits > 0 ? `pulled ${result.pulledCommits} commit(s)` : null,
+      result.pullSkippedReason ? `update skipped: ${result.pullSkippedReason}` : null,
+      result.links.linked.length > 0 ? `linked ${result.links.linked.length} new skill(s)` : null,
+    ].filter((part): part is string => part !== null);
+    console.log(
+      `[skills] startup auto-update: ${parts.length > 0 ? parts.join(", ") : "up to date"}`,
+    );
+  } catch (err) {
+    console.warn(
+      `[skills] startup auto-update failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }

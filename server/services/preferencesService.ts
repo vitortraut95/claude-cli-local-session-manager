@@ -20,8 +20,12 @@ export type SkillsHubPreferences = {
   /** Individually picked skills (`<catalog>/<skill>`) on top of the whole `catalogs` — only
    *  meaningful once `catalogs` is non-null (an explicit choice was made). */
   skills: string[];
-  /** "Not now" on the New Task modal's invite to install the hub. */
+  /** "Not now" on the New Task modal's old invite to install the hub — no longer used by the UI,
+   *  kept so older files/bundles round-trip unchanged. */
   inviteDismissed: boolean;
+  /** Sync the hub (fetch + fast-forward when clean, refresh links) in the background whenever
+   *  the server starts. Added later: an older file lacks it and gets the default (on). */
+  autoUpdateOnStart: boolean;
 };
 
 export type UserPreferences = {
@@ -86,7 +90,14 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   recentProjectPaths: [],
   keepRecentSessionsPerProject: 5,
   workspaceDirs: null,
-  skillsHub: { repoUrl: null, path: null, catalogs: null, skills: [], inviteDismissed: false },
+  skillsHub: {
+    repoUrl: null,
+    path: null,
+    catalogs: null,
+    skills: [],
+    inviteDismissed: false,
+    autoUpdateOnStart: true,
+  },
   jenkinsBaseUrl: null,
   envPreviews: {},
 };
@@ -106,6 +117,10 @@ function parseSkillsHub(value: unknown): SkillsHubPreferences {
     skills: isStringArray(raw.skills) ? raw.skills : fallback.skills,
     inviteDismissed:
       typeof raw.inviteDismissed === "boolean" ? raw.inviteDismissed : fallback.inviteDismissed,
+    autoUpdateOnStart:
+      typeof raw.autoUpdateOnStart === "boolean"
+        ? raw.autoUpdateOnStart
+        : fallback.autoUpdateOnStart,
   };
 }
 
@@ -119,7 +134,9 @@ export function isSkillsHubPreferences(value: unknown): value is SkillsHubPrefer
     (raw.catalogs === null || isStringArray(raw.catalogs)) &&
     // Optional: a frontend bundle from before per-skill picks existed doesn't send it.
     (raw.skills === undefined || isStringArray(raw.skills)) &&
-    typeof raw.inviteDismissed === "boolean"
+    typeof raw.inviteDismissed === "boolean" &&
+    // Optional: a frontend bundle from before the startup auto-update existed doesn't send it.
+    (raw.autoUpdateOnStart === undefined || typeof raw.autoUpdateOnStart === "boolean")
   );
 }
 
