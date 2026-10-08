@@ -62,7 +62,7 @@ export function SkillsHubPanel({ status, failed, onManage }: SkillsHubPanelProps
       <PanelShell tone="invite">
         <p className="min-w-0 flex-1">
           <span className="font-medium">{t("skillsHub.invite.title")}</span>{" "}
-          {t("skillsHub.panel.inviteShort")}
+          {t("skillsHub.panel.inviteShort", { dir: status.userSkillsDir })}
         </p>
         <Button size="sm" onClick={onManage}>
           {t("skillsHub.panel.setup")}

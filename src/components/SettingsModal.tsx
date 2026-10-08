@@ -215,7 +215,9 @@ export function SettingsModal({
           />
           <SettingRow
             title={t("settings.skillsHub.title")}
-            description={t("settings.skillsHub.description")}
+            description={t("settings.skillsHub.description", {
+              dir: skillsHub?.userSkillsDir ?? "~/.claude/skills",
+            })}
             keyName="skillsHub"
             preview={
               skillsHub === null ? undefined : skillsHub.notUsed ? (

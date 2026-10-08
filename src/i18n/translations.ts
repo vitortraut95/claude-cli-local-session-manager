@@ -2498,9 +2498,9 @@ export const translations = {
     "Skills del equipo",
   ),
   "settings.skillsHub.description": dict(
-    "Shared Claude skills from your team's skills repo, linked into ~/.claude/skills. Updated only when you click \"Update now\".",
-    "Skills do Claude compartilhadas pelo repo de skills do time, linkadas em ~/.claude/skills. Atualizadas só quando você clica em \"Atualizar agora\".",
-    "Skills de Claude compartidas por el repo de skills del equipo, enlazadas en ~/.claude/skills. Se actualizan solo cuando haces clic en \"Actualizar ahora\".",
+    "Your team's shared Claude skills: for each skill you select in the repo, the app creates a shortcut (symlink) to it in {dir}, where Claude loads skills from. Updated by \"Update now\" and, if enabled, when the app starts.",
+    "Skills do Claude compartilhadas pelo time: pra cada skill que você seleciona no repo, o app cria um atalho (link simbólico) dela em {dir}, que é de onde o Claude carrega as skills. Atualizadas pelo \"Atualizar agora\" e, se ligado, ao iniciar o app.",
+    "Skills de Claude compartidas por el equipo: por cada skill que seleccionas en el repo, la app crea un acceso directo (enlace simbólico) en {dir}, de donde Claude carga las skills. Se actualizan con \"Actualizar ahora\" y, si está activado, al iniciar la app.",
   ),
   "settings.skillsHub.manage": dict(
     "Manage",
@@ -2658,9 +2658,9 @@ export const translations = {
     "Usa tu propio acceso (clave SSH) al host del repo.",
   ),
   "skillsHub.invite.body": dict(
-    "The skills hub is the repo where your team keeps reusable Claude skills. Once installed and linked, every Claude session on this machine can use them.",
-    "O hub de skills é o repo onde o seu time guarda skills reutilizáveis do Claude. Instalado e linkado, toda sessão do Claude nesta máquina pode usá-las.",
-    "El hub de skills es el repo donde tu equipo guarda skills reutilizables de Claude. Instalado y enlazado, toda sesión de Claude en esta máquina puede usarlas.",
+    "The skills repo is where your team keeps reusable Claude skills. Once it's cloned, you pick which skills to use and the app creates a shortcut (symlink) for each selected skill from the repo into {dir} — so every Claude session on this machine can use them.",
+    "O repo de skills é onde o seu time guarda skills reutilizáveis do Claude. Depois de clonado, você escolhe quais skills usar e o app cria um atalho (link simbólico) de cada skill selecionada do repo para {dir} — assim toda sessão do Claude nesta máquina pode usá-las.",
+    "El repo de skills es donde tu equipo guarda skills reutilizables de Claude. Una vez clonado, eliges qué skills usar y la app crea un acceso directo (enlace simbólico) de cada skill seleccionada del repo en {dir} — así toda sesión de Claude en esta máquina puede usarlas.",
   ),
   "skillsHub.invite.optional": dict(
     "Optional — tasks work the same without it.",
@@ -2748,9 +2748,9 @@ export const translations = {
     "Mismo nombre de skill en más de un catálogo marcado: {names} — solo se enlaza la del primer catálogo.",
   ),
   "skillsHub.manage.intro": dict(
-    "Skills are linked (not copied) from your clone, so updating the clone updates them. The clone is never reset or forced — only fetch + fast-forward when it's clean.",
-    "As skills são linkadas (não copiadas) do seu clone, então atualizar o clone já as atualiza. O clone nunca é resetado nem forçado — só fetch + fast-forward quando está limpo.",
-    "Las skills se enlazan (no se copian) desde tu clon, así que actualizar el clon las actualiza. El clon nunca se resetea ni se fuerza — solo fetch + fast-forward cuando está limpio.",
+    "For each skill selected below, the app creates a shortcut (symlink) from its folder in the skills repo to {dir}, which is where Claude looks for skills. Nothing is copied: updating the repo updates the linked skills too. The clone is never reset or forced — only fetch + fast-forward when it's clean.",
+    "Pra cada skill selecionada abaixo, o app cria um atalho (link simbólico) da pasta dela no repo de skills para {dir}, que é onde o Claude procura as skills. Nada é copiado: atualizar o repo já atualiza as skills linkadas. O clone nunca é resetado nem forçado — só fetch + fast-forward quando está limpo.",
+    "Por cada skill seleccionada abajo, la app crea un acceso directo (enlace simbólico) de su carpeta en el repo de skills a {dir}, que es donde Claude busca las skills. No se copia nada: actualizar el repo actualiza las skills enlazadas. El clon nunca se resetea ni se fuerza — solo fetch + fast-forward cuando está limpio.",
   ),
   "skillsHub.manage.newSessionsNote": dict(
     "Claude loads skills when a session starts — sessions already open only see new skills after a restart.",
@@ -2788,9 +2788,9 @@ export const translations = {
     "{count} conflicto(s) de nombre",
   ),
   "skillsHub.panel.inviteShort": dict(
-    "Install your team's skills hub so your tasks can use the team's shared skills.",
-    "Instale o hub de skills do time pra que suas tarefas usem as skills compartilhadas do time.",
-    "Instala el hub de skills del equipo para que tus tareas usen las skills compartidas del equipo.",
+    "Clone your team's skills repo and pick which skills to use — the app creates a shortcut to each one in {dir}.",
+    "Clone o repo de skills do time e escolha quais skills usar — o app cria um atalho de cada uma em {dir}.",
+    "Clona el repo de skills del equipo y elige qué skills usar — la app crea un acceso directo de cada una en {dir}.",
   ),
   "skillsHub.panel.manage": dict(
     "Manage",
@@ -2963,9 +2963,9 @@ export const translations = {
     "No se pudo crear la carpeta de skills de Claude (~/.claude/skills).",
   ),
   "skillsHub.manage.syncHelp": dict(
-    "Nothing is updated automatically: \"Update now\" runs git fetch, fast-forwards the clone when it's clean, and links new skills.",
-    "Nada é atualizado automaticamente: \"Atualizar agora\" roda git fetch, avança o clone (fast-forward) quando ele está limpo e linka as skills novas.",
-    "Nada se actualiza automáticamente: \"Actualizar ahora\" ejecuta git fetch, avanza el clon (fast-forward) cuando está limpio y enlaza las skills nuevas.",
+    "\"Update now\" runs git fetch, fast-forwards the clone when it's clean, and creates shortcuts in {dir} for new skills. It also runs on its own when the app starts, if enabled in Settings.",
+    "\"Atualizar agora\" roda git fetch, avança o clone (fast-forward) quando está limpo e cria os atalhos das skills novas em {dir}. Também roda sozinho quando o app inicia, se estiver ligado na Configuração.",
+    "\"Actualizar ahora\" ejecuta git fetch, avanza el clon (fast-forward) cuando está limpio y crea en {dir} los accesos directos de las skills nuevas. También se ejecuta solo al iniciar la app, si está activado en Configuración.",
   ),
   "skillsHub.panel.behind": dict(
     "hub {count} commit(s) behind — update it in Manage",
