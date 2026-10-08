@@ -2,7 +2,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Circle,
-  Folder,
   GitBranch,
   Info,
   Link as LinkIcon,
@@ -11,14 +10,15 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
+import { useProjectFolders } from "../hooks/useProjectFolders";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
 import * as tasksApi from "../services/tasksApi";
-import type { ProjectFolderOption } from "../services/tasksApi";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
+import { ProjectFolderField } from "./ProjectFolderField";
 import { Select } from "./Select";
 import { SkillsHubModal } from "./SkillsHubModal";
 import { SkillsHubPanel } from "./SkillsHubPanel";
@@ -32,7 +32,6 @@ type NewTaskModalProps = {
   onTaskCreated?: () => void;
 };
 
-const OTHER_FOLDER_VALUE = "__other__";
 const OTHER_PREFIX_VALUE = "__other__";
 // Just the pre-load fallback shown before userPreferences.json's own `branchTypes` arrives (see
 // the preferences-fetch effect below) — the real, user-editable list lives in that file.
@@ -94,19 +93,8 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   const [jiraLink, setJiraLink] = useState("");
   const jiraId = useMemo(() => extractJiraId(jiraLink), [jiraLink]);
 
-  const [projects, setProjects] = useState<ProjectFolderOption[]>([]);
-  // Grouped only when the workspace dirs contributed anything beyond the recent list — otherwise
-  // the select looks exactly like it did before workspace dirs existed.
-  const { recentProjects, otherProjects } = useMemo(
-    () => ({
-      recentProjects: projects.filter((p) => p.recent !== false),
-      otherProjects: projects.filter((p) => p.recent === false),
-    }),
-    [projects],
-  );
-  const [loadingProjects, setLoadingProjects] = useState(true);
-  const [folderChoice, setFolderChoice] = useState("");
-  const [customFolderPath, setCustomFolderPath] = useState("");
+  const folders = useProjectFolders(open);
+  const { effectiveFolderPath, resetFolder } = folders;
 
   const [defaultPromptLoaded, setDefaultPromptLoaded] = useState<string | null>(null);
   const [loadingPrompt, setLoadingPrompt] = useState(true);
@@ -168,36 +156,6 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   // explicit "Update now" in the skills modal.
   const { status: skillsHub } = useSkillsHubStatus(open);
   const [skillsHubModalOpen, setSkillsHubModalOpen] = useState(false);
-
-  // Re-fetched every time the modal opens (not just once on mount) — a project folder typed by
-  // hand into "Outro" during task creation only becomes a known option once its new session's
-  // `.jsonl` exists, so re-running this on open is the only way a just-used repo shows up in the
-  // dropdown next time without a full page reload. Deferred via a 0ms timer so its setState calls
-  // happen in a callback, not synchronously in the effect body itself.
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      setLoadingProjects(true);
-      tasksApi
-        .fetchProjectFolders()
-        .then((list) => {
-          if (cancelled) return;
-          setProjects(list);
-          if (list.length === 0) setFolderChoice(OTHER_FOLDER_VALUE);
-        })
-        .catch(() => {
-          if (!cancelled) setFolderChoice(OTHER_FOLDER_VALUE);
-        })
-        .finally(() => {
-          if (!cancelled) setLoadingProjects(false);
-        });
-    }, 0);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [open]);
 
   // Fetched once on mount (not on every open, unlike the project-folder list above) — the loaded
   // values only ever seed the form's initial state, and re-running this on every open would
@@ -266,8 +224,6 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   }, []);
 
   const effectivePrefix = prefixChoice === OTHER_PREFIX_VALUE ? customPrefix.trim() : prefixChoice;
-  const effectiveFolderPath =
-    folderChoice === OTHER_FOLDER_VALUE || projects.length === 0 ? customFolderPath : folderChoice;
 
   // Derived (not effect-driven) so it's always reflected live, right up until the user types
   // their own text into the field.
@@ -335,8 +291,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   // and preferences (no need to refetch either), only wipes what the user filled in.
   const resetForm = useCallback(() => {
     setJiraLink("");
-    setFolderChoice(projects.length === 0 ? OTHER_FOLDER_VALUE : "");
-    setCustomFolderPath("");
+    resetFolder();
     setPromptText(defaultPromptLoaded ?? "");
     setPrefixChoice(branchTypes[0] ?? FALLBACK_BRANCH_TYPES[0] ?? "feature");
     setCustomPrefix("");
@@ -349,7 +304,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     setUseWorktreeTouched(false);
     setActiveSessionInRoot(null);
     setSteps([]);
-  }, [projects, defaultPromptLoaded, branchTypes, useWorktreeDefault]);
+  }, [resetFolder, defaultPromptLoaded, branchTypes, useWorktreeDefault]);
 
   const promptDirty =
     (defaultPromptLoaded !== null && promptText !== defaultPromptLoaded) || !defaultPromptLoaded;
@@ -566,71 +521,12 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           />
         </div>
 
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-            {t("newTaskModal.projectLabel")}
-          </label>
-          {projects.length > 0 && (
-            <Select
-              icon={<Folder className="h-4 w-4" />}
-              value={folderChoice}
-              onChange={(event) => setFolderChoice(event.target.value)}
-              disabled={loadingProjects}
-            >
-              <option value="" disabled>
-                {loadingProjects
-                  ? t("newTaskModal.loadingProjects")
-                  : t("newTaskModal.selectProject")}
-              </option>
-              {otherProjects.length === 0 ? (
-                recentProjects.map((project) => (
-                  <option key={project.path} value={project.path}>
-                    {project.label}
-                  </option>
-                ))
-              ) : (
-                <>
-                  {recentProjects.length > 0 && (
-                    <optgroup label={t("newTaskModal.recentProjectsGroup")}>
-                      {recentProjects.map((project) => (
-                        <option key={project.path} value={project.path}>
-                          {project.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  <optgroup label={t("newTaskModal.workspaceProjectsGroup")}>
-                    {otherProjects.map((project) => (
-                      <option key={project.path} value={project.path}>
-                        {project.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                </>
-              )}
-              <option value={OTHER_FOLDER_VALUE}>{t("newTaskModal.otherFolder")}</option>
-            </Select>
-          )}
-          {(folderChoice === OTHER_FOLDER_VALUE || projects.length === 0) && (
-            <Input
-              type="text"
-              icon={<Folder className="h-4 w-4" />}
-              value={customFolderPath}
-              onChange={(event) => setCustomFolderPath(event.target.value)}
-              placeholder="/absolute/path/to/the/project"
-              name="newTaskFolderPath"
-              className={projects.length > 0 ? "mt-2" : ""}
-            />
-          )}
-          {loadingRepoInfo && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-              <Loader2 className="h-3 w-3 animate-spin" /> {t("newTaskModal.readingRepoInfo")}
-            </p>
-          )}
-          {repoError && (
-            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{repoError}</p>
-          )}
-        </div>
+        <ProjectFolderField
+          folders={folders}
+          inputName="newTaskFolderPath"
+          loadingRepoInfo={loadingRepoInfo}
+          repoError={repoError}
+        />
 
         <SkillsHubPanel status={skillsHub} onManage={() => setSkillsHubModalOpen(true)} />
 

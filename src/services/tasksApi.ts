@@ -24,6 +24,9 @@ export type Language = "en" | "pt" | "es";
 
 export type UserPreferences = {
   defaultPrompt: string;
+  /** NewSessionModal's own pre-filled prompt (separate from NewTaskModal's `defaultPrompt`).
+   *  Optional like `workspaceDirs`: a backend from before it existed doesn't send it. */
+  defaultSessionPrompt?: string;
   branchTypes: string[];
   /** Fallback only, used before a project's `RepoInfo.hasActiveSessionInRoot` is known — once it
    *  is, NewTaskModal's "no worktree" checkbox follows that instead (see `RepoInfo`'s own doc

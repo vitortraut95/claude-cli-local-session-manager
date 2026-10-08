@@ -46,7 +46,6 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   TASK_BRANCH_EXISTS: "apiError.taskBranchExists",
   TASK_WORKTREE_EXISTS: "apiError.taskWorktreeExists",
   TASK_WORKTREE_PATH_REQUIRED: "apiError.taskWorktreePathRequired",
-  TASK_PROMPT_REQUIRED: "apiError.taskPromptRequired",
   MALFORMED_PREFERENCES: "apiError.malformedPreferences",
   SKILLS_HUB_NOT_FOUND: "apiError.skillsHubNotFound",
   SKILLS_HUB_REPO_URL_MISSING: "apiError.skillsHubRepoUrlMissing",

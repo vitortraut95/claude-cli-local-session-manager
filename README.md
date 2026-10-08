@@ -11,9 +11,12 @@ and clean them up. Everything runs on your machine — no external server involv
 - **Resume** any session in a new terminal (`claude --resume`), Warp preferred if installed
 - **New task** — paste a Jira link + instructions, pick a project, and it opens a terminal
   already running Claude with that prompt — optionally in an isolated git worktree
+- **New session** — the lightweight version: pick a project, the team skills and a prompt (its own
+  default, separate from New task's) and Claude starts right in the project folder — no Jira link,
+  branch or worktree; it only asks for confirmation if a session is already active there
 - **Team skills** — optional integration with your team's own skills repo (a git repo with a
   `catalog/<catalog>/` tree of skills; its URL is asked on first start and kept only in your local
-  `userPreferences.json`): the New Task modal invites you to clone it, you pick whole catalogs and/or single skills, and
+  `userPreferences.json`): the New task/New session modals invite you to clone it, you pick whole catalogs and/or single skills, and
   their skills get linked into `~/.claude/skills`; "Update now" (never automatic) fetches/
   fast-forwards the hub and links new skills (Settings → "Team skills" to manage)
 - **Worktree → root** — copy a worktree's files into the project root to test locally, or move

@@ -41,6 +41,7 @@ export const translations = {
     "Administra tus sesiones locales",
   ),
   "header.newTask": dict("New task", "Nova tarefa", "Nueva tarea"),
+  "header.newSession": dict("New session", "Nova sessão", "Nueva sesión"),
   "header.cleanup": dict("Cleanup", "Limpeza", "Limpieza"),
   "header.importSession": dict("Import session", "Importar sessão", "Importar sesión"),
   "header.settings": dict("Settings", "Configurações", "Configuración"),
@@ -292,11 +293,6 @@ export const translations = {
     "A worktree path is required.",
     "É necessário informar o caminho do worktree.",
     "Se requiere una ruta de worktree.",
-  ),
-  "apiError.taskPromptRequired": dict(
-    "A prompt is required to start Claude.",
-    "É necessário um prompt para iniciar o Claude.",
-    "Se requiere un prompt para iniciar Claude.",
   ),
   "apiError.malformedPreferences": dict(
     "Malformed preferences payload.",
@@ -634,6 +630,16 @@ export const translations = {
     "Pre-filled instructions in the \"New task\" modal.",
     "Instruções que já vêm preenchidas no modal \"Nova tarefa\".",
     "Instrucciones que vienen precargadas en el modal \"Nueva tarea\".",
+  ),
+  "settings.defaultSessionPrompt.title": dict(
+    "Default session prompt",
+    "Prompt padrão de sessão",
+    "Prompt predeterminado de sesión",
+  ),
+  "settings.defaultSessionPrompt.description": dict(
+    "Pre-filled instructions in the \"New session\" modal.",
+    "Instruções que já vêm preenchidas no modal \"Nova sessão\".",
+    "Instrucciones que vienen precargadas en el modal \"Nueva sesión\".",
   ),
   "settings.branchTypes.title": dict("Branch types", "Tipos de branch", "Tipos de rama"),
   "settings.branchTypes.description": dict(
@@ -1891,6 +1897,43 @@ export const translations = {
     "Failed to create task: {message}",
     "Falha ao criar a tarefa: {message}",
     "No se pudo crear la tarea: {message}",
+  ),
+
+  "newSessionModal.title": dict("New session", "Nova sessão", "Nueva sesión"),
+  "newSessionModal.intro": dict(
+    "Starts Claude straight in the project's folder, on whatever branch it's on — no Jira link, branch or worktree.",
+    "Inicia o Claude direto na pasta do projeto, na branch em que ela estiver — sem link do Jira, branch nem worktree.",
+    "Inicia Claude directamente en la carpeta del proyecto, en la rama en que esté — sin enlace de Jira, rama ni worktree.",
+  ),
+  "newSessionModal.confirm": dict(
+    "Start session",
+    "Iniciar sessão",
+    "Iniciar sesión",
+  ),
+  "newSessionModal.promptPlaceholder": dict(
+    "Instructions for Claude (optional — leave blank to just open Claude)…",
+    "Instruções para o Claude (opcional — deixe em branco para só abrir o Claude)…",
+    "Instrucciones para Claude (opcional — déjalo en blanco para solo abrir Claude)…",
+  ),
+  "newSessionModal.launchFailed": dict(
+    "Failed to start the session: {message}",
+    "Falha ao iniciar a sessão: {message}",
+    "No se pudo iniciar la sesión: {message}",
+  ),
+  "newSessionModal.activeSessionTitle": dict(
+    "There's already a session in this repository",
+    "Já existe uma sessão neste repositório",
+    "Ya hay una sesión en este repositorio",
+  ),
+  "newSessionModal.activeSessionMessage": dict(
+    "A Claude session is already running in {folder}. Both sessions will work on the same files and branch at the same time. Start anyway?",
+    "Já há uma sessão do Claude rodando em {folder}. As duas sessões vão mexer nos mesmos arquivos e na mesma branch ao mesmo tempo. Iniciar mesmo assim?",
+    "Ya hay una sesión de Claude en ejecución en {folder}. Ambas sesiones trabajarán sobre los mismos archivos y la misma rama al mismo tiempo. ¿Iniciar de todos modos?",
+  ),
+  "newSessionModal.activeSessionConfirm": dict(
+    "Start anyway",
+    "Iniciar mesmo assim",
+    "Iniciar de todos modos",
   ),
 
   "useSessions.loadError": dict(

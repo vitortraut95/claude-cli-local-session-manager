@@ -1,4 +1,4 @@
-import { Bot, Globe, Import, Plus, Settings, Sparkles } from "lucide-react";
+import { Bot, Globe, Import, MessageSquarePlus, Plus, Settings, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useTheme } from "../hooks/useTheme";
@@ -8,6 +8,7 @@ import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
 import { Button } from "./Button";
 import { CleanupModal } from "./CleanupModal";
 import { ImportSessionModal } from "./ImportSessionModal";
+import { NewSessionModal } from "./NewSessionModal";
 import { NewTaskModal } from "./NewTaskModal";
 import { OnboardingModal } from "./OnboardingModal";
 import { SettingsModal } from "./SettingsModal";
@@ -21,8 +22,8 @@ import { WorkspaceDirsPromptModal } from "./WorkspaceDirsPromptModal";
 import * as tasksApi from "../services/tasksApi";
 
 type HeaderProps = {
-  /** Fired after a new task is successfully created via the "New Task" modal, so the page's
-   *  session list can pick up the newly created session/worktree. */
+  /** Fired after a new task/session is successfully created via the "New task"/"New session"
+   *  modals, so the page's session list can pick up the newly created session/worktree. */
   onSessionCreated?: () => void;
   /** Fired after any Cleanup modal finding is successfully executed — only `prune-old-sessions`
    *  actually changes the session list, but refreshing unconditionally keeps this as simple as
@@ -53,6 +54,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   } = useUsageLimits();
   const { language, setLanguage, hasSeenOnboarding, markOnboardingSeen, loaded, t } = useLanguage();
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
+  const [showNewSessionModal, setShowNewSessionModal] = useState(false);
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -99,7 +101,8 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     !workspacePromptSkipped &&
     !showOnboarding &&
     !showSettings &&
-    !showNewTaskModal;
+    !showNewTaskModal &&
+    !showNewSessionModal;
   // Only after the workspace prompt is out of the way (saved or skipped) — never both at once.
   const showTeamPrompt =
     teamPromptPrefs !== null &&
@@ -110,7 +113,8 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     (!needsWorkspaceDirs || workspacePromptSkipped) &&
     !showOnboarding &&
     !showSettings &&
-    !showNewTaskModal;
+    !showNewTaskModal &&
+    !showNewSessionModal;
 
   // Opens once per install/machine — gated on `loaded` so this can't fire before the real
   // preferences value comes back (which would otherwise flash it open for returning users too).
@@ -143,6 +147,13 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button onClick={() => setShowNewTaskModal(true)} icon={<Plus className="h-4 w-4" />}>
             {t("header.newTask")}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowNewSessionModal(true)}
+            icon={<MessageSquarePlus className="h-4 w-4" />}
+          >
+            {t("header.newSession")}
           </Button>
           <Button
             variant="outline"
@@ -202,6 +213,11 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         open={showNewTaskModal}
         onClose={() => setShowNewTaskModal(false)}
         onTaskCreated={onSessionCreated}
+      />
+      <NewSessionModal
+        open={showNewSessionModal}
+        onClose={() => setShowNewSessionModal(false)}
+        onSessionCreated={onSessionCreated}
       />
       <CleanupModal
         open={showCleanupModal}
