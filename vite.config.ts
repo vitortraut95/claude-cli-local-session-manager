@@ -4,6 +4,15 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rolldownOptions: {
+      output: {
+        // Third-party code in its own chunk, so neither it nor the app's own code (most of it the
+        // translation tables) crosses Vite's 500 kB chunk-size warning.
+        codeSplitting: { groups: [{ name: "vendor", test: /node_modules/ }] },
+      },
+    },
+  },
   server: {
     port: 58230,
     strictPort: true,
