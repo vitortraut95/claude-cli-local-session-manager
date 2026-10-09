@@ -1,4 +1,4 @@
-import { BookOpen, FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import * as tasksApi from "../services/tasksApi";
@@ -41,7 +41,7 @@ export function SkillPreviewModal({ catalog, name, onClose }: SkillPreviewModalP
       title={`${catalog} / ${name}`}
       onClose={onClose}
       size="lg"
-      icon={<BookOpen className="h-5 w-5 text-violet-500" />}
+      icon={<Wand2 className="h-5 w-5 text-violet-500" />}
     >
       {!details && !error && (
         <p className="flex items-center gap-2 text-sm text-gray-500">

@@ -6,7 +6,6 @@ import {
   Pencil,
   Plus,
   Settings,
-  Sparkles,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -20,7 +19,6 @@ import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
-import { SkillsHubModal } from "./SkillsHubModal";
 import { ThemeToggle } from "./ThemeToggle";
 import { WorkspaceDirsEditor } from "./WorkspaceDirsEditor";
 
@@ -84,7 +82,6 @@ export function SettingsModal({
   const [editing, setEditing] = useState<BigEditorKey | null>(null);
   const [savingKey, setSavingKey] = useState<keyof UserPreferences | null>(null);
   const [openingFile, setOpeningFile] = useState(false);
-  const [skillsHubOpen, setSkillsHubOpen] = useState(false);
   const { status: skillsHub } = useSkillsHubStatus(true);
 
   const reload = useCallback(async () => {
@@ -164,7 +161,7 @@ export function SettingsModal({
       title={t("settings.title")}
       // Escape would otherwise close this modal too while a big editor is open on top of it.
       onClose={() => {
-        if (!editing && !skillsHubOpen) onClose();
+        if (!editing) onClose();
       }}
       size="xl"
       icon={<Settings className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
@@ -245,21 +242,7 @@ export function SettingsModal({
               )
             }
             control={
-              <div className="flex gap-2">
-                <EditButton onClick={() => setEditing("skillsHubRepoUrl")} />
-                {skillsHub?.cloneUrl != null && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSkillsHubOpen(true)}
-                    icon={<Sparkles className="h-3.5 w-3.5" />}
-                  >
-                    {skillsHub.found
-                      ? t("settings.skillsHub.manage")
-                      : t("settings.skillsHub.setup")}
-                  </Button>
-                )}
-              </div>
+              <EditButton onClick={() => setEditing("skillsHubRepoUrl")} />
             }
           />
           {prefs.skillsHub && skillsHub?.notUsed !== true && (
@@ -510,7 +493,6 @@ export function SettingsModal({
           )}
         />
       )}
-      {skillsHubOpen && <SkillsHubModal onClose={() => setSkillsHubOpen(false)} />}
       {prefs && editing === "defaultPrompt" && (
         <BigEditorModal
           title={t("settings.defaultPrompt.title")}

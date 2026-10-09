@@ -2502,11 +2502,6 @@ export const translations = {
     "Skills do Claude compartilhadas pelo time: pra cada skill que você seleciona no repo, o app cria um atalho (link simbólico) dela em {dir}, que é de onde o Claude carrega as skills. Atualizadas pelo \"Atualizar agora\" e, se ligado, ao iniciar o app.",
     "Skills de Claude compartidas por el equipo: por cada skill que seleccionas en el repo, la app crea un acceso directo (enlace simbólico) en {dir}, de donde Claude carga las skills. Se actualizan con \"Actualizar ahora\" y, si está activado, al iniciar la app.",
   ),
-  "settings.skillsHub.manage": dict(
-    "Manage",
-    "Gerenciar",
-    "Gestionar",
-  ),
   "settings.skillsHubAutoUpdate.title": dict(
     "Update team skills on start",
     "Atualizar skills do time ao iniciar",
@@ -2516,11 +2511,6 @@ export const translations = {
     "Every time the app starts, updates the skills clone in the background (only a fast-forward when it's clean — never forces anything) and links new skills.",
     "Toda vez que o app inicia, atualiza o clone de skills em background (só fast-forward quando está limpo — nunca força nada) e linka as skills novas.",
     "Cada vez que la app inicia, actualiza el clon de skills en segundo plano (solo fast-forward cuando está limpio — nunca fuerza nada) y enlaza las skills nuevas.",
-  ),
-  "settings.skillsHub.setup": dict(
-    "Set up",
-    "Configurar",
-    "Configurar",
   ),
   "settings.skillsHub.repoUrlTitle": dict(
     "Team skills repo",
