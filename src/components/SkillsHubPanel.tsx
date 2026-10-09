@@ -1,4 +1,4 @@
-import { AlertTriangle, Sparkles } from "lucide-react";
+import { AlertTriangle, Wand2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { SkillsHubStatus } from "../services/tasksApi";
@@ -23,7 +23,7 @@ function PanelShell({ tone, children }: { tone: "invite" | "neutral"; children: 
     <div
       className={`flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-sm ${toneClasses}`}
     >
-      <Sparkles className="h-4 w-4 shrink-0 text-violet-500" />
+      <Wand2 className="h-4 w-4 shrink-0 text-violet-500" />
       {children}
     </div>
   );
