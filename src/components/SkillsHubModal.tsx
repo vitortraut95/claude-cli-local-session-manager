@@ -12,7 +12,7 @@ import {
   Plus,
   RefreshCw,
   Settings,
-  Sparkles,
+  Wand2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCopyFeedback } from "../hooks/useCopyFeedback";
@@ -74,7 +74,7 @@ export function SkillsHubModal({ onClose }: SkillsHubModalProps) {
         if (!preview) onClose();
       }}
       size="xxxl"
-      icon={<Sparkles className="h-5 w-5 text-violet-500" />}
+      icon={<Wand2 className="h-5 w-5 text-violet-500" />}
     >
       {!status && !failed && (
         <p className="flex items-center gap-2 text-sm text-gray-500">
