@@ -71,7 +71,7 @@ Stop the app by closing the terminal running `yarn dev`.
 ./install-shortcut.sh
 ```
 
-Adds a **Claude Session Manager** icon to the Desktop and application menu. 
+Adds a **Claude Session Manager** icon to the Desktop and application menu.
 
 Remove code:
 
@@ -86,29 +86,29 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 
 ## API
 
-| Method | Route                          | Description                                       |
-| ------ | ------------------------------ | -------------------------------------------------- |
-| GET    | `/sessions`                    | List every session found in `~/.claude/projects`  |
-| GET    | `/sessions/:id/prompts`        | Full, untruncated list of prompts for a session   |
-| PATCH  | `/sessions/:id/nickname`       | Set or clear a session's local nickname           |
-| DELETE | `/sessions/:id`                | Delete the session's `.jsonl` file                |
-| POST   | `/sessions/:id/continue`       | Open a terminal running `claude --resume <id>`    |
-| POST   | `/sessions/:id/vscode`         | Open the session's working directory in VS Code  |
-| GET    | `/sessions/:id/export`         | Download the session as a `.claude-session.json.gz` file |
-| POST   | `/sessions/import/inspect`     | Read an exported file (raw body) and list local target clones |
-| POST   | `/sessions/import`             | Import an exported file into `?targetDir=` (optional `&checkoutBranch=true`) |
-| GET    | `/tasks/skills-hub/status`     | Team skills: hub location/branch, catalogs, link state per skill |
-| GET    | `/tasks/skills-hub/skill`      | One hub skill's SKILL.md content (`?catalog=&name=`) |
-| POST   | `/tasks/skills-hub/sync`       | Fetch + fast-forward the hub (when clean) and link new skills |
-| POST   | `/tasks/skills-hub/clone`      | Clone the configured hub repo into `{ parentDir }` |
-| GET    | `/tasks/skills-hub/detected-repo-url` | `origin` of a hub clone already on this machine (prompt prefill) |
-| PUT    | `/tasks/skills-hub/repo-url`   | Save the hub's clone URL `{ repoUrl }` (`""` = not used) |
-| PUT    | `/tasks/skills-hub/selection`  | Save `{ catalogs, skills }` (whole catalogs + single skills) and (un)link them |
-| PUT    | `/tasks/skills-hub/path`       | Point at an existing clone (`null` = auto-detect) |
-| PUT    | `/tasks/skills-hub/flags`      | `{ inviteDismissed? }` |
+| Method | Route                                 | Description                                                                    |
+| ------ | ------------------------------------- | ------------------------------------------------------------------------------ |
+| GET    | `/sessions`                           | List every session found in `~/.claude/projects`                               |
+| GET    | `/sessions/:id/prompts`               | Full, untruncated list of prompts for a session                                |
+| PATCH  | `/sessions/:id/nickname`              | Set or clear a session's local nickname                                        |
+| DELETE | `/sessions/:id`                       | Delete the session's `.jsonl` file                                             |
+| POST   | `/sessions/:id/continue`              | Open a terminal running `claude --resume <id>`                                 |
+| POST   | `/sessions/:id/vscode`                | Open the session's working directory in VS Code                                |
+| GET    | `/sessions/:id/export`                | Download the session as a `.claude-session.json.gz` file                       |
+| POST   | `/sessions/import/inspect`            | Read an exported file (raw body) and list local target clones                  |
+| POST   | `/sessions/import`                    | Import an exported file into `?targetDir=` (optional `&checkoutBranch=true`)   |
+| GET    | `/tasks/skills-hub/status`            | Team skills: hub location/branch, catalogs, link state per skill               |
+| GET    | `/tasks/skills-hub/skill`             | One hub skill's SKILL.md content (`?catalog=&name=`)                           |
+| POST   | `/tasks/skills-hub/sync`              | Fetch + fast-forward the hub (when clean) and link new skills                  |
+| POST   | `/tasks/skills-hub/clone`             | Clone the configured hub repo into `{ parentDir }`                             |
+| GET    | `/tasks/skills-hub/detected-repo-url` | `origin` of a hub clone already on this machine (prompt prefill)               |
+| PUT    | `/tasks/skills-hub/repo-url`          | Save the hub's clone URL `{ repoUrl }` (`""` = not used)                       |
+| PUT    | `/tasks/skills-hub/selection`         | Save `{ catalogs, skills }` (whole catalogs + single skills) and (un)link them |
+| PUT    | `/tasks/skills-hub/path`              | Point at an existing clone (`null` = auto-detect)                              |
+| PUT    | `/tasks/skills-hub/flags`             | `{ inviteDismissed? }`                                                         |
 
 ## Changelog
 
-| Date       | Feature   |
-| ---------- | --------- |
+| Date       | Feature    |
+| ---------- | ---------- |
 | 2026-09-01 | Project v1 |

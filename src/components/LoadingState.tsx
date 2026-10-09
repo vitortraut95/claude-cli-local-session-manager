@@ -10,7 +10,9 @@ type LoadingStateProps = {
 export function LoadingState({ scanProgress }: LoadingStateProps = {}) {
   const { t } = useLanguage();
   const scanning = scanProgress && scanProgress.total > 0;
-  const percent = scanning ? Math.min(100, Math.round((scanProgress.done / scanProgress.total) * 100)) : 0;
+  const percent = scanning
+    ? Math.min(100, Math.round((scanProgress.done / scanProgress.total) * 100))
+    : 0;
 
   return (
     <div className="flex flex-col items-center justify-center py-24 text-gray-500 dark:text-gray-400">

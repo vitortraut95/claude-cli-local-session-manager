@@ -293,7 +293,10 @@ export async function listWorktrees(repoRoot: string): Promise<WorktreeEntry[]> 
  *  it unqueryable, and by `createTaskWorktree`'s directory-collision check (see its own doc
  *  comment) to tell a genuine same-branch collision from two different branches whose names merely
  *  sanitize to the same worktree directory. */
-export async function getWorktreeBranch(worktreePath: string, mainRoot: string): Promise<string | null> {
+export async function getWorktreeBranch(
+  worktreePath: string,
+  mainRoot: string,
+): Promise<string | null> {
   const entries = await listWorktrees(mainRoot);
   const target = path.resolve(worktreePath);
   return entries.find((entry) => path.resolve(entry.path) === target)?.branch ?? null;
@@ -599,17 +602,19 @@ export type AppStash = { sha: string; message: string };
 export async function listAppStashes(cwd: string): Promise<AppStash[]> {
   const output = await runGit(["stash", "list", "--format=%H%x09%s"], cwd).catch(() => "");
   if (!output) return [];
-  return output
-    .split("\n")
-    .map((line) => {
-      const [sha, ...rest] = line.split("\t");
-      return { sha: sha ?? "", message: rest.join("\t") };
-    })
-    // `.includes`, not `.startsWith` — git prepends its own "On <branch>: " to whatever `-m`
-    // message a stash was created with (confirmed directly: `git stash list` for one of these
-    // reads "On master: worktree-to-root: root's pre-sync state (...)"), so the prefix we control
-    // never actually sits at the start of the final message.
-    .filter((entry) => entry.sha && entry.message.includes(STASH_MESSAGE_PREFIX));
+  return (
+    output
+      .split("\n")
+      .map((line) => {
+        const [sha, ...rest] = line.split("\t");
+        return { sha: sha ?? "", message: rest.join("\t") };
+      })
+      // `.includes`, not `.startsWith` — git prepends its own "On <branch>: " to whatever `-m`
+      // message a stash was created with (confirmed directly: `git stash list` for one of these
+      // reads "On master: worktree-to-root: root's pre-sync state (...)"), so the prefix we control
+      // never actually sits at the start of the final message.
+      .filter((entry) => entry.sha && entry.message.includes(STASH_MESSAGE_PREFIX))
+  );
 }
 
 /**
@@ -745,7 +750,9 @@ export async function computeFileDiff(worktreeDir: string, rootDir: string): Pro
   const worktreeBranch =
     entries.find((e) => path.resolve(e.path) === resolvedWorktree)?.branch ?? null;
   const mergeBase = await getMergeBase(rootDir, rootBranch, worktreeBranch);
-  const touchedPaths = mergeBase ? await getTouchedPathsSinceMergeBase(worktreeDir, mergeBase) : null;
+  const touchedPaths = mergeBase
+    ? await getTouchedPathsSinceMergeBase(worktreeDir, mergeBase)
+    : null;
   const scope = touchedPaths ? new Set(touchedPaths) : null;
   const inScope = (file: string) => !scope || scope.has(file);
 

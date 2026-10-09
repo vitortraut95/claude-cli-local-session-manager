@@ -1,7 +1,8 @@
 import { forwardRef } from "react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-export type ButtonVariant = "primary" | "danger" | "outline" | "outline-danger" | "ghost" | "link" | "unstyled";
+export type ButtonVariant =
+  "primary" | "danger" | "outline" | "outline-danger" | "ghost" | "link" | "unstyled";
 
 export type ButtonSize = "sm" | "md" | "icon" | "none";
 
@@ -36,7 +37,16 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "primary", size = "md", icon, fullWidth = false, className = "", children, type = "button", ...rest },
+  {
+    variant = "primary",
+    size = "md",
+    icon,
+    fullWidth = false,
+    className = "",
+    children,
+    type = "button",
+    ...rest
+  },
   ref,
 ) {
   return (

@@ -164,7 +164,9 @@ export function WorkspaceDirsEditor({
           variant="outline"
           onClick={() => void add(draft)}
           disabled={adding || !draft.trim()}
-          icon={adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          icon={
+            adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />
+          }
         >
           {t("workspaceDirs.add")}
         </Button>

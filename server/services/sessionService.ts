@@ -3,7 +3,12 @@ import { accessSync, constants } from "node:fs";
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { RootStatus, Session, SubagentDetail, WorktreeToRootPreview } from "../types/session.js";
+import type {
+  RootStatus,
+  Session,
+  SubagentDetail,
+  WorktreeToRootPreview,
+} from "../types/session.js";
 import {
   findJsonlFiles,
   findSubagentFiles,
@@ -275,7 +280,9 @@ async function listSessionsUncached(): Promise<Session[]> {
 
   // Many sessions share the same workingDirectory — run `git rev-parse` once per unique
   // directory rather than once per session (buildSession itself only sets a false placeholder).
-  const uniqueDirs = [...new Set(sessions.map((s) => s.workingDirectory).filter((d) => d !== null))];
+  const uniqueDirs = [
+    ...new Set(sessions.map((s) => s.workingDirectory).filter((d) => d !== null)),
+  ];
   const gitDirsList = await Promise.all(uniqueDirs.map((dir) => getGitDirs(dir)));
   const gitDirsByDir = new Map(uniqueDirs.map((dir, i) => [dir, gitDirsList[i]]));
 
@@ -312,7 +319,9 @@ async function listSessionsUncached(): Promise<Session[]> {
         isActive: activeIds.has(session.id),
         isWorktree,
         baseBranch:
-          repoRoot && gitBranch ? taskBaseBranches[repoRoot]?.[gitBranch]?.baseBranch ?? null : null,
+          repoRoot && gitBranch
+            ? (taskBaseBranches[repoRoot]?.[gitBranch]?.baseBranch ?? null)
+            : null,
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -908,7 +917,10 @@ async function resolveMissingWorktreeRepoRoot(
 
   const head = await readSessionHead(filePath);
   if (!head.cwd) {
-    throw new AppError("SESSION_NO_WORKING_DIRECTORY", "This session has no known working directory.");
+    throw new AppError(
+      "SESSION_NO_WORKING_DIRECTORY",
+      "This session has no known working directory.",
+    );
   }
   const repoRoot = repoRootFromMissingWorktreePath(head.cwd);
   if (!repoRoot) {

@@ -65,9 +65,7 @@ export type EnvPreviews = Record<string, EnvPreviewTemplate[]>;
  *  preferencesService.ts) instead of separate per-field files — originally just the "new task"
  *  modal's own fields, now shared with the language switcher and the rest of Settings too. */
 export async function fetchPreferences(): Promise<UserPreferences> {
-  const { data } = await withServerErrorMessage(() =>
-    client.get<UserPreferences>("/preferences"),
-  );
+  const { data } = await withServerErrorMessage(() => client.get<UserPreferences>("/preferences"));
   return data;
 }
 

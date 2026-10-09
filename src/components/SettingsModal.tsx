@@ -1,13 +1,4 @@
-import {
-  ArrowDown,
-  ArrowUp,
-  FileCode2,
-  Loader2,
-  Pencil,
-  Plus,
-  Settings,
-  X,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, FileCode2, Loader2, Pencil, Plus, Settings, X } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
@@ -70,11 +61,7 @@ function parseEnvPreviews(raw: string): EnvPreviews | null {
  * save goes through `tasksApi.updatePreferences` (fetch-merge-PUT, serialized) and then
  * `notifyPreferencesChanged`, so components holding their own copy (NewTaskModal) reload it.
  */
-export function SettingsModal({
-  theme,
-  onToggleTheme,
-  onClose,
-}: SettingsModalProps) {
+export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
@@ -241,9 +228,7 @@ export function SettingsModal({
                 </>
               )
             }
-            control={
-              <EditButton onClick={() => setEditing("skillsHubRepoUrl")} />
-            }
+            control={<EditButton onClick={() => setEditing("skillsHubRepoUrl")} />}
           />
           {prefs.skillsHub && skillsHub?.notUsed !== true && (
             <SettingRow
@@ -586,7 +571,9 @@ function ThemeRow({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
           {t("settings.theme.title")}
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{t("settings.theme.description")}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {t("settings.theme.description")}
+        </p>
       </div>
       <div className="shrink-0">
         <ThemeToggle theme={theme} onToggle={onToggle} />
@@ -613,7 +600,9 @@ function SettingRow({
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-baseline gap-x-2 text-sm font-medium text-gray-900 dark:text-gray-100">
           {title}
-          <code className="text-[10px] font-normal text-gray-400 dark:text-gray-500">{keyName}</code>
+          <code className="text-[10px] font-normal text-gray-400 dark:text-gray-500">
+            {keyName}
+          </code>
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
         {preview !== undefined && (

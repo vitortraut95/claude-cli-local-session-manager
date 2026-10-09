@@ -16,9 +16,7 @@ export function EmptyState({ hasSearchQuery }: EmptyStateProps) {
         {hasSearchQuery ? t("emptyState.noResultsTitle") : t("emptyState.noSessionsTitle")}
       </p>
       <p className="mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">
-        {hasSearchQuery
-          ? t("emptyState.noResultsMessage")
-          : t("emptyState.noSessionsMessage")}
+        {hasSearchQuery ? t("emptyState.noResultsMessage") : t("emptyState.noSessionsMessage")}
       </p>
     </div>
   );

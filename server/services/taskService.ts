@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { directoryExists, launchInTerminal, listSessions, posixShellQuote } from "./sessionService.js";
+import {
+  directoryExists,
+  launchInTerminal,
+  listSessions,
+  posixShellQuote,
+} from "./sessionService.js";
 import { getUserPreferences, saveUserPreferences } from "./preferencesService.js";
 import { expandHome, findReposIn } from "./workspaceService.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
@@ -119,9 +124,7 @@ export async function getKnownProjectFolders(): Promise<ProjectFolderOption[]> {
     // longer exists on disk (orphaned after "Worktree → root" checkout, see
     // missingWorktreeRepoRoot). Fall back to the repo root already derived from the session's own
     // recorded cwd there instead of adding the dead worktree path itself as a "project".
-    const missingRoot = sessions.find(
-      (s) => s.workingDirectory === dir,
-    )?.missingWorktreeRepoRoot;
+    const missingRoot = sessions.find((s) => s.workingDirectory === dir)?.missingWorktreeRepoRoot;
     options.add(missingRoot ?? dir);
   });
 
@@ -292,7 +295,8 @@ export async function createTaskWorktree(
         `only, must start with a letter or number).`,
     );
   }
-  if (!trimmedRef) throw new AppError("TASK_BASE_BRANCH_REF_REQUIRED", "A resolved base branch is required.");
+  if (!trimmedRef)
+    throw new AppError("TASK_BASE_BRANCH_REF_REQUIRED", "A resolved base branch is required.");
 
   if (!(await directoryExists(trimmedFolder))) {
     throw folderNotFoundError(trimmedFolder);
@@ -377,7 +381,8 @@ export async function launchTaskTerminal(
 ): Promise<void> {
   const trimmedWorktreePath = worktreePath.trim();
   const trimmedPrompt = prompt.trim();
-  if (!trimmedWorktreePath) throw new AppError("TASK_WORKTREE_PATH_REQUIRED", "A worktree path is required.");
+  if (!trimmedWorktreePath)
+    throw new AppError("TASK_WORKTREE_PATH_REQUIRED", "A worktree path is required.");
 
   const trimmedNickname = nickname.trim();
   let sessionIdFlag = "";

@@ -442,4 +442,3 @@ export async function readSubagentSummary(filePath: string): Promise<SubagentTra
 
   return { startedAt, endedAt, resultText };
 }
-

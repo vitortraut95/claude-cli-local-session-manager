@@ -44,9 +44,9 @@ function defaultFolder(preview: SessionImportPreview): string {
 function defaultCheckout(preview: SessionImportPreview, candidate: SessionImportCandidate | null) {
   return Boolean(
     preview.gitBranch &&
-      candidate &&
-      !candidate.hasActiveSession &&
-      candidate.currentBranch !== preview.gitBranch,
+    candidate &&
+    !candidate.hasActiveSession &&
+    candidate.currentBranch !== preview.gitBranch,
   );
 }
 
@@ -71,8 +71,7 @@ export function ImportSessionModal({ onClose, onImported }: ImportSessionModalPr
   // No default on purpose — when the id already exists, the user has to pick explicitly.
   const [onConflict, setOnConflict] = useState<ImportConflictResolution | null>(null);
 
-  const candidate =
-    preview?.candidates.find((c) => c.repoRoot === folder) ?? null;
+  const candidate = preview?.candidates.find((c) => c.repoRoot === folder) ?? null;
   const targetDir = folder === OTHER_FOLDER ? customFolder.trim() : folder;
 
   const handleFileChosen = async (chosen: File | undefined) => {
@@ -88,7 +87,10 @@ export function ImportSessionModal({ onClose, onImported }: ImportSessionModalPr
       setPreview(result);
       setFolder(initialFolder);
       setCheckoutBranch(
-        defaultCheckout(result, result.candidates.find((c) => c.repoRoot === initialFolder) ?? null),
+        defaultCheckout(
+          result,
+          result.candidates.find((c) => c.repoRoot === initialFolder) ?? null,
+        ),
       );
     } catch (err) {
       setInspectError(resolveApiErrorMessage(err, t, "importSessionModal.inspectError"));
@@ -137,7 +139,9 @@ export function ImportSessionModal({ onClose, onImported }: ImportSessionModalPr
   const existing = preview?.existingSession ?? null;
   const conflictUnresolved = existing !== null && onConflict === null;
   const alreadyOnBranch =
-    candidate !== null && preview?.gitBranch != null && candidate.currentBranch === preview.gitBranch;
+    candidate !== null &&
+    preview?.gitBranch != null &&
+    candidate.currentBranch === preview.gitBranch;
 
   return (
     <Modal
@@ -386,9 +390,7 @@ function ConflictChoice({
           <p className="mt-1 text-gray-500 dark:text-gray-400">
             {formatUpdatedAt(incomingUpdatedAt)} · {formatBytes(incomingSizeBytes)}
           </p>
-          <p className="mt-1 font-medium text-gray-600 dark:text-gray-300">
-            {t(comparison)}
-          </p>
+          <p className="mt-1 font-medium text-gray-600 dark:text-gray-300">{t(comparison)}</p>
         </div>
       </div>
 
@@ -435,9 +437,7 @@ function ConflictOption({
   return (
     <label
       className={`flex items-start gap-2 rounded-md border p-2 text-sm ${
-        checked
-          ? "border-gray-900 dark:border-gray-100"
-          : "border-gray-200 dark:border-gray-800"
+        checked ? "border-gray-900 dark:border-gray-100" : "border-gray-200 dark:border-gray-800"
       } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
     >
       <input

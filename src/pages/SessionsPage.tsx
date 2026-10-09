@@ -302,7 +302,6 @@ export function SessionsPage() {
           onCancel={clearResumeConflict}
         />
       )}
-
     </div>
   );
 }

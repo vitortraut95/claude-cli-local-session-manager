@@ -17,7 +17,10 @@ export async function withServerErrorMessage<T>(request: () => Promise<T>): Prom
   try {
     return await request();
   } catch (err) {
-    if (axios.isAxiosError<ErrorResponseBody>(err) && typeof err.response?.data?.error === "string") {
+    if (
+      axios.isAxiosError<ErrorResponseBody>(err) &&
+      typeof err.response?.data?.error === "string"
+    ) {
       const code = typeof err.response.data.code === "string" ? err.response.data.code : undefined;
       const apiError: ApiError = new Error(err.response.data.error, { cause: err });
       if (code) apiError.code = code;

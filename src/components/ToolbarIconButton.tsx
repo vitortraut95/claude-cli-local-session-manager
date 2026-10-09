@@ -2,16 +2,7 @@ import type { ReactNode } from "react";
 import { Tooltip } from "./Tooltip";
 
 export type ToolbarIconButtonColor =
-  | "neutral"
-  | "amber"
-  | "green"
-  | "blue"
-  | "red"
-  | "violet"
-  | "teal"
-  | "orange"
-  | "pink"
-  | "lime";
+  "neutral" | "amber" | "green" | "blue" | "red" | "violet" | "teal" | "orange" | "pink" | "lime";
 
 const COLOR_CLASSES: Record<ToolbarIconButtonColor, string> = {
   neutral:
