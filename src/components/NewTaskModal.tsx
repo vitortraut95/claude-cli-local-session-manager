@@ -334,10 +334,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       setUseWorktreeDefault(nextUseWorktreeDefault);
       showToast(t("newTaskModal.worktreePrefSaved"), "success");
     } catch (err) {
-      showToast(
-        resolveApiErrorMessage(err, t, "newTaskModal.worktreePrefSaveError"),
-        "error",
-      );
+      showToast(resolveApiErrorMessage(err, t, "newTaskModal.worktreePrefSaveError"), "error");
     } finally {
       setSavingWorktreeDefault(false);
     }
@@ -385,7 +382,10 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       })),
     );
 
-    const composedPrompt = [jiraLink.trim() ? `${t("newTaskModal.taskPrefix")}: ${jiraLink.trim()}` : null, trimmedPrompt]
+    const composedPrompt = [
+      jiraLink.trim() ? `${t("newTaskModal.taskPrefix")}: ${jiraLink.trim()}` : null,
+      trimmedPrompt,
+    ]
       .filter((part): part is string => Boolean(part))
       .join("\n\n");
 

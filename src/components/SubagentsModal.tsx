@@ -59,9 +59,7 @@ function SubagentCard({ agent }: { agent: SubagentDetail }) {
         <span className="rounded bg-gray-200 px-1.5 py-0.5 font-mono text-[10px] font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
           {agent.agentType ?? t("subagentsModal.unknownType")}
         </span>
-        {duration && (
-          <span className="text-xs text-gray-500 dark:text-gray-400">{duration}</span>
-        )}
+        {duration && <span className="text-xs text-gray-500 dark:text-gray-400">{duration}</span>}
       </div>
       <p className="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">
         {agent.description ?? t("subagentsModal.noDescription")}

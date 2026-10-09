@@ -18,7 +18,9 @@ export function PerPageSelect({ value, onChange }: PerPageSelectProps) {
     >
       {PER_PAGE_OPTIONS.map((option) => (
         <option key={option} value={option}>
-          {option === 999999 ? t("perPageSelect.all") : t("perPageSelect.perPage", { count: option })}
+          {option === 999999
+            ? t("perPageSelect.all")
+            : t("perPageSelect.perPage", { count: option })}
         </option>
       ))}
     </Select>

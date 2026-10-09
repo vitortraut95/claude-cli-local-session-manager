@@ -209,7 +209,8 @@ function parseBundle(raw: Buffer): SessionBundle {
   let text: string;
   try {
     // Gzip magic bytes — also accepts a hand-decompressed (plain JSON) bundle.
-    text = raw[0] === 0x1f && raw[1] === 0x8b ? gunzipSync(raw).toString("utf8") : raw.toString("utf8");
+    text =
+      raw[0] === 0x1f && raw[1] === 0x8b ? gunzipSync(raw).toString("utf8") : raw.toString("utf8");
   } catch {
     throw invalidBundleError();
   }
@@ -282,7 +283,10 @@ async function resolveCandidate(
 
 /** `repoRelativeCwd` re-applied under the importer's own clone — falls back to the clone's root
  *  when that subfolder doesn't exist there (or the bundle didn't record one). */
-async function resolveTargetCwd(targetDir: string, repoRelativeCwd: string | null): Promise<string> {
+async function resolveTargetCwd(
+  targetDir: string,
+  repoRelativeCwd: string | null,
+): Promise<string> {
   if (repoRelativeCwd && isSafeRelativePath(repoRelativeCwd)) {
     const candidate = path.join(targetDir, repoRelativeCwd);
     if (await directoryExists(candidate)) return candidate;
@@ -356,7 +360,10 @@ type Rewriter = (value: string) => string;
  *  (`/repo` must not also rewrite `/repo-other`). The session id itself is replaced as a plain
  *  substring — it's a UUID, and it appears both as the `sessionId` field and inside paths like
  *  `<project>/<id>/tool-results/...`. */
-function buildRewriter(pathMappings: [string, string][], idMapping: [string, string] | null): Rewriter {
+function buildRewriter(
+  pathMappings: [string, string][],
+  idMapping: [string, string] | null,
+): Rewriter {
   const mappings = pathMappings
     .filter(([from, to]) => from && from !== to)
     .sort((a, b) => b[0].length - a[0].length);
@@ -369,7 +376,9 @@ function buildRewriter(pathMappings: [string, string][], idMapping: [string, str
       : null;
   const lookup = new Map(mappings);
   return (value) => {
-    let result = pathPattern ? value.replace(pathPattern, (match) => lookup.get(match) ?? match) : value;
+    let result = pathPattern
+      ? value.replace(pathPattern, (match) => lookup.get(match) ?? match)
+      : value;
     if (idMapping) result = result.split(idMapping[0]).join(idMapping[1]);
     return result;
   };
@@ -494,7 +503,9 @@ export async function importSessionBundle(
   const rewrite = buildRewriter(
     [
       ...(session.originalCwd ? [[session.originalCwd, cwd] as [string, string]] : []),
-      ...(session.originalRepoTop ? [[session.originalRepoTop, localRepoTop] as [string, string]] : []),
+      ...(session.originalRepoTop
+        ? [[session.originalRepoTop, localRepoTop] as [string, string]]
+        : []),
       [session.originalProjectDir, projectDir],
     ],
     importedAsCopy ? [session.id, newId] : null,

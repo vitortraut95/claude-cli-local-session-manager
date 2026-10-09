@@ -30,7 +30,10 @@ function findingTitle(finding: CleanupFinding, t: ReturnType<typeof useLanguage>
     return t("cleanupModal.finding.prune.title", { project });
   }
   if (finding.kind === "prune-old-sessions") {
-    return t("cleanupModal.finding.oldSessions.title", { count: finding.staleSessions.length, project });
+    return t("cleanupModal.finding.oldSessions.title", {
+      count: finding.staleSessions.length,
+      project,
+    });
   }
   if (finding.kind === "remove-abandoned-worktree") {
     return t("cleanupModal.finding.abandoned.title", { branch: finding.branch ?? "?", project });
@@ -38,7 +41,10 @@ function findingTitle(finding: CleanupFinding, t: ReturnType<typeof useLanguage>
   return t("cleanupModal.finding.merged.title", { branch: finding.branch ?? "?" });
 }
 
-function findingDescription(finding: CleanupFinding, t: ReturnType<typeof useLanguage>["t"]): string {
+function findingDescription(
+  finding: CleanupFinding,
+  t: ReturnType<typeof useLanguage>["t"],
+): string {
   if (finding.kind === "prune-worktrees") {
     return t("cleanupModal.finding.prune.description", {
       count: finding.staleBranches.length,
@@ -94,9 +100,7 @@ export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalP
         })
         .catch((err) => {
           if (!cancelled) {
-            setLoadError(
-              resolveApiErrorMessage(err, t, "cleanupModal.loadError"),
-            );
+            setLoadError(resolveApiErrorMessage(err, t, "cleanupModal.loadError"));
           }
         })
         .finally(() => {
@@ -117,10 +121,7 @@ export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalP
       showToast(t("cleanupModal.resolved"), "success");
       onFindingExecuted?.();
     } catch (err) {
-      showToast(
-        resolveApiErrorMessage(err, t, "cleanupModal.runError"),
-        "error",
-      );
+      showToast(resolveApiErrorMessage(err, t, "cleanupModal.runError"), "error");
     } finally {
       setExecutingId(null);
     }

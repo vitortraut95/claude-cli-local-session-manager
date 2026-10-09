@@ -34,11 +34,7 @@ import { AppError, errorCode } from "../utils/httpError.js";
 export const tasksRouter = Router();
 
 type LateFields =
-  | "defaultSessionPrompt"
-  | "workspaceDirs"
-  | "skillsHub"
-  | "jenkinsBaseUrl"
-  | "envPreviews";
+  "defaultSessionPrompt" | "workspaceDirs" | "skillsHub" | "jenkinsBaseUrl" | "envPreviews";
 
 /** The fields added after the file's first release are optional on purpose: a browser tab still
  *  running an older frontend bundle (see CLAUDE.md's update-safety policy) sends the full object
@@ -82,7 +78,9 @@ tasksRouter.get("/projects", async (_req, res) => {
     const projects = await getRecentProjectFolders();
     res.json({ projects });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -91,7 +89,9 @@ tasksRouter.get("/preferences", async (_req, res) => {
     const preferences = await getUserPreferences();
     res.json(preferences);
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -103,7 +103,7 @@ tasksRouter.put("/preferences", async (req, res) => {
         "Malformed preferences payload — expected { defaultPrompt: string, " +
           "defaultSessionPrompt?: string, branchTypes: string[], " +
           "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
-          "language: \"en\"|\"pt\"|\"es\"|null, " +
+          'language: "en"|"pt"|"es"|null, ' +
           "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
           "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
           "inviteDismissed }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
@@ -136,7 +136,9 @@ tasksRouter.post("/preferences/open-in-editor", async (_req, res) => {
     await openFileInVSCode(getPreferencesPath());
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -144,7 +146,9 @@ tasksRouter.get("/workspace-dirs/suggestions", async (_req, res) => {
   try {
     res.json({ suggestions: await suggestWorkspaceDirs() });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -154,7 +158,9 @@ tasksRouter.post("/workspace-dirs/inspect", async (req, res) => {
     const dirs = Array.isArray(raw) ? raw.filter((d): d is string => typeof d === "string") : [];
     res.json({ dirs: await inspectWorkspaceDirs(dirs) });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -164,7 +170,9 @@ tasksRouter.get("/repo-info", async (req, res) => {
     const info = await getRepoInfo(folderPath);
     res.json(info);
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(400)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -177,7 +185,9 @@ tasksRouter.post("/resolve-base-branch", async (req, res) => {
     );
     res.json(result);
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(400)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -192,7 +202,9 @@ tasksRouter.post("/worktree", async (req, res) => {
     );
     res.json(result);
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(400)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -222,7 +234,9 @@ tasksRouter.get("/skills-hub/status", async (_req, res) => {
   try {
     res.json(await getSkillsHubStatus());
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -232,7 +246,9 @@ tasksRouter.get("/skills-hub/skill", async (req, res) => {
     const name = typeof req.query.name === "string" ? req.query.name : "";
     res.json(await getSkillDetails(catalog, name));
   } catch (err) {
-    res.status(404).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(404)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -240,7 +256,9 @@ tasksRouter.post("/skills-hub/sync", async (_req, res) => {
   try {
     res.json(await syncSkillsHub());
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(400)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -249,7 +267,9 @@ tasksRouter.post("/skills-hub/clone", async (req, res) => {
     const hubPath = await cloneSkillsHub(extractStringField(req.body, "parentDir"));
     res.json({ path: hubPath });
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(400)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -258,9 +278,16 @@ tasksRouter.put("/skills-hub/selection", async (req, res) => {
     const body = (req.body ?? {}) as { catalogs?: unknown; skills?: unknown };
     const strings = (raw: unknown) =>
       Array.isArray(raw) ? raw.filter((c): c is string => typeof c === "string") : [];
-    res.json(await setSkillsHubSelection({ catalogs: strings(body.catalogs), skills: strings(body.skills) }));
+    res.json(
+      await setSkillsHubSelection({
+        catalogs: strings(body.catalogs),
+        skills: strings(body.skills),
+      }),
+    );
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(400)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -269,7 +296,9 @@ tasksRouter.get("/skills-hub/detected-repo-url", async (_req, res) => {
   try {
     res.json({ repoUrl: await detectHubRepoUrl() });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -279,7 +308,9 @@ tasksRouter.put("/skills-hub/repo-url", async (req, res) => {
     await setSkillsHubRepoUrl(typeof raw === "string" ? raw : "");
     res.json({ success: true });
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(400)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -289,7 +320,9 @@ tasksRouter.put("/skills-hub/path", async (req, res) => {
     await setSkillsHubPath(typeof raw === "string" ? raw : null);
     res.json({ success: true });
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(400)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -302,7 +335,9 @@ tasksRouter.post("/skills-hub/open-folder", async (req, res) => {
     }
     res.json({ path: await openSkillsFolder(target) });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });
 
@@ -314,6 +349,8 @@ tasksRouter.put("/skills-hub/flags", async (req, res) => {
     );
     res.json({ success: true });
   } catch (err) {
-    res.status(400).json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+    res
+      .status(400)
+      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });

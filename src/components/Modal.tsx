@@ -103,7 +103,12 @@ export function Modal({
               {title}
             </h2>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleClose} aria-label={t("modal.closeAriaLabel")}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClose}
+            aria-label={t("modal.closeAriaLabel")}
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>

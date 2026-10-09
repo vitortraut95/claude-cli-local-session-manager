@@ -34,7 +34,9 @@ systemRouter.post("/update", async (_req, res) => {
     await startUpdate();
     res.json({ success: true, started: true });
   } catch (err) {
-    sendErrorResponse(res, err, (e: AppError) => (e.code === "UPDATE_ALREADY_RUNNING" ? 409 : null));
+    sendErrorResponse(res, err, (e: AppError) =>
+      e.code === "UPDATE_ALREADY_RUNNING" ? 409 : null,
+    );
   }
 });
 

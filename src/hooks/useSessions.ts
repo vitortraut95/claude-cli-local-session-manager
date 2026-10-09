@@ -301,20 +301,14 @@ export function useSessions() {
             await sessionsApi.deleteWorktree(id);
             showToast(t("useSessions.worktreeDeleted"), "success");
           } catch (err) {
-            showToast(
-              resolveApiErrorMessage(err, t, "useSessions.cleanupWorktreeError"),
-              "error",
-            );
+            showToast(resolveApiErrorMessage(err, t, "useSessions.cleanupWorktreeError"), "error");
           }
         } else if (cleanupBranch && branchName) {
           try {
             await sessionsApi.deleteBranch(id, branchName);
             showToast(t("useSessions.branchDeleted", { branch: branchName }), "success");
           } catch (err) {
-            showToast(
-              resolveApiErrorMessage(err, t, "useSessions.deleteBranchError"),
-              "error",
-            );
+            showToast(resolveApiErrorMessage(err, t, "useSessions.deleteBranchError"), "error");
           }
         }
         await sessionsApi.deleteSession(id);

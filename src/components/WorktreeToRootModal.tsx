@@ -91,7 +91,9 @@ export function FileListBox({
       <div className="flex items-center justify-between gap-2">
         <p
           className={`text-xs font-medium ${
-            tone === "danger" ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+            tone === "danger"
+              ? "text-red-600 dark:text-red-400"
+              : "text-gray-500 dark:text-gray-400"
           }`}
         >
           {title} ({files.length})
@@ -279,7 +281,9 @@ export function WorktreeToRootModal({
     setStage("progress");
 
     const updateStep = (key: StepKey, status: StepStatus, error?: string) => {
-      setSteps((current) => current.map((step) => (step.key === key ? { ...step, status, error } : step)));
+      setSteps((current) =>
+        current.map((step) => (step.key === key ? { ...step, status, error } : step)),
+      );
     };
 
     const stashNote = (stashRef: string | null) =>
@@ -294,16 +298,14 @@ export function WorktreeToRootModal({
         updateStep("copy", "doing");
         await sessionsApi.applyWorktreeCopyToRoot(session.id);
         updateStep("copy", "done");
-        showToast(
-          `${t("worktreeToRootModal.toast.copySuccess")}${stashNote(stashRef)}`,
-          "success",
-        );
+        showToast(`${t("worktreeToRootModal.toast.copySuccess")}${stashNote(stashRef)}`, "success");
         onComplete();
         onClose();
       } else {
         updateStep("remove-and-checkout", "doing");
-        const { previousRootBranch, newBranch } =
-          await sessionsApi.removeWorktreeAndCheckoutRoot(session.id);
+        const { previousRootBranch, newBranch } = await sessionsApi.removeWorktreeAndCheckoutRoot(
+          session.id,
+        );
         updateStep("remove-and-checkout", "done");
         showToast(
           `${
@@ -418,7 +420,8 @@ export function WorktreeToRootModal({
               className="flex flex-col gap-2 rounded-lg border border-gray-200 p-4 text-left hover:border-gray-400 dark:border-gray-800 dark:hover:border-gray-600"
             >
               <span className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
-                <GitBranch className="h-4 w-4 shrink-0" /> {t("worktreeToRootModal.choice.checkoutTitle")}
+                <GitBranch className="h-4 w-4 shrink-0" />{" "}
+                {t("worktreeToRootModal.choice.checkoutTitle")}
               </span>
               <span className="text-sm text-gray-600 dark:text-gray-400">
                 {t("worktreeToRootModal.choice.checkoutBody")}
@@ -432,7 +435,8 @@ export function WorktreeToRootModal({
         <div className="flex flex-col gap-4">
           {loadingPreview && (
             <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <Loader2 className="h-4 w-4 animate-spin" /> {t("worktreeToRootModal.preview.loading")}
+              <Loader2 className="h-4 w-4 animate-spin" />{" "}
+              {t("worktreeToRootModal.preview.loading")}
             </p>
           )}
           {previewError && <p className="text-sm text-red-600 dark:text-red-400">{previewError}</p>}
@@ -491,7 +495,10 @@ export function WorktreeToRootModal({
 
               {mode === "copy" && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <FileListBox title={t("worktreeToRootModal.preview.addedTitle")} files={preview.fileDiff.added} />
+                  <FileListBox
+                    title={t("worktreeToRootModal.preview.addedTitle")}
+                    files={preview.fileDiff.added}
+                  />
                   <FileListBox
                     title={t("worktreeToRootModal.preview.modifiedTitle")}
                     files={preview.fileDiff.modified}
@@ -545,7 +552,8 @@ export function WorktreeToRootModal({
           </p>
           {loadingConfirmStatus && (
             <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <Loader2 className="h-4 w-4 animate-spin" /> {t("worktreeToRootModal.confirm.doubleChecking")}
+              <Loader2 className="h-4 w-4 animate-spin" />{" "}
+              {t("worktreeToRootModal.confirm.doubleChecking")}
             </p>
           )}
           {!loadingConfirmStatus && confirmStatus && (

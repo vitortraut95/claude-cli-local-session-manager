@@ -47,7 +47,9 @@ export function sessionSizeFraction(bytes: number): number {
     return (bytes / HEALTHY_MAX_BYTES) * (1 / 3);
   }
   if (bytes < CAUTION_MAX_BYTES) {
-    return 1 / 3 + ((bytes - HEALTHY_MAX_BYTES) / (CAUTION_MAX_BYTES - HEALTHY_MAX_BYTES)) * (1 / 3);
+    return (
+      1 / 3 + ((bytes - HEALTHY_MAX_BYTES) / (CAUTION_MAX_BYTES - HEALTHY_MAX_BYTES)) * (1 / 3)
+    );
   }
   const capped = Math.min(bytes, CRITICAL_REFERENCE_BYTES);
   return (
@@ -65,12 +67,17 @@ const RED: Rgb = [220, 38, 38]; // tailwind red-600
 function mix(from: Rgb, to: Rgb, t: number): Rgb {
   const [fr, fg, fb] = from;
   const [tr, tg, tb] = to;
-  return [Math.round(fr + (tr - fr) * t), Math.round(fg + (tg - fg) * t), Math.round(fb + (tb - fb) * t)];
+  return [
+    Math.round(fr + (tr - fr) * t),
+    Math.round(fg + (tg - fg) * t),
+    Math.round(fb + (tb - fb) * t),
+  ];
 }
 
 /** Interpolates the meter's fill color across green → amber → red as `fraction` goes 0 → 1. */
 export function sessionSizeColor(fraction: number): string {
   const clamped = Math.min(Math.max(fraction, 0), 1);
-  const [r, g, b] = clamped <= 0.5 ? mix(GREEN, AMBER, clamped * 2) : mix(AMBER, RED, (clamped - 0.5) * 2);
+  const [r, g, b] =
+    clamped <= 0.5 ? mix(GREEN, AMBER, clamped * 2) : mix(AMBER, RED, (clamped - 0.5) * 2);
   return `rgb(${r}, ${g}, ${b})`;
 }

@@ -63,13 +63,6 @@ export const translations = {
   "header.settings": dict("Settings", "Configurações", "Configuración"),
   "header.language": dict("Language", "Idioma", "Idioma"),
 
-
-
-
-
-
-
-
   "confirmDialog.confirm": dict("Confirm", "Confirmar", "Confirmar"),
   "confirmDialog.cancel": dict("Cancel", "Cancelar", "Cancelar"),
 
@@ -367,9 +360,9 @@ export const translations = {
   "apiError.worktreeUncommittedChanges": dict(
     "That worktree still has uncommitted changes, so it wasn't removed — commit or discard them " +
       'first (or use "copy" mode instead, which doesn\'t require the worktree to be clean).',
-    'Esse worktree ainda tem alterações não commitadas, então não foi removido — commite ou ' +
+    "Esse worktree ainda tem alterações não commitadas, então não foi removido — commite ou " +
       'descarte elas primeiro (ou use o modo "copiar", que não exige que o worktree esteja limpo).',
-    'Ese worktree todavía tiene cambios sin confirmar, así que no se eliminó — haz commit o ' +
+    "Ese worktree todavía tiene cambios sin confirmar, así que no se eliminó — haz commit o " +
       'descártalos primero (o usa el modo "copiar", que no requiere que el worktree esté limpio).',
   ),
 
@@ -377,11 +370,7 @@ export const translations = {
   "modal.confirmDefault": dict("Confirm", "Confirmar", "Confirmar"),
   "modal.cancelDefault": dict("Cancel", "Cancelar", "Cancelar"),
 
-  "toast.closeAriaLabel": dict(
-    "Close notification",
-    "Fechar notificação",
-    "Cerrar notificación",
-  ),
+  "toast.closeAriaLabel": dict("Close notification", "Fechar notificação", "Cerrar notificación"),
 
   "nicknameModal.title": dict("Local nickname", "Apelido local", "Apodo local"),
   "nicknameModal.save": dict("Save", "Salvar", "Guardar"),
@@ -394,11 +383,7 @@ export const translations = {
   "nicknameModal.placeholder": dict("Nickname", "Apelido", "Apodo"),
 
   "jenkinsLinksModal.title": dict("Jenkins", "Jenkins", "Jenkins"),
-  "jenkinsLinksModal.section.currentBranch": dict(
-    "Current branch",
-    "Branch atual",
-    "Rama actual",
-  ),
+  "jenkinsLinksModal.section.currentBranch": dict("Current branch", "Branch atual", "Rama actual"),
   "jenkinsLinksModal.section.originBranch": dict(
     "Branch it was created from",
     "Branch de origem",
@@ -434,7 +419,11 @@ export const translations = {
     "Abrir arquivo no VS Code",
     "Abrir archivo en VS Code",
   ),
-  "settings.loading": dict("Loading settings…", "Carregando configurações…", "Cargando configuración…"),
+  "settings.loading": dict(
+    "Loading settings…",
+    "Carregando configurações…",
+    "Cargando configuración…",
+  ),
   "settings.loadError": dict(
     "Could not load the settings.",
     "Não foi possível carregar as configurações.",
@@ -478,9 +467,9 @@ export const translations = {
   ),
   "settings.defaultPrompt.title": dict("Default prompt", "Prompt padrão", "Prompt predeterminado"),
   "settings.defaultPrompt.description": dict(
-    "Pre-filled instructions in the \"New task\" modal.",
-    "Instruções que já vêm preenchidas no modal \"Nova tarefa\".",
-    "Instrucciones que vienen precargadas en el modal \"Nueva tarea\".",
+    'Pre-filled instructions in the "New task" modal.',
+    'Instruções que já vêm preenchidas no modal "Nova tarefa".',
+    'Instrucciones que vienen precargadas en el modal "Nueva tarea".',
   ),
   "settings.defaultSessionPrompt.title": dict(
     "Default session prompt",
@@ -488,15 +477,15 @@ export const translations = {
     "Prompt predeterminado de sesión",
   ),
   "settings.defaultSessionPrompt.description": dict(
-    "Pre-filled instructions in the \"New session\" modal.",
-    "Instruções que já vêm preenchidas no modal \"Nova sessão\".",
-    "Instrucciones que vienen precargadas en el modal \"Nueva sesión\".",
+    'Pre-filled instructions in the "New session" modal.',
+    'Instruções que já vêm preenchidas no modal "Nova sessão".',
+    'Instrucciones que vienen precargadas en el modal "Nueva sesión".',
   ),
   "settings.branchTypes.title": dict("Branch types", "Tipos de branch", "Tipos de rama"),
   "settings.branchTypes.description": dict(
-    "Options of the \"New task\" branch type select — the first one is the default.",
-    "Opções do seletor de tipo de branch do \"Nova tarefa\" — a primeira é a padrão.",
-    "Opciones del selector de tipo de rama de \"Nueva tarea\" — la primera es la predeterminada.",
+    'Options of the "New task" branch type select — the first one is the default.',
+    'Opções do seletor de tipo de branch do "Nova tarefa" — a primeira é a padrão.',
+    'Opciones del selector de tipo de rama de "Nueva tarea" — la primera es la predeterminada.',
   ),
   "settings.branchTypes.placeholder": dict("e.g. feature", "ex.: feature", "ej.: feature"),
   "settings.branchTypes.firstIsDefault": dict("default", "padrão", "predeterminado"),
@@ -506,9 +495,9 @@ export const translations = {
     "Proyectos recientes",
   ),
   "settings.recentProjectPaths.description": dict(
-    "Repos used in \"New task\", most recent first — remove the ones that no longer exist.",
-    "Repos usados no \"Nova tarefa\", mais recentes primeiro — remova os que não existem mais.",
-    "Repos usados en \"Nueva tarea\", los más recientes primero — quita los que ya no existen.",
+    'Repos used in "New task", most recent first — remove the ones that no longer exist.',
+    'Repos usados no "Nova tarefa", mais recentes primeiro — remova os que não existem mais.',
+    'Repos usados en "Nueva tarea", los más recientes primero — quita los que ya no existen.',
   ),
   "settings.recentProjectPaths.placeholder": dict(
     "/absolute/path/to/repo",
@@ -521,9 +510,9 @@ export const translations = {
     "Usar worktree por defecto",
   ),
   "settings.useWorktreeByDefault.description": dict(
-    "\"New task\" fallback before a folder is chosen — once it is, the app suggests a worktree only if the repo root already has an active session.",
-    "Padrão do \"Nova tarefa\" antes de escolher a pasta — depois de escolhida, o app sugere worktree só se a raiz do repo já tiver uma sessão ativa.",
-    "Valor de \"Nueva tarea\" antes de elegir la carpeta — una vez elegida, la app sugiere worktree solo si la raíz del repo ya tiene una sesión activa.",
+    '"New task" fallback before a folder is chosen — once it is, the app suggests a worktree only if the repo root already has an active session.',
+    'Padrão do "Nova tarefa" antes de escolher a pasta — depois de escolhida, o app sugere worktree só se a raiz do repo já tiver uma sessão ativa.',
+    'Valor de "Nueva tarea" antes de elegir la carpeta — una vez elegida, la app sugiere worktree solo si la raíz del repo ya tiene una sesión activa.',
   ),
   "settings.useAutoPermissionModeByDefault.title": dict(
     "Start tasks with --permission-mode auto",
@@ -531,9 +520,9 @@ export const translations = {
     "Iniciar tareas con --permission-mode auto",
   ),
   "settings.useAutoPermissionModeByDefault.description": dict(
-    "Default state of that checkbox in \"New task\".",
-    "Estado padrão dessa opção no \"Nova tarefa\".",
-    "Estado predeterminado de esa opción en \"Nueva tarea\".",
+    'Default state of that checkbox in "New task".',
+    'Estado padrão dessa opção no "Nova tarefa".',
+    'Estado predeterminado de esa opción en "Nueva tarea".',
   ),
   "settings.keepRecentSessionsPerProject.title": dict(
     "Sessions kept by Cleanup",
@@ -541,9 +530,9 @@ export const translations = {
     "Sesiones conservadas por Limpieza",
   ),
   "settings.keepRecentSessionsPerProject.description": dict(
-    "How many of each project's most recent sessions the \"old sessions\" cleanup always keeps.",
-    "Quantas das sessões mais recentes de cada projeto a limpeza de \"sessões antigas\" sempre mantém.",
-    "Cuántas de las sesiones más recientes de cada proyecto conserva siempre la limpieza de \"sesiones antiguas\".",
+    'How many of each project\'s most recent sessions the "old sessions" cleanup always keeps.',
+    'Quantas das sessões mais recentes de cada projeto a limpeza de "sessões antigas" sempre mantém.',
+    'Cuántas de las sesiones más recientes de cada proyecto conserva siempre la limpieza de "sesiones antiguas".',
   ),
   "settings.theme.title": dict("Theme", "Tema", "Tema"),
   "settings.theme.description": dict(
@@ -596,11 +585,7 @@ export const translations = {
     "Dá para mudar quando quiser em Configurações (ícone de engrenagem no header).",
     "Puedes cambiarlo cuando quieras en Configuración (ícono de engranaje en el encabezado).",
   ),
-  "teamPrompt.title": dict(
-    "Team integrations",
-    "Integrações do time",
-    "Integraciones del equipo",
-  ),
+  "teamPrompt.title": dict("Team integrations", "Integrações do time", "Integraciones del equipo"),
   "teamPrompt.intro": dict(
     "Optional, per-machine settings for your team's tools. They live only in your local userPreferences.json — never in this app's public repo.",
     "Configurações opcionais e locais das ferramentas do seu time. Ficam só no seu userPreferences.json local — nunca no repo público deste app.",
@@ -631,16 +616,8 @@ export const translations = {
     "Um repo git com uma pasta catalog/ de skills do Claude, ex.: git@host:time/repo-de-skills.git. Pergunte ao seu time. Deixe vazio se não houver.",
     "Un repo git con una carpeta catalog/ de skills de Claude, p. ej. git@host:equipo/repo-de-skills.git. Pregunta a tu equipo. Déjalo vacío si no hay.",
   ),
-  "teamPrompt.save": dict(
-    "Save",
-    "Salvar",
-    "Guardar",
-  ),
-  "teamPrompt.skip": dict(
-    "Not now",
-    "Agora não",
-    "Ahora no",
-  ),
+  "teamPrompt.save": dict("Save", "Salvar", "Guardar"),
+  "teamPrompt.skip": dict("Not now", "Agora não", "Ahora no"),
   "teamPrompt.saved": dict(
     "Team integrations saved.",
     "Integrações do time salvas.",
@@ -656,9 +633,9 @@ export const translations = {
 
   "exportSessionModal.title": dict("Export session", "Exportar sessão", "Exportar sesión"),
   "exportSessionModal.intro": dict(
-    "Downloads this session as a single .claude-session.json.gz file. Send it to another dev (Teams, Slack, e-mail…) and they can import it with \"Import session\" in their own Claude Session Manager.",
-    "Baixa esta sessão como um único arquivo .claude-session.json.gz. Envie para outro dev (Teams, Slack, e-mail…) e ele pode importar com \"Importar sessão\" no próprio Claude Session Manager.",
-    "Descarga esta sesión como un único archivo .claude-session.json.gz. Envíalo a otro dev (Teams, Slack, e-mail…) y podrá importarlo con \"Importar sesión\" en su propio Claude Session Manager.",
+    'Downloads this session as a single .claude-session.json.gz file. Send it to another dev (Teams, Slack, e-mail…) and they can import it with "Import session" in their own Claude Session Manager.',
+    'Baixa esta sessão como um único arquivo .claude-session.json.gz. Envie para outro dev (Teams, Slack, e-mail…) e ele pode importar com "Importar sessão" no próprio Claude Session Manager.',
+    'Descarga esta sesión como un único archivo .claude-session.json.gz. Envíalo a otro dev (Teams, Slack, e-mail…) y podrá importarlo con "Importar sesión" en su propio Claude Session Manager.',
   ),
   "exportSessionModal.sensitiveWarning": dict(
     "The file holds the whole conversation, including the contents of every file Claude read and every command output it saw. Make sure it doesn't contain passwords, tokens or other secrets before sending it — you can review it with: zcat <file> | less",
@@ -701,11 +678,7 @@ export const translations = {
     "Não foi possível importar a sessão.",
     "No se pudo importar la sesión.",
   ),
-  "importSessionModal.success": dict(
-    "Session imported.",
-    "Sessão importada.",
-    "Sesión importada.",
-  ),
+  "importSessionModal.success": dict("Session imported.", "Sessão importada.", "Sesión importada."),
   "importSessionModal.successCopy": dict(
     "Session imported as a copy (it already existed here).",
     "Sessão importada como cópia (ela já existia aqui).",
@@ -800,11 +773,7 @@ export const translations = {
     "{path} (mesmo repositório)",
     "{path} (mismo repositorio)",
   ),
-  "importSessionModal.otherFolderOption": dict(
-    "Other folder…",
-    "Outra pasta…",
-    "Otra carpeta…",
-  ),
+  "importSessionModal.otherFolderOption": dict("Other folder…", "Outra pasta…", "Otra carpeta…"),
   "importSessionModal.otherFolderPlaceholder": dict(
     "/absolute/path/to/your/clone",
     "/caminho/absoluto/do/seu/clone",
@@ -1156,11 +1125,7 @@ export const translations = {
     "Abrir esta pasta no Cursor",
     "Abrir esta carpeta en Cursor",
   ),
-  "sessionCard.openInCursorAriaLabel": dict(
-    "Open in Cursor",
-    "Abrir no Cursor",
-    "Abrir en Cursor",
-  ),
+  "sessionCard.openInCursorAriaLabel": dict("Open in Cursor", "Abrir no Cursor", "Abrir en Cursor"),
   "sessionCard.worktreeToRoot.ariaLabel": dict(
     "Sync worktree into the root folder",
     "Sincronizar worktree com a pasta raiz",
@@ -1232,11 +1197,7 @@ export const translations = {
     "Abrir a página de comparação/PR desta branch (GitHub ou Bitbucket)",
     "Abrir la página de comparación/PR de esta rama (GitHub o Bitbucket)",
   ),
-  "sessionCard.openPrAriaLabel": dict(
-    "Open PR page",
-    "Abrir página de PR",
-    "Abrir página de PR",
-  ),
+  "sessionCard.openPrAriaLabel": dict("Open PR page", "Abrir página de PR", "Abrir página de PR"),
   "sessionCard.openPr.error": dict(
     "Couldn't open a PR link for this session.",
     "Não foi possível abrir um link de PR para esta sessão.",
@@ -1368,9 +1329,9 @@ export const translations = {
     "Worktree abandonado",
   ),
   "cleanupModal.finding.abandonedWorktree.body": dict(
-    "(created by Claude/\"New task\" under .claude/worktrees/ but never used by any session) with no pending changes and no commit of its own — removing it loses nothing.",
-    "(criado pelo Claude/\"Nova tarefa\" em .claude/worktrees/ mas nunca usado por nenhuma sessão) sem mudanças pendentes e sem nenhum commit próprio — removê-lo não perde nada.",
-    "(creado por Claude/\"Nueva tarea\" en .claude/worktrees/ pero nunca usado por ninguna sesión) sin cambios pendientes ni commits propios — eliminarlo no pierde nada.",
+    '(created by Claude/"New task" under .claude/worktrees/ but never used by any session) with no pending changes and no commit of its own — removing it loses nothing.',
+    '(criado pelo Claude/"Nova tarefa" em .claude/worktrees/ mas nunca usado por nenhuma sessão) sem mudanças pendentes e sem nenhum commit próprio — removê-lo não perde nada.',
+    '(creado por Claude/"Nueva tarea" en .claude/worktrees/ pero nunca usado por ninguna sesión) sin cambios pendientes ni commits propios — eliminarlo no pierde nada.',
   ),
   "cleanupModal.finding.oldSessions.label": dict(
     "Old local sessions",
@@ -1382,11 +1343,11 @@ export const translations = {
       '"keepRecentSessionsPerProject" in userPreferences.json to change it), the oldest ones ' +
       "can be deleted to free disk space and speed up the session list. The active session is never " +
       "suggested.",
-    'quando um projeto tem mais sessões do que o limite configurado (5 por padrão — edite ' +
+    "quando um projeto tem mais sessões do que o limite configurado (5 por padrão — edite " +
       '"keepRecentSessionsPerProject" no userPreferences.json para mudar isso), as mais antigas ' +
       "podem ser excluídas para liberar espaço em disco e acelerar a listagem de sessões. A " +
       "sessão ativa nunca é sugerida.",
-    'cuando un proyecto tiene más sesiones que el límite configurado (5 por defecto — edita ' +
+    "cuando un proyecto tiene más sesiones que el límite configurado (5 por defecto — edita " +
       '"keepRecentSessionsPerProject" en userPreferences.json para cambiarlo), las más antiguas ' +
       "se pueden eliminar para liberar espacio en disco y acelerar el listado de sesiones. La " +
       "sesión activa nunca se sugiere.",
@@ -1636,8 +1597,8 @@ export const translations = {
   ),
   "newTaskModal.permissionModeAutoExplanation": dict(
     "Starts the session with Claude Code's own \"auto\" permission mode, so it stops asking for approval before most actions. Useful here specifically because a background terminal window can't be brought to front on some setups (see the app's own notes on this) — if it's sitting at an unanswered prompt you never saw, this avoids that entirely. Remembered as whatever you last left it at.",
-    "Inicia a sessão no modo de permissão \"auto\" do próprio Claude Code, então ele para de pedir aprovação antes da maioria das ações. Útil aqui especificamente porque a janela do terminal em segundo plano não pode ser trazida para frente em algumas configurações — se ela estiver parada num prompt que você nunca viu, isso evita esse problema por completo. Fica lembrado como você deixou da última vez.",
-    "Inicia la sesión en el modo de permiso \"auto\" propio de Claude Code, así deja de pedir aprobación antes de la mayoría de las acciones. Útil aquí específicamente porque la ventana de terminal en segundo plano no se puede traer al frente en algunas configuraciones — si está esperando en un aviso que nunca viste, esto evita ese problema por completo. Se recuerda como lo dejaste la última vez.",
+    'Inicia a sessão no modo de permissão "auto" do próprio Claude Code, então ele para de pedir aprovação antes da maioria das ações. Útil aqui especificamente porque a janela do terminal em segundo plano não pode ser trazida para frente em algumas configurações — se ela estiver parada num prompt que você nunca viu, isso evita esse problema por completo. Fica lembrado como você deixou da última vez.',
+    'Inicia la sesión en el modo de permiso "auto" propio de Claude Code, así deja de pedir aprobación antes de la mayoría de las acciones. Útil aquí específicamente porque la ventana de terminal en segundo plano no se puede traer al frente en algunas configuraciones — si está esperando en un aviso que nunca viste, esto evita ese problema por completo. Se recuerda como lo dejaste la última vez.',
   ),
   "newTaskModal.progressLabel": dict("Progress:", "Progresso:", "Progreso:"),
   "newTaskModal.whatWillHappen": dict(
@@ -1745,11 +1706,7 @@ export const translations = {
     "Inicia o Claude direto na pasta do projeto, na branch em que ela estiver — sem link do Jira, branch nem worktree.",
     "Inicia Claude directamente en la carpeta del proyecto, en la rama en que esté — sin enlace de Jira, rama ni worktree.",
   ),
-  "newSessionModal.confirm": dict(
-    "Start session",
-    "Iniciar sessão",
-    "Iniciar sesión",
-  ),
+  "newSessionModal.confirm": dict("Start session", "Iniciar sessão", "Iniciar sesión"),
   "newSessionModal.promptPlaceholder": dict(
     "Instructions for Claude (optional — leave blank to just open Claude)…",
     "Instruções para o Claude (opcional — deixe em branco para só abrir o Claude)…",
@@ -2278,9 +2235,9 @@ export const translations = {
     "Restablecimientos anteriores, aún recuperables:",
   ),
   "worktreeToRootModal.stashList.copyTooltip": dict(
-    "Copy \"git stash apply\" for this one",
-    "Copiar \"git stash apply\" para este",
-    "Copiar \"git stash apply\" para este",
+    'Copy "git stash apply" for this one',
+    'Copiar "git stash apply" para este',
+    'Copiar "git stash apply" para este',
   ),
   "worktreeToRootModal.stashList.copiedTooltip": dict("Copied!", "Copiado!", "¡Copiado!"),
   "worktreeToRootModal.stashList.copyError": dict(
@@ -2450,8 +2407,6 @@ export const translations = {
   ),
   "resumeConflictModal.cancel": dict("Cancel", "Cancelar", "Cancelar"),
 
-
-
   "settings.jenkinsBaseUrl.title": dict(
     "Jenkins base URL",
     "URL base do Jenkins",
@@ -2468,9 +2423,9 @@ export const translations = {
     "Links de preview de env/*",
   ),
   "settings.envPreviews.description": dict(
-    "Preview sites an env/* branch deploys, per project folder name, shown in the Jenkins modal. JSON: { \"<project>\": [{ \"label\": \"BR\", \"url\": \"http://{env}.example.com/\" }] } — {env} becomes the branch slug (env/PROJ-1 → env-proj-1).",
-    "Sites de preview que uma branch env/* publica, por nome da pasta do projeto, mostrados no modal do Jenkins. JSON: { \"<projeto>\": [{ \"label\": \"BR\", \"url\": \"http://{env}.example.com/\" }] } — {env} vira o slug da branch (env/PROJ-1 → env-proj-1).",
-    "Sitios de preview que publica una rama env/*, por nombre de carpeta del proyecto, mostrados en el modal de Jenkins. JSON: { \"<proyecto>\": [{ \"label\": \"BR\", \"url\": \"http://{env}.example.com/\" }] } — {env} se convierte en el slug de la rama (env/PROJ-1 → env-proj-1).",
+    'Preview sites an env/* branch deploys, per project folder name, shown in the Jenkins modal. JSON: { "<project>": [{ "label": "BR", "url": "http://{env}.example.com/" }] } — {env} becomes the branch slug (env/PROJ-1 → env-proj-1).',
+    'Sites de preview que uma branch env/* publica, por nome da pasta do projeto, mostrados no modal do Jenkins. JSON: { "<projeto>": [{ "label": "BR", "url": "http://{env}.example.com/" }] } — {env} vira o slug da branch (env/PROJ-1 → env-proj-1).',
+    'Sitios de preview que publica una rama env/*, por nombre de carpeta del proyecto, mostrados en el modal de Jenkins. JSON: { "<proyecto>": [{ "label": "BR", "url": "http://{env}.example.com/" }] } — {env} se convierte en el slug de la rama (env/PROJ-1 → env-proj-1).',
   ),
   "settings.envPreviews.preview": dict(
     "{count} project(s): {projects}",
@@ -2482,25 +2437,17 @@ export const translations = {
     "JSON ou formato inválido — esperado um objeto de listas { label, url }.",
     "JSON o formato inválido — se espera un objeto de listas { label, url }.",
   ),
-  "settings.preview.notUsed": dict(
-    "not used",
-    "não usado",
-    "no usado",
-  ),
+  "settings.preview.notUsed": dict("not used", "não usado", "no usado"),
   "settings.skillsHub.noRepo": dict(
     "repo not configured",
     "repo não configurado",
     "repo no configurado",
   ),
-  "settings.skillsHub.title": dict(
-    "Team skills",
-    "Skills do time",
-    "Skills del equipo",
-  ),
+  "settings.skillsHub.title": dict("Team skills", "Skills do time", "Skills del equipo"),
   "settings.skillsHub.description": dict(
-    "Your team's shared Claude skills: for each skill you select in the repo, the app creates a shortcut (symlink) to it in {dir}, where Claude loads skills from. Updated by \"Update now\" and, if enabled, when the app starts.",
-    "Skills do Claude compartilhadas pelo time: pra cada skill que você seleciona no repo, o app cria um atalho (link simbólico) dela em {dir}, que é de onde o Claude carrega as skills. Atualizadas pelo \"Atualizar agora\" e, se ligado, ao iniciar o app.",
-    "Skills de Claude compartidas por el equipo: por cada skill que seleccionas en el repo, la app crea un acceso directo (enlace simbólico) en {dir}, de donde Claude carga las skills. Se actualizan con \"Actualizar ahora\" y, si está activado, al iniciar la app.",
+    'Your team\'s shared Claude skills: for each skill you select in the repo, the app creates a shortcut (symlink) to it in {dir}, where Claude loads skills from. Updated by "Update now" and, if enabled, when the app starts.',
+    'Skills do Claude compartilhadas pelo time: pra cada skill que você seleciona no repo, o app cria um atalho (link simbólico) dela em {dir}, que é de onde o Claude carrega as skills. Atualizadas pelo "Atualizar agora" e, se ligado, ao iniciar o app.',
+    'Skills de Claude compartidas por el equipo: por cada skill que seleccionas en el repo, la app crea un acceso directo (enlace simbólico) en {dir}, de donde Claude carga las skills. Se actualizan con "Actualizar ahora" y, si está activado, al iniciar la app.',
   ),
   "settings.skillsHubAutoUpdate.title": dict(
     "Update team skills on start",
@@ -2547,11 +2494,7 @@ export const translations = {
     "nenhum catálogo escolhido",
     "ningún catálogo elegido",
   ),
-  "settings.skillsHub.notInstalled": dict(
-    "not installed",
-    "não instalado",
-    "no instalado",
-  ),
+  "settings.skillsHub.notInstalled": dict("not installed", "não instalado", "no instalado"),
   "skillsHub.manage.openFolder": dict(
     "Open skills in file manager",
     "Abrir skills no explorador",
@@ -2602,11 +2545,7 @@ export const translations = {
     "A pasta salva nas preferências não é mais um clone do hub de skills — clone de novo ou aponte a pasta certa.",
     "La carpeta guardada en las preferencias ya no es un clon del hub de skills — clónalo de nuevo o indica la carpeta correcta.",
   ),
-  "skillsHub.copy": dict(
-    "Copy",
-    "Copiar",
-    "Copiar",
-  ),
+  "skillsHub.copy": dict("Copy", "Copiar", "Copiar"),
   "skillsHub.copyFailed": dict(
     "Couldn't copy to the clipboard.",
     "Não foi possível copiar.",
@@ -2677,21 +2616,13 @@ export const translations = {
     "{count} commit(s) local(is) sem push",
     "{count} commit(s) local(es) sin push",
   ),
-  "skillsHub.manage.applyCatalogs": dict(
-    "Apply",
-    "Aplicar",
-    "Aplicar",
-  ),
+  "skillsHub.manage.applyCatalogs": dict("Apply", "Aplicar", "Aplicar"),
   "skillsHub.manage.behind": dict(
     "{count} commit(s) behind",
     "{count} commit(s) atrás",
     "{count} commit(s) atrás",
   ),
-  "skillsHub.manage.branch": dict(
-    "Branch:",
-    "Branch:",
-    "Rama:",
-  ),
+  "skillsHub.manage.branch": dict("Branch:", "Branch:", "Rama:"),
   "skillsHub.manage.catalogsHelp": dict(
     "Check a catalog to take all of it (skills added to it later included), or click individual skills to pick just those. Everything picked is linked into {dir} and works in any repo/worktree.",
     "Marque um catálogo pra levar ele inteiro (incluindo skills adicionadas depois), ou clique em skills soltas pra pegar só elas. Tudo o que estiver marcado é linkado em {dir} e vale em qualquer repo/worktree.",
@@ -2712,26 +2643,14 @@ export const translations = {
     "Catálogos e skills",
     "Catálogos y skills",
   ),
-  "skillsHub.manage.changePath": dict(
-    "Change folder",
-    "Trocar pasta",
-    "Cambiar carpeta",
-  ),
+  "skillsHub.manage.changePath": dict("Change folder", "Trocar pasta", "Cambiar carpeta"),
   "skillsHub.manage.changePathHint": dict(
-    "The repo and the clone folder are changed in one place: the gear (Settings) in the header → \"Team skills\" → Edit.",
-    "O repo e a pasta do clone são trocados num lugar só: na engrenagem (Configurações) do header → \"Skills do time\" → Editar.",
-    "El repo y la carpeta del clon se cambian en un solo lugar: el engranaje (Configuración) del header → \"Skills del equipo\" → Editar.",
+    'The repo and the clone folder are changed in one place: the gear (Settings) in the header → "Team skills" → Edit.',
+    'O repo e a pasta do clone são trocados num lugar só: na engrenagem (Configurações) do header → "Skills do time" → Editar.',
+    'El repo y la carpeta del clon se cambian en un solo lugar: el engranaje (Configuración) del header → "Skills del equipo" → Editar.',
   ),
-  "skillsHub.manage.detached": dict(
-    "(detached)",
-    "(detached)",
-    "(detached)",
-  ),
-  "skillsHub.manage.dirty": dict(
-    "local changes",
-    "mudanças locais",
-    "cambios locales",
-  ),
+  "skillsHub.manage.detached": dict("(detached)", "(detached)", "(detached)"),
+  "skillsHub.manage.dirty": dict("local changes", "mudanças locais", "cambios locales"),
   "skillsHub.manage.duplicates": dict(
     "Same skill name in more than one checked catalog: {names} — only the first catalog's is linked.",
     "Mesmo nome de skill em mais de um catálogo marcado: {names} — só a do primeiro catálogo é linkada.",
@@ -2752,21 +2671,9 @@ export const translations = {
     "O clone não está na {defaultBranch}: você usa as skills desta branch, e as atualizações seguem o upstream dela.",
     "El clon no está en {defaultBranch}: usas las skills de esta rama, y las actualizaciones siguen su propio upstream.",
   ),
-  "skillsHub.manage.syncNow": dict(
-    "Update now",
-    "Atualizar agora",
-    "Actualizar ahora",
-  ),
-  "skillsHub.modal.title": dict(
-    "Team skills",
-    "Skills do time",
-    "Skills del equipo",
-  ),
-  "skillsHub.panel.choose": dict(
-    "Choose",
-    "Escolher",
-    "Elegir",
-  ),
+  "skillsHub.manage.syncNow": dict("Update now", "Atualizar agora", "Actualizar ahora"),
+  "skillsHub.modal.title": dict("Team skills", "Skills do time", "Skills del equipo"),
+  "skillsHub.panel.choose": dict("Choose", "Escolher", "Elegir"),
   "skillsHub.panel.chooseCatalogs": dict(
     "Skills hub found — pick your team's catalog(s) or individual skills to use them in your tasks.",
     "Hub de skills encontrado — escolha catálogo(s) do seu time ou skills soltas pra usar nas tarefas.",
@@ -2782,26 +2689,14 @@ export const translations = {
     "Clone o repo de skills do time e escolha quais skills usar — o app cria um atalho de cada uma em {dir}.",
     "Clona el repo de skills del equipo y elige qué skills usar — la app crea un acceso directo de cada una en {dir}.",
   ),
-  "skillsHub.panel.manage": dict(
-    "Manage",
-    "Gerenciar",
-    "Gestionar",
-  ),
-  "skillsHub.panel.offDefault": dict(
-    "hub on {branch}",
-    "hub na {branch}",
-    "hub en {branch}",
-  ),
+  "skillsHub.panel.manage": dict("Manage", "Gerenciar", "Gestionar"),
+  "skillsHub.panel.offDefault": dict("hub on {branch}", "hub na {branch}", "hub en {branch}"),
   "skillsHub.panel.pending": dict(
     "{count} new to link — update in Manage",
     "{count} nova(s) a linkar — atualize em Gerenciar",
     "{count} nueva(s) por enlazar — actualiza en Gestionar",
   ),
-  "skillsHub.panel.setup": dict(
-    "Set up",
-    "Configurar",
-    "Configurar",
-  ),
+  "skillsHub.panel.setup": dict("Set up", "Configurar", "Configurar"),
   "skillsHub.panel.summary": dict(
     "Skills: {count} linked ({catalogs})",
     "Skills: {count} linkadas ({catalogs})",
@@ -2817,26 +2712,10 @@ export const translations = {
     "Não foi possível usar essa pasta.",
     "No se pudo usar esa carpeta.",
   ),
-  "skillsHub.state.broken": dict(
-    "broken link",
-    "link quebrado",
-    "link roto",
-  ),
-  "skillsHub.state.conflict": dict(
-    "conflict",
-    "conflito",
-    "conflicto",
-  ),
-  "skillsHub.state.linked": dict(
-    "linked",
-    "linkada",
-    "enlazada",
-  ),
-  "skillsHub.state.missing": dict(
-    "new",
-    "nova",
-    "nueva",
-  ),
+  "skillsHub.state.broken": dict("broken link", "link quebrado", "link roto"),
+  "skillsHub.state.conflict": dict("conflict", "conflito", "conflicto"),
+  "skillsHub.state.linked": dict("linked", "linkada", "enlazada"),
+  "skillsHub.state.missing": dict("new", "nova", "nueva"),
   "skillsHub.sync.conflicts": dict(
     "not linked (name already taken): {names}",
     "não linkadas (nome já usado): {names}",
@@ -2852,11 +2731,7 @@ export const translations = {
     "sem acesso ao host do repo (offline ou sem SSH) — usando a versão local",
     "sin acceso al host del repo (offline o sin SSH) — usando la versión local",
   ),
-  "skillsHub.sync.linked": dict(
-    "linked: {names}",
-    "linkadas: {names}",
-    "enlazadas: {names}",
-  ),
+  "skillsHub.sync.linked": dict("linked: {names}", "linkadas: {names}", "enlazadas: {names}"),
   "skillsHub.sync.pulled": dict(
     "updated (+{count} commit(s))",
     "atualizado (+{count} commit(s))",
@@ -2877,16 +2752,8 @@ export const translations = {
     "atualização disponível mas o fast-forward falhou",
     "actualización disponible pero el fast-forward falló",
   ),
-  "skillsHub.sync.upToDate": dict(
-    "already up to date",
-    "já atualizado",
-    "ya actualizado",
-  ),
-  "skillsHub.usePath": dict(
-    "Use this folder",
-    "Usar esta pasta",
-    "Usar esta carpeta",
-  ),
+  "skillsHub.sync.upToDate": dict("already up to date", "já atualizado", "ya actualizado"),
+  "skillsHub.usePath": dict("Use this folder", "Usar esta pasta", "Usar esta carpeta"),
   "skillsHub.repoUrl.title": dict(
     "Skills hub repo",
     "Repo do hub de skills",
@@ -2902,11 +2769,7 @@ export const translations = {
     "Detectado do clone que você já tem — salve para confirmar.",
     "Detectado de tu clon existente — guarda para confirmar.",
   ),
-  "skillsHub.repoUrl.save": dict(
-    "Save",
-    "Salvar",
-    "Guardar",
-  ),
+  "skillsHub.repoUrl.save": dict("Save", "Salvar", "Guardar"),
   "skillsHub.repoUrl.saved": dict(
     "Skills hub repo saved.",
     "Repo do hub de skills salvo.",
@@ -2953,9 +2816,9 @@ export const translations = {
     "No se pudo crear la carpeta de skills de Claude (~/.claude/skills).",
   ),
   "skillsHub.manage.syncHelp": dict(
-    "\"Update now\" runs git fetch, fast-forwards the clone when it's clean, and creates shortcuts in {dir} for new skills. It also runs on its own when the app starts, if enabled in Settings.",
-    "\"Atualizar agora\" roda git fetch, avança o clone (fast-forward) quando está limpo e cria os atalhos das skills novas em {dir}. Também roda sozinho quando o app inicia, se estiver ligado na Configuração.",
-    "\"Actualizar ahora\" ejecuta git fetch, avanza el clon (fast-forward) cuando está limpio y crea en {dir} los accesos directos de las skills nuevas. También se ejecuta solo al iniciar la app, si está activado en Configuración.",
+    '"Update now" runs git fetch, fast-forwards the clone when it\'s clean, and creates shortcuts in {dir} for new skills. It also runs on its own when the app starts, if enabled in Settings.',
+    '"Atualizar agora" roda git fetch, avança o clone (fast-forward) quando está limpo e cria os atalhos das skills novas em {dir}. Também roda sozinho quando o app inicia, se estiver ligado na Configuração.',
+    '"Actualizar ahora" ejecuta git fetch, avanza el clon (fast-forward) cuando está limpio y crea en {dir} los accesos directos de las skills nuevas. También se ejecuta solo al iniciar la app, si está activado en Configuración.',
   ),
   "skillsHub.panel.behind": dict(
     "hub {count} commit(s) behind — update it in Manage",
@@ -2977,21 +2840,13 @@ export const translations = {
     "Ver o conteúdo de {name}",
     "Ver el contenido de {name}",
   ),
-  "skillsHub.preview.noDescription": dict(
-    "No description.",
-    "Sem descrição.",
-    "Sin descripción.",
-  ),
+  "skillsHub.preview.noDescription": dict("No description.", "Sem descrição.", "Sin descripción."),
   "skillsHub.preview.whenUsed": dict(
     "When Claude uses it",
     "Quando o Claude usa",
     "Cuándo la usa Claude",
   ),
-  "skillsHub.preview.requires": dict(
-    "Depends on:",
-    "Depende de:",
-    "Depende de:",
-  ),
+  "skillsHub.preview.requires": dict("Depends on:", "Depende de:", "Depende de:"),
   "skillsHub.preview.files": dict(
     "Files that come with it",
     "Arquivos que vêm junto",

@@ -131,7 +131,9 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
         onClick={onRefresh}
         aria-label={t("usageLimitsBadge.title")}
         className={`border ${colorClass}`}
-        icon={loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gauge className="h-4 w-4" />}
+        icon={
+          loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gauge className="h-4 w-4" />
+        }
       >
         {compactText}
       </Button>

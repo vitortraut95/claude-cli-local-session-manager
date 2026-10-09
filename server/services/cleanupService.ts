@@ -214,7 +214,8 @@ function resolveOwningRepoRoot(session: Session, repoRoots: string[]): string | 
   let best: string | null = null;
   for (const root of repoRoots) {
     const resolvedRoot = path.resolve(root);
-    const matches = resolvedDir === resolvedRoot || resolvedDir.startsWith(`${resolvedRoot}${path.sep}`);
+    const matches =
+      resolvedDir === resolvedRoot || resolvedDir.startsWith(`${resolvedRoot}${path.sep}`);
     if (matches && (!best || resolvedRoot.length > path.resolve(best).length)) {
       best = root;
     }
@@ -312,7 +313,10 @@ export async function executeCleanupFinding(finding: CleanupFinding): Promise<vo
   }
 
   if (!(await directoryExists(worktreePath))) {
-    throw new AppError("CLEANUP_TARGET_GONE", `"${worktreePath}" no longer exists — refresh the list.`);
+    throw new AppError(
+      "CLEANUP_TARGET_GONE",
+      `"${worktreePath}" no longer exists — refresh the list.`,
+    );
   }
 
   if (finding.kind === "remove-abandoned-worktree") {

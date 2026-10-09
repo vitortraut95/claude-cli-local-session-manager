@@ -148,7 +148,11 @@ export async function getClaudeUsageStatus(forceRefresh = false): Promise<Claude
   }
 
   const limits: ClaudeUsageLimit[] = (data.limits ?? []).flatMap((limit) => {
-    if (typeof limit.kind !== "string" || typeof limit.group !== "string" || typeof limit.percent !== "number") {
+    if (
+      typeof limit.kind !== "string" ||
+      typeof limit.group !== "string" ||
+      typeof limit.percent !== "number"
+    ) {
       return [];
     }
     return [
