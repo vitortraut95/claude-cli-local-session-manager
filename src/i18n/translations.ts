@@ -58,6 +58,17 @@ export const translations = {
     "Repo de skills del equipo configurado pero no clonado en esta máquina — haz clic para instalarlo",
   ),
   "header.newSession": dict("New session", "Nova sessão", "Nueva sesión"),
+  "header.testTask": dict("Test task", "Testar tarefa", "Probar tarea"),
+  "header.testTask.tooltip": dict(
+    "Opens a terminal running the {skill} skill on a task's link",
+    "Abre um terminal rodando a skill {skill} com o link de uma tarefa",
+    "Abre una terminal que ejecuta la skill {skill} con el enlace de una tarea",
+  ),
+  "header.testTask.notInstalled": dict(
+    "The test skill {skill} isn't installed on this machine — choose another one in Settings or in the Skills window",
+    "A skill de teste {skill} não está instalada nesta máquina — escolha outra em Configurações ou na janela de Skills",
+    "La skill de prueba {skill} no está instalada en esta máquina — elige otra en Configuración o en la ventana de Skills",
+  ),
   "header.cleanup": dict("Cleanup", "Limpeza", "Limpieza"),
   "header.importSession": dict("Import session", "Importar sessão", "Importar sesión"),
   "header.settings": dict("Settings", "Configurações", "Configuración"),
@@ -137,6 +148,21 @@ export const translations = {
     "A worktree path is required.",
     "É necessário informar o caminho do worktree.",
     "Se requiere una ruta de worktree.",
+  ),
+  "apiError.taskTestLinkRequired": dict(
+    "Paste the task's link.",
+    "Cole o link da tarefa.",
+    "Pega el enlace de la tarea.",
+  ),
+  "apiError.taskTestSkillNotConfigured": dict(
+    "No test skill is configured. Choose one in Settings or in the Skills window.",
+    "Nenhuma skill de teste configurada. Escolha uma em Configurações ou na janela de Skills.",
+    "No hay ninguna skill de prueba configurada. Elige una en Configuración o en la ventana de Skills.",
+  ),
+  "apiError.taskTestSkillNotInstalled": dict(
+    "The configured test skill isn't installed on this machine anymore. Choose another one or install it again.",
+    "A skill de teste configurada não está mais instalada nesta máquina. Escolha outra ou instale de novo.",
+    "La skill de prueba configurada ya no está instalada en esta máquina. Elige otra o instálala de nuevo.",
   ),
   "apiError.malformedPreferences": dict(
     "Malformed preferences payload.",
@@ -1731,6 +1757,52 @@ export const translations = {
     "Start anyway",
     "Iniciar mesmo assim",
     "Iniciar de todos modos",
+  ),
+
+  "testTaskModal.title": dict("Test task", "Testar tarefa", "Probar tarea"),
+  "testTaskModal.intro": dict(
+    "Opens a terminal in {dir} running {command}. The skill does the rest: finds the project, plans and runs the test.",
+    "Abre um terminal em {dir} rodando {command}. A skill faz o resto: acha o projeto, planeja e executa o teste.",
+    "Abre una terminal en {dir} que ejecuta {command}. La skill hace el resto: encuentra el proyecto, planifica y ejecuta la prueba.",
+  ),
+  "testTaskModal.linkLabel": dict("Task link", "Link da tarefa", "Enlace de la tarea"),
+  "testTaskModal.linkPlaceholder": dict(
+    "https://company.atlassian.net/browse/PROJ-123",
+    "https://company.atlassian.net/browse/PROJ-123",
+    "https://company.atlassian.net/browse/PROJ-123",
+  ),
+  "testTaskModal.permissionModeAutoExplanation": dict(
+    "On by default here: the test skill only reads code and the ticket, and its terminal usually sits in the background. Remembered as whatever you last left it at.",
+    "Ligado por padrão aqui: a skill de teste só lê o código e o ticket, e o terminal dela costuma ficar em segundo plano. Fica lembrado como você deixou da última vez.",
+    "Activado por defecto aquí: la skill de prueba solo lee el código y el ticket, y su terminal suele quedar en segundo plano. Se recuerda como lo dejaste la última vez.",
+  ),
+  "testTaskModal.confirm": dict("Test", "Testar", "Probar"),
+  "testTaskModal.nickname": dict("Test - {link}", "Teste - {link}", "Prueba - {link}"),
+  "testTaskModal.launchFailed": dict(
+    "Failed to start the test: {message}",
+    "Falha ao iniciar o teste: {message}",
+    "No se pudo iniciar la prueba: {message}",
+  ),
+
+  "taskTestSkill.title": dict(
+    "Task test skill",
+    "Skill de teste da tarefa",
+    "Skill de prueba de tareas",
+  ),
+  "taskTestSkill.description": dict(
+    "The skill the header's \"Test task\" button runs with the task's link. The button only shows up once one is chosen.",
+    'A skill que o botão "Testar tarefa" do header roda com o link da tarefa. O botão só aparece depois que uma é escolhida.',
+    'La skill que el botón "Probar tarea" del encabezado ejecuta con el enlace de la tarea. El botón solo aparece cuando se elige una.',
+  ),
+  "taskTestSkill.none": dict(
+    "None (button hidden)",
+    "Nenhuma (botão escondido)",
+    "Ninguna (botón oculto)",
+  ),
+  "taskTestSkill.missing": dict(
+    "{skill} (not installed)",
+    "{skill} (não instalada)",
+    "{skill} (no instalada)",
   ),
 
   "useSessions.loadError": dict(

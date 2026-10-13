@@ -1,4 +1,14 @@
-import { Bot, Globe, Import, MessageSquarePlus, Plus, Settings, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  Bot,
+  FlaskConical,
+  Globe,
+  Import,
+  MessageSquarePlus,
+  Plus,
+  Settings,
+  Sparkles,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
@@ -12,6 +22,7 @@ import { ImportSessionModal } from "./ImportSessionModal";
 import { NewSessionModal } from "./NewSessionModal";
 import { NewTaskModal } from "./NewTaskModal";
 import { SettingsModal } from "./SettingsModal";
+import { TestTaskModal } from "./TestTaskModal";
 import { SkillsHeaderButton } from "./SkillsHeaderButton";
 import { SkillsHubModal } from "./SkillsHubModal";
 import { Select } from "./Select";
@@ -61,6 +72,11 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   const [showImportModal, setShowImportModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
+  const [showTestTaskModal, setShowTestTaskModal] = useState(false);
+  // `taskTestSkill` ("" = "Test task" button hidden) and where its terminal opens (display only —
+  // the server picks the first workspace dir that exists, else the home dir).
+  const [taskTestSkill, setTaskTestSkill] = useState("");
+  const [testTaskFolderHint, setTestTaskFolderHint] = useState("~");
   // Always loaded (the header is always mounted) — also keeps the shared cached status warm, so the
   // New Task / New Session skills panel opens already filled in.
   const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(true);
@@ -82,6 +98,8 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         .then((prefs) => {
           if (cancelled) return;
           setNeedsWorkspaceDirs(prefs.workspaceDirs == null);
+          setTaskTestSkill(prefs.taskTestSkill?.trim() ?? "");
+          setTestTaskFolderHint(prefs.workspaceDirs?.[0] ?? "~");
           setTeamPromptPrefs(
             prefs.jenkinsBaseUrl === null || prefs.skillsHub?.repoUrl === null ? prefs : null,
           );
@@ -104,6 +122,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     !showSettings &&
     !showNewTaskModal &&
     !showNewSessionModal &&
+    !showTestTaskModal &&
     !showSkillsModal;
   // Only after the workspace prompt is out of the way (saved or skipped) — never both at once.
   const showTeamPrompt =
@@ -115,7 +134,14 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     !showSettings &&
     !showNewTaskModal &&
     !showNewSessionModal &&
+    !showTestTaskModal &&
     !showSkillsModal;
+
+  // Only known once the skills status loaded (and on a backend that sends the list).
+  const testSkillMissing =
+    taskTestSkill !== "" &&
+    skillsHub?.installedSkills !== undefined &&
+    !skillsHub.installedSkills.some((skill) => skill.name === taskTestSkill);
 
   return (
     <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -148,6 +174,34 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           >
             {t("header.newSession")}
           </Button>
+          {taskTestSkill !== "" && (
+            <Tooltip
+              content={
+                testSkillMissing
+                  ? t("header.testTask.notInstalled", { skill: taskTestSkill })
+                  : t("header.testTask.tooltip", { skill: taskTestSkill })
+              }
+            >
+              {testSkillMissing ? (
+                <Button
+                  variant="unstyled"
+                  className="gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/70"
+                  onClick={() => setShowSkillsModal(true)}
+                  icon={<AlertTriangle className="h-4 w-4" />}
+                >
+                  {t("header.testTask")}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTestTaskModal(true)}
+                  icon={<FlaskConical className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
+                >
+                  {t("header.testTask")}
+                </Button>
+              )}
+            </Tooltip>
+          )}
           <Button
             variant="outline"
             onClick={() => setShowImportModal(true)}
@@ -212,6 +266,14 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         onClose={() => setShowNewSessionModal(false)}
         onSessionCreated={onSessionCreated}
       />
+      {showTestTaskModal && taskTestSkill !== "" && (
+        <TestTaskModal
+          skill={taskTestSkill}
+          folderHint={testTaskFolderHint}
+          onClose={() => setShowTestTaskModal(false)}
+          onSessionCreated={onSessionCreated}
+        />
+      )}
       <CleanupModal
         open={showCleanupModal}
         onClose={() => setShowCleanupModal(false)}

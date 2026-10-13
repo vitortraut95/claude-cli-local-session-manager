@@ -26,6 +26,7 @@ import {
   getRecentProjectFolders,
   getRepoInfo,
   launchTaskTerminal,
+  launchTaskTest,
   resolveBaseBranch,
 } from "../services/taskService.js";
 import { extractBooleanField, extractStringField } from "../utils/httpBody.js";
@@ -34,7 +35,13 @@ import { AppError, errorCode } from "../utils/httpError.js";
 export const tasksRouter = Router();
 
 type LateFields =
-  "defaultSessionPrompt" | "workspaceDirs" | "skillsHub" | "jenkinsBaseUrl" | "envPreviews";
+  | "defaultSessionPrompt"
+  | "workspaceDirs"
+  | "skillsHub"
+  | "jenkinsBaseUrl"
+  | "envPreviews"
+  | "taskTestSkill"
+  | "taskTestPermissionModeAuto";
 
 /** The fields added after the file's first release are optional on purpose: a browser tab still
  *  running an older frontend bundle (see CLAUDE.md's update-safety policy) sends the full object
@@ -69,7 +76,10 @@ function isValidPreferences(
     (candidate.jenkinsBaseUrl === undefined ||
       candidate.jenkinsBaseUrl === null ||
       typeof candidate.jenkinsBaseUrl === "string") &&
-    (candidate.envPreviews === undefined || isEnvPreviews(candidate.envPreviews))
+    (candidate.envPreviews === undefined || isEnvPreviews(candidate.envPreviews)) &&
+    (candidate.taskTestSkill === undefined || typeof candidate.taskTestSkill === "string") &&
+    (candidate.taskTestPermissionModeAuto === undefined ||
+      typeof candidate.taskTestPermissionModeAuto === "boolean")
   );
 }
 
@@ -107,7 +117,7 @@ tasksRouter.put("/preferences", async (req, res) => {
           "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
           "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
           "inviteDismissed }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
-          "{ label, url }[] } }.",
+          "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean }.",
       );
     }
     const stored = await getUserPreferences();
@@ -215,6 +225,23 @@ tasksRouter.post("/launch", async (req, res) => {
       extractStringField(req.body, "prompt"),
       extractBooleanField(req.body, "permissionModeAuto", false),
       extractStringField(req.body, "repoRoot"),
+      extractStringField(req.body, "nickname"),
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+      code: errorCode(err),
+    });
+  }
+});
+
+tasksRouter.post("/test-task", async (req, res) => {
+  try {
+    await launchTaskTest(
+      extractStringField(req.body, "ticketLink"),
+      extractBooleanField(req.body, "permissionModeAuto", true),
       extractStringField(req.body, "nickname"),
     );
     res.json({ success: true });
