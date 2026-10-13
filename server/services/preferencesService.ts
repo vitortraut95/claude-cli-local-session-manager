@@ -73,6 +73,14 @@ export type UserPreferences = {
    *  label plus a URL template where `{env}` becomes the branch slug (`env/PROJ-1` → `env-proj-1`).
    *  Shown in the Jenkins modal. Per-machine config for the same reason as `jenkinsBaseUrl`. */
   envPreviews: EnvPreviews;
+  /** Name of the installed skill (a folder in `~/.claude/skills`) the header's "Test task" button
+   *  runs as `/<skill> <ticket link>`. "" = not set, button hidden. Per-machine because the skill
+   *  is team-specific and this repo is public. Added later: an older file lacks it. */
+  taskTestSkill: string;
+  /** The "Test task" modal's "--permission-mode auto" checkbox, remembered as last left — separate
+   *  from `useAutoPermissionModeByDefault` (New Task) and on by default, since the test skill only
+   *  reads and its terminal usually sits in the background. Added later: an older file lacks it. */
+  taskTestPermissionModeAuto: boolean;
 };
 
 export type EnvPreviewTemplate = { label: string; url: string };
@@ -100,6 +108,8 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   },
   jenkinsBaseUrl: null,
   envPreviews: {},
+  taskTestSkill: "",
+  taskTestPermissionModeAuto: true,
 };
 
 function isLanguage(value: unknown): value is Language {
@@ -212,6 +222,14 @@ export async function getUserPreferences(): Promise<UserPreferences> {
       envPreviews: isEnvPreviews(parsed.envPreviews)
         ? parsed.envPreviews
         : DEFAULT_PREFERENCES.envPreviews,
+      taskTestSkill:
+        typeof parsed.taskTestSkill === "string"
+          ? parsed.taskTestSkill.trim()
+          : DEFAULT_PREFERENCES.taskTestSkill,
+      taskTestPermissionModeAuto:
+        typeof parsed.taskTestPermissionModeAuto === "boolean"
+          ? parsed.taskTestPermissionModeAuto
+          : DEFAULT_PREFERENCES.taskTestPermissionModeAuto,
     };
   } catch {
     return DEFAULT_PREFERENCES;

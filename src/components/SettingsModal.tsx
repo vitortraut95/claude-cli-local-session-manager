@@ -10,6 +10,7 @@ import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
+import { TaskTestSkillSelect } from "./TaskTestSkillSelect";
 import { ThemeToggle } from "./ThemeToggle";
 import { WorkspaceDirsEditor } from "./WorkspaceDirsEditor";
 
@@ -243,6 +244,19 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
                     prefs.skillsHub &&
                     void save({ skillsHub: { ...prefs.skillsHub, autoUpdateOnStart: checked } })
                   }
+                />
+              }
+            />
+          )}
+          {skillsHub?.installedSkills && (
+            <SettingRow
+              title={t("taskTestSkill.title")}
+              description={t("taskTestSkill.description")}
+              keyName="taskTestSkill"
+              control={
+                <TaskTestSkillSelect
+                  installedSkills={skillsHub.installedSkills}
+                  showDescription={false}
                 />
               }
             />

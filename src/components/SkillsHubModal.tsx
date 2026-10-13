@@ -34,6 +34,7 @@ import { Input } from "./Input";
 import { Modal } from "./Modal";
 import { Select } from "./Select";
 import { SkillPreviewModal } from "./SkillPreviewModal";
+import { TaskTestSkillSelect } from "./TaskTestSkillSelect";
 import { Tooltip } from "./Tooltip";
 
 type SkillsHubModalProps = {
@@ -664,6 +665,18 @@ function ManageSection({
           </p>
         )}
       </section>
+
+      {status.installedSkills && (
+        <section className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+          <h3 className="mb-1 font-medium text-gray-900 dark:text-gray-100">
+            {t("taskTestSkill.title")}
+          </h3>
+          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+            {t("taskTestSkill.description")}
+          </p>
+          <TaskTestSkillSelect installedSkills={status.installedSkills} />
+        </section>
+      )}
 
       <p className="text-xs text-gray-500 dark:text-gray-400">
         {t("skillsHub.manage.newSessionsNote")}

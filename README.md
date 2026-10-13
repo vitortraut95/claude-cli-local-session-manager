@@ -97,6 +97,7 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | GET    | `/sessions/:id/export`                | Download the session as a `.claude-session.json.gz` file                       |
 | POST   | `/sessions/import/inspect`            | Read an exported file (raw body) and list local target clones                  |
 | POST   | `/sessions/import`                    | Import an exported file into `?targetDir=` (optional `&checkoutBranch=true`)   |
+| POST   | `/tasks/test-task`                    | Open a terminal running `/<taskTestSkill> <ticketLink>` ("Test task" button)   |
 | GET    | `/tasks/skills-hub/status`            | Team skills: hub location/branch, catalogs, link state per skill               |
 | GET    | `/tasks/skills-hub/skill`             | One hub skill's SKILL.md content (`?catalog=&name=`)                           |
 | POST   | `/tasks/skills-hub/sync`              | Fetch + fast-forward the hub (when clean) and link new skills                  |

@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { stat } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import {
   directoryExists,
@@ -7,6 +9,7 @@ import {
   posixShellQuote,
 } from "./sessionService.js";
 import { getUserPreferences, saveUserPreferences } from "./preferencesService.js";
+import { getUserSkillsDir } from "./skillsHubService.js";
 import { expandHome, findReposIn } from "./workspaceService.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import {
@@ -404,4 +407,49 @@ export async function launchTaskTerminal(
   if (trimmedRepoRoot) {
     await recordUsedProjectPath(trimmedRepoRoot);
   }
+}
+
+/** A skill folder name as the CLI's own `/<name>` command takes it — also keeps the name from
+ *  smuggling anything into the shell command or out of the skills folder. */
+const SKILL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
+
+/**
+ * The header's "Test task": opens a terminal running `claude "/<taskTestSkill> <ticket link>"` —
+ * nothing else on purpose. No repo/folder resolution (the skill finds the project from the
+ * ticket), no active-session check (the skill only reads). Opens in the first existing workspace
+ * dir, else the home dir.
+ */
+export async function launchTaskTest(
+  ticketLink: string,
+  permissionModeAuto: boolean,
+  nickname = "",
+): Promise<void> {
+  const link = ticketLink.trim();
+  if (!link) throw new AppError("TASK_TEST_LINK_REQUIRED", "A ticket link is required.");
+
+  const prefs = await getUserPreferences();
+  const skill = prefs.taskTestSkill.trim();
+  if (!skill || !SKILL_NAME_PATTERN.test(skill)) {
+    throw new AppError("TASK_TEST_SKILL_NOT_CONFIGURED", "No task test skill is configured.");
+  }
+  try {
+    await stat(path.join(getUserSkillsDir(), skill, "SKILL.md"));
+  } catch (err) {
+    throw new AppError(
+      "TASK_TEST_SKILL_NOT_INSTALLED",
+      `The task test skill "${skill}" isn't installed in ${getUserSkillsDir()}.`,
+      { cause: err },
+    );
+  }
+
+  let cwd = os.homedir();
+  for (const dir of prefs.workspaceDirs ?? []) {
+    const expanded = expandHome(dir);
+    if (await directoryExists(expanded)) {
+      cwd = expanded;
+      break;
+    }
+  }
+
+  await launchTaskTerminal(cwd, `/${skill} ${link}`, permissionModeAuto, "", nickname);
 }

@@ -379,7 +379,12 @@ export type SkillsHubStatus = {
   /** Where "Clone" would put it: `<dir>/<cloneFolderName>` for each workspace dir (or the home dir
    *  when none is set). */
   cloneParentDirs: string[];
+  /** Every skill Claude would load on this machine (folders and links in `userSkillsDir` with a
+   *  SKILL.md), hub or not — the options for `taskTestSkill`. */
+  installedSkills: InstalledSkill[];
 };
+
+export type InstalledSkill = { name: string; description: string };
 
 /** What to keep linked: whole catalogs (future skills included) plus individually picked skills,
  *  each as `<catalog>/<skill>`. */
@@ -514,6 +519,34 @@ async function getCloneParentDirs(): Promise<string[]> {
   return existing.length > 0 ? [...new Set(existing)] : [os.homedir()];
 }
 
+/** Skills in `~/.claude/skills`: real folders or links (broken ones skipped, via `stat`) holding a
+ *  SKILL.md. */
+export async function listInstalledSkills(): Promise<InstalledSkill[]> {
+  const dir = getUserSkillsDir();
+  let names: string[];
+  try {
+    names = await readdir(dir);
+  } catch {
+    return [];
+  }
+  const skills = await Promise.all(
+    names
+      .filter((name) => !name.startsWith("."))
+      .map(async (name) => {
+        const skillMd = path.join(dir, name, "SKILL.md");
+        try {
+          await stat(skillMd);
+        } catch {
+          return null;
+        }
+        return { name, description: await readSkillDescription(skillMd) };
+      }),
+  );
+  return skills
+    .filter((skill): skill is InstalledSkill => skill !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export async function getSkillsHubStatus(): Promise<SkillsHubStatus> {
   const prefs = (await getUserPreferences()).skillsHub;
   const repoUrl = await resolveRepoUrl(prefs);
@@ -527,6 +560,7 @@ export async function getSkillsHubStatus(): Promise<SkillsHubStatus> {
     webUrl: repoUrl ? hubWebUrl(repoUrl) : "",
     cloneFolderName: repoUrl ? hubFolderName(repoUrl) : "",
     cloneParentDirs: await getCloneParentDirs(),
+    installedSkills: await listInstalledSkills(),
     configuredPathInvalid: prefs.path !== null && hubPath !== expandHome(prefs.path),
   };
   if (!hubPath) {

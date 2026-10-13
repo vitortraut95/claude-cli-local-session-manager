@@ -56,6 +56,12 @@ export type UserPreferences = {
   /** `env/*` preview sites per project folder name: `{ label, url }` with `{env}` in the URL
    *  replaced by the branch slug. Optional like `workspaceDirs`. */
   envPreviews?: EnvPreviews;
+  /** Installed skill the header's "Test task" button runs (`/<skill> <ticket link>`); "" = button
+   *  hidden. Optional like `workspaceDirs`. */
+  taskTestSkill?: string;
+  /** "Test task" modal's "--permission-mode auto" checkbox, remembered as last left (default on).
+   *  Optional like `workspaceDirs`. */
+  taskTestPermissionModeAuto?: boolean;
 };
 
 export type EnvPreviewTemplate = { label: string; url: string };
@@ -218,6 +224,18 @@ export async function launchTaskTerminal(
   );
 }
 
+/** Header's "Test task": a terminal running `claude "/<taskTestSkill> <ticketLink>"` — the skill
+ *  comes from the saved preference, resolved server-side. */
+export async function launchTaskTest(
+  ticketLink: string,
+  permissionModeAuto: boolean,
+  nickname: string,
+): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.post("/test-task", { ticketLink, permissionModeAuto, nickname }),
+  );
+}
+
 // ---------------------------------------------------------------------------------------------
 // Team skills hub — see server/services/skillsHubService.ts. Every call here is
 // optional from the UI's point of view: a failure (or a backend older than these routes, which
@@ -276,7 +294,11 @@ export type SkillsHubStatus = {
   /** Folder name a clone gets. Absent on older backends. */
   cloneFolderName?: string;
   cloneParentDirs: string[];
+  /** Every skill in `userSkillsDir` (hub or not). Absent on older backends. */
+  installedSkills?: InstalledSkill[];
 };
+
+export type InstalledSkill = { name: string; description: string };
 
 export type SkillsLinkResult = { linked: string[]; unlinked: string[]; conflicts: string[] };
 
