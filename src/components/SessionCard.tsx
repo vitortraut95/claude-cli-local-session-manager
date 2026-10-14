@@ -117,10 +117,11 @@ export function SessionCard({
   // Shown for any session whose folder still exists and is a git repo (not just `env/*` branches)
   // — every team's Jenkins follows the same job/<repo>/job/<branch> layout, see getJenkinsLinks.
   // `gitBranch` is nulled server-side when the folder isn't a live git repo (e.g. a plain
-  // workspace folder holding many repos), where a job/<folder>/ link would be meaningless.
+  // workspace folder holding many repos), where a job/<folder>/ link would be meaningless. Also
+  // hidden in this app's own repo, which has no Jenkins job.
   const teamLinks = useTeamLinks();
   const jenkinsLinks =
-    session.directoryMissing || session.gitBranch === null
+    session.directoryMissing || session.gitBranch === null || session.isAppRepo
       ? null
       : getJenkinsLinks(
           teamLinks.jenkinsBaseUrl,
@@ -515,7 +516,8 @@ export function SessionCard({
             icon={<img src={jenkinsIcon} alt="" className="h-6 w-6" />}
           />
         )}
-        {taskBranch && !session.directoryMissing && (
+        {/* Not offered in this app's own repo either, same as Jenkins above. */}
+        {taskBranch && !session.directoryMissing && !session.isAppRepo && (
           <ToolbarIconButton
             tooltip={t("sessionCard.openPrTooltip")}
             ariaLabel={t("sessionCard.openPrAriaLabel")}

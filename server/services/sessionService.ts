@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { accessSync, constants } from "node:fs";
+import { accessSync, constants, realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -28,6 +28,7 @@ import { getNicknames, setNickname } from "../utils/nicknames.js";
 import { forgetTaskBaseBranch, getTaskBaseBranches } from "../utils/taskBaseBranches.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import { AppError } from "../utils/httpError.js";
+import { REPO_ROOT } from "../utils/repoRoot.js";
 import {
   applyFileDiff,
   checkoutExistingBranch,
@@ -88,7 +89,7 @@ function repoRootFromMissingWorktreePath(cwd: string): string | null {
   return index === -1 ? null : cwd.slice(0, index);
 }
 
-type BuiltSession = Omit<Session, "isActive" | "nickname" | "baseBranch">;
+type BuiltSession = Omit<Session, "isActive" | "nickname" | "baseBranch" | "isAppRepo">;
 
 async function buildSession(filePath: string): Promise<BuiltSession | null> {
   try {
@@ -285,6 +286,8 @@ async function listSessionsUncached(): Promise<Session[]> {
   ];
   const gitDirsList = await Promise.all(uniqueDirs.map((dir) => getGitDirs(dir)));
   const gitDirsByDir = new Map(uniqueDirs.map((dir, i) => [dir, gitDirsList[i]]));
+  // git reports real paths, so compare against REPO_ROOT's real path too (symlinked checkout).
+  const appRepoRoot = realpathSync(REPO_ROOT);
 
   return sessions
     .map((session) => {
@@ -322,6 +325,7 @@ async function listSessionsUncached(): Promise<Session[]> {
           repoRoot && gitBranch
             ? (taskBaseBranches[repoRoot]?.[gitBranch]?.baseBranch ?? null)
             : null,
+        isAppRepo: repoRoot === appRepoRoot,
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

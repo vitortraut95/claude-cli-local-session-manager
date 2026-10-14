@@ -44,6 +44,10 @@ export type Session = {
    *  resolves to). Null for every other session, including a worktree branched off the default.
    *  Powers the "Open PR" button's choice between comparing against this base or the repo's default. */
   baseBranch: string | null;
+  /** True when the session ran in this app's own repo (main checkout or one of its worktrees) —
+   *  hides team-integration buttons like Jenkins that make no sense for the app itself. Optional:
+   *  absent from a backend older than the field, treated as false. */
+  isAppRepo?: boolean;
 };
 
 export type WorktreeToRootFileDiff = {
