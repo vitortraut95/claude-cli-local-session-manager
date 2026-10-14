@@ -114,12 +114,20 @@ export function SessionCard({
   // missing/stale, in which case it falls back to whatever branch the nickname encodes. Feeds
   // both the Jenkins and the PR links below.
   const { origin: originBranch, destination: taskBranch } = resolveSessionBranches(session);
-  // Shown for any session whose folder still exists (not just `env/*` branches) — every team's
-  // Jenkins follows the same job/<repo>/job/<branch> layout, see getJenkinsLinks.
+  // Shown for any session whose folder still exists and is a git repo (not just `env/*` branches)
+  // — every team's Jenkins follows the same job/<repo>/job/<branch> layout, see getJenkinsLinks.
+  // `gitBranch` is nulled server-side when the folder isn't a live git repo (e.g. a plain
+  // workspace folder holding many repos), where a job/<folder>/ link would be meaningless.
   const teamLinks = useTeamLinks();
-  const jenkinsLinks = session.directoryMissing
-    ? null
-    : getJenkinsLinks(teamLinks.jenkinsBaseUrl, session.project, taskBranch ?? null, originBranch);
+  const jenkinsLinks =
+    session.directoryMissing || session.gitBranch === null
+      ? null
+      : getJenkinsLinks(
+          teamLinks.jenkinsBaseUrl,
+          session.project,
+          taskBranch ?? null,
+          originBranch,
+        );
 
   const handleCopyCommand = async () => {
     try {
