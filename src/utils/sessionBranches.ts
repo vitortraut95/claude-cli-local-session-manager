@@ -43,7 +43,11 @@ export type SessionBranches = { origin: string | null; destination: string | nul
  *    backfill of (1) from the nicknames (a backfill now would freeze them and make nickname edits
  *    stop having any effect).
  * 3. The session's own recorded fields (`gitBranch`/`baseBranch`, both server-computed), which can
- *    be missing or stale:
+ *    be missing or stale.
+ * 4. For the base only: the repo's `defaultBranch` — `baseBranch` is never recorded for a task
+ *    branched off the default, so without this a task off master would show no base at all.
+ *
+ * About (3):
  * - `gitBranch` is the *last branch recorded in the session's own transcript*
  *   (`claudeProjects.ts`'s `findLatestGitBranch`), not live git state — it misses a branch
  *   created/switched outside of any Claude Code turn in that session (e.g. work done ahead on the
@@ -55,12 +59,22 @@ export type SessionBranches = { origin: string | null; destination: string | nul
 export function resolveSessionBranches(
   session: Pick<
     Session,
-    "gitBranch" | "baseBranch" | "nickname" | "savedOriginBranch" | "savedDestinationBranch"
+    | "gitBranch"
+    | "baseBranch"
+    | "nickname"
+    | "savedOriginBranch"
+    | "savedDestinationBranch"
+    | "defaultBranch"
   >,
 ): SessionBranches {
   const fromNickname = parseNicknameBranches(session.nickname);
   return {
-    origin: session.savedOriginBranch ?? fromNickname.origin ?? session.baseBranch,
+    origin:
+      session.savedOriginBranch ??
+      fromNickname.origin ??
+      session.baseBranch ??
+      session.defaultBranch ??
+      null,
     destination: session.savedDestinationBranch ?? fromNickname.destination ?? session.gitBranch,
   };
 }

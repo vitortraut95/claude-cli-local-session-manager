@@ -54,6 +54,9 @@ export type Session = {
    *  backend older than the field, treated as null. */
   savedOriginBranch?: string | null;
   savedDestinationBranch?: string | null;
+  /** The repo's default branch (`origin/HEAD`, else main/master — `getDefaultBaseBranch`), the
+   *  last fallback for the base shown on the card. Optional: absent from an older backend. */
+  defaultBranch?: string | null;
 };
 
 export type WorktreeToRootFileDiff = {
