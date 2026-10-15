@@ -36,6 +36,7 @@ import {
   computeFileDiff,
   deleteLocalBranch,
   discardWorkingTreeChanges,
+  getDefaultBaseBranch,
   getGitDirs,
   getGitHostInfo,
   getRepoRoot,
@@ -98,6 +99,7 @@ type BuiltSession = Omit<
   | "isAppRepo"
   | "savedOriginBranch"
   | "savedDestinationBranch"
+  | "defaultBranch"
 >;
 
 async function buildSession(filePath: string): Promise<BuiltSession | null> {
@@ -298,6 +300,15 @@ async function listSessionsUncached(): Promise<Session[]> {
   const gitDirsByDir = new Map(uniqueDirs.map((dir, i) => [dir, gitDirsList[i]]));
   // git reports real paths, so compare against REPO_ROOT's real path too (symlinked checkout).
   const appRepoRoot = realpathSync(REPO_ROOT);
+  // Once per repo, not per session — the base shown for a task branched off the default, which
+  // `taskBaseBranches` deliberately never records.
+  const uniqueRepoRoots = [
+    ...new Set(gitDirsList.filter((d) => d !== null).map((d) => path.dirname(d.commonGitDir))),
+  ];
+  const defaultBranches = await Promise.all(
+    uniqueRepoRoots.map((root) => getDefaultBaseBranch(root).catch(() => null)),
+  );
+  const defaultBranchByRoot = new Map(uniqueRepoRoots.map((root, i) => [root, defaultBranches[i]]));
 
   return sessions
     .map((session) => {
@@ -338,6 +349,7 @@ async function listSessionsUncached(): Promise<Session[]> {
         isAppRepo: repoRoot === appRepoRoot,
         savedOriginBranch: sessionBranches[session.id]?.origin ?? null,
         savedDestinationBranch: sessionBranches[session.id]?.destination ?? null,
+        defaultBranch: repoRoot ? (defaultBranchByRoot.get(repoRoot) ?? null) : null,
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

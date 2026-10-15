@@ -155,7 +155,12 @@ export function SessionCard({
   // the "diff" too.
   const handleOpenPr = async () => {
     if (!taskBranch) return;
-    if (originBranch && originBranch !== taskBranch && !DEFAULT_BRANCHES.has(originBranch)) {
+    if (
+      originBranch &&
+      originBranch !== taskBranch &&
+      originBranch !== session.defaultBranch &&
+      !DEFAULT_BRANCHES.has(originBranch)
+    ) {
       setShowOpenPrBaseChoice(true);
       return;
     }
