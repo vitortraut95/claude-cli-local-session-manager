@@ -1073,7 +1073,37 @@ export async function continueSession(id: string): Promise<void> {
   }
 
   // `id` is already validated above (alphanumeric/dash/underscore only), so it's safe to interpolate.
-  await launchInTerminal(`claude --resume ${id}`, cwd ?? undefined);
+  const resume = `claude --resume ${id}`;
+  const mismatch = cwd ? await findBranchMismatch(id, cwd) : null;
+  if (!mismatch) {
+    await launchInTerminal(resume, cwd ?? undefined);
+    return;
+  }
+
+  // Branch differs from the one the session last worked on (e.g. the folder was reused for another
+  // task since): print a line above the session rather than sending a first message, so just
+  // opening it to look something up doesn't trigger a model turn. (`--append-system-prompt` would
+  // reach the model for free, but the CLI ignores it on `--resume` — it reuses the recorded one.)
+  const { expected, current } = mismatch;
+  const warning = `Warning: this session last worked on branch "${expected}", but the folder is now on "${current}".`;
+  await launchInTerminal(
+    `printf '%s\\n\\n' ${posixShellQuote(warning)}; ${resume}`,
+    cwd ?? undefined,
+  );
+}
+
+/** Live branch of `cwd` vs. the last one the session's transcript recorded — null when they match
+ *  or either can't be determined (not a repo, detached HEAD, no branch ever recorded). */
+async function findBranchMismatch(
+  id: string,
+  cwd: string,
+): Promise<{ expected: string; current: string } | null> {
+  const filePath = await findSessionFilePath(id);
+  const expected = filePath ? await readSessionLatestGitBranch(filePath) : null;
+  if (!expected || expected === "HEAD") return null;
+  const current = await runGit(["rev-parse", "--abbrev-ref", "HEAD"], cwd).catch(() => null);
+  if (!current || current === "HEAD" || current === expected) return null;
+  return { expected, current };
 }
 
 /**
