@@ -418,12 +418,12 @@ export const translations = {
     "Usadas nos links do Jenkins, das previews e do PR. Salvas só neste app — nada muda no git. Deixe um campo em branco para voltar ao que o apelido ou o histórico da sessão indica (mostrado em cinza).",
     "Se usan en los enlaces de Jenkins, de las previews y del PR. Se guardan solo en esta app — no cambia nada en git. Deja un campo en blanco para volver a lo que indica el apodo o el historial de la sesión (en gris).",
   ),
-  "sessionBranchesModal.origin": dict("Origin branch", "Branch de origem", "Rama de origen"),
-  "sessionBranchesModal.destination": dict(
-    "Destination branch",
-    "Branch de destino",
-    "Rama de destino",
+  "sessionBranchesModal.origin": dict(
+    "Base (the branch the task was created from)",
+    "Base (branch de onde a tarefa foi criada)",
+    "Base (rama desde la que se creó la tarea)",
   ),
+  "sessionBranchesModal.destination": dict("Task branch", "Branch da tarefa", "Rama de la tarea"),
   "sessionBranchesModal.noFallback": dict("None", "Nenhuma", "Ninguna"),
 
   "jenkinsLinksModal.title": dict("Jenkins", "Jenkins", "Jenkins"),
@@ -1058,12 +1058,16 @@ export const translations = {
     "No se pudo copiar el comando.",
   ),
   "sessionCard.branches.edit": dict(
-    "Edit origin/destination branches",
-    "Editar branches de origem/destino",
-    "Editar ramas de origen/destino",
+    "Edit base and task branches",
+    "Editar base e branch da tarefa",
+    "Editar base y rama de la tarea",
   ),
-  "sessionCard.branches.originLabel": dict("Origin:", "Origem:", "Origen:"),
-  "sessionCard.branches.destinationLabel": dict("Destination:", "Destino:", "Destino:"),
+  "sessionCard.branches.originLabel": dict("Base:", "Base:", "Base:"),
+  "sessionCard.branches.destinationLabel": dict(
+    "Task branch:",
+    "Branch da tarefa:",
+    "Rama de la tarea:",
+  ),
   "sessionCard.nickname.edit": dict(
     "Edit local nickname",
     "Editar apelido local",
