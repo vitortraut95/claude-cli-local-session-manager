@@ -11,6 +11,7 @@ export type PendingAction =
   | "delete"
   | "continue"
   | "nickname"
+  | "branches"
   | "vscode"
   | "cursor"
   | "worktree-create"
@@ -388,6 +389,22 @@ export function useSessions() {
     [showToast, setPending, loadSessions, t],
   );
 
+  const setBranches = useCallback(
+    async (id: string, origin: string, destination: string) => {
+      setPending(id, "branches");
+      try {
+        await sessionsApi.setBranches(id, origin, destination);
+        await loadSessions();
+        showToast(t("useSessions.branchesSaved"), "success");
+      } catch (err) {
+        showToast(resolveApiErrorMessage(err, t, "useSessions.saveBranchesError"), "error");
+      } finally {
+        setPending(id, null);
+      }
+    },
+    [showToast, setPending, loadSessions, t],
+  );
+
   const [resumeConflict, setResumeConflict] = useState<{
     target: Session;
     sibling: Session;
@@ -597,6 +614,7 @@ export function useSessions() {
     removeSessions,
     resumeSession,
     setNickname,
+    setBranches,
     openInVSCode,
     openInCursor,
     openMissingWorktreeRootInVSCode,

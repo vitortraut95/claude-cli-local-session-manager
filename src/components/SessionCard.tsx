@@ -5,6 +5,7 @@ import {
   Code2,
   Copy,
   Folder,
+  GitBranch,
   GitFork,
   GitMerge,
   GitPullRequest,
@@ -32,6 +33,7 @@ import { JenkinsLinksModal } from "./JenkinsLinksModal";
 import { LinkifiedText } from "./LinkifiedText";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { NicknameModal } from "./NicknameModal";
+import { SessionBranchesModal } from "./SessionBranchesModal";
 import { OpenPrBaseChoiceModal } from "./OpenPrBaseChoiceModal";
 import { ResetRootConfirmModal } from "./ResetRootConfirmModal";
 import { SessionSizeMeter } from "./SessionSizeMeter";
@@ -41,7 +43,7 @@ import { Tooltip } from "./Tooltip";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
-import { getEnvPreviewGroups, getJenkinsLinks } from "../utils/jenkins";
+import { DEFAULT_BRANCHES, getEnvPreviewGroups, getJenkinsLinks } from "../utils/jenkins";
 import { useTeamLinks } from "../hooks/useTeamLinks";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import { resolveApiErrorMessage } from "../utils/apiClient";
@@ -54,6 +56,7 @@ type SessionCardProps = {
   onContinue: (session: Session) => void;
   onDeleteRequest: (session: Session) => void;
   onSetNickname: (session: Session, nickname: string) => void;
+  onSetBranches: (session: Session, origin: string, destination: string) => void;
   onOpenInVSCode: (session: Session) => void;
   onOpenInCursor: (session: Session) => void;
   onOpenMissingWorktreeRootInVSCode: (session: Session) => void;
@@ -70,6 +73,7 @@ export function SessionCard({
   onContinue,
   onDeleteRequest,
   onSetNickname,
+  onSetBranches,
   onOpenInVSCode,
   onOpenInCursor,
   onOpenMissingWorktreeRootInVSCode,
@@ -81,6 +85,7 @@ export function SessionCard({
   const isDeleting = pendingAction === "delete";
   const isContinuing = pendingAction === "continue";
   const isSettingNickname = pendingAction === "nickname";
+  const isSettingBranches = pendingAction === "branches";
   const isOpeningVSCode = pendingAction === "vscode";
   const isOpeningCursor = pendingAction === "cursor";
   const isDeletingWorktree = pendingAction === "worktree-delete";
@@ -92,6 +97,7 @@ export function SessionCard({
   const [showPreview, setShowPreview] = useState(false);
   const [showSubagents, setShowSubagents] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
+  const [showBranchesModal, setShowBranchesModal] = useState(false);
   const [showDeleteWorktreeConfirm, setShowDeleteWorktreeConfirm] = useState(false);
   const [showWorktreeToRootModal, setShowWorktreeToRootModal] = useState(false);
   const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
@@ -141,14 +147,15 @@ export function SessionCard({
 
   // Fetched on click rather than eagerly for every card — this is a git call (origin remote →
   // host + repo slug) on the server, only worth paying for when the user actually wants the link.
-  // When this task's branch was created off something other than the repo's default (`baseBranch`
-  // set, see taskBaseBranches.ts — applies whether the task used a worktree or not), defers to
+  // When this task's branch was created off something other than the repo's default (its origin
+  // branch — the nickname's, else `baseBranch` from taskBaseBranches.ts — is set and isn't
+  // main/master; applies whether the task used a worktree or not), defers to
   // OpenPrBaseChoiceModal instead of opening straight away — the plain compare link's implicit
   // default-branch comparison would otherwise show every commit already on that base as part of
   // the "diff" too.
   const handleOpenPr = async () => {
     if (!taskBranch) return;
-    if (session.baseBranch) {
+    if (originBranch && originBranch !== taskBranch && !DEFAULT_BRANCHES.has(originBranch)) {
       setShowOpenPrBaseChoice(true);
       return;
     }
@@ -453,6 +460,41 @@ export function SessionCard({
             </Tooltip>
           )}
         </div>
+
+        {/* Same gate as the Jenkins/PR links these branches feed (git repo, folder present). */}
+        {session.gitBranch !== null && !session.directoryMissing && !session.isAppRepo && (
+          <div className="flex min-w-0 items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+            <GitBranch className="h-3.5 w-3.5 shrink-0" />
+            <span className="flex min-w-0 flex-col break-all">
+              {originBranch && originBranch !== taskBranch && (
+                <span>
+                  {t("sessionCard.branches.originLabel")}{" "}
+                  <span className="text-gray-800 dark:text-gray-200">{originBranch}</span>
+                </span>
+              )}
+              <span>
+                {t("sessionCard.branches.destinationLabel")}{" "}
+                <span className="font-medium text-gray-800 dark:text-gray-200">{taskBranch}</span>
+              </span>
+            </span>
+            <Tooltip content={t("sessionCard.branches.edit")}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowBranchesModal(true)}
+                disabled={isSettingBranches}
+                aria-label={t("sessionCard.branches.edit")}
+                icon={
+                  isSettingBranches ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Pencil className="h-3 w-3" />
+                  )
+                }
+              />
+            </Tooltip>
+          </div>
+        )}
       </div>
 
       <p className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
@@ -617,6 +659,16 @@ export function SessionCard({
         open={showSubagents}
         onClose={() => setShowSubagents(false)}
       />
+      {showBranchesModal && (
+        <SessionBranchesModal
+          session={session}
+          onSave={(origin, destination) => {
+            setShowBranchesModal(false);
+            onSetBranches(session, origin, destination);
+          }}
+          onCancel={() => setShowBranchesModal(false)}
+        />
+      )}
       {showNicknameModal && (
         <NicknameModal
           currentNickname={session.nickname ?? ""}

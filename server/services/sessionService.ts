@@ -25,6 +25,7 @@ import {
   type SessionHead,
 } from "../utils/claudeProjects.js";
 import { getNicknames, setNickname } from "../utils/nicknames.js";
+import { getSessionBranches, setSessionBranchOverride } from "../utils/sessionBranches.js";
 import { forgetTaskBaseBranch, getTaskBaseBranches } from "../utils/taskBaseBranches.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import { AppError } from "../utils/httpError.js";
@@ -89,7 +90,15 @@ function repoRootFromMissingWorktreePath(cwd: string): string | null {
   return index === -1 ? null : cwd.slice(0, index);
 }
 
-type BuiltSession = Omit<Session, "isActive" | "nickname" | "baseBranch" | "isAppRepo">;
+type BuiltSession = Omit<
+  Session,
+  | "isActive"
+  | "nickname"
+  | "baseBranch"
+  | "isAppRepo"
+  | "savedOriginBranch"
+  | "savedDestinationBranch"
+>;
 
 async function buildSession(filePath: string): Promise<BuiltSession | null> {
   try {
@@ -264,7 +273,7 @@ export async function listSessions(): Promise<Session[]> {
 async function listSessionsUncached(): Promise<Session[]> {
   const files = await findJsonlFiles(getClaudeProjectsDir());
   scanProgress.total = files.length;
-  const [built, activeIds, nicknames, taskBaseBranches] = await Promise.all([
+  const [built, activeIds, nicknames, taskBaseBranches, sessionBranches] = await Promise.all([
     Promise.all(
       files.map(async (file) => {
         const result = await buildSession(file);
@@ -275,6 +284,7 @@ async function listSessionsUncached(): Promise<Session[]> {
     getActiveResumeSessionIds(),
     getNicknames(),
     getTaskBaseBranches(),
+    getSessionBranches(),
   ]);
 
   const sessions = built.filter((session): session is BuiltSession => session !== null);
@@ -326,6 +336,8 @@ async function listSessionsUncached(): Promise<Session[]> {
             ? (taskBaseBranches[repoRoot]?.[gitBranch]?.baseBranch ?? null)
             : null,
         isAppRepo: repoRoot === appRepoRoot,
+        savedOriginBranch: sessionBranches[session.id]?.origin ?? null,
+        savedDestinationBranch: sessionBranches[session.id]?.destination ?? null,
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -579,6 +591,22 @@ export async function setSessionNickname(id: string, nickname: string): Promise<
   }
 
   await setNickname(id, nickname);
+}
+
+/**
+ * Same as nicknames: purely local (`session-branches.json`), never touches the session's own
+ * `.jsonl`, so no active-session gate.
+ */
+export async function setSessionBranches(
+  id: string,
+  origin: string,
+  destination: string,
+): Promise<void> {
+  if (!isSafeSessionId(id)) {
+    throw invalidSessionIdError(id);
+  }
+
+  await setSessionBranchOverride(id, origin, destination);
 }
 
 /** Time to wait for an immediate spawn failure (e.g. binary missing) before assuming success. */

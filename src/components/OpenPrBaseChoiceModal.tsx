@@ -15,7 +15,8 @@ type OpenPrBaseChoiceModalProps = {
 };
 
 /**
- * Shown instead of opening the PR link directly whenever `session.baseBranch` is set — i.e. this
+ * Shown instead of opening the PR link directly whenever the session has an origin branch
+ * (`resolveSessionBranches` — the nickname's, else `session.baseBranch`) — i.e. this
  * task's branch was created off something other than the repo's own default, whether via a
  * worktree or checked out directly in the repo root (see `Session.baseBranch`/
  * `taskBaseBranches.ts`), so the plain compare link's implicit default-branch comparison would show
@@ -28,7 +29,10 @@ export function OpenPrBaseChoiceModal({ session, onClose }: OpenPrBaseChoiceModa
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [loadingChoice, setLoadingChoice] = useState<"base" | "default" | null>(null);
-  const { destination: taskBranch } = resolveSessionBranches(session);
+  // Resolved like the card's own links, so a base branch corrected via the nickname wins over the
+  // recorded `session.baseBranch`. The modal is only opened when this is non-null.
+  const { origin, destination: taskBranch } = resolveSessionBranches(session);
+  const baseBranch = origin ?? "";
 
   const openWith = async (base: string | undefined, choice: "base" | "default") => {
     if (!taskBranch) return;
@@ -53,13 +57,13 @@ export function OpenPrBaseChoiceModal({ session, onClose }: OpenPrBaseChoiceModa
   return (
     <Modal open title={t("openPrBaseChoiceModal.title")} onClose={handleClose} size="md">
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        {t("openPrBaseChoiceModal.intro", { branch: session.baseBranch ?? "" })}
+        {t("openPrBaseChoiceModal.intro", { branch: baseBranch })}
       </p>
 
       <div className="mt-4 rounded-lg border border-violet-200 p-3 dark:border-violet-900/60">
         <p className="flex items-center gap-1.5 text-sm font-medium text-violet-700 dark:text-violet-400">
           <GitBranch className="h-4 w-4 shrink-0" />
-          {t("openPrBaseChoiceModal.useBase.title", { branch: session.baseBranch ?? "" })}
+          {t("openPrBaseChoiceModal.useBase.title", { branch: baseBranch })}
         </p>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           {t("openPrBaseChoiceModal.useBase.body")}
@@ -69,7 +73,7 @@ export function OpenPrBaseChoiceModal({ session, onClose }: OpenPrBaseChoiceModa
             variant="outline"
             size="sm"
             disabled={busy}
-            onClick={() => void openWith(session.baseBranch ?? undefined, "base")}
+            onClick={() => void openWith(baseBranch || undefined, "base")}
             icon={
               loadingChoice === "base" ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -78,7 +82,7 @@ export function OpenPrBaseChoiceModal({ session, onClose }: OpenPrBaseChoiceModa
               )
             }
           >
-            {t("openPrBaseChoiceModal.useBase.button", { branch: session.baseBranch ?? "" })}
+            {t("openPrBaseChoiceModal.useBase.button", { branch: baseBranch })}
           </Button>
         </div>
       </div>

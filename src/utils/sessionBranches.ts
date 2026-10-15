@@ -34,10 +34,16 @@ function parseNicknameBranches(nickname: string | null): NicknameBranches {
 export type SessionBranches = { origin: string | null; destination: string | null };
 
 /**
- * Single source of truth for "which branches is this session actually about" — feeds the "Open
- * Jenkins" and "Open PR" links, both of which need the session's real task branch. Prefers the
- * session's own recorded fields (`gitBranch`/`baseBranch`, both server-computed) and only falls
- * back to parsing the nickname when they're missing or stale:
+ * Single source of truth for "which branches is this session actually about" — feeds the card's
+ * branch line and the "Open Jenkins"/"Open PR" links. Per side, first non-null wins:
+ * 1. `savedOriginBranch`/`savedDestinationBranch` — set on the card's branch editor or recorded by
+ *    "New task" at launch (`session-branches.json`).
+ * 2. The nickname's encoded branches — how they were corrected before (1) existed. Kept as a
+ *    fallback so older sessions keep working; meant to be dropped later together with a one-time
+ *    backfill of (1) from the nicknames (a backfill now would freeze them and make nickname edits
+ *    stop having any effect).
+ * 3. The session's own recorded fields (`gitBranch`/`baseBranch`, both server-computed), which can
+ *    be missing or stale:
  * - `gitBranch` is the *last branch recorded in the session's own transcript*
  *   (`claudeProjects.ts`'s `findLatestGitBranch`), not live git state — it misses a branch
  *   created/switched outside of any Claude Code turn in that session (e.g. work done ahead on the
@@ -47,11 +53,14 @@ export type SessionBranches = { origin: string | null; destination: string | nul
  *   advanced manually never gets an entry, so it's always null there regardless of the real base.
  */
 export function resolveSessionBranches(
-  session: Pick<Session, "gitBranch" | "baseBranch" | "nickname">,
+  session: Pick<
+    Session,
+    "gitBranch" | "baseBranch" | "nickname" | "savedOriginBranch" | "savedDestinationBranch"
+  >,
 ): SessionBranches {
   const fromNickname = parseNicknameBranches(session.nickname);
   return {
-    origin: session.baseBranch ?? fromNickname.origin,
-    destination: fromNickname.destination ?? session.gitBranch,
+    origin: session.savedOriginBranch ?? fromNickname.origin ?? session.baseBranch,
+    destination: session.savedDestinationBranch ?? fromNickname.destination ?? session.gitBranch,
   };
 }

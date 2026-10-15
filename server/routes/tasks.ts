@@ -226,6 +226,8 @@ tasksRouter.post("/launch", async (req, res) => {
       extractBooleanField(req.body, "permissionModeAuto", false),
       extractStringField(req.body, "repoRoot"),
       extractStringField(req.body, "nickname"),
+      extractStringField(req.body, "originBranch"),
+      extractStringField(req.body, "destinationBranch"),
     );
     res.json({ success: true });
   } catch (err) {

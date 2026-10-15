@@ -419,6 +419,8 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         permissionModeAuto,
         repoInfo.repoRoot,
         autoNickname,
+        trimmedBase,
+        trimmedBranch,
       );
       updateStep("launch", "done");
 
