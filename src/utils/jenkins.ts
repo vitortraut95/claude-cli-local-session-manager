@@ -12,7 +12,7 @@ import type { EnvPreviews } from "../services/tasksApi";
 const BRANCH_PREFIXES = ["env", "feature", "feat", "fix", "hotfix", "poc"];
 
 /** Default branches — a "ticket" variation of these makes no sense (no `env/main`). */
-const DEFAULT_BRANCHES = new Set(["main", "master"]);
+export const DEFAULT_BRANCHES = new Set(["main", "master"]);
 
 export type JenkinsLink =
   | { kind: "project"; url: string }

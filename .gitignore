@@ -31,6 +31,7 @@ claude-session-manager.desktop
 # existing copy doesn't show up as untracked.
 /session-continuations.json
 /task-base-branches.json
+/session-branches.json
 
 # Per-machine env config — see .env.example.
 .env

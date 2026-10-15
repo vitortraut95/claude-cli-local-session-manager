@@ -24,6 +24,7 @@ import {
 } from "../utils/git.js";
 import { AppError } from "../utils/httpError.js";
 import { setNickname } from "../utils/nicknames.js";
+import { setSessionBranchOverride } from "../utils/sessionBranches.js";
 import { recordTaskBaseBranch } from "../utils/taskBaseBranches.js";
 
 export type ProjectFolderOption = {
@@ -374,6 +375,10 @@ export async function createTaskWorktree(
  * discover the id from afterward. Skipped
  * entirely (no `--session-id` flag added) when `nickname` is blank, so a task created without one
  * still gets a plain CLI-assigned session id exactly as before this existed.
+ *
+ * `originBranch`/`destinationBranch`, when either is non-blank, are recorded the same way in
+ * `session-branches.json` (also forcing a pre-generated `--session-id`), so the card's branch
+ * links don't depend on parsing them back out of the nickname.
  */
 export async function launchTaskTerminal(
   worktreePath: string,
@@ -381,6 +386,8 @@ export async function launchTaskTerminal(
   permissionModeAuto: boolean,
   repoRoot: string,
   nickname = "",
+  originBranch = "",
+  destinationBranch = "",
 ): Promise<void> {
   const trimmedWorktreePath = worktreePath.trim();
   const trimmedPrompt = prompt.trim();
@@ -389,9 +396,11 @@ export async function launchTaskTerminal(
 
   const trimmedNickname = nickname.trim();
   let sessionIdFlag = "";
-  if (trimmedNickname) {
+  const hasBranches = Boolean(originBranch.trim() || destinationBranch.trim());
+  if (trimmedNickname || hasBranches) {
     const newSessionId = randomUUID();
-    await setNickname(newSessionId, trimmedNickname);
+    if (trimmedNickname) await setNickname(newSessionId, trimmedNickname);
+    if (hasBranches) await setSessionBranchOverride(newSessionId, originBranch, destinationBranch);
     sessionIdFlag = `--session-id ${newSessionId} `;
   }
 

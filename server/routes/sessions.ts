@@ -20,6 +20,7 @@ import {
   removeWorktreeAndCheckoutRoot,
   resetRootWorkingTree,
   setSessionNickname,
+  setSessionBranches,
   SessionActiveError,
   SessionNotFoundError,
   startFreshSessionAtMissingWorktreeRoot,
@@ -150,6 +151,19 @@ sessionsRouter.delete("/:id/branch", async (req, res) => {
 sessionsRouter.patch("/:id/nickname", async (req, res) => {
   try {
     await setSessionNickname(req.params.id, extractStringField(req.body, "nickname"));
+    res.json({ success: true });
+  } catch (err) {
+    sendErrorResponse(res, err, notFoundOrActive);
+  }
+});
+
+sessionsRouter.patch("/:id/branches", async (req, res) => {
+  try {
+    await setSessionBranches(
+      req.params.id,
+      extractStringField(req.body, "origin"),
+      extractStringField(req.body, "destination"),
+    );
     res.json({ success: true });
   } catch (err) {
     sendErrorResponse(res, err, notFoundOrActive);

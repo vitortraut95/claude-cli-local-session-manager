@@ -82,6 +82,13 @@ export async function setNickname(id: string, nickname: string): Promise<void> {
   );
 }
 
+/** Blank clears that side; both blank removes the saved branches (see server sessionBranches.ts). */
+export async function setBranches(id: string, origin: string, destination: string): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.patch(`/${encodeURIComponent(id)}/branches`, { origin, destination }),
+  );
+}
+
 /** Full, untruncated prompts for one session — see PromptPreviewModal for why this is fetched
  *  separately from `Session.prompts` rather than reused (that copy is capped for the list payload). */
 export async function fetchSessionPrompts(id: string): Promise<string[]> {

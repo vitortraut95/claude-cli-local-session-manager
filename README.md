@@ -91,6 +91,7 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | GET    | `/sessions`                           | List every session found in `~/.claude/projects`                               |
 | GET    | `/sessions/:id/prompts`               | Full, untruncated list of prompts for a session                                |
 | PATCH  | `/sessions/:id/nickname`              | Set or clear a session's local nickname                                        |
+| PATCH  | `/sessions/:id/branches`              | Set or clear a session's saved origin/destination branches                     |
 | DELETE | `/sessions/:id`                       | Delete the session's `.jsonl` file                                             |
 | POST   | `/sessions/:id/continue`              | Open a terminal running `claude --resume <id>`                                 |
 | POST   | `/sessions/:id/vscode`                | Open the session's working directory in VS Code                                |

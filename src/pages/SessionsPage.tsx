@@ -53,6 +53,7 @@ export function SessionsPage() {
     removeSessions,
     resumeSession,
     setNickname,
+    setBranches,
     openInVSCode,
     openInCursor,
     openMissingWorktreeRootInVSCode,
@@ -181,6 +182,7 @@ export function SessionsPage() {
               onContinue={(s) => resumeSession(s.id)}
               onDeleteRequest={handleDeleteRequest}
               onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
+              onSetBranches={(s, origin, destination) => setBranches(s.id, origin, destination)}
               onOpenInVSCode={(s) => openInVSCode(s.id)}
               onOpenInCursor={(s) => openInCursor(s.id)}
               onOpenMissingWorktreeRootInVSCode={(s) => openMissingWorktreeRootInVSCode(s.id)}

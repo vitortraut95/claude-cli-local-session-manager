@@ -408,6 +408,24 @@ export const translations = {
   ),
   "nicknameModal.placeholder": dict("Nickname", "Apelido", "Apodo"),
 
+  "sessionBranchesModal.title": dict(
+    "Session branches",
+    "Branches da sessão",
+    "Ramas de la sesión",
+  ),
+  "sessionBranchesModal.description": dict(
+    "Used by the Jenkins, preview and PR links. Saved only in this app — nothing is changed in git. Leave a field blank to go back to what the nickname or the session's transcript gives (shown in grey).",
+    "Usadas nos links do Jenkins, das previews e do PR. Salvas só neste app — nada muda no git. Deixe um campo em branco para voltar ao que o apelido ou o histórico da sessão indica (mostrado em cinza).",
+    "Se usan en los enlaces de Jenkins, de las previews y del PR. Se guardan solo en esta app — no cambia nada en git. Deja un campo en blanco para volver a lo que indica el apodo o el historial de la sesión (en gris).",
+  ),
+  "sessionBranchesModal.origin": dict("Origin branch", "Branch de origem", "Rama de origen"),
+  "sessionBranchesModal.destination": dict(
+    "Destination branch",
+    "Branch de destino",
+    "Rama de destino",
+  ),
+  "sessionBranchesModal.noFallback": dict("None", "Nenhuma", "Ninguna"),
+
   "jenkinsLinksModal.title": dict("Jenkins", "Jenkins", "Jenkins"),
   "jenkinsLinksModal.section.currentBranch": dict("Current branch", "Branch atual", "Rama actual"),
   "jenkinsLinksModal.section.originBranch": dict(
@@ -1039,6 +1057,13 @@ export const translations = {
     "Não foi possível copiar o comando.",
     "No se pudo copiar el comando.",
   ),
+  "sessionCard.branches.edit": dict(
+    "Edit origin/destination branches",
+    "Editar branches de origem/destino",
+    "Editar ramas de origen/destino",
+  ),
+  "sessionCard.branches.originLabel": dict("Origin:", "Origem:", "Origen:"),
+  "sessionCard.branches.destinationLabel": dict("Destination:", "Destino:", "Destino:"),
   "sessionCard.nickname.edit": dict(
     "Edit local nickname",
     "Editar apelido local",
@@ -1875,6 +1900,16 @@ export const translations = {
     "Nickname removed.",
     "Apelido removido.",
     "Se quitó el apodo.",
+  ),
+  "useSessions.branchesSaved": dict(
+    "Branches saved.",
+    "Branches salvas.",
+    "Se guardaron las ramas.",
+  ),
+  "useSessions.saveBranchesError": dict(
+    "Could not save the branches.",
+    "Não foi possível salvar as branches.",
+    "No se pudieron guardar las ramas.",
   ),
   "useSessions.saveNicknameError": dict(
     "Could not save the nickname.",

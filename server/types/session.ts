@@ -48,6 +48,12 @@ export type Session = {
    *  hides team-integration buttons like Jenkins that make no sense for the app itself. Optional:
    *  absent from a backend older than the field, treated as false. */
   isAppRepo?: boolean;
+  /** Origin/destination branches set by hand on the card (or recorded by "New task" at launch),
+   *  from `session-branches.json`. Take precedence over both the nickname-parsed branches and the
+   *  recorded `gitBranch`/`baseBranch` — see `resolveSessionBranches`. Optional: absent from a
+   *  backend older than the field, treated as null. */
+  savedOriginBranch?: string | null;
+  savedDestinationBranch?: string | null;
 };
 
 export type WorktreeToRootFileDiff = {

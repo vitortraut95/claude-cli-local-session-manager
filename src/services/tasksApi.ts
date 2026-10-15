@@ -211,16 +211,27 @@ export async function createTaskWorktree(
  *  launchTaskTerminal for why a positional arg, not a temp file/stdin). `repoRoot` is only used
  *  server-side to remember the project folder for next time's dropdown — pass "" if unknown.
  *  `nickname`, when non-blank, is set as the new session's local nickname before the terminal
- *  opens (see server-side launchTaskTerminal) — pass "" to skip it. */
+ *  opens (see server-side launchTaskTerminal) — pass "" to skip it. `originBranch`/
+ *  `destinationBranch` are recorded as the session's saved branches the same way. */
 export async function launchTaskTerminal(
   worktreePath: string,
   prompt: string,
   permissionModeAuto: boolean,
   repoRoot: string,
   nickname = "",
+  originBranch = "",
+  destinationBranch = "",
 ): Promise<void> {
   await withServerErrorMessage(() =>
-    client.post("/launch", { worktreePath, prompt, permissionModeAuto, repoRoot, nickname }),
+    client.post("/launch", {
+      worktreePath,
+      prompt,
+      permissionModeAuto,
+      repoRoot,
+      nickname,
+      originBranch,
+      destinationBranch,
+    }),
   );
 }
 
