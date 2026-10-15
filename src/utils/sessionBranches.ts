@@ -12,11 +12,11 @@ function asBranch(text: string): string | null {
 type NicknameBranches = { origin: string | null; destination: string | null };
 
 /**
- * Parses this app's own nickname conventions for a task session: the "New task" modal's
- * auto-nickname format ("<source> -> <dest>[ - <jira link>]"), or a nickname that's just the raw
- * destination branch on its own (no origin in that shape). Anything else (free-form text) yields
- * nulls rather than guessing — a nickname is a user-owned label, not guaranteed to encode a branch
- * at all.
+ * Parses this app's own nickname conventions for a task session: the "New task" modal's old
+ * auto-nickname format ("<source> -> <dest>[ - <jira link>]", no longer written — new tasks get
+ * just the link), or a nickname that's just the raw destination branch on its own (no origin in
+ * that shape). Anything else (free-form text) yields nulls rather than guessing — a nickname is a
+ * user-owned label, not guaranteed to encode a branch at all.
  */
 function parseNicknameBranches(nickname: string | null): NicknameBranches {
   if (!nickname) return { origin: null, destination: null };

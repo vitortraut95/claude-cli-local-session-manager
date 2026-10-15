@@ -344,14 +344,11 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   const trimmedBranch = branchName.trim();
   const trimmedBase = baseBranch.trim();
   const trimmedPrompt = promptText.trim();
-  // Auto nickname: "<source branch> -> <destination branch> - <Jira link>" — the trailing suffix
-  // is the full pasted link (not just the extracted id) so the nickname itself is clickable/
-  // copyable straight into e.g. a PR description; dropped entirely when the field is blank.
-  const trimmedJiraLink = jiraLink.trim();
-  const autoNickname =
-    trimmedBase && trimmedBranch
-      ? `${trimmedBase} -> ${trimmedBranch}${trimmedJiraLink ? ` - ${trimmedJiraLink}` : ""}`
-      : "";
+  // Auto nickname: just the full pasted Jira link (not only the extracted id), so the nickname
+  // itself is clickable/copyable straight into e.g. a PR description. The branches are no longer
+  // encoded here — they're recorded separately at launch (`session-branches.json`); the old
+  // "<base> -> <branch> - <link>" shape is still parsed for sessions created before that.
+  const autoNickname = jiraLink.trim();
   // Every other field is always visible now (no more link-gated reveal — see the render below),
   // but the Jira link is the only one still required to submit: it's the one piece of information
   // the rest of the form can't reasonably default/infer on its own.
