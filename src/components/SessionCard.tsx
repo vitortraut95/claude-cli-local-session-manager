@@ -285,6 +285,39 @@ export function SessionCard({
               <LinkifiedText text={session.nickname} />
             </span>
           )}
+          {/* Same gate as the Jenkins/PR links these branches feed (git repo, folder present). */}
+          {session.gitBranch !== null && !session.directoryMissing && !session.isAppRepo && (
+            <div className="flex min-w-0 items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+              <GitBranch className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 break-all">
+                {originBranch && originBranch !== taskBranch && (
+                  <>
+                    {t("sessionCard.branches.originLabel")}{" "}
+                    <span className="text-gray-800 dark:text-gray-200">{originBranch}</span>
+                    {" · "}
+                  </>
+                )}
+                {t("sessionCard.branches.destinationLabel")}{" "}
+                <span className="font-medium text-gray-800 dark:text-gray-200">{taskBranch}</span>
+              </span>
+              <Tooltip content={t("sessionCard.branches.edit")}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowBranchesModal(true)}
+                  disabled={isSettingBranches}
+                  aria-label={t("sessionCard.branches.edit")}
+                  icon={
+                    isSettingBranches ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Pencil className="h-3 w-3" />
+                    )
+                  }
+                />
+              </Tooltip>
+            </div>
+          )}
         </div>
         <Tooltip
           content={
@@ -460,41 +493,6 @@ export function SessionCard({
             </Tooltip>
           )}
         </div>
-
-        {/* Same gate as the Jenkins/PR links these branches feed (git repo, folder present). */}
-        {session.gitBranch !== null && !session.directoryMissing && !session.isAppRepo && (
-          <div className="flex min-w-0 items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-            <GitBranch className="h-3.5 w-3.5 shrink-0" />
-            <span className="flex min-w-0 flex-col break-all">
-              {originBranch && originBranch !== taskBranch && (
-                <span>
-                  {t("sessionCard.branches.originLabel")}{" "}
-                  <span className="text-gray-800 dark:text-gray-200">{originBranch}</span>
-                </span>
-              )}
-              <span>
-                {t("sessionCard.branches.destinationLabel")}{" "}
-                <span className="font-medium text-gray-800 dark:text-gray-200">{taskBranch}</span>
-              </span>
-            </span>
-            <Tooltip content={t("sessionCard.branches.edit")}>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowBranchesModal(true)}
-                disabled={isSettingBranches}
-                aria-label={t("sessionCard.branches.edit")}
-                icon={
-                  isSettingBranches ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Pencil className="h-3 w-3" />
-                  )
-                }
-              />
-            </Tooltip>
-          </div>
-        )}
       </div>
 
       <p className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
