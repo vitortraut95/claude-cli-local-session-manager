@@ -12,8 +12,10 @@ export function ToastViewport({ toasts, onDismiss }: ToastViewportProps) {
   const { t } = useLanguage();
   if (toasts.length === 0) return null;
 
+  // Highest possible z-index: a toast often explains something about the modal that's open (e.g. a
+  // blocked action inside it), so it must always sit above every modal/overlay.
   return (
-    <div className="fixed top-4 left-4 z-50 flex w-full max-w-sm flex-col gap-2">
+    <div className="fixed top-4 left-4 z-[2147483647] flex w-full max-w-sm flex-col gap-2">
       {toasts.map((toast) => (
         <div
           key={toast.id}
