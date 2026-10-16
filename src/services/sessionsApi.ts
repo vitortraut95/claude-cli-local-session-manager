@@ -13,6 +13,14 @@ const client = axios.create({
   baseURL: "/sessions",
 });
 
+/** `taskKey`: a key or ticket URL links the session to that task, "" = explicitly no task, null =
+ *  back to inferring it from the branch/nickname. `link` (optional) is stored on the task. */
+export async function setSessionTask(id: string, taskKey: string | null, link = ""): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.put(`/${encodeURIComponent(id)}/task`, { taskKey, link }),
+  );
+}
+
 export async function fetchSessions(): Promise<Session[]> {
   const { data } = await client.get<Session[]>("/");
   return data;

@@ -1,4 +1,4 @@
-import { ExternalLink, Layers, Loader2 } from "lucide-react";
+import { ExternalLink, Layers, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -10,6 +10,7 @@ import { Tooltip } from "./Tooltip";
 type TaskReposLineProps = {
   session: Session;
   onFilterByTask: (taskKey: string) => void;
+  onAddRepo: () => void;
 };
 
 const CHIP_CLASSNAME =
@@ -23,7 +24,7 @@ const CHIP_CLASSNAME =
  * in the search box (matched against `Session.taskKey`, cleared like any search); a repo with sessions of its own is reached the same way, while one with no
  * session yet (linked to the task, e.g. to work on it via `/add-dir`) opens its PR directly.
  */
-export function TaskReposLine({ session, onFilterByTask }: TaskReposLineProps) {
+export function TaskReposLine({ session, onFilterByTask, onAddRepo }: TaskReposLineProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [openingPrFor, setOpeningPrFor] = useState<string | null>(null);
@@ -106,6 +107,16 @@ export function TaskReposLine({ session, onFilterByTask }: TaskReposLineProps) {
           })}
         </>
       )}
+      <Tooltip content={t("taskModal.addRepoShortcut")}>
+        <button
+          type="button"
+          onClick={onAddRepo}
+          aria-label={t("taskModal.addRepoShortcut")}
+          className={CHIP_CLASSNAME}
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+      </Tooltip>
     </div>
   );
 }

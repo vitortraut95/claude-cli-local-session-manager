@@ -190,6 +190,7 @@ export function SessionsPage() {
               onDeleteWorktree={(s) => deleteWorktree(s.id)}
               onWorktreeSyncComplete={() => refresh()}
               onFilterByTask={handleFilterByTask}
+              onTaskChanged={refreshSoon}
             />
           ))}
         </div>
