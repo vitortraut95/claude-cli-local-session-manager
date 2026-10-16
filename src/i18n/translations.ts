@@ -139,21 +139,6 @@ export const translations = {
     "Isso não é uma chave de ticket (ex.: PROJ-123) nem um link de ticket.",
     "Eso no es una clave de ticket (p. ej. PROJ-123) ni un enlace de ticket.",
   ),
-  "apiError.taskBranchNotFound": dict(
-    "That branch doesn't exist in this repo.",
-    "Essa branch não existe neste repo.",
-    "Esa rama no existe en este repo.",
-  ),
-  "apiError.taskBranchNotCheckedOut": dict(
-    "The branch isn't checked out anywhere in this repo — check it out (or create it with a worktree) before opening a session there.",
-    "A branch não está em checkout em nenhum lugar deste repo — faça o checkout (ou crie com worktree) antes de abrir uma sessão lá.",
-    "La rama no está en checkout en ningún lugar de este repo — haz el checkout (o créala con worktree) antes de abrir una sesión allí.",
-  ),
-  "apiError.taskDirectoryBusy": dict(
-    "A session is already active in that folder — continue there instead.",
-    "Já tem uma sessão ativa nessa pasta — continue por lá.",
-    "Ya hay una sesión activa en esa carpeta — continúa allí.",
-  ),
   "apiError.taskRepoNotFound": dict(
     "That repo isn't part of this task.",
     "Esse repo não faz parte desta tarefa.",
@@ -1097,9 +1082,9 @@ export const translations = {
   ),
   "taskModal.taskSection": dict("Ticket", "Ticket", "Ticket"),
   "taskModal.inferredNote": dict(
-    "This key was detected from the branch or nickname — save it to keep it even if those change.",
-    "Esta chave foi deduzida da branch ou do apelido — salve para mantê-la mesmo se eles mudarem.",
-    "Esta clave se dedujo de la rama o del apodo — guárdala para mantenerla aunque cambien.",
+    "This key was detected from the branch name — save it to keep it even if the branch changes.",
+    "Esta chave foi deduzida do nome da branch — salve para mantê-la mesmo se a branch mudar.",
+    "Esta clave se dedujo del nombre de la rama — guárdala para mantenerla aunque la rama cambie.",
   ),
   "taskModal.keyLabel": dict(
     "Ticket key (or link)",
@@ -1108,7 +1093,6 @@ export const translations = {
   ),
   "taskModal.linkLabel": dict("Ticket link", "Link do ticket", "Enlace del ticket"),
   "taskModal.saveTask": dict("Save ticket", "Salvar ticket", "Guardar ticket"),
-  "taskModal.noTask": dict("No task", "Sem tarefa", "Sin tarea"),
   "taskModal.inferTask": dict(
     "Detect automatically",
     "Deduzir automaticamente",
@@ -1143,53 +1127,23 @@ export const translations = {
   "taskModal.sessionCount.many": dict("{count} sessions", "{count} sessões", "{count} sesiones"),
   "taskModal.copyAddDir": dict("Copy /add-dir", "Copiar /add-dir", "Copiar /add-dir"),
   "taskModal.unlink": dict("Unlink", "Desvincular", "Desvincular"),
-  "taskModal.step.link": dict(
-    "Link the existing branch to the task",
-    "Vincular a branch existente à tarefa",
-    "Vincular la rama existente a la tarea",
-  ),
   "taskModal.addRepo.open": dict("Add repo", "Adicionar repo", "Agregar repo"),
   "taskModal.addRepo.title": dict(
     "Add a repo to this task",
     "Adicionar um repo a esta tarefa",
     "Agregar un repo a esta tarea",
   ),
-  "taskModal.addRepo.modeCreate": dict(
-    "Create a new branch",
-    "Criar uma branch nova",
-    "Crear una rama nueva",
-  ),
-  "taskModal.addRepo.modeLink": dict(
-    "Link a branch that already exists",
-    "Vincular uma branch que já existe",
-    "Vincular una rama que ya existe",
+  "taskModal.addRepo.hint": dict(
+    "Creates the task's branch there and links it. Then paste the /add-dir command into the session working on the task.",
+    "Cria a branch da tarefa lá e vincula. Depois cole o comando /add-dir na sessão que está trabalhando na tarefa.",
+    "Crea la rama de la tarea allí y la vincula. Luego pega el comando /add-dir en la sesión que trabaja en la tarea.",
   ),
   "taskModal.addRepo.basePlaceholder": dict(
     "Repo's default branch",
     "Branch padrão do repo",
     "Rama por defecto del repo",
   ),
-  "taskModal.addRepo.launch": dict(
-    "Open a new session there (it's told where the task's other repos are)",
-    "Abrir uma sessão nova lá (ela recebe onde estão os outros repos da tarefa)",
-    "Abrir una sesión nueva allí (se le indica dónde están los otros repos de la tarea)",
-  ),
-  "taskModal.addRepo.noLaunch": dict(
-    "Only prepare the branch — I'll add it to an open session with /add-dir",
-    "Só preparar a branch — vou adicionar a uma sessão aberta com /add-dir",
-    "Solo preparar la rama — la agregaré a una sesión abierta con /add-dir",
-  ),
-  "taskModal.addRepo.promptPlaceholder": dict(
-    "Instructions for the new session (optional)",
-    "Instruções para a nova sessão (opcional)",
-    "Instrucciones para la nueva sesión (opcional)",
-  ),
   "taskModal.addRepo.submit": dict("Add to task", "Adicionar à tarefa", "Agregar a la tarea"),
-  "taskModal.addRepo.launched": dict(
-    "Terminal opened. Check your taskbar if it didn't come to the front.",
-    "Terminal aberto. Confira a barra de tarefas se ele não veio para a frente.",
-    "Terminal abierta. Revisa la barra de tareas si no pasó al frente.",
-  ),
   "taskModal.addRepo.error": dict(
     "Couldn't add the repo.",
     "Não foi possível adicionar o repo.",
@@ -1206,11 +1160,6 @@ export const translations = {
     "Adicionado {branch} — em {path}",
     "Agregado {branch} — en {path}",
   ),
-  "taskModal.addRepo.notCheckedOut": dict(
-    "The branch isn't checked out anywhere yet — check it out before working on it.",
-    "A branch ainda não está em checkout em lugar nenhum — faça o checkout antes de trabalhar nela.",
-    "La rama todavía no está en checkout en ningún lugar — haz el checkout antes de trabajar en ella.",
-  ),
   "sessionCard.task.label": dict("Task:", "Tarefa:", "Tarea:"),
   "sessionCard.task.filter": dict(
     "Search for this task",
@@ -1218,9 +1167,9 @@ export const translations = {
     "Buscar esta tarea",
   ),
   "sessionCard.task.inferred": dict(
-    "Detected from the branch or nickname",
-    "Deduzida da branch ou do apelido",
-    "Deducida de la rama o del apodo",
+    "Detected from the branch name",
+    "Deduzida do nome da branch",
+    "Deducida del nombre de la rama",
   ),
   "sessionCard.task.alsoIn": dict("also in:", "também em:", "también en:"),
   "sessionCard.task.repoSessions.one": dict(
@@ -1706,9 +1655,9 @@ export const translations = {
     "Otros repos de esta tarea (opcional)",
   ),
   "newTaskModal.extraRepos.hint": dict(
-    "Each gets the same branch ({branch}), off the base you type (blank = the repo's default). You can also add repos later from the card.",
-    "Cada um recebe a mesma branch ({branch}), a partir da base indicada (vazio = padrão do repo). Também dá para adicionar depois, pelo card.",
-    "Cada uno recibe la misma rama ({branch}), desde la base indicada (vacío = la del repo). También se pueden agregar después, desde la tarjeta.",
+    "Each gets the same branch ({branch}), off the base you type (blank = the repo's default), and joins the session via --add-dir. You can also add repos later from the card.",
+    "Cada um recebe a mesma branch ({branch}), a partir da base indicada (vazio = padrão do repo), e entra na sessão via --add-dir. Também dá para adicionar depois, pelo card.",
+    "Cada uno recibe la misma rama ({branch}), desde la base indicada (vacío = la del repo), y entra en la sesión vía --add-dir. También se pueden agregar después, desde la tarjeta.",
   ),
   "newTaskModal.extraRepos.needsKey": dict(
     "Needs a ticket key in the link (e.g. PROJ-123) to group the repos into one task.",
@@ -1717,16 +1666,6 @@ export const translations = {
   ),
   "newTaskModal.extraRepos.add": dict("+ Add a repo…", "+ Adicionar repo…", "+ Agregar repo…"),
   "newTaskModal.extraRepos.remove": dict("Remove", "Remover", "Quitar"),
-  "newTaskModal.extraRepos.modeSingle": dict(
-    "One session with every repo (the others added via --add-dir)",
-    "Uma sessão com todos os repos (os outros entram via --add-dir)",
-    "Una sesión con todos los repos (los otros vía --add-dir)",
-  ),
-  "newTaskModal.extraRepos.modePerRepo": dict(
-    "One session in each repo",
-    "Uma sessão em cada repo",
-    "Una sesión en cada repo",
-  ),
   "newTaskModal.extraRepos.promptNote": dict(
     "This task also spans these folders (already added with --add-dir): {dirs}",
     "Esta tarefa também envolve estas pastas (já adicionadas com --add-dir): {dirs}",

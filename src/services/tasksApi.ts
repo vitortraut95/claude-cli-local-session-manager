@@ -262,29 +262,24 @@ export async function fetchTask(taskKey: string): Promise<TaskDetails> {
   return data;
 }
 
-export type AddRepoStep = "repo" | "base" | "worktree" | "link" | "launch";
+export type AddRepoStep = "repo" | "base" | "worktree";
 
 export type AddRepoInput = {
   folderPath: string;
-  mode: "create" | "link-existing";
   branchName: string;
   baseBranch: string;
   useLocalBranch: boolean;
   /** Omitted = the server's smart default (a worktree only when the root has an active session). */
   useWorktree?: boolean;
-  launch: boolean;
-  prompt: string;
-  permissionModeAuto: boolean;
-  nickname: string;
   taskLink: string;
 };
 
 export type AddRepoResult = {
   repoRoot: string;
   branch: string;
-  baseBranch: string | null;
-  workingDirectory: string | null;
-  sessionId: string | null;
+  baseBranch: string;
+  /** Where the branch is checked out — what to `/add-dir`. */
+  workingDirectory: string;
   completedSteps: AddRepoStep[];
 };
 

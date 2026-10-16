@@ -1,5 +1,4 @@
-import path from "node:path";
-import { branchExists, getDefaultBaseBranch, listWorktrees } from "../utils/git.js";
+import { getDefaultBaseBranch } from "../utils/git.js";
 import { AppError } from "../utils/httpError.js";
 import { isTaskKey, normalizeTaskKey } from "../utils/taskKeys.js";
 import {
@@ -16,12 +15,7 @@ import {
   listSessions,
   SessionNotFoundError,
 } from "./sessionService.js";
-import {
-  createTaskWorktree,
-  getRepoInfo,
-  launchTaskTerminal,
-  resolveBaseBranch,
-} from "./taskService.js";
+import { createTaskWorktree, getRepoInfo, resolveBaseBranch } from "./taskService.js";
 
 /**
  * Tasks that span several repos: one ticket key (`PROJ-123`) grouping branches in different repos
@@ -141,18 +135,18 @@ export async function getSessionTask(id: string): Promise<SessionTask> {
 }
 
 /**
- * `rawKey` null = back to inferring it from the branch/nickname; "" = explicitly no task; anything
- * else must contain a ticket key. A session can be linked before it exists in the list (e.g. right
+ * A blank `rawKey` clears the saved key (it's then inferred from the branch again); anything else
+ * must contain a ticket key. A session can be linked before it exists in the list (e.g. right
  * after a launch), so the id isn't looked up — only checked for shape.
  */
 export async function setSessionTask(
   id: string,
-  rawKey: string | null,
+  rawKey: string,
   link: string | null,
 ): Promise<void> {
   if (!isSafeSessionId(id)) throw new SessionNotFoundError(id);
-  if (rawKey === null || rawKey.trim() === "") {
-    await setSessionTaskKey(id, rawKey === null ? null : "");
+  if (rawKey.trim() === "") {
+    await setSessionTaskKey(id, null);
     return;
   }
   const key = parseTaskKeyParam(rawKey);
@@ -164,7 +158,7 @@ export async function setTaskLink(key: string, link: string): Promise<void> {
   await upsertTask(key, link);
 }
 
-export type AddRepoStep = "repo" | "base" | "worktree" | "link" | "launch";
+export type AddRepoStep = "repo" | "base" | "worktree";
 
 /** Carries which step failed and which had already finished — nothing is rolled back, so the
  *  caller can tell the user exactly what exists now (same idea as "New task"'s step list). */
@@ -185,49 +179,32 @@ export class TaskStepError extends AppError {
 
 export type AddRepoInput = {
   folderPath: string;
-  /** "create" = new branch (+ worktree); "link-existing" = the branch already exists there. */
-  mode: "create" | "link-existing";
   /** Blank = the branch name the task already uses in its other repos. */
   branchName: string;
-  /** Blank = the repo's default branch. Only used by "create". */
+  /** Blank = the repo's default branch. */
   baseBranch: string;
   useLocalBranch: boolean;
   /** null = same smart default as "New task": a worktree only when the root already has an
-   *  active session. Only used by "create". */
+   *  active session. */
   useWorktree: boolean | null;
-  /** Open a terminal with a new session there. Otherwise only the git work + link happen (e.g.
-   *  to `/add-dir` the path into an already-open session instead). */
-  launch: boolean;
-  prompt: string;
-  /** Prepend a short note telling the new session which other repos/branches the task spans. */
-  includeTaskContext: boolean;
-  permissionModeAuto: boolean;
-  nickname: string;
   taskLink: string | null;
 };
 
 export type AddRepoResult = {
   repoRoot: string;
   branch: string;
-  baseBranch: string | null;
-  /** Where the branch is checked out (worktree or the repo root); null when "link-existing"
-   *  found it checked out nowhere. */
-  workingDirectory: string | null;
-  sessionId: string | null;
+  baseBranch: string;
+  /** Where the branch is checked out (worktree or the repo root) — what to `/add-dir`. */
+  workingDirectory: string;
   completedSteps: AddRepoStep[];
   task: TaskDetails;
 };
 
-function taskContextNote(task: TaskDetails, link: string | null, exceptRoot: string): string {
-  const others = task.repos.filter((repo) => repo.repoRoot !== exceptRoot);
-  const header = `This is part of task ${task.key}${link ? ` (${link})` : ""}, which spans several repos.`;
-  if (others.length === 0) return header;
-  const lines = others.map(
-    (repo) => `- ${repo.project}: branch ${repo.branch}, at ${repo.worktreePath ?? repo.repoRoot}`,
-  );
-  return `${header} The other parts:\n${lines.join("\n")}`;
-}
-
+/**
+ * Creates the task's branch in another repo and links it to the task. Deliberately doesn't open a
+ * session: the repo is meant to join one already working on the task (`/add-dir <path>`), or the
+ * "New task" one via `--add-dir` — one session per task, not one per repo.
+ */
 export async function addRepoToTask(key: string, input: AddRepoInput): Promise<AddRepoResult> {
   const completed: AddRepoStep[] = [];
   async function step<T>(name: AddRepoStep, run: () => Promise<T>): Promise<T> {
@@ -257,91 +234,27 @@ export async function addRepoToTask(key: string, input: AddRepoInput): Promise<A
   }
 
   const repo = await step("repo", () => getRepoInfo(input.folderPath));
-  const { repoRoot } = repo;
-  let workingDirectory: string | null;
-  let baseBranch: string | null = null;
-
-  if (input.mode === "create") {
-    const base = input.baseBranch.trim() || repo.defaultBaseBranch;
-    const { baseBranchRef } = await step("base", () =>
-      resolveBaseBranch(repoRoot, base, input.useLocalBranch),
-    );
-    const { worktreePath } = await step("worktree", () =>
-      createTaskWorktree(
-        repoRoot,
-        branch,
-        baseBranchRef,
-        base,
-        input.useWorktree ?? repo.hasActiveSessionInRoot,
-        key,
-        link,
-      ),
-    );
-    workingDirectory = worktreePath;
-    baseBranch = base;
-  } else {
-    workingDirectory = await step("link", async () => {
-      if (!(await branchExists(repoRoot, branch))) {
-        throw new AppError(
-          "TASK_BRANCH_NOT_FOUND",
-          `Branch "${branch}" doesn't exist in ${path.basename(repoRoot)}.`,
-        );
-      }
-      const checkedOutAt =
-        (await listWorktrees(repoRoot)).find((entry) => entry.branch === branch)?.path ?? null;
-      await upsertTask(key, link);
-      await linkRepoBranchToTask(
-        repoRoot,
-        branch,
-        key,
-        checkedOutAt && checkedOutAt !== repoRoot ? checkedOutAt : null,
-      );
-      return checkedOutAt;
-    });
-  }
-
-  let sessionId: string | null = null;
-  if (input.launch) {
-    const launchDir = workingDirectory;
-    sessionId = await step("launch", async () => {
-      if (!launchDir) {
-        throw new AppError(
-          "TASK_BRANCH_NOT_CHECKED_OUT",
-          `Branch "${branch}" isn't checked out anywhere in ${path.basename(repoRoot)} — check it ` +
-            `out (or create it with a worktree) before opening a session there.`,
-        );
-      }
-      const sessions = await listSessions();
-      if (sessions.some((s) => s.workingDirectory === launchDir && s.isActive)) {
-        throw new AppError(
-          "TASK_DIRECTORY_BUSY",
-          `A session is already active in ${launchDir} — continue there instead.`,
-        );
-      }
-      const context = input.includeTaskContext
-        ? taskContextNote(await getTaskDetails(key, sessions), link, repoRoot)
-        : "";
-      const prompt = [context, input.prompt.trim()].filter(Boolean).join("\n\n");
-      const result = await launchTaskTerminal({
-        worktreePath: launchDir,
-        prompt,
-        permissionModeAuto: input.permissionModeAuto,
-        repoRoot,
-        nickname: input.nickname,
-        originBranch: baseBranch ?? "",
-        destinationBranch: branch,
-        taskKey: key,
-      });
-      return result.sessionId;
-    });
-  }
+  const base = input.baseBranch.trim() ? input.baseBranch.trim() : repo.defaultBaseBranch;
+  const { baseBranchRef } = await step("base", () =>
+    resolveBaseBranch(repo.repoRoot, base, input.useLocalBranch),
+  );
+  const { worktreePath } = await step("worktree", () =>
+    createTaskWorktree(
+      repo.repoRoot,
+      branch,
+      baseBranchRef,
+      base,
+      input.useWorktree ?? repo.hasActiveSessionInRoot,
+      key,
+      link,
+    ),
+  );
 
   return {
-    repoRoot,
+    repoRoot: repo.repoRoot,
     branch,
-    baseBranch,
-    workingDirectory,
-    sessionId,
+    baseBranch: base,
+    workingDirectory: worktreePath,
     completedSteps: completed,
     task: await getTaskDetails(key),
   };

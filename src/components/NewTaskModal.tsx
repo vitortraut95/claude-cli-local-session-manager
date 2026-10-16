@@ -19,7 +19,7 @@ import { Button } from "./Button";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
 import { ProjectFolderField } from "./ProjectFolderField";
-import { type ExtraRepo, ExtraReposField, type ExtraReposMode } from "./ExtraReposField";
+import { type ExtraRepo, ExtraReposField } from "./ExtraReposField";
 import { Select } from "./Select";
 import { SkillsHubModal } from "./SkillsHubModal";
 import { SkillsHubPanel } from "./SkillsHubPanel";
@@ -153,7 +153,6 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   // exactly which step is running, finished, or failed rather than one opaque success/failure.
   const [steps, setSteps] = useState<Step[]>([]);
   const [extraRepos, setExtraRepos] = useState<ExtraRepo[]>([]);
-  const [extraReposMode, setExtraReposMode] = useState<ExtraReposMode>("single");
 
   // Team skills hub: status reloaded on every open, shown as a panel only — never
   // updated as part of creating a task (someone may not want their clone pulled); updating is an
@@ -309,7 +308,6 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     setActiveSessionInRoot(null);
     setSteps([]);
     setExtraRepos([]);
-    setExtraReposMode("single");
   }, [resetFolder, defaultPromptLoaded, branchTypes, useWorktreeDefault]);
 
   const promptDirty =
@@ -393,7 +391,6 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       })),
       stepFor("launch"),
     ]);
-    const singleSession = extraReposMode === "single";
 
     const composedPrompt = [
       jiraLink.trim() ? `${t("newTaskModal.taskPrefix")}: ${jiraLink.trim()}` : null,
@@ -437,17 +434,12 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         try {
           const result = await tasksApi.addRepoToTask(jiraId ?? "", {
             folderPath: repo.path,
-            mode: "create",
             branchName: trimmedBranch,
             baseBranch: repo.baseBranch.trim(),
             useLocalBranch: false,
-            launch: !singleSession,
-            prompt: composedPrompt,
-            permissionModeAuto,
-            nickname: autoNickname,
             taskLink: jiraLink.trim(),
           });
-          if (result.workingDirectory) addDirs.push(result.workingDirectory);
+          addDirs.push(result.workingDirectory);
           updateStep(key, "done");
         } catch (err) {
           extraFailed = true;
@@ -455,7 +447,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         }
       }
       const mainPrompt =
-        singleSession && addDirs.length > 0
+        addDirs.length > 0
           ? `${composedPrompt}\n\n${t("newTaskModal.extraRepos.promptNote", {
               dirs: addDirs.join(", "),
             })}`
@@ -471,7 +463,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         trimmedBase,
         trimmedBranch,
         jiraId ?? "",
-        singleSession ? addDirs : [],
+        addDirs,
       );
       updateStep("launch", "done");
 
@@ -592,8 +584,6 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           branchName={trimmedBranch}
           value={extraRepos}
           onChange={setExtraRepos}
-          mode={extraReposMode}
-          onModeChange={setExtraReposMode}
           disabled={jiraId === null}
         />
 

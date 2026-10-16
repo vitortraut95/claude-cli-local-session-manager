@@ -61,7 +61,7 @@ export type Session = {
    *  Optional: absent from an older backend. */
   repoRoot?: string | null;
   /** Ticket key of the task this session belongs to (`PROJ-123`) — set by "New task"/"add repo",
-   *  by hand, or inferred from the branch/nickname (`taskKeyInferred`) when exactly one key
+   *  by hand, or inferred from the task branch (`taskKeyInferred`) when exactly one key
    *  appears there. Optional: absent from an older backend. */
   taskKey?: string | null;
   taskKeyInferred?: boolean;

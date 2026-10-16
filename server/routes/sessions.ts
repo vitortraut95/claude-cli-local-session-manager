@@ -179,13 +179,12 @@ sessionsRouter.get("/:id/task", async (req, res) => {
   }
 });
 
-/** `taskKey`: a key/ticket URL links it, "" = explicitly no task, null = back to inferring. */
+/** `taskKey`: a key/ticket URL saves it; blank = back to inferring it from the branch. */
 sessionsRouter.put("/:id/task", async (req, res) => {
   try {
-    const raw: unknown = (req.body as { taskKey?: unknown } | undefined)?.taskKey;
     await setSessionTask(
       req.params.id,
-      typeof raw === "string" ? raw : null,
+      extractStringField(req.body, "taskKey"),
       extractStringField(req.body, "link") || null,
     );
     res.json({ success: true });
