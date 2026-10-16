@@ -153,6 +153,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   // exactly which step is running, finished, or failed rather than one opaque success/failure.
   const [steps, setSteps] = useState<Step[]>([]);
   const [extraRepos, setExtraRepos] = useState<ExtraRepo[]>([]);
+  const [useExtraRepos, setUseExtraRepos] = useState(false);
 
   // Team skills hub: status reloaded on every open, shown as a panel only — never
   // updated as part of creating a task (someone may not want their clone pulled); updating is an
@@ -308,6 +309,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     setActiveSessionInRoot(null);
     setSteps([]);
     setExtraRepos([]);
+    setUseExtraRepos(false);
   }, [resetFolder, defaultPromptLoaded, branchTypes, useWorktreeDefault]);
 
   const promptDirty =
@@ -585,6 +587,15 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           value={extraRepos}
           onChange={setExtraRepos}
           disabled={jiraId === null}
+          onBlockedAdd={() => {
+            showToast(t("newTaskModal.extraRepos.needsLinkFirst"), "error");
+            jiraLinkInputRef.current?.focus();
+          }}
+          enabled={useExtraRepos}
+          onEnabledChange={(enabled) => {
+            setUseExtraRepos(enabled);
+            if (!enabled) setExtraRepos([]);
+          }}
         />
 
         <SkillsHubPanel

@@ -1664,6 +1664,13 @@ export const translations = {
     "Precisa de uma chave de ticket no link (ex.: PROJ-123) para agrupar os repos numa tarefa.",
     "Necesita una clave de ticket en el enlace (p. ej. PROJ-123) para agrupar los repos en una tarea.",
   ),
+  "newTaskModal.extraRepos.needsLinkFirst": dict(
+    "First paste the ticket link (with its key, e.g. PROJ-123) — the extra repos are grouped by it.",
+    "Primeiro cole o link do Jira (com a chave, ex.: PROJ-123) — os repos extras são agrupados por ela.",
+    "Primero pega el enlace del ticket (con la clave, p. ej. PROJ-123) — los repos extra se agrupan por ella.",
+  ),
+  "newTaskModal.extraRepos.yes": dict("Yes", "Sim", "Sí"),
+  "newTaskModal.extraRepos.no": dict("No", "Não", "No"),
   "newTaskModal.extraRepos.add": dict("+ Add a repo…", "+ Adicionar repo…", "+ Agregar repo…"),
   "newTaskModal.extraRepos.remove": dict("Remove", "Remover", "Quitar"),
   "newTaskModal.extraRepos.promptNote": dict(
