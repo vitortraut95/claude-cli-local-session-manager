@@ -341,10 +341,10 @@ async function listSessionsUncached(): Promise<Session[]> {
       const saved = store.sessions[session.id];
       const branchEntry = repoRoot && gitBranch ? store.repoBranches[repoRoot]?.[gitBranch] : null;
       const nickname = saved?.nickname ?? null;
-      // Explicit (session's own, then its branch's) beats inferred; "" = explicitly none.
+      // Explicit (session's own, then its branch's) beats inferred from the task branch.
       const recordedTaskKey = saved?.taskKey ?? branchEntry?.taskKey ?? null;
       const inferredTaskKey =
-        recordedTaskKey === null ? inferTaskKey(saved?.destination ?? gitBranch, nickname) : null;
+        recordedTaskKey === null ? inferTaskKey(saved?.destination ?? gitBranch) : null;
       return {
         ...session,
         project,
@@ -358,8 +358,7 @@ async function listSessionsUncached(): Promise<Session[]> {
         savedDestinationBranch: saved?.destination ?? null,
         defaultBranch: repoRoot ? (defaultBranchByRoot.get(repoRoot) ?? null) : null,
         repoRoot,
-        // "" (explicitly none) collapses to null here.
-        taskKey: recordedTaskKey === "" ? null : (recordedTaskKey ?? inferredTaskKey),
+        taskKey: recordedTaskKey ?? inferredTaskKey,
         taskKeyInferred: inferredTaskKey !== null,
       };
     })

@@ -1,15 +1,4 @@
-import {
-  Check,
-  Copy,
-  ExternalLink,
-  GitBranch,
-  Layers,
-  Link2,
-  Loader2,
-  Plus,
-  Tag,
-  Unlink,
-} from "lucide-react";
+import { Check, Copy, GitBranch, Layers, Link2, Loader2, Plus, Tag, Unlink } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import { useLanguage } from "../hooks/useLanguage";
@@ -42,17 +31,11 @@ const SECTION_TITLE_CLASSNAME =
   "mb-2 flex items-center gap-1.5 text-sm font-semibold text-gray-800 dark:text-gray-200";
 const LABEL_CLASSNAME = "flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400";
 const CHECKBOX_CLASSNAME = "mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100";
-const TEXTAREA_CLASSNAME =
-  "w-full rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900 placeholder:text-gray-400 " +
-  "focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-gray-700 " +
-  "dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:ring-gray-100/10";
 
 const STEP_LABEL_KEYS: Record<tasksApi.AddRepoStep, TranslationKey> = {
   repo: "newTaskModal.step.repo",
   base: "newTaskModal.step.base",
   worktree: "newTaskModal.step.worktree",
-  link: "taskModal.step.link",
-  launch: "newTaskModal.step.launch",
 };
 
 type AddRepoOutcome =
@@ -117,22 +100,23 @@ export function TaskModal({
     [showToast, t],
   );
 
+  // Follows the session once the list refetches (the server normalizes a pasted URL, and "detect
+  // automatically" only knows the inferred key after that).
   useEffect(() => {
-    const timer = setTimeout(() => void loadTask(session.taskKey ?? null), 0);
+    const timer = setTimeout(() => {
+      setTaskKey(session.taskKey ?? null);
+      void loadTask(session.taskKey ?? null);
+    }, 0);
     return () => clearTimeout(timer);
   }, [loadTask, session.taskKey]);
 
-  const saveTaskKey = async (value: string | null) => {
+  /** A key/link saves it on the session; "" = back to detecting it from the branch. */
+  const saveTaskKey = async (value: string) => {
     setSavingKey(true);
     try {
       await sessionsApi.setSessionTask(session.id, value, linkInput.trim());
-      const nextKey = value === null ? null : value.trim() ? value.trim().toUpperCase() : null;
-      // A pasted URL is normalized server-side; the refetched list has the canonical key.
-      setTaskKey(nextKey && /^[A-Z][A-Z0-9]+-\d+$/.test(nextKey) ? nextKey : null);
       showToast(t("taskModal.taskSaved"), "success");
       onChanged();
-      if (nextKey && /^[A-Z][A-Z0-9]+-\d+$/.test(nextKey)) await loadTask(nextKey);
-      else setTask(null);
     } catch (err) {
       showToast(resolveApiErrorMessage(err, t, "taskModal.saveError"), "error");
     } finally {
@@ -223,16 +207,8 @@ export function TaskModal({
           </Button>
           <Button
             size="sm"
-            variant="outline"
-            onClick={() => void saveTaskKey("")}
-            disabled={savingKey}
-          >
-            {t("taskModal.noTask")}
-          </Button>
-          <Button
-            size="sm"
             variant="ghost"
-            onClick={() => void saveTaskKey(null)}
+            onClick={() => void saveTaskKey("")}
             disabled={savingKey}
           >
             {t("taskModal.inferTask")}
@@ -380,7 +356,7 @@ type AddRepoFormProps = {
   defaultBranch: string;
   startOpen: boolean;
   /** The session's key is only inferred — adding a repo pins it, so the task can't silently
-   *  lose this session if its branch/nickname changes later. */
+   *  lose this session if its branch changes later. */
   pinSessionKey: boolean;
   sessionId: string;
   onAdded: () => Promise<void>;
@@ -388,6 +364,8 @@ type AddRepoFormProps = {
   copiedKey: string | null;
 };
 
+/** Creates the task's branch in another repo and links it — then the `/add-dir` command to paste
+ *  into the session already working on the task (one session per task, not one per repo). */
 function AddRepoForm({
   taskKey,
   taskLink,
@@ -400,39 +378,20 @@ function AddRepoForm({
   copiedKey,
 }: AddRepoFormProps) {
   const { t } = useLanguage();
-  const { showToast } = useToast();
   const [open, setOpen] = useState(startOpen);
   const folders = useProjectFolders(open);
   const folder = folders.effectiveFolderPath.trim();
 
-  const [mode, setMode] = useState<"create" | "link-existing">("create");
   const [branchName, setBranchName] = useState(defaultBranch);
   const [baseBranch, setBaseBranch] = useState("");
   const [defaultBase, setDefaultBase] = useState<string | null>(null);
   const [useLocalBranch, setUseLocalBranch] = useState(false);
   const [useWorktree, setUseWorktree] = useState(false);
   const [, setUseWorktreeTouched] = useState(false);
-  const [launch, setLaunch] = useState(true);
-  const [prompt, setPrompt] = useState("");
-  const [permissionModeAuto, setPermissionModeAuto] = useState(false);
   const [loadingRepoInfo, setLoadingRepoInfo] = useState(false);
   const [repoError, setRepoError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [outcome, setOutcome] = useState<AddRepoOutcome | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    void tasksApi
-      .fetchPreferences()
-      .then((prefs) => {
-        if (!cancelled) setPermissionModeAuto(prefs.useAutoPermissionModeByDefault);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
 
   // Same smart worktree default as "New task": only when the repo root already has an active
   // session — unless the checkbox was changed by hand for this folder.
@@ -455,8 +414,9 @@ function AddRepoForm({
           });
         })
         .catch((err) => {
-          if (!cancelled)
+          if (!cancelled) {
             setRepoError(resolveApiErrorMessage(err, t, "newTaskModal.repoInfoError"));
+          }
         })
         .finally(() => {
           if (!cancelled) setLoadingRepoInfo(false);
@@ -474,21 +434,16 @@ function AddRepoForm({
     try {
       const result = await tasksApi.addRepoToTask(taskKey, {
         folderPath: folder,
-        mode,
         branchName: branchName.trim(),
         baseBranch: baseBranch.trim(),
         useLocalBranch,
         useWorktree,
-        launch,
-        prompt,
-        permissionModeAuto,
-        nickname: taskLink,
         taskLink,
       });
-      if (pinSessionKey)
+      if (pinSessionKey) {
         await sessionsApi.setSessionTask(sessionId, taskKey).catch(() => undefined);
+      }
       setOutcome({ ok: true, result });
-      if (result.sessionId) showToast(t("taskModal.addRepo.launched"), "success");
       await onAdded();
     } catch (err) {
       const apiErr = err as tasksApi.AddRepoError;
@@ -519,37 +474,22 @@ function AddRepoForm({
     );
   }
 
-  const addDir =
-    outcome?.ok && outcome.result.workingDirectory && !outcome.result.sessionId
-      ? `/add-dir ${outcome.result.workingDirectory}`
-      : null;
+  const addDir = outcome?.ok ? `/add-dir ${outcome.result.workingDirectory}` : null;
 
   return (
     <div className="mt-3 space-y-3 border-t border-gray-100 pt-3 dark:border-gray-800">
-      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-        {t("taskModal.addRepo.title")}
-      </p>
+      <div>
+        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+          {t("taskModal.addRepo.title")}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{t("taskModal.addRepo.hint")}</p>
+      </div>
       <ProjectFolderField
         folders={folders}
         inputName="taskAddRepoFolder"
         loadingRepoInfo={loadingRepoInfo}
         repoError={repoError}
       />
-
-      <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-        {(["create", "link-existing"] as const).map((value) => (
-          <label key={value} className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="taskAddRepoMode"
-              checked={mode === value}
-              onChange={() => setMode(value)}
-              className="accent-gray-900 dark:accent-gray-100"
-            />
-            {t(value === "create" ? "taskModal.addRepo.modeCreate" : "taskModal.addRepo.modeLink")}
-          </label>
-        ))}
-      </div>
 
       <div className="grid gap-2 sm:grid-cols-2">
         <label className={LABEL_CLASSNAME}>
@@ -562,87 +502,40 @@ function AddRepoForm({
             placeholder="feature/PROJ-123"
           />
         </label>
-        {mode === "create" && (
-          <label className={LABEL_CLASSNAME}>
-            {t("newTaskModal.baseBranchLabel")}
-            <Input
-              type="text"
-              icon={<GitBranch className="h-4 w-4" />}
-              value={baseBranch}
-              onChange={(event) => setBaseBranch(event.target.value)}
-              placeholder={defaultBase ?? t("taskModal.addRepo.basePlaceholder")}
-            />
-          </label>
-        )}
+        <label className={LABEL_CLASSNAME}>
+          {t("newTaskModal.baseBranchLabel")}
+          <Input
+            type="text"
+            icon={<GitBranch className="h-4 w-4" />}
+            value={baseBranch}
+            onChange={(event) => setBaseBranch(event.target.value)}
+            placeholder={defaultBase ?? t("taskModal.addRepo.basePlaceholder")}
+          />
+        </label>
       </div>
 
-      {mode === "create" && (
-        <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-          <label className="flex items-start gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={useLocalBranch}
-              onChange={(event) => setUseLocalBranch(event.target.checked)}
-              className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-gray-900 dark:accent-gray-100"
-            />
-            {t("newTaskModal.useLocalBaseBranchLabel")}
-          </label>
-          <label className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              checked={useWorktree}
-              onChange={(event) => {
-                setUseWorktree(event.target.checked);
-                setUseWorktreeTouched(true);
-              }}
-              className={CHECKBOX_CLASSNAME}
-            />
-            {t("newTaskModal.useWorktreeLabel")}
-          </label>
-        </div>
-      )}
-
-      <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-        <label className="flex items-start gap-2">
+      <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+        <label className="flex items-start gap-2 text-xs">
           <input
-            type="radio"
-            name="taskAddRepoAfter"
-            checked={launch}
-            onChange={() => setLaunch(true)}
-            className="mt-1 accent-gray-900 dark:accent-gray-100"
+            type="checkbox"
+            checked={useLocalBranch}
+            onChange={(event) => setUseLocalBranch(event.target.checked)}
+            className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-gray-900 dark:accent-gray-100"
           />
-          {t("taskModal.addRepo.launch")}
+          {t("newTaskModal.useLocalBaseBranchLabel")}
         </label>
         <label className="flex items-start gap-2">
           <input
-            type="radio"
-            name="taskAddRepoAfter"
-            checked={!launch}
-            onChange={() => setLaunch(false)}
-            className="mt-1 accent-gray-900 dark:accent-gray-100"
+            type="checkbox"
+            checked={useWorktree}
+            onChange={(event) => {
+              setUseWorktree(event.target.checked);
+              setUseWorktreeTouched(true);
+            }}
+            className={CHECKBOX_CLASSNAME}
           />
-          {t("taskModal.addRepo.noLaunch")}
+          {t("newTaskModal.useWorktreeLabel")}
         </label>
-        {launch && (
-          <div className="space-y-2 pl-6">
-            <textarea
-              className={TEXTAREA_CLASSNAME}
-              rows={3}
-              value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
-              placeholder={t("taskModal.addRepo.promptPlaceholder")}
-            />
-            <label className="flex items-start gap-2">
-              <input
-                type="checkbox"
-                checked={permissionModeAuto}
-                onChange={(event) => setPermissionModeAuto(event.target.checked)}
-                className={CHECKBOX_CLASSNAME}
-              />
-              {t("newTaskModal.permissionModeAutoLabel")}
-            </label>
-          </div>
-        )}
       </div>
 
       {outcome && !outcome.ok && (
@@ -662,36 +555,31 @@ function AddRepoForm({
           )}
         </div>
       )}
-      {outcome?.ok && (
+      {outcome?.ok && addDir && (
         <div className="rounded-md bg-green-50 px-2 py-1.5 text-xs text-green-700 dark:bg-green-950/40 dark:text-green-400">
           <p>
             {t("taskModal.addRepo.done", {
               branch: outcome.result.branch,
-              path: outcome.result.workingDirectory ?? outcome.result.repoRoot,
+              path: outcome.result.workingDirectory,
             })}
           </p>
-          {addDir && (
-            <div className="mt-1 flex items-center gap-2">
-              <code className="break-all font-mono text-[11px]">{addDir}</code>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => void onCopy(addDir)}
-                icon={
-                  copiedKey === addDir ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )
-                }
-              >
-                {t("taskModal.copyAddDir")}
-              </Button>
-            </div>
-          )}
-          {outcome.ok && !outcome.result.workingDirectory && (
-            <p className="mt-1">{t("taskModal.addRepo.notCheckedOut")}</p>
-          )}
+          <div className="mt-1 flex items-center gap-2">
+            <code className="break-all font-mono text-[11px]">{addDir}</code>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void onCopy(addDir)}
+              icon={
+                copiedKey === addDir ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )
+              }
+            >
+              {t("taskModal.copyAddDir")}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -699,12 +587,12 @@ function AddRepoForm({
         <Button
           size="sm"
           onClick={() => void submit()}
-          disabled={submitting || !folder || (mode === "link-existing" && !branchName.trim())}
+          disabled={submitting || !folder}
           icon={
             submitting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <ExternalLink className="h-3.5 w-3.5" />
+              <Plus className="h-3.5 w-3.5" />
             )
           }
         >

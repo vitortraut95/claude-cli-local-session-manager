@@ -2,7 +2,7 @@
  * Task keys are ticket keys (`PROJ-123`). Two levels of strictness on purpose:
  * - `normalizeTaskKey`, for text someone typed or pasted *as* a ticket (a bare key or a browse
  *   URL): case-insensitive, same as the "New task" modal's own `extractJiraId`.
- * - `inferTaskKey`, for text that merely *might* mention one (a branch name, a nickname):
+ * - `inferTaskKey`, for text that merely *might* mention one (a branch name):
  *   uppercase-only (so `fix/utf-8` isn't read as ticket `UTF-8`), and only when exactly one
  *   distinct key appears — `env/PROJ-1-PROJ-2` is ambiguous and yields nothing rather than a guess.
  */
@@ -26,12 +26,8 @@ function strictKeys(text: string | null): Set<string> {
   return new Set(text ? (text.match(STRICT_KEY_PATTERN) ?? []) : []);
 }
 
-/** The single key mentioned across `texts`, or null when there's none or more than one. */
-export function inferTaskKey(...texts: (string | null)[]): string | null {
-  for (const text of texts) {
-    const keys = strictKeys(text);
-    if (keys.size === 1) return [...keys][0] ?? null;
-    if (keys.size > 1) return null;
-  }
-  return null;
+/** The single key mentioned in `text`, or null when there's none or more than one. */
+export function inferTaskKey(text: string | null): string | null {
+  const keys = strictKeys(text);
+  return keys.size === 1 ? ([...keys][0] ?? null) : null;
 }

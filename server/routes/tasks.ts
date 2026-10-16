@@ -317,16 +317,10 @@ tasksRouter.post("/by-key/:key/repos", async (req, res) => {
     const useWorktree: unknown = (body as { useWorktree?: unknown } | undefined)?.useWorktree;
     const result = await addRepoToTask(parseTaskKeyParam(req.params.key), {
       folderPath: extractStringField(body, "folderPath"),
-      mode: extractStringField(body, "mode") === "link-existing" ? "link-existing" : "create",
       branchName: extractStringField(body, "branchName"),
       baseBranch: extractStringField(body, "baseBranch"),
       useLocalBranch: extractBooleanField(body, "useLocalBranch", false),
       useWorktree: typeof useWorktree === "boolean" ? useWorktree : null,
-      launch: extractBooleanField(body, "launch", false),
-      prompt: extractStringField(body, "prompt"),
-      includeTaskContext: extractBooleanField(body, "includeTaskContext", true),
-      permissionModeAuto: extractBooleanField(body, "permissionModeAuto", false),
-      nickname: extractStringField(body, "nickname"),
       taskLink: extractStringField(body, "taskLink") || null,
     });
     res.json({ success: true, ...result });

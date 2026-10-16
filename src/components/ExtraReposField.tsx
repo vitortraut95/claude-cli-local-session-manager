@@ -5,7 +5,6 @@ import { Input } from "./Input";
 import { Select } from "./Select";
 
 export type ExtraRepo = { path: string; label: string; baseBranch: string };
-export type ExtraReposMode = "single" | "per-repo";
 
 type ExtraReposFieldProps = {
   projects: ProjectFolderOption[];
@@ -14,16 +13,14 @@ type ExtraReposFieldProps = {
   branchName: string;
   value: ExtraRepo[];
   onChange: (value: ExtraRepo[]) => void;
-  mode: ExtraReposMode;
-  onModeChange: (mode: ExtraReposMode) => void;
   /** No ticket key in the link — extras need one to be grouped into the task. */
   disabled: boolean;
 };
 
 /**
  * "New task"'s optional "other repos of this task": each gets the same branch name, off its own
- * base (blank = the repo's default), with the server's smart worktree default. Either one session
- * opened in the main folder with every extra added via `--add-dir`, or one session per repo.
+ * base (blank = the repo's default), with the server's smart worktree default, and joins the one
+ * session opened in the main folder via `--add-dir`.
  */
 export function ExtraReposField({
   projects,
@@ -31,8 +28,6 @@ export function ExtraReposField({
   branchName,
   value,
   onChange,
-  mode,
-  onModeChange,
   disabled,
 }: ExtraReposFieldProps) {
   const { t } = useLanguage();
@@ -103,26 +98,6 @@ export function ExtraReposField({
             </option>
           ))}
         </Select>
-      )}
-      {value.length > 0 && (
-        <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-          {(["single", "per-repo"] as const).map((option) => (
-            <label key={option} className="flex items-start gap-2">
-              <input
-                type="radio"
-                name="newTaskExtraReposMode"
-                checked={mode === option}
-                onChange={() => onModeChange(option)}
-                className="mt-1 accent-gray-900 dark:accent-gray-100"
-              />
-              {t(
-                option === "single"
-                  ? "newTaskModal.extraRepos.modeSingle"
-                  : "newTaskModal.extraRepos.modePerRepo",
-              )}
-            </label>
-          ))}
-        </div>
       )}
     </div>
   );

@@ -21,8 +21,7 @@ import { REPO_ROOT } from "./repoRoot.js";
  *     "New task" at launch — one session's view of its branches (e.g. correcting a stale
  *     transcript-recorded `gitBranch`), not a fact about the branch itself. Either may be null.
  *   - `taskKey`: the task this session belongs to, when set by "New task"/"add repo" or by hand.
- *     null = not set (the key is then inferred, see `taskKeys.ts`); "" = explicitly none, which
- *     stops the inference.
+ *     null = not set (the key is then inferred from the branch, see `taskKeys.ts`).
  * - `repoBranches[<repo root>][<branch>]` — facts about a branch: the base a "New task" branch was
  *   created off, the task it belongs to (`taskKey`) and the worktree it was created in, if any. Keyed by `(repoRoot, branch)` rather than worktree path or session id: the session
  *   id doesn't exist yet when the branch is created, and a "skip worktree" task checks its branch
@@ -86,14 +85,8 @@ function asTextOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-/** Like `asTextOrNull`, but keeps "" — a session's "explicitly no task" marker. */
-function asTaskKeyOrNull(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  return value.trim();
-}
-
 function isEmptySession(entry: SessionEntry): boolean {
-  return !entry.nickname && !entry.origin && !entry.destination && entry.taskKey === null;
+  return !entry.nickname && !entry.origin && !entry.destination && !entry.taskKey;
 }
 
 function isEmptyRepoBranch(entry: RepoBranchEntry): boolean {
@@ -121,7 +114,7 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
         nickname: asTextOrNull(raw.nickname),
         origin: asTextOrNull(raw.origin),
         destination: asTextOrNull(raw.destination),
-        taskKey: asTaskKeyOrNull(raw.taskKey),
+        taskKey: asTextOrNull(raw.taskKey),
       };
       if (!isEmptySession(entry)) store.sessions[id] = entry;
     }
@@ -366,7 +359,7 @@ export function forgetRepoBranch(repoRoot: string, branchName: string): Promise<
   });
 }
 
-/** null = back to inferring the key; "" = explicitly no task. */
+/** null = back to inferring the key from the branch. */
 export function setSessionTaskKey(id: string, taskKey: string | null): Promise<void> {
   return updateSession(id, { taskKey });
 }
