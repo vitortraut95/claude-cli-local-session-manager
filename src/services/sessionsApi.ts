@@ -82,7 +82,7 @@ export async function setNickname(id: string, nickname: string): Promise<void> {
   );
 }
 
-/** Blank clears that side; both blank removes the saved branches (see server sessionBranches.ts). */
+/** Blank clears that side; both blank removes the saved branches (see server taskStore.ts). */
 export async function setBranches(id: string, origin: string, destination: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.patch(`/${encodeURIComponent(id)}/branches`, { origin, destination }),

@@ -13,7 +13,7 @@ type SessionBranchesModalProps = {
 };
 
 /**
- * Edits the session's saved origin/destination branches (`session-branches.json`). Mounted only
+ * Edits the session's saved origin/destination branches (`tasks.json`). Mounted only
  * while open, same convention as NicknameModal, so the fields start fresh on every open. Prefilled
  * with the branches currently in use; a field left blank falls back to what the nickname/transcript
  * gives (shown as its placeholder) instead of being saved.

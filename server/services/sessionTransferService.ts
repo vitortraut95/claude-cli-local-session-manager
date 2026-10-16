@@ -12,7 +12,7 @@ import type {
 import { forgetCachedSession, getClaudeProjectsDir } from "../utils/claudeProjects.js";
 import { branchExists, runGit } from "../utils/git.js";
 import { AppError } from "../utils/httpError.js";
-import { getNicknames, setNickname } from "../utils/nicknames.js";
+import { getNicknames, setNickname } from "../utils/taskStore.js";
 import {
   directoryExists,
   findSessionFilePath,

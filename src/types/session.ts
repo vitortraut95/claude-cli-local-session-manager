@@ -39,7 +39,7 @@ export type Session = {
    *  signal than `updatedAt` (the file's mtime, which only says when it was last written). */
   activeTimeMs: number;
   /** The branch this session's worktree was branched off, from this app's own
-   *  `task-base-branches.json` sidecar — only ever set for a "New task"-created worktree whose
+   *  `tasks.json` sidecar (`repoBranches`) — only ever set for a "New task"-created worktree whose
    *  chosen base branch differed from the repo's own default (main/master or whatever `origin/HEAD`
    *  resolves to). Null for every other session, including a worktree branched off the default.
    *  Powers the "Open PR" button's choice between comparing against this base or the repo's default. */
@@ -49,7 +49,7 @@ export type Session = {
    *  absent from a backend older than the field, treated as false. */
   isAppRepo?: boolean;
   /** Origin/destination branches set by hand on the card (or recorded by "New task" at launch),
-   *  from `session-branches.json`. Take precedence over both the nickname-parsed branches and the
+   *  from `tasks.json` (`sessions`). Take precedence over both the nickname-parsed branches and the
    *  recorded `gitBranch`/`baseBranch` — see `resolveSessionBranches`. Optional: absent from a
    *  backend older than the field, treated as null. */
   savedOriginBranch?: string | null;
