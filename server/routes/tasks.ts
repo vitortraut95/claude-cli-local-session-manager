@@ -241,6 +241,7 @@ tasksRouter.post("/launch", async (req, res) => {
       originBranch: extractStringField(req.body, "originBranch"),
       destinationBranch: extractStringField(req.body, "destinationBranch"),
       taskKey: normalizeTaskKey(extractStringField(req.body, "taskKey")),
+      addDirs: extractStringArray(req.body, "addDirs"),
     });
     res.json({ success: true, sessionId });
   } catch (err) {
@@ -251,6 +252,13 @@ tasksRouter.post("/launch", async (req, res) => {
     });
   }
 });
+
+function extractStringArray(body: unknown, key: string): string[] {
+  const value: unknown = (body as Record<string, unknown> | undefined)?.[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
 
 // Tasks spanning several repos — see taskGroupService.ts. `:key` may also be a ticket URL.
 

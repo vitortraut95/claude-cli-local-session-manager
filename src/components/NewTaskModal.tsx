@@ -19,6 +19,7 @@ import { Button } from "./Button";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
 import { ProjectFolderField } from "./ProjectFolderField";
+import { type ExtraRepo, ExtraReposField, type ExtraReposMode } from "./ExtraReposField";
 import { Select } from "./Select";
 import { SkillsHubModal } from "./SkillsHubModal";
 import { SkillsHubPanel } from "./SkillsHubPanel";
@@ -54,7 +55,8 @@ const TEXTAREA_CLASSNAME =
 
 type StepStatus = "pending" | "doing" | "done" | "error";
 type StepKey = "repo" | "base" | "worktree" | "launch";
-type Step = { key: StepKey; label: string; status: StepStatus; error?: string };
+/** `key` is a StepKey, or `extra:<path>` for one of the task's extra repos. */
+type Step = { key: string; label: string; status: StepStatus; error?: string };
 
 const STEP_LABEL_KEYS: Record<StepKey, TranslationKey> = {
   repo: "newTaskModal.step.repo",
@@ -150,6 +152,8 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   // all four steps (each "pending") right when a create attempt starts, so the modal always shows
   // exactly which step is running, finished, or failed rather than one opaque success/failure.
   const [steps, setSteps] = useState<Step[]>([]);
+  const [extraRepos, setExtraRepos] = useState<ExtraRepo[]>([]);
+  const [extraReposMode, setExtraReposMode] = useState<ExtraReposMode>("single");
 
   // Team skills hub: status reloaded on every open, shown as a panel only — never
   // updated as part of creating a task (someone may not want their clone pulled); updating is an
@@ -304,6 +308,8 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     setUseWorktreeTouched(false);
     setActiveSessionInRoot(null);
     setSteps([]);
+    setExtraRepos([]);
+    setExtraReposMode("single");
   }, [resetFolder, defaultPromptLoaded, branchTypes, useWorktreeDefault]);
 
   const promptDirty =
@@ -352,9 +358,10 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   // Every other field is always visible now (no more link-gated reveal — see the render below),
   // but the Jira link is the only one still required to submit: it's the one piece of information
   // the rest of the form can't reasonably default/infer on its own.
-  const canSubmit = jiraLink.trim().length > 0 && !creating;
+  const canSubmit =
+    jiraLink.trim().length > 0 && !creating && (extraRepos.length === 0 || jiraId !== null);
 
-  const updateStep = (key: StepKey, status: StepStatus, error?: string) => {
+  const updateStep = (key: string, status: StepStatus, error?: string) => {
     setSteps((current) =>
       current.map((step) => (step.key === key ? { ...step, status, error } : step)),
     );
@@ -371,13 +378,22 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   const handleCreate = async () => {
     if (!canSubmit) return;
     setCreating(true);
-    setSteps(
-      STEP_ORDER.map((key) => ({
-        key,
-        label: t(getStepLabelKey(key, useWorktree)),
-        status: "pending",
+    const extras = extraRepos;
+    const stepFor = (key: StepKey): Step => ({
+      key,
+      label: t(getStepLabelKey(key, useWorktree)),
+      status: "pending",
+    });
+    setSteps([
+      ...STEP_ORDER.filter((key) => key !== "launch").map(stepFor),
+      ...extras.map((repo) => ({
+        key: `extra:${repo.path}`,
+        label: t("newTaskModal.step.extraRepo", { project: repo.label }),
+        status: "pending" as const,
       })),
-    );
+      stepFor("launch"),
+    ]);
+    const singleSession = extraReposMode === "single";
 
     const composedPrompt = [
       jiraLink.trim() ? `${t("newTaskModal.taskPrefix")}: ${jiraLink.trim()}` : null,
@@ -411,16 +427,51 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       );
       updateStep("worktree", "done");
 
+      // Extra repos: a failure in one doesn't stop the others or the main launch — the main
+      // branch already exists, so stopping here would leave nothing to retry with.
+      const addDirs: string[] = [];
+      let extraFailed = false;
+      for (const repo of extras) {
+        const key = `extra:${repo.path}`;
+        updateStep(key, "doing");
+        try {
+          const result = await tasksApi.addRepoToTask(jiraId ?? "", {
+            folderPath: repo.path,
+            mode: "create",
+            branchName: trimmedBranch,
+            baseBranch: repo.baseBranch.trim(),
+            useLocalBranch: false,
+            launch: !singleSession,
+            prompt: composedPrompt,
+            permissionModeAuto,
+            nickname: autoNickname,
+            taskLink: jiraLink.trim(),
+          });
+          if (result.workingDirectory) addDirs.push(result.workingDirectory);
+          updateStep(key, "done");
+        } catch (err) {
+          extraFailed = true;
+          updateStep(key, "error", resolveApiErrorMessage(err, t, "taskModal.addRepo.error"));
+        }
+      }
+      const mainPrompt =
+        singleSession && addDirs.length > 0
+          ? `${composedPrompt}\n\n${t("newTaskModal.extraRepos.promptNote", {
+              dirs: addDirs.join(", "),
+            })}`
+          : composedPrompt;
+
       updateStep("launch", "doing");
       await tasksApi.launchTaskTerminal(
         worktreePath,
-        composedPrompt,
+        mainPrompt,
         permissionModeAuto,
         repoInfo.repoRoot,
         autoNickname,
         trimmedBase,
         trimmedBranch,
         jiraId ?? "",
+        singleSession ? addDirs : [],
       );
       updateStep("launch", "done");
 
@@ -459,6 +510,12 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       // autocomplete history (same as any ordinary site's form) — see the <form> below.
       formRef.current?.requestSubmit();
 
+      if (extraFailed) {
+        // Keep the checklist visible: the main session is up, but some extra repo isn't.
+        showToast(t("newTaskModal.extraRepos.partialFailure"), "error");
+        onTaskCreated?.();
+        return;
+      }
       showToast(t("newTaskModal.terminalOpened"), "success");
       resetForm();
       onClose();
@@ -528,6 +585,16 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           inputName="newTaskFolderPath"
           loadingRepoInfo={loadingRepoInfo}
           repoError={repoError}
+        />
+        <ExtraReposField
+          projects={folders.projects}
+          mainFolder={trimmedFolder}
+          branchName={trimmedBranch}
+          value={extraRepos}
+          onChange={setExtraRepos}
+          mode={extraReposMode}
+          onModeChange={setExtraReposMode}
+          disabled={jiraId === null}
         />
 
         <SkillsHubPanel

@@ -1695,6 +1695,48 @@ export const translations = {
     "Criar a branch diretamente na pasta do projeto (sem worktree)",
     "Crear la rama directamente en la carpeta del proyecto (sin worktree)",
   ),
+  "newTaskModal.step.extraRepo": dict(
+    "Create the branch in {project} and link it to the task",
+    "Criar a branch em {project} e vincular à tarefa",
+    "Crear la rama en {project} y vincularla a la tarea",
+  ),
+  "newTaskModal.extraRepos.label": dict(
+    "Other repos of this task (optional)",
+    "Outros repos desta tarefa (opcional)",
+    "Otros repos de esta tarea (opcional)",
+  ),
+  "newTaskModal.extraRepos.hint": dict(
+    "Each gets the same branch ({branch}), off the base you type (blank = the repo's default). You can also add repos later from the card.",
+    "Cada um recebe a mesma branch ({branch}), a partir da base indicada (vazio = padrão do repo). Também dá para adicionar depois, pelo card.",
+    "Cada uno recibe la misma rama ({branch}), desde la base indicada (vacío = la del repo). También se pueden agregar después, desde la tarjeta.",
+  ),
+  "newTaskModal.extraRepos.needsKey": dict(
+    "Needs a ticket key in the link (e.g. PROJ-123) to group the repos into one task.",
+    "Precisa de uma chave de ticket no link (ex.: PROJ-123) para agrupar os repos numa tarefa.",
+    "Necesita una clave de ticket en el enlace (p. ej. PROJ-123) para agrupar los repos en una tarea.",
+  ),
+  "newTaskModal.extraRepos.add": dict("+ Add a repo…", "+ Adicionar repo…", "+ Agregar repo…"),
+  "newTaskModal.extraRepos.remove": dict("Remove", "Remover", "Quitar"),
+  "newTaskModal.extraRepos.modeSingle": dict(
+    "One session with every repo (the others added via --add-dir)",
+    "Uma sessão com todos os repos (os outros entram via --add-dir)",
+    "Una sesión con todos los repos (los otros vía --add-dir)",
+  ),
+  "newTaskModal.extraRepos.modePerRepo": dict(
+    "One session in each repo",
+    "Uma sessão em cada repo",
+    "Una sesión en cada repo",
+  ),
+  "newTaskModal.extraRepos.promptNote": dict(
+    "This task also spans these folders (already added with --add-dir): {dirs}",
+    "Esta tarefa também envolve estas pastas (já adicionadas com --add-dir): {dirs}",
+    "Esta tarea también abarca estas carpetas (ya agregadas con --add-dir): {dirs}",
+  ),
+  "newTaskModal.extraRepos.partialFailure": dict(
+    "The task started, but some repo couldn't be added — see the checklist.",
+    "A tarefa foi iniciada, mas algum repo não pôde ser adicionado — veja a lista de passos.",
+    "La tarea empezó, pero algún repo no se pudo agregar — revisa la lista de pasos.",
+  ),
   "newTaskModal.step.launch": dict(
     "Open terminal and start Claude",
     "Abrir terminal e iniciar o Claude",
