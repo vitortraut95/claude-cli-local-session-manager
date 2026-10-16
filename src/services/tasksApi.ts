@@ -228,6 +228,7 @@ export async function launchTaskTerminal(
   originBranch = "",
   destinationBranch = "",
   taskKey = "",
+  addDirs: string[] = [],
 ): Promise<void> {
   await withServerErrorMessage(() =>
     client.post("/launch", {
@@ -239,6 +240,7 @@ export async function launchTaskTerminal(
       originBranch,
       destinationBranch,
       taskKey,
+      addDirs,
     }),
   );
 }
@@ -268,7 +270,8 @@ export type AddRepoInput = {
   branchName: string;
   baseBranch: string;
   useLocalBranch: boolean;
-  useWorktree: boolean;
+  /** Omitted = the server's smart default (a worktree only when the root has an active session). */
+  useWorktree?: boolean;
   launch: boolean;
   prompt: string;
   permissionModeAuto: boolean;

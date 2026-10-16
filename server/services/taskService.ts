@@ -419,6 +419,9 @@ export type LaunchTaskOptions = {
   originBranch?: string;
   destinationBranch?: string;
   taskKey?: string | null;
+  /** Other folders the session gets tool access to (`--add-dir`) — the "one session for every
+   *  repo" mode of a multi-repo task. Each must be an existing directory. */
+  addDirs?: string[];
 };
 
 export async function launchTaskTerminal({
@@ -430,6 +433,7 @@ export async function launchTaskTerminal({
   originBranch = "",
   destinationBranch = "",
   taskKey = null,
+  addDirs = [],
 }: LaunchTaskOptions): Promise<{ sessionId: string | null }> {
   const trimmedWorktreePath = worktreePath.trim();
   const trimmedPrompt = prompt.trim();
@@ -451,8 +455,15 @@ export async function launchTaskTerminal({
   const permissionFlag = permissionModeAuto ? "--permission-mode auto " : "";
   // A blank prompt (the "New session" modal allows one) just opens an interactive session.
   const promptArg = trimmedPrompt ? posixShellQuote(trimmedPrompt) : "";
+  const dirs = addDirs.map((dir) => dir.trim()).filter(Boolean);
+  for (const dir of dirs) {
+    if (!(await directoryExists(dir))) throw folderNotFoundError(dir);
+  }
+  // After the prompt on purpose: `--add-dir` is variadic, so placed before the positional prompt
+  // it would swallow the prompt as one more directory.
+  const addDirArgs = dirs.length > 0 ? ` --add-dir ${dirs.map(posixShellQuote).join(" ")}` : "";
   await launchInTerminal(
-    `claude ${sessionIdFlag}${permissionFlag}${promptArg}`.trimEnd(),
+    `claude ${sessionIdFlag}${permissionFlag}${promptArg}`.trimEnd() + addDirArgs,
     trimmedWorktreePath,
   );
 
