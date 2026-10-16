@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { DateRangeFilter } from "../components/DateRangeFilter";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { Header } from "../components/Header";
@@ -34,11 +33,6 @@ export function SessionsPage() {
     projectLabels,
     projectFilter,
     setProjectFilter,
-    taskFilter,
-    setTaskFilter,
-    updatedFrom,
-    updatedTo,
-    setUpdatedRange,
     page,
     pageCount,
     perPage,
@@ -79,13 +73,18 @@ export function SessionsPage() {
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   // Jumps straight to a session (e.g. one just imported) by searching for its id (unique, so this
-  // always isolates exactly one card) and clearing whatever project/date filters might otherwise
+  // always isolates exactly one card) and clearing whatever project filter might otherwise
   // be hiding it.
   const handleJumpToSession = (id: string) => {
     setSearchQuery(id);
     setProjectFilter("");
-    setTaskFilter("");
-    setUpdatedRange("", "");
+  };
+
+  // A task's sessions span several projects, so the project filter would hide the other repos'.
+  // Goes through the search box (which also matches `taskKey`) so it's cleared like any search.
+  const handleFilterByTask = (taskKey: string) => {
+    setSearchQuery(taskKey);
+    setProjectFilter("");
   };
 
   const handleDeleteRequest = (session: Session) => {
@@ -119,12 +118,7 @@ export function SessionsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [page]);
 
-  const hasActiveFilter =
-    searchQuery.trim().length > 0 ||
-    projectFilter.length > 0 ||
-    taskFilter.length > 0 ||
-    updatedFrom.length > 0 ||
-    updatedTo.length > 0;
+  const hasActiveFilter = searchQuery.trim().length > 0 || projectFilter.length > 0;
 
   const renderContent = () => {
     if (loading) return <LoadingState scanProgress={scanProgress} />;
@@ -195,7 +189,7 @@ export function SessionsPage() {
               }
               onDeleteWorktree={(s) => deleteWorktree(s.id)}
               onWorktreeSyncComplete={() => refresh()}
-              onFilterByTask={setTaskFilter}
+              onFilterByTask={handleFilterByTask}
             />
           ))}
         </div>
@@ -226,18 +220,6 @@ export function SessionsPage() {
             value={projectFilter}
             onChange={setProjectFilter}
           />
-          <DateRangeFilter from={updatedFrom} to={updatedTo} onChange={setUpdatedRange} />
-          {taskFilter && (
-            <Button
-              variant="outline"
-              onClick={() => setTaskFilter("")}
-              className="shadow-sm"
-              aria-label={t("sessionsPage.taskFilter.clear")}
-              icon={<X className="h-4 w-4" />}
-            >
-              {t("sessionsPage.taskFilter.label", { key: taskFilter })}
-            </Button>
-          )}
 
           <Button
             variant="outline"
