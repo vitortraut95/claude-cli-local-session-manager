@@ -25,6 +25,7 @@ import {
   type SessionHead,
 } from "../utils/claudeProjects.js";
 import { inferTaskKey } from "../utils/taskKeys.js";
+import { collectTaskRepos } from "../utils/taskRepos.js";
 import {
   forgetRepoBranch,
   getTaskStore,
@@ -312,7 +313,7 @@ async function listSessionsUncached(): Promise<Session[]> {
   );
   const defaultBranchByRoot = new Map(uniqueRepoRoots.map((root, i) => [root, defaultBranches[i]]));
 
-  return sessions
+  const decorated = sessions
     .map((session) => {
       const gitDirs = session.workingDirectory ? gitDirsByDir.get(session.workingDirectory) : null;
       const isWorktree = gitDirs ? gitDirs.gitDir !== gitDirs.commonGitDir : false;
@@ -363,6 +364,12 @@ async function listSessionsUncached(): Promise<Session[]> {
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+  // Second pass: a task's repos depend on every session carrying its key.
+  const reposByTask = collectTaskRepos(store, decorated);
+  return decorated.map((session) =>
+    session.taskKey ? { ...session, taskRepos: reposByTask.get(session.taskKey) ?? [] } : session,
+  );
 }
 
 /** Session ids are UUID-shaped; reject anything that looks like a path segment. */
@@ -534,8 +541,17 @@ export async function getSessionPrUrl(
   if (!filePath) throw new SessionNotFoundError(id);
   const head = await readSessionHead(filePath);
   if (!head.cwd) return null;
+  return buildPrUrl(head.cwd, trimmedBranch, trimmedBase);
+}
 
-  const hostInfo = await getGitHostInfo(head.cwd);
+/** The new-PR page for `branch` in the repo at `cwd` (github.com/bitbucket.org `origin` only);
+ *  `base` "" = the host's own default. Also used for a task's repos that have no session. */
+export async function buildPrUrl(
+  cwd: string,
+  trimmedBranch: string,
+  trimmedBase: string,
+): Promise<string | null> {
+  const hostInfo = await getGitHostInfo(cwd);
   if (!hostInfo) return null;
 
   const encodedBranch = encodeURIComponent(trimmedBranch);

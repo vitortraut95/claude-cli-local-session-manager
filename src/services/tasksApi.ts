@@ -242,6 +242,22 @@ export async function launchTaskTerminal(
   );
 }
 
+/** "Open PR" for one repo/branch of a multi-repo task — works for a repo with no session of its
+ *  own; the server only accepts a repo/branch that belongs to the task. */
+export async function fetchTaskRepoPrUrl(
+  taskKey: string,
+  repoRoot: string,
+  branch: string,
+  base = "",
+): Promise<string> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ url: string }>(`/by-key/${encodeURIComponent(taskKey)}/pr-url`, {
+      params: { repoRoot, branch, base },
+    }),
+  );
+  return data.url;
+}
+
 /** Header's "Test task": a terminal running `claude "/<taskTestSkill> <ticketLink>"` — the skill
  *  comes from the saved preference, resolved server-side. */
 export async function launchTaskTest(

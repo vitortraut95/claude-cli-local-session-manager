@@ -8,8 +8,14 @@ import {
   setSessionTaskKey,
   upsertTask,
 } from "../utils/taskStore.js";
-import type { Session } from "../types/session.js";
-import { isSafeSessionId, listSessions, SessionNotFoundError } from "./sessionService.js";
+import type { Session, TaskRepoRef } from "../types/session.js";
+import { collectTaskRepos } from "../utils/taskRepos.js";
+import {
+  buildPrUrl,
+  isSafeSessionId,
+  listSessions,
+  SessionNotFoundError,
+} from "./sessionService.js";
 import {
   createTaskWorktree,
   getRepoInfo,
@@ -25,20 +31,7 @@ import {
  * halfway through. Same route for the card's "+ repo" and for a CLI skill calling the local API.
  */
 
-export type TaskRepo = {
-  repoRoot: string;
-  project: string;
-  branch: string;
-  /** Recorded only when it differs from the repo's default — see `defaultBranch`. */
-  baseBranch: string | null;
-  defaultBranch: string | null;
-  /** The linked worktree the branch was created/found in; null = checked out in `repoRoot` or
-   *  not known (a repo only seen through one of its sessions). */
-  worktreePath: string | null;
-  /** True when linked in `tasks.json`; false when only implied by a session's (inferred) key. */
-  recorded: boolean;
-  sessionIds: string[];
-};
+export type TaskRepo = TaskRepoRef & { defaultBranch: string | null };
 
 export type TaskSessionSummary = Pick<
   Session,
@@ -75,44 +68,16 @@ export function parseTaskKeyParam(raw: string): string {
 export async function getTaskDetails(key: string, sessions?: Session[]): Promise<TaskDetails> {
   const [store, allSessions] = await Promise.all([getTaskStore(), sessions ?? listSessions()]);
   const taskSessions = allSessions.filter((s) => s.taskKey === key);
-  const repos = new Map<string, TaskRepo>();
-  const repoId = (root: string, branch: string) => `${root}\0${branch}`;
-
-  for (const [repoRoot, byBranch] of Object.entries(store.repoBranches)) {
-    for (const [branch, entry] of Object.entries(byBranch)) {
-      if (entry.taskKey !== key) continue;
-      repos.set(repoId(repoRoot, branch), {
-        repoRoot,
-        project: path.basename(repoRoot),
-        branch,
-        baseBranch: entry.baseBranch,
-        defaultBranch: null,
-        worktreePath: entry.worktreePath,
-        recorded: true,
-        sessionIds: [],
-      });
-    }
-  }
-  for (const session of taskSessions) {
-    if (!session.repoRoot || !session.gitBranch) continue;
-    const id = repoId(session.repoRoot, session.gitBranch);
-    const repo = repos.get(id) ?? {
-      repoRoot: session.repoRoot,
-      project: path.basename(session.repoRoot),
-      branch: session.gitBranch,
-      baseBranch: session.baseBranch,
-      defaultBranch: session.defaultBranch ?? null,
-      worktreePath: session.isWorktree ? session.workingDirectory : null,
-      recorded: false,
-      sessionIds: [],
-    };
-    repo.defaultBranch ??= session.defaultBranch ?? null;
-    repo.sessionIds.push(session.id);
-    repos.set(id, repo);
-  }
+  const defaultByRoot = new Map(
+    taskSessions.filter((s) => s.repoRoot).map((s) => [s.repoRoot, s.defaultBranch ?? null]),
+  );
+  const repos: TaskRepo[] = (collectTaskRepos(store, allSessions).get(key) ?? []).map((repo) => ({
+    ...repo,
+    defaultBranch: defaultByRoot.get(repo.repoRoot) ?? null,
+  }));
   // Recorded repos with no session yet still need a default branch to show a base.
   await Promise.all(
-    [...repos.values()]
+    repos
       .filter((repo) => repo.defaultBranch === null)
       .map(async (repo) => {
         repo.defaultBranch = await getDefaultBaseBranch(repo.repoRoot).catch(() => null);
@@ -122,7 +87,7 @@ export async function getTaskDetails(key: string, sessions?: Session[]): Promise
   return {
     key,
     link: store.tasks[key]?.link ?? null,
-    repos: [...repos.values()].sort((a, b) => a.project.localeCompare(b.project)),
+    repos,
     sessions: taskSessions.map((s) => ({
       id: s.id,
       title: s.title,
@@ -135,6 +100,22 @@ export async function getTaskDetails(key: string, sessions?: Session[]): Promise
       taskKeyInferred: s.taskKeyInferred ?? false,
     })),
   };
+}
+
+/** "Open PR" for a task repo that may have no session of its own — only for a repo/branch that
+ *  actually belongs to the task, so the route can't be pointed at an arbitrary folder. */
+export async function getTaskRepoPrUrl(
+  key: string,
+  repoRoot: string,
+  branch: string,
+  base: string,
+): Promise<string | null> {
+  const { repos } = await getTaskDetails(key);
+  const repo = repos.find((r) => r.repoRoot === repoRoot && r.branch === branch);
+  if (!repo) {
+    throw new AppError("TASK_REPO_NOT_FOUND", `${branch} in ${repoRoot} isn't part of ${key}.`);
+  }
+  return buildPrUrl(repo.worktreePath ?? repo.repoRoot, repo.branch, base.trim());
 }
 
 export type SessionTask = {

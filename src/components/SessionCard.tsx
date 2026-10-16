@@ -31,6 +31,7 @@ import { ExportSessionModal } from "./ExportSessionModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { JenkinsLinksModal } from "./JenkinsLinksModal";
 import { LinkifiedText } from "./LinkifiedText";
+import { TaskReposLine } from "./TaskReposLine";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { NicknameModal } from "./NicknameModal";
 import { SessionBranchesModal } from "./SessionBranchesModal";
@@ -63,6 +64,7 @@ type SessionCardProps = {
   onStartNewSessionAtMissingWorktreeRoot: (session: Session) => Promise<void>;
   onDeleteWorktree: (session: Session) => void;
   onWorktreeSyncComplete: (session: Session) => void;
+  onFilterByTask: (taskKey: string) => void;
 };
 
 export function SessionCard({
@@ -80,6 +82,7 @@ export function SessionCard({
   onStartNewSessionAtMissingWorktreeRoot,
   onDeleteWorktree,
   onWorktreeSyncComplete,
+  onFilterByTask,
 }: SessionCardProps) {
   const { t } = useLanguage();
   const isDeleting = pendingAction === "delete";
@@ -323,6 +326,7 @@ export function SessionCard({
               </Tooltip>
             </div>
           )}
+          <TaskReposLine session={session} onFilterByTask={onFilterByTask} />
         </div>
         <Tooltip
           content={
