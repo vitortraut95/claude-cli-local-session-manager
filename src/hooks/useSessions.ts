@@ -37,6 +37,7 @@ export function useSessions() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQueryRaw] = useUrlParam("q", "");
   const [projectFilter, setProjectFilterRaw] = useUrlParam("project", "");
+  const [taskFilter, setTaskFilterRaw] = useUrlParam("task", "");
   const [updatedFrom, setUpdatedFromRaw] = useUrlParam("updated_from", "");
   const [updatedTo, setUpdatedToRaw] = useUrlParam("updated_to", "");
   const [pageRaw, setPageRaw] = useUrlParam("page", "1");
@@ -65,6 +66,14 @@ export function useSessions() {
       setPageRaw("1");
     },
     [setProjectFilterRaw, setPageRaw],
+  );
+
+  const setTaskFilter = useCallback(
+    (value: string) => {
+      setTaskFilterRaw(value);
+      setPageRaw("1");
+    },
+    [setTaskFilterRaw, setPageRaw],
   );
 
   const setUpdatedRange = useCallback(
@@ -221,18 +230,20 @@ export function useSessions() {
           session.project,
           session.id,
           session.gitBranch ?? "",
+          session.taskKey ?? "",
           ...session.prompts,
         ].some((field) => field.toLowerCase().includes(query));
       const matchesProject = !projectFilter || session.project === projectFilter;
+      const matchesTask = !taskFilter || session.taskKey === taskFilter;
       const updatedAtTime = new Date(session.updatedAt).getTime();
       const matchesUpdatedAt =
         (fromTime === null || updatedAtTime >= fromTime) &&
         (toTime === null || updatedAtTime <= toTime);
-      return matchesQuery && matchesProject && matchesUpdatedAt;
+      return matchesQuery && matchesProject && matchesTask && matchesUpdatedAt;
     });
 
     return [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [sessions, searchQuery, projectFilter, updatedFrom, updatedTo]);
+  }, [sessions, searchQuery, projectFilter, taskFilter, updatedFrom, updatedTo]);
 
   const pageCount = Math.max(1, Math.ceil(filteredSessions.length / perPage));
   // Clamp for display without writing back to the URL — a stale `page` param
@@ -600,6 +611,8 @@ export function useSessions() {
     projectLabels,
     projectFilter,
     setProjectFilter,
+    taskFilter,
+    setTaskFilter,
     updatedFrom,
     updatedTo,
     setUpdatedRange,

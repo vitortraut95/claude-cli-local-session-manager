@@ -34,6 +34,8 @@ export function SessionsPage() {
     projectLabels,
     projectFilter,
     setProjectFilter,
+    taskFilter,
+    setTaskFilter,
     updatedFrom,
     updatedTo,
     setUpdatedRange,
@@ -82,6 +84,7 @@ export function SessionsPage() {
   const handleJumpToSession = (id: string) => {
     setSearchQuery(id);
     setProjectFilter("");
+    setTaskFilter("");
     setUpdatedRange("", "");
   };
 
@@ -119,6 +122,7 @@ export function SessionsPage() {
   const hasActiveFilter =
     searchQuery.trim().length > 0 ||
     projectFilter.length > 0 ||
+    taskFilter.length > 0 ||
     updatedFrom.length > 0 ||
     updatedTo.length > 0;
 
@@ -191,6 +195,7 @@ export function SessionsPage() {
               }
               onDeleteWorktree={(s) => deleteWorktree(s.id)}
               onWorktreeSyncComplete={() => refresh()}
+              onFilterByTask={setTaskFilter}
             />
           ))}
         </div>
@@ -222,6 +227,17 @@ export function SessionsPage() {
             onChange={setProjectFilter}
           />
           <DateRangeFilter from={updatedFrom} to={updatedTo} onChange={setUpdatedRange} />
+          {taskFilter && (
+            <Button
+              variant="outline"
+              onClick={() => setTaskFilter("")}
+              className="shadow-sm"
+              aria-label={t("sessionsPage.taskFilter.clear")}
+              icon={<X className="h-4 w-4" />}
+            >
+              {t("sessionsPage.taskFilter.label", { key: taskFilter })}
+            </Button>
+          )}
 
           <Button
             variant="outline"

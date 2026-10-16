@@ -1013,6 +1013,12 @@ export const translations = {
     "Eliminar seleccionadas",
   ),
   "sessionsPage.refresh": dict("Refresh sessions", "Atualizar sessões", "Actualizar sesiones"),
+  "sessionsPage.taskFilter.label": dict("Task: {key}", "Tarefa: {key}", "Tarea: {key}"),
+  "sessionsPage.taskFilter.clear": dict(
+    "Clear task filter",
+    "Limpar filtro de tarefa",
+    "Quitar filtro de tarea",
+  ),
   "sessionsPage.delete": dict("Delete", "Excluir", "Eliminar"),
   "sessionsPage.cancel": dict("Cancel", "Cancelar", "Cancelar"),
   "sessionsPage.deleteConfirm.title": dict("Delete session", "Excluir sessão", "Eliminar sesión"),
@@ -1063,6 +1069,38 @@ export const translations = {
     "Editar base y rama de la tarea",
   ),
   "sessionCard.branches.originLabel": dict("Base:", "Base:", "Base:"),
+  "sessionCard.task.label": dict("Task:", "Tarefa:", "Tarea:"),
+  "sessionCard.task.filter": dict(
+    "Show only this task's sessions",
+    "Mostrar só as sessões desta tarefa",
+    "Mostrar solo las sesiones de esta tarea",
+  ),
+  "sessionCard.task.inferred": dict(
+    "Detected from the branch or nickname",
+    "Deduzida da branch ou do apelido",
+    "Deducida de la rama o del apodo",
+  ),
+  "sessionCard.task.alsoIn": dict("also in:", "também em:", "también en:"),
+  "sessionCard.task.repoSessions.one": dict(
+    "{branch} · {count} session — click to show the task",
+    "{branch} · {count} sessão — clique para ver a tarefa",
+    "{branch} · {count} sesión — clic para ver la tarea",
+  ),
+  "sessionCard.task.repoSessions.many": dict(
+    "{branch} · {count} sessions — click to show the task",
+    "{branch} · {count} sessões — clique para ver a tarefa",
+    "{branch} · {count} sesiones — clic para ver la tarea",
+  ),
+  "sessionCard.task.repoNoSession": dict(
+    "{branch} · no session of its own — click to open the PR",
+    "{branch} · sem sessão própria — clique para abrir o PR",
+    "{branch} · sin sesión propia — clic para abrir el PR",
+  ),
+  "sessionCard.task.openPrError": dict(
+    "Couldn't open a PR link for this repo.",
+    "Não foi possível abrir um link de PR para este repo.",
+    "No se pudo abrir un enlace de PR para este repo.",
+  ),
   "sessionCard.branches.destinationLabel": dict(
     "Task branch:",
     "Branch da tarefa:",

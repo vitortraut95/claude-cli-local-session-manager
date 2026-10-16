@@ -35,6 +35,7 @@ import { normalizeTaskKey } from "../utils/taskKeys.js";
 import {
   addRepoToTask,
   getTaskDetails,
+  getTaskRepoPrUrl,
   parseTaskKeyParam,
   setTaskLink,
   TaskStepError,
@@ -267,6 +268,27 @@ function sendTaskError(res: Response, err: unknown): void {
 tasksRouter.get("/by-key/:key", async (req, res) => {
   try {
     res.json(await getTaskDetails(parseTaskKeyParam(req.params.key)));
+  } catch (err) {
+    sendTaskError(res, err);
+  }
+});
+
+tasksRouter.get("/by-key/:key/pr-url", async (req, res) => {
+  try {
+    const query = (name: string) => (typeof req.query[name] === "string" ? req.query[name] : "");
+    const url = await getTaskRepoPrUrl(
+      parseTaskKeyParam(req.params.key),
+      query("repoRoot"),
+      query("branch"),
+      query("base"),
+    );
+    if (!url) {
+      res
+        .status(404)
+        .json({ error: "No PR link could be built for this repo.", code: "NO_PR_LINK" });
+      return;
+    }
+    res.json({ url });
   } catch (err) {
     sendTaskError(res, err);
   }

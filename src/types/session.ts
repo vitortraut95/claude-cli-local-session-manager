@@ -65,6 +65,23 @@ export type Session = {
    *  appears there. Optional: absent from an older backend. */
   taskKey?: string | null;
   taskKeyInferred?: boolean;
+  /** Every repo/branch of that task, this session's own included — powers the card's "also in"
+   *  line. Only set when `taskKey` is. */
+  taskRepos?: TaskRepoRef[];
+};
+
+/** One repo/branch of a multi-repo task — mirrors `server/utils/taskRepos.ts`. */
+export type TaskRepoRef = {
+  repoRoot: string;
+  project: string;
+  branch: string;
+  /** Recorded only when it differs from the repo's default. */
+  baseBranch: string | null;
+  /** The linked worktree the branch lives in; null = the repo root, or not known. */
+  worktreePath: string | null;
+  /** True when linked in `tasks.json`; false when only implied by a session's (inferred) key. */
+  recorded: boolean;
+  sessionIds: string[];
 };
 
 export type WorktreeToRootFileDiff = {
