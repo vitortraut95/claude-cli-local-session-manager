@@ -9,6 +9,7 @@ import {
   GitFork,
   GitMerge,
   GitPullRequest,
+  Layers,
   Loader2,
   MessageSquare,
   Pencil,
@@ -31,6 +32,7 @@ import { ExportSessionModal } from "./ExportSessionModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { JenkinsLinksModal } from "./JenkinsLinksModal";
 import { LinkifiedText } from "./LinkifiedText";
+import { TaskModal } from "./TaskModal";
 import { TaskReposLine } from "./TaskReposLine";
 import { PromptPreviewModal } from "./PromptPreviewModal";
 import { NicknameModal } from "./NicknameModal";
@@ -65,6 +67,7 @@ type SessionCardProps = {
   onDeleteWorktree: (session: Session) => void;
   onWorktreeSyncComplete: (session: Session) => void;
   onFilterByTask: (taskKey: string) => void;
+  onTaskChanged: () => void;
 };
 
 export function SessionCard({
@@ -83,6 +86,7 @@ export function SessionCard({
   onDeleteWorktree,
   onWorktreeSyncComplete,
   onFilterByTask,
+  onTaskChanged,
 }: SessionCardProps) {
   const { t } = useLanguage();
   const isDeleting = pendingAction === "delete";
@@ -101,6 +105,8 @@ export function SessionCard({
   const [showSubagents, setShowSubagents] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [showBranchesModal, setShowBranchesModal] = useState(false);
+  // null = closed; otherwise whether it opens straight on the "add repo" form.
+  const [taskModal, setTaskModal] = useState<{ addRepo: boolean } | null>(null);
   const [showDeleteWorktreeConfirm, setShowDeleteWorktreeConfirm] = useState(false);
   const [showWorktreeToRootModal, setShowWorktreeToRootModal] = useState(false);
   const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
@@ -326,7 +332,11 @@ export function SessionCard({
               </Tooltip>
             </div>
           )}
-          <TaskReposLine session={session} onFilterByTask={onFilterByTask} />
+          <TaskReposLine
+            session={session}
+            onFilterByTask={onFilterByTask}
+            onAddRepo={() => setTaskModal({ addRepo: true })}
+          />
         </div>
         <Tooltip
           content={
@@ -538,6 +548,15 @@ export function SessionCard({
             icon={<MessageSquare className="h-4 w-4" />}
           />
         )}
+        {!session.directoryMissing && !session.isAppRepo && (
+          <ToolbarIconButton
+            tooltip={t("taskModal.open")}
+            ariaLabel={t("taskModal.open")}
+            color="violet"
+            onClick={() => setTaskModal({ addRepo: false })}
+            icon={<Layers className="h-4 w-4" />}
+          />
+        )}
         <ToolbarIconButton
           tooltip={t("sessionCard.exportTooltip")}
           ariaLabel={t("sessionCard.exportAriaLabel")}
@@ -666,6 +685,16 @@ export function SessionCard({
         open={showSubagents}
         onClose={() => setShowSubagents(false)}
       />
+      {taskModal && (
+        <TaskModal
+          session={session}
+          startAddingRepo={taskModal.addRepo}
+          onClose={() => setTaskModal(null)}
+          onChanged={onTaskChanged}
+          onSetNickname={(nickname) => onSetNickname(session, nickname)}
+          onSetBranches={(origin, destination) => onSetBranches(session, origin, destination)}
+        />
+      )}
       {showBranchesModal && (
         <SessionBranchesModal
           session={session}

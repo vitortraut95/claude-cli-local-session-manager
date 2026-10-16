@@ -1,5 +1,6 @@
 import axios from "axios";
-import { withServerErrorMessage } from "../utils/apiClient";
+import type { TaskRepoRef } from "../types/session";
+import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
 
 const client = axios.create({
   baseURL: "/tasks",
@@ -239,6 +240,82 @@ export async function launchTaskTerminal(
       destinationBranch,
       taskKey,
     }),
+  );
+}
+
+/** One repo of a task as `GET /tasks/by-key/:key` returns it — see server taskGroupService.ts. */
+export type TaskRepo = TaskRepoRef & { defaultBranch: string | null };
+
+export type TaskDetails = {
+  key: string;
+  link: string | null;
+  repos: TaskRepo[];
+  sessions: { id: string; title: string; nickname: string | null; isActive: boolean }[];
+};
+
+export async function fetchTask(taskKey: string): Promise<TaskDetails> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<TaskDetails>(`/by-key/${encodeURIComponent(taskKey)}`),
+  );
+  return data;
+}
+
+export type AddRepoStep = "repo" | "base" | "worktree" | "link" | "launch";
+
+export type AddRepoInput = {
+  folderPath: string;
+  mode: "create" | "link-existing";
+  branchName: string;
+  baseBranch: string;
+  useLocalBranch: boolean;
+  useWorktree: boolean;
+  launch: boolean;
+  prompt: string;
+  permissionModeAuto: boolean;
+  nickname: string;
+  taskLink: string;
+};
+
+export type AddRepoResult = {
+  repoRoot: string;
+  branch: string;
+  baseBranch: string | null;
+  workingDirectory: string | null;
+  sessionId: string | null;
+  completedSteps: AddRepoStep[];
+};
+
+/** A failed add-repo also says which step failed and which had already finished (nothing is
+ *  rolled back server-side). */
+export type AddRepoError = ApiError & { failedStep?: AddRepoStep; completedSteps?: AddRepoStep[] };
+
+export async function addRepoToTask(taskKey: string, input: AddRepoInput): Promise<AddRepoResult> {
+  try {
+    const { data } = await withServerErrorMessage(() =>
+      client.post<AddRepoResult>(`/by-key/${encodeURIComponent(taskKey)}/repos`, input),
+    );
+    return data;
+  } catch (err) {
+    const cause = err instanceof Error ? err.cause : undefined;
+    if (err instanceof Error && axios.isAxiosError<Partial<AddRepoError>>(cause)) {
+      const body = cause.response?.data;
+      Object.assign(err, {
+        failedStep: body?.failedStep,
+        completedSteps: body?.completedSteps ?? [],
+      });
+    }
+    throw err;
+  }
+}
+
+/** Only drops the link — the branch, worktree and sessions stay. */
+export async function unlinkTaskRepo(
+  taskKey: string,
+  repoRoot: string,
+  branch: string,
+): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.delete(`/by-key/${encodeURIComponent(taskKey)}/repos`, { data: { repoRoot, branch } }),
   );
 }
 

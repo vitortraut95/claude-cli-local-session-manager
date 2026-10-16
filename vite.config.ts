@@ -30,7 +30,15 @@ export default defineConfig({
     // cleanup) reads as a burst of source changes and triggers a full page reload, wiping in-app
     // state like an open modal.
     watch: {
-      ignored: ["**/.claude/**"],
+      // The backend's own sidecar data files at the repo root (tasks.json is written via a temp
+      // file + rename) — without this, every write reloads the page and closes any open modal.
+      ignored: [
+        "**/.claude/**",
+        "**/tasks.json",
+        "**/tasks.json.*",
+        "**/userPreferences.json",
+        "**/userPreferences.json.*",
+      ],
     },
   },
 });
