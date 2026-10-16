@@ -31,6 +31,7 @@ import {
   importSessionBundle,
   inspectSessionBundle,
 } from "../services/sessionTransferService.js";
+import { getSessionTask, setSessionTask } from "../services/taskGroupService.js";
 import { extractStringField } from "../utils/httpBody.js";
 import { AppError, sendErrorResponse } from "../utils/httpError.js";
 
@@ -167,6 +168,29 @@ sessionsRouter.patch("/:id/branches", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     sendErrorResponse(res, err, notFoundOrActive);
+  }
+});
+
+sessionsRouter.get("/:id/task", async (req, res) => {
+  try {
+    res.json(await getSessionTask(req.params.id));
+  } catch (err) {
+    sendErrorResponse(res, err, (e) => (e instanceof SessionNotFoundError ? 404 : 400));
+  }
+});
+
+/** `taskKey`: a key/ticket URL links it, "" = explicitly no task, null = back to inferring. */
+sessionsRouter.put("/:id/task", async (req, res) => {
+  try {
+    const raw: unknown = (req.body as { taskKey?: unknown } | undefined)?.taskKey;
+    await setSessionTask(
+      req.params.id,
+      typeof raw === "string" ? raw : null,
+      extractStringField(req.body, "link") || null,
+    );
+    res.json({ success: true });
+  } catch (err) {
+    sendErrorResponse(res, err, (e) => (e instanceof SessionNotFoundError ? 404 : 400));
   }
 });
 

@@ -24,11 +24,10 @@ import {
   readSubagentSummary,
   type SessionHead,
 } from "../utils/claudeProjects.js";
+import { inferTaskKey } from "../utils/taskKeys.js";
 import {
-  forgetTaskBaseBranch,
-  getNicknames,
-  getSessionBranches,
-  getTaskBaseBranches,
+  forgetRepoBranch,
+  getTaskStore,
   setNickname,
   setSessionBranchOverride,
 } from "../utils/taskStore.js";
@@ -280,7 +279,7 @@ export async function listSessions(): Promise<Session[]> {
 async function listSessionsUncached(): Promise<Session[]> {
   const files = await findJsonlFiles(getClaudeProjectsDir());
   scanProgress.total = files.length;
-  const [built, activeIds, nicknames, taskBaseBranches, sessionBranches] = await Promise.all([
+  const [built, activeIds, store] = await Promise.all([
     Promise.all(
       files.map(async (file) => {
         const result = await buildSession(file);
@@ -289,9 +288,7 @@ async function listSessionsUncached(): Promise<Session[]> {
       }),
     ),
     getActiveResumeSessionIds(),
-    getNicknames(),
-    getTaskBaseBranches(),
-    getSessionBranches(),
+    getTaskStore(),
   ]);
 
   const sessions = built.filter((session): session is BuiltSession => session !== null);
@@ -340,21 +337,29 @@ async function listSessionsUncached(): Promise<Session[]> {
       // worktree) shares that directory with every other session in the same repo; branch name is
       // what's actually unique. Null whenever gitBranch itself is null (no live git state to key on).
       const repoRoot = gitDirs ? path.dirname(gitDirs.commonGitDir) : null;
+      const saved = store.sessions[session.id];
+      const branchEntry = repoRoot && gitBranch ? store.repoBranches[repoRoot]?.[gitBranch] : null;
+      const nickname = saved?.nickname ?? null;
+      // Explicit (session's own, then its branch's) beats inferred; "" = explicitly none.
+      const recordedTaskKey = saved?.taskKey ?? branchEntry?.taskKey ?? null;
+      const inferredTaskKey =
+        recordedTaskKey === null ? inferTaskKey(saved?.destination ?? gitBranch, nickname) : null;
       return {
         ...session,
         project,
         gitBranch,
-        nickname: nicknames[session.id] ?? null,
+        nickname,
         isActive: activeIds.has(session.id),
         isWorktree,
-        baseBranch:
-          repoRoot && gitBranch
-            ? (taskBaseBranches[repoRoot]?.[gitBranch]?.baseBranch ?? null)
-            : null,
+        baseBranch: branchEntry?.baseBranch ?? null,
         isAppRepo: repoRoot === appRepoRoot,
-        savedOriginBranch: sessionBranches[session.id]?.origin ?? null,
-        savedDestinationBranch: sessionBranches[session.id]?.destination ?? null,
+        savedOriginBranch: saved?.origin ?? null,
+        savedDestinationBranch: saved?.destination ?? null,
         defaultBranch: repoRoot ? (defaultBranchByRoot.get(repoRoot) ?? null) : null,
+        repoRoot,
+        // "" (explicitly none) collapses to null here.
+        taskKey: recordedTaskKey === "" ? null : (recordedTaskKey ?? inferredTaskKey),
+        taskKeyInferred: inferredTaskKey !== null,
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -593,8 +598,8 @@ export async function deleteSessionBranch(id: string, branch: string): Promise<v
 
   await deleteLocalBranch(cwd, trimmedBranch);
   // Best-effort — `cwd` is the repo root itself for a non-worktree session (see doc comment
-  // above), which is exactly the `repoBranches` (taskStore.ts) other key component alongside the branch name.
-  await forgetTaskBaseBranch(cwd, trimmedBranch).catch(() => undefined);
+  // above), which is exactly the repo-root half of taskStore.ts's `repoBranches` key.
+  await forgetRepoBranch(cwd, trimmedBranch).catch(() => undefined);
 }
 
 /**
@@ -1164,7 +1169,7 @@ export async function deleteSessionWorktree(id: string): Promise<void> {
   // way; a failure here would just leave a harmless orphaned entry, same tolerance as elsewhere in
   // this file when a sidecar write isn't load-bearing for the actual git operation.
   if (repoRootForCleanup && branchForCleanup) {
-    await forgetTaskBaseBranch(repoRootForCleanup, branchForCleanup).catch(() => undefined);
+    await forgetRepoBranch(repoRootForCleanup, branchForCleanup).catch(() => undefined);
   }
 }
 
@@ -1342,7 +1347,7 @@ export async function removeWorktreeAndCheckoutRoot(
   }
   // Best-effort, right after the worktree directory is actually gone (regardless of whether the
   // checkout below succeeds) — same tolerance as deleteSessionWorktree's own cleanup.
-  await forgetTaskBaseBranch(repoRoot, branch).catch(() => undefined);
+  await forgetRepoBranch(repoRoot, branch).catch(() => undefined);
 
   try {
     await checkoutExistingBranch(repoRoot, branch);

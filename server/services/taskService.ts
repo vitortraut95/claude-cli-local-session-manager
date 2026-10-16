@@ -23,7 +23,14 @@ import {
   sanitizeWorktreeDirName,
 } from "../utils/git.js";
 import { AppError } from "../utils/httpError.js";
-import { recordTaskBaseBranch, setNickname, setSessionBranchOverride } from "../utils/taskStore.js";
+import {
+  linkRepoBranchToTask,
+  recordTaskBaseBranch,
+  setNickname,
+  setSessionBranchOverride,
+  setSessionTaskKey,
+  upsertTask,
+} from "../utils/taskStore.js";
 
 export type ProjectFolderOption = {
   path: string;
@@ -276,6 +283,10 @@ async function recordTaskBaseBranchIfNonDefault(
  * is needed for the two cases. The base branch is recorded the same way in both cases (see
  * `recordTaskBaseBranchIfNonDefault` — keyed by branch name, not worktree path, so it's safe either
  * way).
+ *
+ * `taskKey` (optional, already normalized — see `taskKeys.ts`) links the new branch to that task in
+ * `tasks.json`, creating the task entry (with `taskLink`) if needed. Best-effort like the base
+ * branch: a failed write never fails the git work that already happened.
  */
 export async function createTaskWorktree(
   folderPath: string,
@@ -283,7 +294,9 @@ export async function createTaskWorktree(
   baseBranchRef: string,
   baseBranch: string,
   useWorktree: boolean,
-): Promise<{ worktreePath: string }> {
+  taskKey: string | null = null,
+  taskLink: string | null = null,
+): Promise<{ worktreePath: string; repoRoot: string }> {
   const trimmedFolder = folderPath.trim();
   const trimmedBranch = branchName.trim();
   const trimmedRef = baseBranchRef.trim();
@@ -313,7 +326,8 @@ export async function createTaskWorktree(
   if (!useWorktree) {
     await checkoutNewBranch(repoRoot, trimmedBranch, trimmedRef);
     await recordTaskBaseBranchIfNonDefault(repoRoot, trimmedBranch, baseBranch);
-    return { worktreePath: repoRoot };
+    await linkBranchToTaskBestEffort(repoRoot, trimmedBranch, null, taskKey, taskLink);
+    return { worktreePath: repoRoot, repoRoot };
   }
 
   const worktreeDirName = sanitizeWorktreeDirName(trimmedBranch);
@@ -346,7 +360,24 @@ export async function createTaskWorktree(
   // specific directory is safe to pre-trust and what silently fails without it.
   await markWorktreeTrustAccepted(worktreePath);
   await recordTaskBaseBranchIfNonDefault(repoRoot, trimmedBranch, baseBranch);
-  return { worktreePath };
+  await linkBranchToTaskBestEffort(repoRoot, trimmedBranch, worktreePath, taskKey, taskLink);
+  return { worktreePath, repoRoot };
+}
+
+async function linkBranchToTaskBestEffort(
+  repoRoot: string,
+  branchName: string,
+  worktreePath: string | null,
+  taskKey: string | null,
+  taskLink: string | null,
+): Promise<void> {
+  if (!taskKey) return;
+  try {
+    await upsertTask(taskKey, taskLink);
+    await linkRepoBranchToTask(repoRoot, branchName, taskKey, worktreePath);
+  } catch {
+    // Best-effort — see createTaskWorktree's doc comment.
+  }
 }
 
 /**
@@ -376,17 +407,30 @@ export async function createTaskWorktree(
  *
  * `originBranch`/`destinationBranch`, when either is non-blank, are recorded the same way in
  * `tasks.json` (also forcing a pre-generated `--session-id`), so the card's branch
- * links don't depend on parsing them back out of the nickname.
+ * links don't depend on parsing them back out of the nickname. So is `taskKey` (the task the new
+ * session belongs to). Returns the pre-generated session id, or null when none was needed.
  */
-export async function launchTaskTerminal(
-  worktreePath: string,
-  prompt: string,
-  permissionModeAuto: boolean,
-  repoRoot: string,
+export type LaunchTaskOptions = {
+  worktreePath: string;
+  prompt: string;
+  permissionModeAuto: boolean;
+  repoRoot: string;
+  nickname?: string;
+  originBranch?: string;
+  destinationBranch?: string;
+  taskKey?: string | null;
+};
+
+export async function launchTaskTerminal({
+  worktreePath,
+  prompt,
+  permissionModeAuto,
+  repoRoot,
   nickname = "",
   originBranch = "",
   destinationBranch = "",
-): Promise<void> {
+  taskKey = null,
+}: LaunchTaskOptions): Promise<{ sessionId: string | null }> {
   const trimmedWorktreePath = worktreePath.trim();
   const trimmedPrompt = prompt.trim();
   if (!trimmedWorktreePath)
@@ -394,11 +438,13 @@ export async function launchTaskTerminal(
 
   const trimmedNickname = nickname.trim();
   let sessionIdFlag = "";
+  let newSessionId: string | null = null;
   const hasBranches = Boolean(originBranch.trim() || destinationBranch.trim());
-  if (trimmedNickname || hasBranches) {
-    const newSessionId = randomUUID();
+  if (trimmedNickname || hasBranches || taskKey) {
+    newSessionId = randomUUID();
     if (trimmedNickname) await setNickname(newSessionId, trimmedNickname);
     if (hasBranches) await setSessionBranchOverride(newSessionId, originBranch, destinationBranch);
+    if (taskKey) await setSessionTaskKey(newSessionId, taskKey);
     sessionIdFlag = `--session-id ${newSessionId} `;
   }
 
@@ -414,6 +460,7 @@ export async function launchTaskTerminal(
   if (trimmedRepoRoot) {
     await recordUsedProjectPath(trimmedRepoRoot);
   }
+  return { sessionId: newSessionId };
 }
 
 /** A skill folder name as the CLI's own `/<name>` command takes it — also keeps the name from
@@ -458,5 +505,11 @@ export async function launchTaskTest(
     }
   }
 
-  await launchTaskTerminal(cwd, `/${skill} ${link}`, permissionModeAuto, "", nickname);
+  await launchTaskTerminal({
+    worktreePath: cwd,
+    prompt: `/${skill} ${link}`,
+    permissionModeAuto,
+    repoRoot: "",
+    nickname,
+  });
 }

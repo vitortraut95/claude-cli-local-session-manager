@@ -8,7 +8,11 @@ import { REPO_ROOT } from "./repoRoot.js";
  * right alongside the project instead of buried in a dotfolder under the home directory. Never
  * written to `~/.claude/projects/`: that's the Claude CLI's own data.
  *
- * Two independent sections, each keyed the way its data is actually identified:
+ * Three sections, each keyed the way its data is actually identified:
+ * - `tasks[<ticket key>]` — a task (usually a Jira ticket, e.g. `PROJ-123`) that may span several
+ *   repos and sessions: just its metadata (`link`). Which repos and sessions belong to it is
+ *   recorded on those entries' own `taskKey`, below, so deleting a branch also drops it from its
+ *   task without a second place to keep in sync.
  * - `sessions[<session id>]` — what this app knows about one session:
  *   - `nickname`: a purely local label shown alongside the session's real (auto-derived) title,
  *     never replacing it and with no effect outside this app (e.g. a Warp tab's title, which
@@ -16,12 +20,16 @@ import { REPO_ROOT } from "./repoRoot.js";
  *   - `origin`/`destination`: the base/task branches set by hand on the card or recorded by
  *     "New task" at launch — one session's view of its branches (e.g. correcting a stale
  *     transcript-recorded `gitBranch`), not a fact about the branch itself. Either may be null.
+ *   - `taskKey`: the task this session belongs to, when set by "New task"/"add repo" or by hand.
+ *     null = not set (the key is then inferred, see `taskKeys.ts`); "" = explicitly none, which
+ *     stops the inference.
  * - `repoBranches[<repo root>][<branch>]` — facts about a branch: the base a "New task" branch was
- *   created off. Keyed by `(repoRoot, branch)` rather than worktree path or session id: the session
+ *   created off, the task it belongs to (`taskKey`) and the worktree it was created in, if any. Keyed by `(repoRoot, branch)` rather than worktree path or session id: the session
  *   id doesn't exist yet when the branch is created, and a "skip worktree" task checks its branch
  *   out directly in the shared repo root, while a branch name is unique within a repo either way.
- *   Only written when the base differs from the repo's own default (`getDefaultBaseBranch`), and
- *   forgotten once the branch itself is deleted (the three call sites in sessionService.ts).
+ *   `baseBranch` is only set when it differs from the repo's own default (`getDefaultBaseBranch`);
+ *   the whole entry is forgotten once the branch itself is deleted (the three call sites in
+ *   sessionService.ts).
  *
  * Replaces three older files (`custom-titles.json`, `session-branches.json`,
  * `task-base-branches.json`) — `migrateLegacySidecars` below folds them in once, unattended, the
@@ -34,24 +42,31 @@ import { REPO_ROOT } from "./repoRoot.js";
  * — this file has more writers than any one of the old ones did.
  */
 
+export type TaskEntry = {
+  link: string | null;
+  createdAt: string;
+};
+
 export type SessionEntry = {
   nickname: string | null;
   origin: string | null;
   destination: string | null;
+  taskKey: string | null;
 };
 
-export type BaseBranchEntry = {
-  baseBranch: string;
+export type RepoBranchEntry = {
+  baseBranch: string | null;
   createdAt: string;
+  taskKey: string | null;
+  worktreePath: string | null;
 };
 
-type TaskStore = {
+export type TaskStore = {
   version: 1;
+  tasks: Record<string, TaskEntry>;
   sessions: Record<string, SessionEntry>;
-  repoBranches: Record<string, Record<string, BaseBranchEntry>>;
+  repoBranches: Record<string, Record<string, RepoBranchEntry>>;
 };
-
-export type SessionBranchOverride = { origin: string | null; destination: string | null };
 
 const STORE_FILE = "tasks.json";
 
@@ -60,7 +75,7 @@ function storePath(): string {
 }
 
 function emptyStore(): TaskStore {
-  return { version: 1, sessions: {}, repoBranches: {} };
+  return { version: 1, tasks: {}, sessions: {}, repoBranches: {} };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -71,13 +86,33 @@ function asTextOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+/** Like `asTextOrNull`, but keeps "" — a session's "explicitly no task" marker. */
+function asTaskKeyOrNull(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  return value.trim();
+}
+
 function isEmptySession(entry: SessionEntry): boolean {
-  return !entry.nickname && !entry.origin && !entry.destination;
+  return !entry.nickname && !entry.origin && !entry.destination && entry.taskKey === null;
+}
+
+function isEmptyRepoBranch(entry: RepoBranchEntry): boolean {
+  return !entry.baseBranch && !entry.taskKey;
 }
 
 /** Tolerant of a hand-edited file: unknown fields are dropped, missing ones default to null. */
 function normalizeStore(parsed: Record<string, unknown>): TaskStore {
   const store = emptyStore();
+
+  if (isRecord(parsed.tasks)) {
+    for (const [key, raw] of Object.entries(parsed.tasks)) {
+      if (!isRecord(raw)) continue;
+      store.tasks[key] = {
+        link: asTextOrNull(raw.link),
+        createdAt: typeof raw.createdAt === "string" ? raw.createdAt : "",
+      };
+    }
+  }
 
   if (isRecord(parsed.sessions)) {
     for (const [id, raw] of Object.entries(parsed.sessions)) {
@@ -86,6 +121,7 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
         nickname: asTextOrNull(raw.nickname),
         origin: asTextOrNull(raw.origin),
         destination: asTextOrNull(raw.destination),
+        taskKey: asTaskKeyOrNull(raw.taskKey),
       };
       if (!isEmptySession(entry)) store.sessions[id] = entry;
     }
@@ -96,10 +132,13 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
       if (!isRecord(branches)) continue;
       for (const [branch, raw] of Object.entries(branches)) {
         if (!isRecord(raw)) continue;
-        const baseBranch = asTextOrNull(raw.baseBranch);
-        if (!baseBranch) continue;
-        const createdAt = typeof raw.createdAt === "string" ? raw.createdAt : "";
-        (store.repoBranches[repoRoot] ??= {})[branch] = { baseBranch, createdAt };
+        const entry: RepoBranchEntry = {
+          baseBranch: asTextOrNull(raw.baseBranch),
+          createdAt: typeof raw.createdAt === "string" ? raw.createdAt : "",
+          taskKey: asTextOrNull(raw.taskKey),
+          worktreePath: asTextOrNull(raw.worktreePath),
+        };
+        if (!isEmptyRepoBranch(entry)) (store.repoBranches[repoRoot] ??= {})[branch] = entry;
       }
     }
   }
@@ -223,6 +262,7 @@ function updateSession(id: string, patch: Partial<SessionEntry>): Promise<void> 
       nickname: null,
       origin: null,
       destination: null,
+      taskKey: null,
       ...store.sessions[id],
       ...patch,
     };
@@ -250,17 +290,6 @@ export function setNickname(id: string, nickname: string): Promise<void> {
   return updateSession(id, { nickname: asTextOrNull(nickname) });
 }
 
-export async function getSessionBranches(): Promise<Record<string, SessionBranchOverride>> {
-  const { sessions } = await readStore();
-  const result: Record<string, SessionBranchOverride> = {};
-  for (const [id, entry] of Object.entries(sessions)) {
-    if (entry.origin || entry.destination) {
-      result[id] = { origin: entry.origin, destination: entry.destination };
-    }
-  }
-  return result;
-}
-
 /** Blank/whitespace-only values clear that side. */
 export function setSessionBranchOverride(
   id: string,
@@ -273,10 +302,36 @@ export function setSessionBranchOverride(
   });
 }
 
-export async function getTaskBaseBranches(): Promise<
-  Record<string, Record<string, BaseBranchEntry>>
-> {
-  return (await readStore()).repoBranches;
+/** One read of the whole store — for `listSessions`, which needs every section at once. */
+export function getTaskStore(): Promise<TaskStore> {
+  return readStore();
+}
+
+function updateRepoBranch(
+  repoRoot: string,
+  branchName: string,
+  patch: Partial<RepoBranchEntry>,
+): Promise<void> {
+  return mutateStore((store) => {
+    const current = store.repoBranches[repoRoot]?.[branchName];
+    const entry: RepoBranchEntry = {
+      baseBranch: null,
+      createdAt: new Date().toISOString(),
+      taskKey: null,
+      worktreePath: null,
+      ...current,
+      ...patch,
+    };
+    const byBranch = store.repoBranches[repoRoot];
+    if (isEmptyRepoBranch(entry)) {
+      if (!current || !byBranch) return false;
+      delete byBranch[branchName];
+      if (Object.keys(byBranch).length === 0) delete store.repoBranches[repoRoot];
+    } else {
+      (store.repoBranches[repoRoot] ??= {})[branchName] = entry;
+    }
+    return true;
+  });
 }
 
 export function recordTaskBaseBranch(
@@ -284,21 +339,48 @@ export function recordTaskBaseBranch(
   branchName: string,
   baseBranch: string,
 ): Promise<void> {
-  return mutateStore((store) => {
-    (store.repoBranches[repoRoot] ??= {})[branchName] = {
-      baseBranch,
-      createdAt: new Date().toISOString(),
-    };
-    return true;
+  return updateRepoBranch(repoRoot, branchName, { baseBranch });
+}
+
+/** `taskKey` null unlinks the branch from its task (its recorded base, if any, stays). */
+export function linkRepoBranchToTask(
+  repoRoot: string,
+  branchName: string,
+  taskKey: string | null,
+  worktreePath?: string | null,
+): Promise<void> {
+  return updateRepoBranch(repoRoot, branchName, {
+    taskKey,
+    ...(worktreePath !== undefined ? { worktreePath } : {}),
   });
 }
 
-export function forgetTaskBaseBranch(repoRoot: string, branchName: string): Promise<void> {
+/** The branch itself is gone — drops everything recorded about it, task link included. */
+export function forgetRepoBranch(repoRoot: string, branchName: string): Promise<void> {
   return mutateStore((store) => {
     const byBranch = store.repoBranches[repoRoot];
     if (!byBranch?.[branchName]) return false;
     delete byBranch[branchName];
     if (Object.keys(byBranch).length === 0) delete store.repoBranches[repoRoot];
+    return true;
+  });
+}
+
+/** null = back to inferring the key; "" = explicitly no task. */
+export function setSessionTaskKey(id: string, taskKey: string | null): Promise<void> {
+  return updateSession(id, { taskKey });
+}
+
+/** Creates the task entry if missing; a non-blank `link` replaces the stored one. */
+export function upsertTask(key: string, link: string | null): Promise<void> {
+  return mutateStore((store) => {
+    const current = store.tasks[key];
+    const trimmedLink = asTextOrNull(link);
+    if (current && (!trimmedLink || current.link === trimmedLink)) return false;
+    store.tasks[key] = {
+      link: trimmedLink ?? current?.link ?? null,
+      createdAt: current?.createdAt ?? new Date().toISOString(),
+    };
     return true;
   });
 }
