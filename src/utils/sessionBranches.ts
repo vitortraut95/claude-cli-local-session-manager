@@ -37,7 +37,7 @@ export type SessionBranches = { origin: string | null; destination: string | nul
  * Single source of truth for "which branches is this session actually about" — feeds the card's
  * branch line and the "Open Jenkins"/"Open PR" links. Per side, first non-null wins:
  * 1. `savedOriginBranch`/`savedDestinationBranch` — set on the card's branch editor or recorded by
- *    "New task" at launch (`session-branches.json`).
+ *    "New task" at launch (`tasks.json`).
  * 2. The nickname's encoded branches — how they were corrected before (1) existed. Kept as a
  *    fallback so older sessions keep working; meant to be dropped later together with a one-time
  *    backfill of (1) from the nicknames (a backfill now would freeze them and make nickname edits
@@ -52,7 +52,7 @@ export type SessionBranches = { origin: string | null; destination: string | nul
  *   (`claudeProjects.ts`'s `findLatestGitBranch`), not live git state — it misses a branch
  *   created/switched outside of any Claude Code turn in that session (e.g. work done ahead on the
  *   base branch, committed to a task branch afterward), staying stuck on the old branch forever.
- * - `baseBranch` (`taskBaseBranches.json`) is only ever recorded when a task's branch was created
+ * - `baseBranch` (`tasks.json`'s `repoBranches`) is only ever recorded when a task's branch was created
  *   through this app's own "New task" flow and differs from the repo's default — a session
  *   advanced manually never gets an entry, so it's always null there regardless of the real base.
  */

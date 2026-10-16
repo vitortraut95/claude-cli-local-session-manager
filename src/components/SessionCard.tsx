@@ -148,7 +148,7 @@ export function SessionCard({
   // Fetched on click rather than eagerly for every card — this is a git call (origin remote →
   // host + repo slug) on the server, only worth paying for when the user actually wants the link.
   // When this task's branch was created off something other than the repo's default (its origin
-  // branch — the nickname's, else `baseBranch` from taskBaseBranches.ts — is set and isn't
+  // branch — the nickname's, else `baseBranch` from taskStore.ts — is set and isn't
   // main/master; applies whether the task used a worktree or not), defers to
   // OpenPrBaseChoiceModal instead of opening straight away — the plain compare link's implicit
   // default-branch comparison would otherwise show every commit already on that base as part of

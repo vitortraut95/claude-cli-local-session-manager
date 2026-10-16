@@ -23,9 +23,7 @@ import {
   sanitizeWorktreeDirName,
 } from "../utils/git.js";
 import { AppError } from "../utils/httpError.js";
-import { setNickname } from "../utils/nicknames.js";
-import { setSessionBranchOverride } from "../utils/sessionBranches.js";
-import { recordTaskBaseBranch } from "../utils/taskBaseBranches.js";
+import { recordTaskBaseBranch, setNickname, setSessionBranchOverride } from "../utils/taskStore.js";
 
 export type ProjectFolderOption = {
   path: string;
@@ -236,7 +234,7 @@ export async function resolveBaseBranch(
 
 /**
  * Best-effort: records `baseBranch` against `(repoRoot, branchName)` for the "Open PR" button's
- * later use (see `taskBaseBranches.ts`), but only when it actually differs from the repo's own
+ * later use (see `taskStore.ts`'s `repoBranches`), but only when it actually differs from the repo's own
  * resolved default — branching off main/master (the common case) needs no entry, since that's
  * already what the default compare link assumes. Applies equally whether the task used a worktree
  * or checked the branch out directly in the repo root — a branch name can't collide with another
@@ -377,7 +375,7 @@ export async function createTaskWorktree(
  * still gets a plain CLI-assigned session id exactly as before this existed.
  *
  * `originBranch`/`destinationBranch`, when either is non-blank, are recorded the same way in
- * `session-branches.json` (also forcing a pre-generated `--session-id`), so the card's branch
+ * `tasks.json` (also forcing a pre-generated `--session-id`), so the card's branch
  * links don't depend on parsing them back out of the nickname.
  */
 export async function launchTaskTerminal(

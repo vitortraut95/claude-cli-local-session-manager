@@ -24,9 +24,14 @@ import {
   readSubagentSummary,
   type SessionHead,
 } from "../utils/claudeProjects.js";
-import { getNicknames, setNickname } from "../utils/nicknames.js";
-import { getSessionBranches, setSessionBranchOverride } from "../utils/sessionBranches.js";
-import { forgetTaskBaseBranch, getTaskBaseBranches } from "../utils/taskBaseBranches.js";
+import {
+  forgetTaskBaseBranch,
+  getNicknames,
+  getSessionBranches,
+  getTaskBaseBranches,
+  setNickname,
+  setSessionBranchOverride,
+} from "../utils/taskStore.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import { AppError } from "../utils/httpError.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
@@ -508,7 +513,7 @@ export async function getSessionSubagents(id: string): Promise<SubagentDetail[]>
  *
  * `explicitBase`, when given, is spelled out in the link instead of relying on the host's implicit
  * default-branch comparison — used when the session's worktree was branched off something other
- * than the repo's default (see `Session.baseBranch`/`taskBaseBranches.ts`) and the user chose, via
+ * than the repo's default (see `Session.baseBranch`/`taskStore.ts`'s `repoBranches`) and the user chose, via
  * `OpenPrBaseChoiceModal`, to compare against that actual base rather than the default.
  */
 export async function getSessionPrUrl(
@@ -588,12 +593,12 @@ export async function deleteSessionBranch(id: string, branch: string): Promise<v
 
   await deleteLocalBranch(cwd, trimmedBranch);
   // Best-effort — `cwd` is the repo root itself for a non-worktree session (see doc comment
-  // above), which is exactly taskBaseBranches.ts's other key component alongside the branch name.
+  // above), which is exactly the `repoBranches` (taskStore.ts) other key component alongside the branch name.
   await forgetTaskBaseBranch(cwd, trimmedBranch).catch(() => undefined);
 }
 
 /**
- * Nicknames are purely local (see `nicknames.ts`) and never touch the session's own `.jsonl`, so
+ * Nicknames are purely local (see `taskStore.ts`) and never touch the session's own `.jsonl`, so
  * unlike `deleteSession`/`continueSession` there's no active-session gate here — relabeling a
  * session that's currently open in a terminal is safe and doesn't race with anything.
  */
@@ -606,7 +611,7 @@ export async function setSessionNickname(id: string, nickname: string): Promise<
 }
 
 /**
- * Same as nicknames: purely local (`session-branches.json`), never touches the session's own
+ * Same as nicknames: purely local (`tasks.json`), never touches the session's own
  * `.jsonl`, so no active-session gate.
  */
 export async function setSessionBranches(
@@ -1150,12 +1155,12 @@ export async function deleteSessionWorktree(id: string): Promise<void> {
   }
 
   // Captured before removal, while the worktree directory still exists to ask git about — needed
-  // for the taskBaseBranches.ts cleanup below, which is keyed by (repoRoot, branch).
+  // for the taskStore.ts `repoBranches` cleanup below, which is keyed by (repoRoot, branch).
   const repoRootForCleanup = await getRepoRoot(cwd);
   const branchForCleanup = sessions.find((s) => s.workingDirectory === cwd)?.gitBranch ?? null;
 
   await removeWorktreeAndBranch(cwd);
-  // Best-effort — the worktree (and thus this branch's taskBaseBranches.ts entry) is gone either
+  // Best-effort — the worktree (and thus this branch's `repoBranches` entry) is gone either
   // way; a failure here would just leave a harmless orphaned entry, same tolerance as elsewhere in
   // this file when a sidecar write isn't load-bearing for the actual git operation.
   if (repoRootForCleanup && branchForCleanup) {

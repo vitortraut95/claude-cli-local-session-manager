@@ -19,7 +19,7 @@ type OpenPrBaseChoiceModalProps = {
  * (`resolveSessionBranches` — the nickname's, else `session.baseBranch`) — i.e. this
  * task's branch was created off something other than the repo's own default, whether via a
  * worktree or checked out directly in the repo root (see `Session.baseBranch`/
- * `taskBaseBranches.ts`), so the plain compare link's implicit default-branch comparison would show
+ * `taskStore.ts`'s `repoBranches`), so the plain compare link's implicit default-branch comparison would show
  * every commit already on that base as part of the "diff" too. Offers the accurate compare link
  * (explicit `<base>...<branch>`, see `getSessionPrUrl`) alongside the option to fall back to the
  * default anyway (e.g. the base branch was since merged or deleted, or the default is genuinely

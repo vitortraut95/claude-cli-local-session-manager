@@ -23,9 +23,12 @@ claude-session-manager.desktop
 # checkbox) — local preference, not shared project content.
 /userPreferences.json
 
-# Local sidecar data — session nicknames and "New task" worktrees' recorded base branches.
+# Local sidecar data — session nicknames/branches and "New task" branches' recorded bases.
 # Per-machine, not shared project content, same reasoning as userPreferences.json above (see
-# nicknames.ts/taskBaseBranches.ts).
+# server/utils/taskStore.ts).
+/tasks.json
+/tasks.json.*
+# Older copies of that data, folded into tasks.json on first start and no longer read.
 /custom-titles.json
 # Left behind by the removed "Compact & continue" feature — no longer read, still ignored so an
 # existing copy doesn't show up as untracked.

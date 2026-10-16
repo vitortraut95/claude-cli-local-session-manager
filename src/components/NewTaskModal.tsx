@@ -346,7 +346,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   const trimmedPrompt = promptText.trim();
   // Auto nickname: just the full pasted Jira link (not only the extracted id), so the nickname
   // itself is clickable/copyable straight into e.g. a PR description. The branches are no longer
-  // encoded here — they're recorded separately at launch (`session-branches.json`); the old
+  // encoded here — they're recorded separately at launch (`tasks.json`); the old
   // "<base> -> <branch> - <link>" shape is still parsed for sessions created before that.
   const autoNickname = jiraLink.trim();
   // Every other field is always visible now (no more link-gated reveal — see the render below),
