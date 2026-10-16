@@ -19,8 +19,8 @@ const CHIP_CLASSNAME =
 
 /**
  * The card's "Task: PROJ-123 · also in: cart, checkout" line — the other repos/branches of the
- * same multi-repo task (`Session.taskRepos`, see server `taskRepos.ts`). The key filters the list
- * down to that task; a repo with sessions of its own is reached the same way, while one with no
+ * same multi-repo task (`Session.taskRepos`, see server `taskRepos.ts`). The key puts the task key
+ * in the search box (matched against `Session.taskKey`, cleared like any search); a repo with sessions of its own is reached the same way, while one with no
  * session yet (linked to the task, e.g. to work on it via `/add-dir`) opens its PR directly.
  */
 export function TaskReposLine({ session, onFilterByTask }: TaskReposLineProps) {

@@ -21,7 +21,7 @@ and clean them up. Everything runs on your machine — no external server involv
   fast-forwards the hub and links new skills (Settings → "Team skills" to manage)
 - **Worktree → root** — copy a worktree's files into the project root to test locally, or move
   the branch there for real once it's ready to push
-- Full-text search across every prompt, plus project/date filters
+- Full-text search across every prompt, plus project and task filters
 - Local nicknames, bulk delete, active-session protection (won't let two terminals fight over
   the same session)
 - Subagent browser (per-invocation type/description/duration/result), Claude usage-limits badge

@@ -920,10 +920,6 @@ export const translations = {
   ),
   "projectFilter.allProjects": dict("All projects", "Todos os projetos", "Todos los proyectos"),
 
-  "dateRangeFilter.fromLabel": dict("Updated from", "Atualizado a partir de", "Actualizado desde"),
-  "dateRangeFilter.toLabel": dict("Updated to", "Atualizado até", "Actualizado hasta"),
-  "dateRangeFilter.to": dict("to", "até", "hasta"),
-
   "pagination.previousLabel": dict("Previous page", "Página anterior", "Página anterior"),
   "pagination.nextLabel": dict("Next page", "Próxima página", "Página siguiente"),
   "pagination.pageInfo": dict(
@@ -1013,12 +1009,6 @@ export const translations = {
     "Eliminar seleccionadas",
   ),
   "sessionsPage.refresh": dict("Refresh sessions", "Atualizar sessões", "Actualizar sesiones"),
-  "sessionsPage.taskFilter.label": dict("Task: {key}", "Tarefa: {key}", "Tarea: {key}"),
-  "sessionsPage.taskFilter.clear": dict(
-    "Clear task filter",
-    "Limpar filtro de tarefa",
-    "Quitar filtro de tarea",
-  ),
   "sessionsPage.delete": dict("Delete", "Excluir", "Eliminar"),
   "sessionsPage.cancel": dict("Cancel", "Cancelar", "Cancelar"),
   "sessionsPage.deleteConfirm.title": dict("Delete session", "Excluir sessão", "Eliminar sesión"),
@@ -1071,9 +1061,9 @@ export const translations = {
   "sessionCard.branches.originLabel": dict("Base:", "Base:", "Base:"),
   "sessionCard.task.label": dict("Task:", "Tarefa:", "Tarea:"),
   "sessionCard.task.filter": dict(
-    "Show only this task's sessions",
-    "Mostrar só as sessões desta tarefa",
-    "Mostrar solo las sesiones de esta tarea",
+    "Search for this task",
+    "Buscar esta tarefa",
+    "Buscar esta tarea",
   ),
   "sessionCard.task.inferred": dict(
     "Detected from the branch or nickname",
@@ -1082,14 +1072,14 @@ export const translations = {
   ),
   "sessionCard.task.alsoIn": dict("also in:", "também em:", "también en:"),
   "sessionCard.task.repoSessions.one": dict(
-    "{branch} · {count} session — click to show the task",
-    "{branch} · {count} sessão — clique para ver a tarefa",
-    "{branch} · {count} sesión — clic para ver la tarea",
+    "{branch} · {count} session — click to search for the task",
+    "{branch} · {count} sessão — clique para buscar a tarefa",
+    "{branch} · {count} sesión — clic para buscar la tarea",
   ),
   "sessionCard.task.repoSessions.many": dict(
-    "{branch} · {count} sessions — click to show the task",
-    "{branch} · {count} sessões — clique para ver a tarefa",
-    "{branch} · {count} sesiones — clic para ver la tarea",
+    "{branch} · {count} sessions — click to search for the task",
+    "{branch} · {count} sessões — clique para buscar a tarefa",
+    "{branch} · {count} sesiones — clic para buscar la tarea",
   ),
   "sessionCard.task.repoNoSession": dict(
     "{branch} · no session of its own — click to open the PR",
