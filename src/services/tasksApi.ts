@@ -194,6 +194,8 @@ export async function createTaskWorktree(
   baseBranchRef: string,
   baseBranch: string,
   useWorktree: boolean,
+  taskKey = "",
+  taskLink = "",
 ): Promise<{ worktreePath: string }> {
   const { data } = await withServerErrorMessage(() =>
     client.post<{ worktreePath: string }>("/worktree", {
@@ -202,6 +204,8 @@ export async function createTaskWorktree(
       baseBranchRef,
       baseBranch,
       useWorktree,
+      taskKey,
+      taskLink,
     }),
   );
   return data;
@@ -212,7 +216,8 @@ export async function createTaskWorktree(
  *  server-side to remember the project folder for next time's dropdown — pass "" if unknown.
  *  `nickname`, when non-blank, is set as the new session's local nickname before the terminal
  *  opens (see server-side launchTaskTerminal) — pass "" to skip it. `originBranch`/
- *  `destinationBranch` are recorded as the session's saved branches the same way. */
+ *  `destinationBranch` are recorded as the session's saved branches the same way, and `taskKey`
+ *  (ticket key, "" = none) as the task the new session belongs to. */
 export async function launchTaskTerminal(
   worktreePath: string,
   prompt: string,
@@ -221,6 +226,7 @@ export async function launchTaskTerminal(
   nickname = "",
   originBranch = "",
   destinationBranch = "",
+  taskKey = "",
 ): Promise<void> {
   await withServerErrorMessage(() =>
     client.post("/launch", {
@@ -231,6 +237,7 @@ export async function launchTaskTerminal(
       nickname,
       originBranch,
       destinationBranch,
+      taskKey,
     }),
   );
 }

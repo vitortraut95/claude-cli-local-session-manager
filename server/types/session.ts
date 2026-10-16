@@ -57,6 +57,14 @@ export type Session = {
   /** The repo's default branch (`origin/HEAD`, else main/master — `getDefaultBaseBranch`), the
    *  last fallback for the base shown on the card. Optional: absent from an older backend. */
   defaultBranch?: string | null;
+  /** The repo's main checkout (the worktree's, for a linked worktree); null outside a git repo.
+   *  Optional: absent from an older backend. */
+  repoRoot?: string | null;
+  /** Ticket key of the task this session belongs to (`PROJ-123`) — set by "New task"/"add repo",
+   *  by hand, or inferred from the branch/nickname (`taskKeyInferred`) when exactly one key
+   *  appears there. Optional: absent from an older backend. */
+  taskKey?: string | null;
+  taskKeyInferred?: boolean;
 };
 
 export type WorktreeToRootFileDiff = {

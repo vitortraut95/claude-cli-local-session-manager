@@ -406,6 +406,8 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         baseBranchRef,
         trimmedBase,
         useWorktree,
+        jiraId ?? "",
+        jiraLink.trim(),
       );
       updateStep("worktree", "done");
 
@@ -418,6 +420,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         autoNickname,
         trimmedBase,
         trimmedBranch,
+        jiraId ?? "",
       );
       updateStep("launch", "done");
 
