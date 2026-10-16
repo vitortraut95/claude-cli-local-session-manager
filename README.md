@@ -21,7 +21,11 @@ and clean them up. Everything runs on your machine — no external server involv
   fast-forwards the hub and links new skills (Settings → "Team skills" to manage)
 - **Worktree → root** — copy a worktree's files into the project root to test locally, or move
   the branch there for real once it's ready to push
-- Full-text search across every prompt, plus project and task filters
+- **Multi-repo tasks** — a task (ticket key, e.g. `PROJ-123`) can span several repos: New task can
+  create the same branch in extra repos (they join the one session via `--add-dir`), a card's "+"
+  adds another repo later (then paste the `/add-dir` it shows), and each card shows the task's
+  other repos. Everything is kept in the local `tasks.json`
+- Full-text search across every prompt (also matches a session's task key), plus a project filter
 - Local nicknames, bulk delete, active-session protection (won't let two terminals fight over
   the same session)
 - Subagent browser (per-invocation type/description/duration/result), Claude usage-limits badge
@@ -96,8 +100,15 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | POST   | `/sessions/:id/continue`              | Open a terminal running `claude --resume <id>`                                 |
 | POST   | `/sessions/:id/vscode`                | Open the session's working directory in VS Code                                |
 | GET    | `/sessions/:id/export`                | Download the session as a `.claude-session.json.gz` file                       |
+| GET    | `/sessions/:id/task`                  | The session's task (key, inferred or saved) and that task's repos              |
+| PUT    | `/sessions/:id/task`                  | Save `{ taskKey, link? }` on the session (`""` = back to detecting it)         |
 | POST   | `/sessions/import/inspect`            | Read an exported file (raw body) and list local target clones                  |
 | POST   | `/sessions/import`                    | Import an exported file into `?targetDir=` (optional `&checkoutBranch=true`)   |
+| GET    | `/tasks/by-key/:key`                  | A task's link, repos (branch, base, folder) and sessions                       |
+| PUT    | `/tasks/by-key/:key`                  | Save the task's `{ link }`                                                     |
+| POST   | `/tasks/by-key/:key/repos`            | Create the task's branch in another repo `{ folderPath, branchName?, ... }`    |
+| DELETE | `/tasks/by-key/:key/repos`            | Unlink `{ repoRoot, branch }` from the task (branch and worktree stay)         |
+| GET    | `/tasks/by-key/:key/pr-url`           | "Open PR" link for one of the task's repos (`?repoRoot=&branch=&base=`)        |
 | POST   | `/tasks/test-task`                    | Open a terminal running `/<taskTestSkill> <ticketLink>` ("Test task" button)   |
 | GET    | `/tasks/skills-hub/status`            | Team skills: hub location/branch, catalogs, link state per skill               |
 | GET    | `/tasks/skills-hub/skill`             | One hub skill's SKILL.md content (`?catalog=&name=`)                           |
