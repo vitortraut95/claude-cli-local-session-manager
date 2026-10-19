@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import * as tasksApi from "../services/tasksApi";
+import * as preferencesApi from "../services/preferencesApi";
 
 export type Theme = "light" | "dark";
 
@@ -35,7 +35,7 @@ export function useTheme() {
   useEffect(() => {
     let cancelled = false;
     const load = () => {
-      tasksApi
+      preferencesApi
         .fetchPreferences()
         .then((prefs) => {
           if (cancelled) return;
@@ -47,23 +47,23 @@ export function useTheme() {
           // from before the theme moved into the preferences.
           const cached = readCachedTheme();
           if (cached && prefs.theme === null) {
-            void tasksApi.updatePreferences({ theme: cached }).catch(() => undefined);
+            void preferencesApi.updatePreferences({ theme: cached }).catch(() => undefined);
           }
         })
         .catch(() => undefined);
     };
     load();
-    window.addEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, load);
+    window.addEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
-      window.removeEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, load);
+      window.removeEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, load);
     };
   }, []);
 
   const toggleTheme = useCallback(() => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
-    void tasksApi.updatePreferences({ theme: next }).catch(() => undefined);
+    void preferencesApi.updatePreferences({ theme: next }).catch(() => undefined);
   }, [theme]);
 
   return { theme, toggleTheme };

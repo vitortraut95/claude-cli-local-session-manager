@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import * as tasksApi from "../services/tasksApi";
-import type { SkillsHubStatus } from "../services/tasksApi";
+import * as skillsHubApi from "../services/skillsHubApi";
+import type { SkillsHubStatus } from "../services/skillsHubApi";
 
 /** Last status any instance loaded — seeds new consumers so they render before the fetch. */
 let lastStatus: SkillsHubStatus | null = null;
@@ -18,7 +18,7 @@ export function useSkillsHubStatus(enabled: boolean) {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const next = await tasksApi.fetchSkillsHubStatus();
+      const next = await skillsHubApi.fetchSkillsHubStatus();
       lastStatus = next;
       setStatus(next);
       setFailed(false);
@@ -37,8 +37,8 @@ export function useSkillsHubStatus(enabled: boolean) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void reload();
     const onChanged = () => void reload();
-    window.addEventListener(tasksApi.SKILLS_HUB_CHANGED_EVENT, onChanged);
-    return () => window.removeEventListener(tasksApi.SKILLS_HUB_CHANGED_EVENT, onChanged);
+    window.addEventListener(skillsHubApi.SKILLS_HUB_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(skillsHubApi.SKILLS_HUB_CHANGED_EVENT, onChanged);
   }, [enabled, reload]);
 
   return { status, setStatus, loading, failed, reload };

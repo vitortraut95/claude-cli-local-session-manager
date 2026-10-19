@@ -1,8 +1,8 @@
 import { CheckCircle2, FolderGit2, Loader2, Plus, TriangleAlert, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
-import * as tasksApi from "../services/tasksApi";
-import type { WorkspaceDirStatus, WorkspaceDirSuggestion } from "../services/tasksApi";
+import * as preferencesApi from "../services/preferencesApi";
+import type { WorkspaceDirStatus, WorkspaceDirSuggestion } from "../services/preferencesApi";
 import { Button } from "./Button";
 import { Input } from "./Input";
 
@@ -31,7 +31,7 @@ export function WorkspaceDirsEditor({
 
   useEffect(() => {
     let cancelled = false;
-    tasksApi
+    preferencesApi
       .fetchWorkspaceDirSuggestions()
       .then((result) => {
         if (cancelled) return;
@@ -57,7 +57,7 @@ export function WorkspaceDirsEditor({
     const unknown = value.filter((dir) => !(dir in statuses));
     if (unknown.length === 0) return;
     let cancelled = false;
-    tasksApi
+    preferencesApi
       .inspectWorkspaceDirs(unknown)
       .then((result) => {
         if (cancelled) return;
@@ -80,7 +80,7 @@ export function WorkspaceDirsEditor({
     if (!raw.trim()) return;
     setAdding(true);
     try {
-      const [status] = await tasksApi.inspectWorkspaceDirs([raw]);
+      const [status] = await preferencesApi.inspectWorkspaceDirs([raw]);
       if (!status) return;
       setStatuses((prev) => ({ ...prev, [status.dir]: status }));
       if (!value.includes(status.dir)) onChange([...value, status.dir]);

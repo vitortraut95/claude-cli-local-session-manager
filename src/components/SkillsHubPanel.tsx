@@ -1,7 +1,7 @@
 import { AlertTriangle, Wand2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
-import type { SkillsHubStatus } from "../services/tasksApi";
+import type { SkillsHubStatus } from "../services/skillsHubApi";
 import { Button } from "./Button";
 
 type SkillsHubPanelProps = {

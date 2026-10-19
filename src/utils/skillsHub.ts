@@ -1,5 +1,5 @@
 import type { TranslationKey } from "../i18n/translations";
-import type { SkillsHubSyncResult } from "../services/tasksApi";
+import type { SkillsHubSyncResult } from "../services/skillsHubApi";
 
 /** One-line summary of a skills-hub sync. `warning` = worth flagging (offline, update skipped,
  *  name conflicts), never fatal. */

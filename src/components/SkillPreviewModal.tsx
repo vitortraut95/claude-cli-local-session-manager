@@ -1,11 +1,11 @@
 import { FileText, Loader2, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
-import * as tasksApi from "../services/tasksApi";
-import type { SkillDetails } from "../services/tasksApi";
+import type { SkillDetails } from "../services/skillsHubApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { MarkdownView } from "./MarkdownView";
 import { Modal } from "./Modal";
+import * as skillsHubApi from "../services/skillsHubApi";
 
 type SkillPreviewModalProps = {
   catalog: string;
@@ -22,7 +22,7 @@ export function SkillPreviewModal({ catalog, name, onClose }: SkillPreviewModalP
 
   useEffect(() => {
     let cancelled = false;
-    tasksApi
+    skillsHubApi
       .fetchSkillDetails(catalog, name)
       .then((result) => {
         if (!cancelled) setDetails(result);
