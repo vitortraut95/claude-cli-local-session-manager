@@ -71,6 +71,7 @@ function isValidPreferences(
     (candidate.language === null ||
       candidate.language === "en" ||
       candidate.language === "pt" ||
+      // "es": no longer offered, still accepted from older bundles (read back as null).
       candidate.language === "es") &&
     Array.isArray(candidate.recentProjectPaths) &&
     candidate.recentProjectPaths.every((item) => typeof item === "string") &&
@@ -122,7 +123,7 @@ tasksRouter.put("/preferences", async (req, res) => {
         "Malformed preferences payload — expected { defaultPrompt: string, " +
           "defaultSessionPrompt?: string, branchTypes: string[], " +
           "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
-          'language: "en"|"pt"|"es"|null, ' +
+          'language: "en"|"pt"|null, ' +
           "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
           "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
           "autoUpdateOnStart? }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +

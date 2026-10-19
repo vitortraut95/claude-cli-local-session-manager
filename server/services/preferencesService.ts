@@ -3,7 +3,7 @@ import path from "node:path";
 import { BadRequestError } from "../utils/httpError.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 
-export type Language = "en" | "pt" | "es";
+export type Language = "en" | "pt";
 
 /** The team-skills integration. Optional: older files lack it; each sub-field falls back. */
 export type SkillsHubPreferences = {
@@ -84,7 +84,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 };
 
 function isLanguage(value: unknown): value is Language {
-  return value === "en" || value === "pt" || value === "es";
+  return value === "en" || value === "pt";
 }
 
 function parseSkillsHub(value: unknown): SkillsHubPreferences {
