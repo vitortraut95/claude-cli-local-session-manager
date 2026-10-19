@@ -54,6 +54,8 @@ export type UserPreferences = {
   /** "Test task" modal's "--permission-mode auto" checkbox, remembered as last left (default on).
    *  Optional: older backend. */
   taskTestPermissionModeAuto?: boolean;
+  /** UI theme; null = follow the system. Optional: older backend. */
+  theme?: "light" | "dark" | null;
 };
 
 export type EnvPreviewTemplate = { label: string; url: string };
