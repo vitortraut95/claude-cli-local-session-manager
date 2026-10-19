@@ -1,4 +1,4 @@
-import { Plug } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { LEGACY_ENV_JENKINS_BASE_URL } from "../hooks/useTeamLinks";
@@ -6,34 +6,29 @@ import { useToast } from "../hooks/useToast";
 import * as tasksApi from "../services/tasksApi";
 import type { UserPreferences } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import { ImportPreferencesButton } from "./ImportPreferencesButton";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
+import { WorkspaceDirsEditor } from "./WorkspaceDirsEditor";
 
-type TeamIntegrationsPromptModalProps = {
-  /** The preferences that triggered the prompt — its never-set (null) fields get prefilled. */
+type SetupModalProps = {
+  /** The preferences that triggered the setup — used to prefill. */
   prefs: UserPreferences;
   onSaved: () => void;
-  /** "Not now" — only for this page load; the prompt comes back on the next start until saved. */
+  /** "Not now" — only for this page load; it comes back on the next load until saved. */
   onSkip: () => void;
 };
 
-/**
- * Asked on app start while `jenkinsBaseUrl` or `skillsHub.repoUrl` was never saved (null).
- * Prefilled from `VITE_JENKINS_BASE_URL` and an existing hub clone's `origin`. An empty field
- * saves "" (not used) and stops the prompt.
- */
-export function TeamIntegrationsPromptModal({
-  prefs,
-  onSaved,
-  onSkip,
-}: TeamIntegrationsPromptModalProps) {
+/** Shown on every load while `workspaceDirs`, `jenkinsBaseUrl` or `skillsHub.repoUrl` was never
+ *  saved (null). Empty Jenkins/hub fields save "" (not used). */
+export function SetupModal({ prefs, onSaved, onSkip }: SetupModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
+  const [dirs, setDirs] = useState<string[]>(prefs.workspaceDirs ?? []);
   const [jenkinsBaseUrl, setJenkinsBaseUrl] = useState(
     prefs.jenkinsBaseUrl ?? LEGACY_ENV_JENKINS_BASE_URL,
   );
   const [hubRepoUrl, setHubRepoUrl] = useState(prefs.skillsHub?.repoUrl ?? "");
-  const [hubDetected, setHubDetected] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -45,7 +40,6 @@ export function TeamIntegrationsPromptModal({
         if (cancelled || !detected) return;
         // Only while the user hasn't typed something else already.
         setHubRepoUrl((current) => (current === "" ? detected : current));
-        setHubDetected(true);
       })
       .catch(() => undefined);
     return () => {
@@ -53,17 +47,25 @@ export function TeamIntegrationsPromptModal({
     };
   }, [prefs.skillsHub?.repoUrl]);
 
-  const prefilled =
-    (prefs.jenkinsBaseUrl == null && LEGACY_ENV_JENKINS_BASE_URL !== "") || hubDetected;
+  const handleImported = async () => {
+    const imported = await tasksApi.fetchPreferences().catch(() => null);
+    if (!imported) return;
+    if (imported.workspaceDirs) setDirs(imported.workspaceDirs);
+    setJenkinsBaseUrl(imported.jenkinsBaseUrl ?? "");
+    setHubRepoUrl(imported.skillsHub?.repoUrl ?? "");
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await tasksApi.updatePreferences({ jenkinsBaseUrl: jenkinsBaseUrl.trim() });
+      await tasksApi.updatePreferences({
+        workspaceDirs: dirs,
+        jenkinsBaseUrl: jenkinsBaseUrl.trim(),
+      });
       await tasksApi.setSkillsHubRepoUrl(hubRepoUrl.trim());
       tasksApi.notifyPreferencesChanged();
       tasksApi.notifySkillsHubChanged();
-      showToast(t("teamPrompt.saved"), "success");
+      showToast(t("setup.saved"), "success");
       onSaved();
     } catch (err) {
       showToast(resolveApiErrorMessage(err, t, "settings.saveError"), "error");
@@ -75,25 +77,35 @@ export function TeamIntegrationsPromptModal({
   return (
     <Modal
       open
-      title={t("teamPrompt.title")}
+      title={t("setup.title")}
       onClose={onSkip}
       onCancel={onSkip}
       onConfirm={() => void handleSave()}
-      cancelLabel={t("teamPrompt.skip")}
-      confirmLabel={t("teamPrompt.save")}
+      cancelLabel={t("setup.skip")}
+      confirmLabel={t("setup.save")}
       isConfirmLoading={saving}
+      isConfirmDisabled={dirs.length === 0}
       size="lg"
-      icon={<Plug className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
+      icon={<Settings2 className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
     >
-      <p className="text-sm text-gray-600 dark:text-gray-400">{t("teamPrompt.intro")}</p>
-      {prefilled && (
-        <p className="mt-2 text-xs text-green-700 dark:text-green-400">
-          {t("teamPrompt.prefilled")}
-        </p>
-      )}
-      <label className="mt-4 block">
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm text-gray-600 dark:text-gray-400">{t("setup.intro")}</p>
+        <ImportPreferencesButton onImported={() => void handleImported()} />
+      </div>
+
+      <h3 className="mt-5 text-sm font-medium text-gray-900 dark:text-gray-100">
+        {t("setup.workspaceDirs.label")}
+      </h3>
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        {t("setup.workspaceDirs.hint")}
+      </p>
+      <div className="mt-2">
+        <WorkspaceDirsEditor value={dirs} onChange={setDirs} preselectRecommended />
+      </div>
+
+      <label className="mt-5 block">
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {t("teamPrompt.jenkins.label")}
+          {t("setup.jenkins.label")}
         </span>
         <div className="mt-1">
           <Input
@@ -105,12 +117,13 @@ export function TeamIntegrationsPromptModal({
           />
         </div>
         <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
-          {t("teamPrompt.jenkins.hint")}
+          {t("setup.jenkins.hint")}
         </span>
       </label>
+
       <label className="mt-4 block">
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {t("teamPrompt.skillsHub.label")}
+          {t("setup.skillsHub.label")}
         </span>
         <div className="mt-1">
           <Input
@@ -122,12 +135,11 @@ export function TeamIntegrationsPromptModal({
           />
         </div>
         <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
-          {t("teamPrompt.skillsHub.hint")}
+          {t("setup.skillsHub.hint")}
         </span>
       </label>
-      <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-        {t("workspaceDirsPrompt.laterHint")}
-      </p>
+
+      <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">{t("setup.laterHint")}</p>
     </Modal>
   );
 }

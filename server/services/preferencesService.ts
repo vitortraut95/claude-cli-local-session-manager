@@ -1,5 +1,6 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { BadRequestError } from "../utils/httpError.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 
 export type Language = "en" | "pt" | "es";
@@ -145,62 +146,77 @@ function isStringArray(value: unknown): value is string[] {
  *  back individually to `DEFAULT_PREFERENCES`. */
 export async function getUserPreferences(): Promise<UserPreferences> {
   try {
-    const raw = await readFile(PREFERENCES_PATH, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<UserPreferences>;
-    return {
-      defaultPrompt:
-        typeof parsed.defaultPrompt === "string"
-          ? parsed.defaultPrompt
-          : DEFAULT_PREFERENCES.defaultPrompt,
-      defaultSessionPrompt:
-        typeof parsed.defaultSessionPrompt === "string"
-          ? parsed.defaultSessionPrompt
-          : DEFAULT_PREFERENCES.defaultSessionPrompt,
-      branchTypes:
-        isStringArray(parsed.branchTypes) && parsed.branchTypes.length > 0
-          ? parsed.branchTypes
-          : DEFAULT_PREFERENCES.branchTypes,
-      useWorktreeByDefault:
-        typeof parsed.useWorktreeByDefault === "boolean"
-          ? parsed.useWorktreeByDefault
-          : DEFAULT_PREFERENCES.useWorktreeByDefault,
-      useAutoPermissionModeByDefault:
-        typeof parsed.useAutoPermissionModeByDefault === "boolean"
-          ? parsed.useAutoPermissionModeByDefault
-          : DEFAULT_PREFERENCES.useAutoPermissionModeByDefault,
-      language: isLanguage(parsed.language) ? parsed.language : DEFAULT_PREFERENCES.language,
-      recentProjectPaths: isStringArray(parsed.recentProjectPaths)
-        ? parsed.recentProjectPaths
-        : DEFAULT_PREFERENCES.recentProjectPaths,
-      keepRecentSessionsPerProject:
-        typeof parsed.keepRecentSessionsPerProject === "number" &&
-        Number.isInteger(parsed.keepRecentSessionsPerProject) &&
-        parsed.keepRecentSessionsPerProject >= 0
-          ? parsed.keepRecentSessionsPerProject
-          : DEFAULT_PREFERENCES.keepRecentSessionsPerProject,
-      workspaceDirs: isStringArray(parsed.workspaceDirs)
-        ? parsed.workspaceDirs
-        : DEFAULT_PREFERENCES.workspaceDirs,
-      skillsHub: parseSkillsHub(parsed.skillsHub),
-      jenkinsBaseUrl:
-        typeof parsed.jenkinsBaseUrl === "string"
-          ? parsed.jenkinsBaseUrl.trim()
-          : DEFAULT_PREFERENCES.jenkinsBaseUrl,
-      envPreviews: isEnvPreviews(parsed.envPreviews)
-        ? parsed.envPreviews
-        : DEFAULT_PREFERENCES.envPreviews,
-      taskTestSkill:
-        typeof parsed.taskTestSkill === "string"
-          ? parsed.taskTestSkill.trim()
-          : DEFAULT_PREFERENCES.taskTestSkill,
-      taskTestPermissionModeAuto:
-        typeof parsed.taskTestPermissionModeAuto === "boolean"
-          ? parsed.taskTestPermissionModeAuto
-          : DEFAULT_PREFERENCES.taskTestPermissionModeAuto,
-    };
+    return normalizePreferences(JSON.parse(await readFile(PREFERENCES_PATH, "utf-8")));
   } catch {
     return DEFAULT_PREFERENCES;
   }
+}
+
+/** Any parsed JSON → a complete `UserPreferences`; missing/malformed fields get their default. */
+function normalizePreferences(value: unknown): UserPreferences {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return DEFAULT_PREFERENCES;
+  }
+  const parsed = value as Partial<UserPreferences>;
+  return {
+    defaultPrompt:
+      typeof parsed.defaultPrompt === "string"
+        ? parsed.defaultPrompt
+        : DEFAULT_PREFERENCES.defaultPrompt,
+    defaultSessionPrompt:
+      typeof parsed.defaultSessionPrompt === "string"
+        ? parsed.defaultSessionPrompt
+        : DEFAULT_PREFERENCES.defaultSessionPrompt,
+    branchTypes:
+      isStringArray(parsed.branchTypes) && parsed.branchTypes.length > 0
+        ? parsed.branchTypes
+        : DEFAULT_PREFERENCES.branchTypes,
+    useWorktreeByDefault:
+      typeof parsed.useWorktreeByDefault === "boolean"
+        ? parsed.useWorktreeByDefault
+        : DEFAULT_PREFERENCES.useWorktreeByDefault,
+    useAutoPermissionModeByDefault:
+      typeof parsed.useAutoPermissionModeByDefault === "boolean"
+        ? parsed.useAutoPermissionModeByDefault
+        : DEFAULT_PREFERENCES.useAutoPermissionModeByDefault,
+    language: isLanguage(parsed.language) ? parsed.language : DEFAULT_PREFERENCES.language,
+    recentProjectPaths: isStringArray(parsed.recentProjectPaths)
+      ? parsed.recentProjectPaths
+      : DEFAULT_PREFERENCES.recentProjectPaths,
+    keepRecentSessionsPerProject:
+      typeof parsed.keepRecentSessionsPerProject === "number" &&
+      Number.isInteger(parsed.keepRecentSessionsPerProject) &&
+      parsed.keepRecentSessionsPerProject >= 0
+        ? parsed.keepRecentSessionsPerProject
+        : DEFAULT_PREFERENCES.keepRecentSessionsPerProject,
+    workspaceDirs: isStringArray(parsed.workspaceDirs)
+      ? parsed.workspaceDirs
+      : DEFAULT_PREFERENCES.workspaceDirs,
+    skillsHub: parseSkillsHub(parsed.skillsHub),
+    jenkinsBaseUrl:
+      typeof parsed.jenkinsBaseUrl === "string"
+        ? parsed.jenkinsBaseUrl.trim()
+        : DEFAULT_PREFERENCES.jenkinsBaseUrl,
+    envPreviews: isEnvPreviews(parsed.envPreviews)
+      ? parsed.envPreviews
+      : DEFAULT_PREFERENCES.envPreviews,
+    taskTestSkill:
+      typeof parsed.taskTestSkill === "string"
+        ? parsed.taskTestSkill.trim()
+        : DEFAULT_PREFERENCES.taskTestSkill,
+    taskTestPermissionModeAuto:
+      typeof parsed.taskTestPermissionModeAuto === "boolean"
+        ? parsed.taskTestPermissionModeAuto
+        : DEFAULT_PREFERENCES.taskTestPermissionModeAuto,
+  };
+}
+
+/** Replaces the whole file with an imported one (Settings → Import); missing fields = defaults. */
+export async function replaceUserPreferences(value: unknown): Promise<void> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new BadRequestError("MALFORMED_PREFERENCES_FILE", "Not a preferences file.");
+  }
+  await updateUserPreferences(() => normalizePreferences(value));
 }
 
 export function getPreferencesPath(): string {

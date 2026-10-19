@@ -851,6 +851,8 @@ export async function cloneSkillsHub(parentDir: string): Promise<string> {
     );
   }
   await updateSkillsHubPreferences({ path: target });
+  // Links an already-saved selection (e.g. from an imported config file).
+  await syncSkillsHub().catch(() => undefined);
   return target;
 }
 

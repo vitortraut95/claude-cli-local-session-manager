@@ -4,6 +4,7 @@ import {
   getUserPreferences,
   isEnvPreviews,
   isSkillsHubPreferences,
+  replaceUserPreferences,
   updateUserPreferences,
   type UserPreferences,
 } from "../services/preferencesService.js";
@@ -136,6 +137,22 @@ tasksRouter.put("/preferences", async (req, res) => {
       ...body,
       skillsHub: { ...stored.skillsHub, ...body.skillsHub },
     }));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+      code: errorCode(err),
+    });
+  }
+});
+
+/** Replaces the whole file (Settings → Import), then links the imported hub selection if the hub
+ *  is already cloned here (best-effort). */
+tasksRouter.post("/preferences/import", async (req, res) => {
+  try {
+    await replaceUserPreferences(req.body);
+    await syncSkillsHub().catch(() => undefined);
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({

@@ -65,6 +65,11 @@ export async function fetchPreferences(): Promise<UserPreferences> {
   return data;
 }
 
+/** Replaces the whole file with an imported one; missing fields fall back to defaults. */
+export async function importPreferences(file: unknown): Promise<void> {
+  await withServerErrorMessage(() => client.post("/preferences/import", file));
+}
+
 /** Replaces the whole preferences file — send the full object. Prefer `updatePreferences`. */
 export async function savePreferences(preferences: UserPreferences): Promise<void> {
   await withServerErrorMessage(() => client.put("/preferences", preferences));

@@ -22,6 +22,7 @@ import { ImportSessionModal } from "./ImportSessionModal";
 import { NewSessionModal } from "./NewSessionModal";
 import { NewTaskModal } from "./NewTaskModal";
 import { SettingsModal } from "./SettingsModal";
+import { SetupModal } from "./SetupModal";
 import { TestTaskModal } from "./TestTaskModal";
 import { SkillsHeaderButton } from "./SkillsHeaderButton";
 import { SkillsHubModal } from "./SkillsHubModal";
@@ -30,8 +31,6 @@ import { Tooltip } from "./Tooltip";
 import { UpdateButton } from "./UpdateButton";
 import { UpdateOverlay } from "./UpdateOverlay";
 import { UsageLimitsBadge } from "./UsageLimitsBadge";
-import { TeamIntegrationsPromptModal } from "./TeamIntegrationsPromptModal";
-import { WorkspaceDirsPromptModal } from "./WorkspaceDirsPromptModal";
 import * as tasksApi from "../services/tasksApi";
 
 type HeaderProps = {
@@ -75,14 +74,10 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   const [testTaskFolderHint, setTestTaskFolderHint] = useState("~");
   // Also keeps the shared cached status warm for the New Task / New Session skills panels.
   const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(true);
-  // `workspaceDirs` never saved (null) → ask on every start until it is; "not now" only skips it
-  // for this page load. Re-checked whenever the settings modal saves something.
-  const [needsWorkspaceDirs, setNeedsWorkspaceDirs] = useState(false);
-  const [workspacePromptSkipped, setWorkspacePromptSkipped] = useState(false);
-  // Team integrations (Jenkins URL, skills hub repo): asked while either is null (never saved;
-  // `undefined` = backend without the field). Holds the prefs for the prompt's prefill.
-  const [teamPromptPrefs, setTeamPromptPrefs] = useState<tasksApi.UserPreferences | null>(null);
-  const [teamPromptSkipped, setTeamPromptSkipped] = useState(false);
+  // Initial setup: asked on every load while any of its fields was never saved (null); "not now"
+  // only skips it for this page load. Re-checked whenever preferences change.
+  const [setupPrefs, setSetupPrefs] = useState<tasksApi.UserPreferences | null>(null);
+  const [setupSkipped, setSetupSkipped] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,11 +86,14 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         .fetchPreferences()
         .then((prefs) => {
           if (cancelled) return;
-          setNeedsWorkspaceDirs(prefs.workspaceDirs == null);
           setTaskTestSkill(prefs.taskTestSkill?.trim() ?? "");
           setTestTaskFolderHint(prefs.workspaceDirs?.[0] ?? "~");
-          setTeamPromptPrefs(
-            prefs.jenkinsBaseUrl === null || prefs.skillsHub?.repoUrl === null ? prefs : null,
+          setSetupPrefs(
+            prefs.workspaceDirs == null ||
+              prefs.jenkinsBaseUrl === null ||
+              prefs.skillsHub?.repoUrl === null
+              ? prefs
+              : null,
           );
         })
         .catch(() => undefined);
@@ -109,22 +107,10 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   }, []);
 
   // Never on top of another header modal.
-  const showWorkspacePrompt =
+  const showSetup =
     loaded &&
-    needsWorkspaceDirs &&
-    !workspacePromptSkipped &&
-    !showSettings &&
-    !showNewTaskModal &&
-    !showNewSessionModal &&
-    !showTestTaskModal &&
-    !showSkillsModal;
-  // Only after the workspace prompt is out of the way (saved or skipped) — never both at once.
-  const showTeamPrompt =
-    teamPromptPrefs !== null &&
-    !teamPromptSkipped &&
-    loaded &&
-    !showWorkspacePrompt &&
-    (!needsWorkspaceDirs || workspacePromptSkipped) &&
+    setupPrefs !== null &&
+    !setupSkipped &&
     !showSettings &&
     !showNewTaskModal &&
     !showNewSessionModal &&
@@ -287,17 +273,11 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           onClose={() => setShowSettings(false)}
         />
       )}
-      {showWorkspacePrompt && (
-        <WorkspaceDirsPromptModal
-          onSaved={() => setNeedsWorkspaceDirs(false)}
-          onSkip={() => setWorkspacePromptSkipped(true)}
-        />
-      )}
-      {showTeamPrompt && teamPromptPrefs && (
-        <TeamIntegrationsPromptModal
-          prefs={teamPromptPrefs}
-          onSaved={() => setTeamPromptPrefs(null)}
-          onSkip={() => setTeamPromptSkipped(true)}
+      {showSetup && setupPrefs && (
+        <SetupModal
+          prefs={setupPrefs}
+          onSaved={() => setSetupPrefs(null)}
+          onSkip={() => setSetupSkipped(true)}
         />
       )}
       <UpdateOverlay

@@ -1,4 +1,14 @@
-import { ArrowDown, ArrowUp, FileCode2, Loader2, Pencil, Plus, Settings, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  FileCode2,
+  FileDown,
+  Loader2,
+  Pencil,
+  Plus,
+  Settings,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
@@ -7,7 +17,9 @@ import { useToast } from "../hooks/useToast";
 import * as tasksApi from "../services/tasksApi";
 import type { EnvPreviews, UserPreferences } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import { downloadPreferences } from "../utils/preferencesFile";
 import { Button } from "./Button";
+import { ImportPreferencesButton } from "./ImportPreferencesButton";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
 import { TaskTestSkillSelect } from "./TaskTestSkillSelect";
@@ -165,6 +177,18 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
         >
           {t("settings.openFile")}
         </Button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => prefs && downloadPreferences(prefs)}
+          disabled={!prefs}
+          icon={<FileDown className="h-3.5 w-3.5" />}
+        >
+          {t("preferencesFile.export")}
+        </Button>
+        <ImportPreferencesButton onImported={() => void reload()} />
       </div>
 
       {loadError && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{loadError}</p>}
