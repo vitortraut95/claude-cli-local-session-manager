@@ -22,6 +22,7 @@ import {
   forgetRepoBranch,
   forgetSession,
   getTaskStore,
+  moveSessionTaskKeyToBranch,
   setNickname,
   setSessionBranchOverride,
 } from "../utils/taskStore.js";
@@ -287,7 +288,12 @@ async function listSessionsUncached(): Promise<Session[]> {
       const saved = store.sessions[session.id];
       const branchEntry = repoRoot && gitBranch ? store.repoBranches[repoRoot]?.[gitBranch] : null;
       const nickname = saved?.nickname ?? null;
-      // Explicit (session's own, then its branch's) beats inferred from the task branch.
+      // A session's own key is from older versions: moved onto its branch (best-effort) and
+      // still honored until then, e.g. for a session outside any git repo.
+      if (saved?.taskKey && repoRoot && gitBranch) {
+        void moveSessionTaskKeyToBranch(session.id, repoRoot, gitBranch).catch(() => undefined);
+      }
+      // Recorded beats inferred from the task branch.
       const recordedTaskKey = saved?.taskKey ?? branchEntry?.taskKey ?? null;
       const inferredTaskKey =
         recordedTaskKey === null ? inferTaskKey(saved?.destination ?? gitBranch) : null;

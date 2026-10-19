@@ -8,10 +8,11 @@ import { REPO_ROOT } from "./repoRoot.js";
  *
  * - `tasks[<ticket key>]`: task metadata (`link`). Membership lives on the entries' own `taskKey`.
  * - `sessions[<session id>]`: `nickname` (a local label, never replaces the real title),
- *   `origin`/`destination` (the session's base/task branches, either may be null) and `taskKey`
- *   (null = inferred from the branch, see `taskKeys.ts`).
+ *   `origin`/`destination` (the session's base/task branches, either may be null). A `taskKey`
+ *   here comes from older versions and is moved to the branch entry on the next listing.
  * - `repoBranches[<repo root>][<branch>]`: the base a "New task" branch was created off (only when
- *   it differs from the repo default), its `taskKey` and worktree. Keyed by `(repoRoot, branch)`
+ *   it differs from the repo default), its `taskKey` (the only place a task link is kept; none =
+ *   inferred from the branch, see `taskKeys.ts`) and worktree. Keyed by `(repoRoot, branch)`
  *   because the session id doesn't exist yet at creation and a non-worktree task shares the repo
  *   root. Forgotten once the branch is deleted.
  *
@@ -291,31 +292,39 @@ export function getTaskStore(): Promise<TaskStore> {
   return readStore();
 }
 
+/** Applies `patch` to a branch entry in place (creating or dropping it); false = nothing changed. */
+function patchRepoBranch(
+  store: TaskStore,
+  repoRoot: string,
+  branchName: string,
+  patch: Partial<RepoBranchEntry>,
+): boolean {
+  const current = store.repoBranches[repoRoot]?.[branchName];
+  const entry: RepoBranchEntry = {
+    baseBranch: null,
+    createdAt: new Date().toISOString(),
+    taskKey: null,
+    worktreePath: null,
+    ...current,
+    ...patch,
+  };
+  const byBranch = store.repoBranches[repoRoot];
+  if (isEmptyRepoBranch(entry)) {
+    if (!current || !byBranch) return false;
+    delete byBranch[branchName];
+    if (Object.keys(byBranch).length === 0) delete store.repoBranches[repoRoot];
+  } else {
+    (store.repoBranches[repoRoot] ??= {})[branchName] = entry;
+  }
+  return true;
+}
+
 function updateRepoBranch(
   repoRoot: string,
   branchName: string,
   patch: Partial<RepoBranchEntry>,
 ): Promise<void> {
-  return mutateStore((store) => {
-    const current = store.repoBranches[repoRoot]?.[branchName];
-    const entry: RepoBranchEntry = {
-      baseBranch: null,
-      createdAt: new Date().toISOString(),
-      taskKey: null,
-      worktreePath: null,
-      ...current,
-      ...patch,
-    };
-    const byBranch = store.repoBranches[repoRoot];
-    if (isEmptyRepoBranch(entry)) {
-      if (!current || !byBranch) return false;
-      delete byBranch[branchName];
-      if (Object.keys(byBranch).length === 0) delete store.repoBranches[repoRoot];
-    } else {
-      (store.repoBranches[repoRoot] ??= {})[branchName] = entry;
-    }
-    return true;
-  });
+  return mutateStore((store) => patchRepoBranch(store, repoRoot, branchName, patch));
 }
 
 export function recordTaskBaseBranch(
@@ -350,9 +359,22 @@ export function forgetRepoBranch(repoRoot: string, branchName: string): Promise<
   });
 }
 
-/** null = back to inferring the key from the branch. */
-export function setSessionTaskKey(id: string, taskKey: string | null): Promise<void> {
-  return updateSession(id, { taskKey });
+/** Moves a session's own `taskKey` (written by older versions) onto its branch entry, the one
+ *  place a task link is kept now. */
+export function moveSessionTaskKeyToBranch(
+  id: string,
+  repoRoot: string,
+  branchName: string,
+): Promise<void> {
+  return mutateStore((store) => {
+    const session = store.sessions[id];
+    if (!session?.taskKey) return false;
+    patchRepoBranch(store, repoRoot, branchName, { taskKey: session.taskKey });
+    const rest = { ...session, taskKey: null };
+    if (isEmptySession(rest)) delete store.sessions[id];
+    else store.sessions[id] = rest;
+    return true;
+  });
 }
 
 /** Creates the task entry if missing; a non-blank `link` replaces the stored one. */

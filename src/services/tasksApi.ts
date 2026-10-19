@@ -191,8 +191,8 @@ export async function createTaskWorktree(
 }
 
 /** Opens a terminal in `worktreePath` running `claude <prompt>`. `repoRoot` ("" if unknown) is
- *  remembered for the folder dropdown. A non-blank `nickname`, `originBranch`/`destinationBranch`
- *  and `taskKey` ("" = none) are saved for the new session. */
+ *  remembered for the folder dropdown. A non-blank `nickname` and `originBranch`/`destinationBranch`
+ *  are saved for the new session. */
 export async function launchTaskTerminal(
   worktreePath: string,
   prompt: string,
@@ -201,7 +201,6 @@ export async function launchTaskTerminal(
   nickname = "",
   originBranch = "",
   destinationBranch = "",
-  taskKey = "",
   addDirs: string[] = [],
 ): Promise<void> {
   await withServerErrorMessage(() =>
@@ -213,7 +212,6 @@ export async function launchTaskTerminal(
       nickname,
       originBranch,
       destinationBranch,
-      taskKey,
       addDirs,
     }),
   );

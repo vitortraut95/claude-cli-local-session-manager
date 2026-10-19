@@ -1,12 +1,7 @@
 import { getDefaultBaseBranch } from "../utils/git.js";
 import { AppError, BadRequestError } from "../utils/httpError.js";
 import { isTaskKey, normalizeTaskKey } from "../utils/taskKeys.js";
-import {
-  getTaskStore,
-  linkRepoBranchToTask,
-  setSessionTaskKey,
-  upsertTask,
-} from "../utils/taskStore.js";
+import { getTaskStore, linkRepoBranchToTask, upsertTask } from "../utils/taskStore.js";
 import type { Session, TaskRepoRef } from "../types/session.js";
 import { collectTaskRepos } from "../utils/taskRepos.js";
 import {
@@ -142,13 +137,18 @@ export async function setSessionTask(
   link: string | null,
 ): Promise<void> {
   if (!isSafeSessionId(id)) throw new SessionNotFoundError(id);
-  if (rawKey.trim() === "") {
-    await setSessionTaskKey(id, null);
-    return;
+  const session = (await listSessions()).find((s) => s.id === id);
+  if (!session) throw new SessionNotFoundError(id);
+  if (!session.repoRoot || !session.gitBranch) {
+    throw new BadRequestError(
+      "TASK_SESSION_HAS_NO_BRANCH",
+      "This session isn't on a git branch, so it can't be linked to a task.",
+    );
   }
-  const key = parseTaskKeyParam(rawKey);
-  await upsertTask(key, link);
-  await setSessionTaskKey(id, key);
+  // Blank = unlink the branch, back to inferring the key from it.
+  const key = rawKey.trim() === "" ? null : parseTaskKeyParam(rawKey);
+  if (key) await upsertTask(key, link);
+  await linkRepoBranchToTask(session.repoRoot, session.gitBranch, key);
 }
 
 export async function setTaskLink(key: string, link: string): Promise<void> {
