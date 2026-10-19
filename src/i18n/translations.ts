@@ -664,9 +664,9 @@ export const translations = {
     "Exportar configuración",
   ),
   "preferencesFile.confirmTitle": dict(
-    "Replace all settings?",
-    "Substituir todas as configurações?",
-    "¿Reemplazar toda la configuración?",
+    "Replace settings?",
+    "Substituir configurações?",
+    "¿Reemplazar configuración?",
   ),
   "preferencesFile.confirmMessage": dict(
     "Every setting is replaced by the file's. Anything the file doesn't have goes back to its default.",
