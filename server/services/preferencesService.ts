@@ -17,8 +17,6 @@ export type SkillsHubPreferences = {
   /** Individually picked skills (`<catalog>/<skill>`) on top of `catalogs`; only meaningful
    *  once `catalogs` is non-null. */
   skills: string[];
-  /** Unused by the UI; kept so older files/bundles round-trip unchanged. */
-  inviteDismissed: boolean;
   /** Sync the hub in the background on server start. Optional: older files lack it (default on). */
   autoUpdateOnStart: boolean;
 };
@@ -78,7 +76,6 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     path: null,
     catalogs: null,
     skills: [],
-    inviteDismissed: false,
     autoUpdateOnStart: true,
   },
   jenkinsBaseUrl: null,
@@ -100,8 +97,6 @@ function parseSkillsHub(value: unknown): SkillsHubPreferences {
     path: typeof raw.path === "string" && raw.path.trim() ? raw.path : fallback.path,
     catalogs: isStringArray(raw.catalogs) ? raw.catalogs : fallback.catalogs,
     skills: isStringArray(raw.skills) ? raw.skills : fallback.skills,
-    inviteDismissed:
-      typeof raw.inviteDismissed === "boolean" ? raw.inviteDismissed : fallback.inviteDismissed,
     autoUpdateOnStart:
       typeof raw.autoUpdateOnStart === "boolean"
         ? raw.autoUpdateOnStart
@@ -118,7 +113,6 @@ export function isSkillsHubPreferences(value: unknown): value is SkillsHubPrefer
     (raw.path === null || typeof raw.path === "string") &&
     (raw.catalogs === null || isStringArray(raw.catalogs)) &&
     (raw.skills === undefined || isStringArray(raw.skills)) &&
-    typeof raw.inviteDismissed === "boolean" &&
     (raw.autoUpdateOnStart === undefined || typeof raw.autoUpdateOnStart === "boolean")
   );
 }

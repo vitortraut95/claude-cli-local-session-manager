@@ -328,7 +328,6 @@ export type SkillsHubPreferences = {
   catalogs: string[] | null;
   /** `<catalog>/<skill>` picks on top of whole catalogs. Optional: older backends don't send it. */
   skills?: string[];
-  inviteDismissed: boolean;
   /** Background sync on server start. Optional: older backends don't send it (treated as on). */
   autoUpdateOnStart?: boolean;
 };
@@ -362,7 +361,6 @@ export type SkillsHubStatus = {
   catalogsChosen: boolean;
   skills: SkillStatus[];
   userSkillsDir: string;
-  inviteDismissed: boolean;
   /** Null = no hub repo configured (the modal asks for the URL first). */
   cloneUrl: string | null;
   /** True while `cloneUrl` was detected from an existing clone, not saved. */

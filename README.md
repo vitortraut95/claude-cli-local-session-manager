@@ -120,4 +120,3 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | PUT    | `/tasks/skills-hub/repo-url`          | Save the hub's clone URL `{ repoUrl }` (`""` = not used)                       |
 | PUT    | `/tasks/skills-hub/selection`         | Save `{ catalogs, skills }` (whole catalogs + single skills) and (un)link them |
 | PUT    | `/tasks/skills-hub/path`              | Point at an existing clone (`null` = auto-detect)                              |
-| PUT    | `/tasks/skills-hub/flags`             | `{ inviteDismissed? }`                                                         |
