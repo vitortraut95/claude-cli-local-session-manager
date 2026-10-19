@@ -10,8 +10,8 @@ import type {
   SessionImportResult,
 } from "../types/session.js";
 import { forgetCachedSession, getClaudeProjectsDir } from "../utils/claudeProjects.js";
-import { branchExists, runGit } from "../utils/git.js";
-import { AppError, BadRequestError } from "../utils/httpError.js";
+import { branchExists, runGit, tryGit } from "../utils/git.js";
+import { AppError, BadRequestError, errorMessage } from "../utils/httpError.js";
 import { getNicknames, setNickname } from "../utils/taskStore.js";
 import {
   directoryExists,
@@ -89,15 +89,6 @@ export function normalizeRemoteUrl(url: string): string {
     .replace(/\.git$/, "")
     .replace(/\/+$/, "")
     .toLowerCase();
-}
-
-async function tryGit(args: string[], cwd: string): Promise<string | null> {
-  try {
-    const out = await runGit(args, cwd);
-    return out.trim() || null;
-  } catch {
-    return null;
-  }
 }
 
 async function readSidecarFiles(dir: string, prefix = ""): Promise<BundleFile[]> {
@@ -247,7 +238,7 @@ async function resolveCandidate(
   const { remoteUrl, gitBranch, commit, repoRelativeCwd } = bundle.session;
   const [localRemote, currentBranch, hasBranch, hasCommit, targetCwd] = await Promise.all([
     tryGit(["remote", "get-url", "origin"], repoRoot),
-    tryGit(["branch", "--show-current"], repoRoot),
+    tryGit(["branch", "--show-current"], repoRoot).then((b) => (b === "" ? null : b)),
     gitBranch ? branchExists(repoRoot, gitBranch) : Promise.resolve(false),
     commit
       ? tryGit(["cat-file", "-t", commit], repoRoot).then((type) => type === "commit")
@@ -417,7 +408,10 @@ async function checkoutImportedBranch(cwd: string, branch: string): Promise<void
   if (!(await branchExists(cwd, branch))) {
     // Best-effort: lets the plain `git checkout <branch>` below DWIM-create a tracking branch from
     // `origin/<branch>` for a branch the importer never had locally.
-    await tryGit(["fetch", "origin", `refs/heads/${branch}:refs/remotes/origin/${branch}`], cwd);
+    await tryGit(["fetch", "origin", `refs/heads/${branch}:refs/remotes/origin/${branch}`], cwd, {
+      nonInteractive: true,
+      timeoutMs: 30_000,
+    });
   }
   try {
     // No --force: uncommitted changes that would be overwritten block it.
@@ -427,7 +421,7 @@ async function checkoutImportedBranch(cwd: string, branch: string): Promise<void
     // must stay out of SERVER_ERROR_CODE_KEYS).
     throw new AppError(
       "IMPORT_CHECKOUT_FAILED",
-      `Couldn't check out "${branch}": ${err instanceof Error ? err.message : String(err)}`,
+      `Couldn't check out "${branch}": ${errorMessage(err)}`,
       { cause: err },
     );
   }

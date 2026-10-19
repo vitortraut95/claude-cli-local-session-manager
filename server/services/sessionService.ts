@@ -27,7 +27,7 @@ import {
   setSessionBranchOverride,
 } from "../utils/taskStore.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
-import { AppError, BadRequestError } from "../utils/httpError.js";
+import { AppError, BadRequestError, errorMessage } from "../utils/httpError.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import {
   applyFileDiff,
@@ -1046,7 +1046,7 @@ export async function removeWorktreeAndCheckoutRoot(
   try {
     await checkoutExistingBranch(repoRoot, branch);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
     throw new AppError(
       "WORKTREE_TO_ROOT_CHECKOUT_FAILED",
       `The worktree was removed, but "git checkout ${branch}" failed in ${repoRoot}: ${message} ` +
