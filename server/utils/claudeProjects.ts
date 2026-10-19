@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import { readFile, readdir, stat } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import os from "node:os";
 import path from "node:path";
@@ -356,89 +356,3 @@ export async function readSessionRecap(filePath: string): Promise<string | null>
   return (await getFullScan(filePath)).recap;
 }
 
-/**
- * Subagents spawned mid-session (via the `Agent` tool) log to their own sibling
- * `<sessionId>/subagents/agent-*.jsonl` files rather than the parent's own `.jsonl` — real token
- * spend that otherwise never gets counted anywhere (see `findJsonlFiles`'s doc comment for why
- * those files aren't treated as independent sessions in the first place).
- */
-export async function findSubagentFiles(sessionFilePath: string): Promise<string[]> {
-  const sessionId = path.basename(sessionFilePath, ".jsonl");
-  const subagentsDir = path.join(path.dirname(sessionFilePath), sessionId, "subagents");
-  const entries = await safeReaddir(subagentsDir);
-  return entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl"))
-    .map((entry) => path.join(subagentsDir, entry.name));
-}
-
-export type SubagentMeta = {
-  agentType: string | null;
-  description: string | null;
-};
-
-/**
- * Each `agent-<id>.jsonl` has a sibling `agent-<id>.meta.json` (written once, at spawn time) with
- * the agent type and the short task description passed to the `Agent` tool call — the only place
- * either of those is recorded, since the subagent's own transcript starts with a placeholder user
- * message rather than the real prompt.
- */
-export async function readSubagentMeta(metaFilePath: string): Promise<SubagentMeta> {
-  try {
-    const raw = await readFile(metaFilePath, "utf8");
-    const data = JSON.parse(raw) as { agentType?: string; description?: string };
-    return { agentType: data.agentType ?? null, description: data.description ?? null };
-  } catch {
-    return { agentType: null, description: null };
-  }
-}
-
-export type SubagentTranscriptSummary = {
-  startedAt: string | null;
-  endedAt: string | null;
-  resultText: string | null;
-};
-
-/**
- * Scans a subagent's own transcript for its start/end timestamps and its final returned text.
- * The last assistant message's text block is literally the value returned to the orchestrating
- * agent's `Agent()` call, so it doubles as a human-readable summary of what the subagent did or
- * found — reading the whole file is unavoidable since that's determined by which message ends up
- * last, not by any position known in advance.
- */
-export async function readSubagentSummary(filePath: string): Promise<SubagentTranscriptSummary> {
-  let startedAt: string | null = null;
-  let endedAt: string | null = null;
-  let resultText: string | null = null;
-
-  const rl = createInterface({
-    input: createReadStream(filePath, { encoding: "utf8" }),
-    crlfDelay: Infinity,
-  });
-
-  try {
-    for await (const line of rl) {
-      if (!line.trim()) continue;
-
-      let entry: JsonlEntry;
-      try {
-        entry = JSON.parse(line) as JsonlEntry;
-      } catch {
-        continue;
-      }
-
-      if (entry.timestamp) {
-        startedAt ??= entry.timestamp;
-        endedAt = entry.timestamp;
-      }
-
-      if (entry.type === "assistant" && entry.message?.role === "assistant") {
-        const text = extractText(entry.message.content);
-        if (text) resultText = text;
-      }
-    }
-  } finally {
-    rl.close();
-  }
-
-  return { startedAt, endedAt, resultText };
-}

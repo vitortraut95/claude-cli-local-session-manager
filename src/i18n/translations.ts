@@ -890,31 +890,6 @@ export const translations = {
     "No se pudo cargar el texto completo del prompt — mostrando una versión posiblemente truncada.",
   ),
 
-  "subagentsModal.title": dict(
-    "Subagents — {title}",
-    "Subagentes — {title}",
-    "Subagentes — {title}",
-  ),
-  "subagentsModal.showLess": dict("Show less", "Mostrar menos", "Mostrar menos"),
-  "subagentsModal.showMore": dict("Show more", "Mostrar mais", "Mostrar más"),
-  "subagentsModal.unknownType": dict("unknown", "desconhecido", "desconocido"),
-  "subagentsModal.noDescription": dict("No description", "Sem descrição", "Sin descripción"),
-  "subagentsModal.loadError": dict(
-    "Couldn't load subagent details.",
-    "Não foi possível carregar os detalhes dos subagentes.",
-    "No se pudieron cargar los detalles de los subagentes.",
-  ),
-  "subagentsModal.retry": dict("Retry", "Tentar novamente", "Reintentar"),
-  "subagentsModal.loading": dict(
-    "Loading subagents…",
-    "Carregando subagentes…",
-    "Cargando subagentes…",
-  ),
-  "subagentsModal.empty": dict(
-    "No subagents were spawned during this session.",
-    "Nenhum subagente foi criado durante esta sessão.",
-    "No se generaron subagentes durante esta sesión.",
-  ),
 
   "searchBar.placeholder": dict(
     "Search by title, project, branch, or ID...",
@@ -1053,11 +1028,6 @@ export const translations = {
     "¿Seguro que quieres eliminar {count} sesiones? Esto no se puede deshacer.",
   ),
 
-  "sessionCard.copyCommand.success": dict(
-    "Command copied to clipboard.",
-    "Comando copiado para a área de transferência.",
-    "Comando copiado al portapapeles.",
-  ),
   "sessionCard.copyCommand.error": dict(
     "Could not copy the command.",
     "Não foi possível copiar o comando.",
@@ -1321,22 +1291,6 @@ export const translations = {
     "Sincroniza o código deste worktree com a pasta raiz do projeto — copie só os arquivos, ou remova o worktree e faça checkout da branch dele ali.",
     "Sincroniza el código de este worktree con la carpeta raíz del proyecto — copia solo los archivos, o elimina el worktree y haz checkout de su rama ahí.",
   ),
-  "sessionCard.subagents.tooltip": dict(
-    "View what each subagent did",
-    "Veja o que cada subagente fez",
-    "Mira lo que hizo cada subagente",
-  ),
-  "sessionCard.subagentCount.one": dict(
-    "{count} subagent",
-    "{count} subagente",
-    "{count} subagente",
-  ),
-  "sessionCard.subagentCount.many": dict(
-    "{count} subagents",
-    "{count} subagentes",
-    "{count} subagentes",
-  ),
-  "sessionCard.subagentCount.none": dict("No subagents", "Nenhum subagente", "Sin subagentes"),
   "sessionCard.updatedPrefix": dict("Updated", "Atualizada", "Actualizada"),
   "sessionCard.activeTimeTooltip": dict(
     "Actual time Claude spent processing this session, summed across turns",
@@ -1442,26 +1396,6 @@ export const translations = {
     "Clean up worktree",
     "Limpar worktree",
     "Limpiar worktree",
-  ),
-  "sessionCard.resumeCommandTitle": dict(
-    "Resume command",
-    "Comando de retomada",
-    "Comando de reanudación",
-  ),
-  "sessionCard.copyCommandTooltip.copied": dict(
-    "Resume command copied!",
-    "Comando de retomada copiado!",
-    "¡Comando de reanudación copiado!",
-  ),
-  "sessionCard.copyCommandTooltip.default": dict(
-    "Copy resume command",
-    "Copiar comando de retomada",
-    "Copiar comando de reanudación",
-  ),
-  "sessionCard.copyCommandAriaLabel": dict(
-    "Copy resume command",
-    "Copiar comando de retomada",
-    "Copiar comando de reanudación",
   ),
   "sessionCard.deleteDisabledTooltip": dict(
     "Close this session in its terminal before deleting.",

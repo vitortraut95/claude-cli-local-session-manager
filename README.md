@@ -28,7 +28,7 @@ and clean them up. Everything runs on your machine — no external server involv
 - Full-text search across every prompt (also matches a session's task key), plus a project filter
 - Local nicknames, bulk delete, active-session protection (won't let two terminals fight over
   the same session)
-- Subagent browser (per-invocation type/description/duration/result), Claude usage-limits badge
+- Claude usage-limits badge
 - One-click "Open in VS Code", Jenkins links (project, branch and ticket variants, PRs, tags,
   optional per-project `env/*` preview links), and "Open PR" buttons — the Jenkins URL and preview
   templates are per-machine settings (asked on first start / Settings), never part of this repo

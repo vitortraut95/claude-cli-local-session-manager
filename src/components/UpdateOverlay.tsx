@@ -13,7 +13,7 @@ type UpdateOverlayProps = {
  * Full-screen, non-dismissible overlay shown only for the startup auto-update (see
  * `useUpdate.ts`'s `autoUpdating`/`autoUpdateError`) — a manual click of the header's update
  * button keeps its existing inline spinner/toast instead. Portaled to `document.body` (same
- * reasoning as `PromptPreviewModal`/`SubagentsModal` in CLAUDE.md) so it always covers the
+ * reasoning as `PromptPreviewModal` in CLAUDE.md) so it always covers the
  * full viewport regardless of where `Header` sits in the tree. The `error` state is the only way
  * out short of a successful update — there's deliberately no way to dismiss the "in progress"
  * state, since letting the user act while a `git reset --hard` + `yarn install` is running
