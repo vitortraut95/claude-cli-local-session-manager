@@ -32,7 +32,7 @@ claude-session-manager.desktop
 /task-base-branches.json
 /session-branches.json
 
-# Per-machine env config — see .env.example.
+# Local env overrides.
 .env
 
 # Kept local only — mentions internal project/infra details not meant for the public repo.

@@ -1,7 +1,6 @@
 import { Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
-import { LEGACY_ENV_JENKINS_BASE_URL } from "../hooks/useTeamLinks";
 import { useToast } from "../hooks/useToast";
 import * as tasksApi from "../services/tasksApi";
 import type { UserPreferences } from "../services/tasksApi";
@@ -25,9 +24,7 @@ export function SetupModal({ prefs, onSaved, onSkip }: SetupModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [dirs, setDirs] = useState<string[]>(prefs.workspaceDirs ?? []);
-  const [jenkinsBaseUrl, setJenkinsBaseUrl] = useState(
-    prefs.jenkinsBaseUrl ?? LEGACY_ENV_JENKINS_BASE_URL,
-  );
+  const [jenkinsBaseUrl, setJenkinsBaseUrl] = useState(prefs.jenkinsBaseUrl ?? "");
   const [hubRepoUrl, setHubRepoUrl] = useState(prefs.skillsHub?.repoUrl ?? "");
   const [saving, setSaving] = useState(false);
 
