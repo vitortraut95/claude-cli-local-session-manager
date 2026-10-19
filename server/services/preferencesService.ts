@@ -42,8 +42,7 @@ export type UserPreferences = {
    *  (the frontend asks on startup). Optional: older files lack it. */
   workspaceDirs: string[] | null;
   skillsHub: SkillsHubPreferences;
-  /** Base URL of the team's Jenkins. Null = never set (the legacy `VITE_JENKINS_BASE_URL` in
-   *  `.env` is the fallback); "" = explicitly not used (button hidden). */
+  /** Base URL of the team's Jenkins. Null = never set (asked on startup); "" = not used. */
   jenkinsBaseUrl: string | null;
   /** Preview sites an `env/*` branch deploys, per project folder name; `{env}` in a URL becomes
    *  the branch slug (`env/PROJ-1` → `env-proj-1`). */
