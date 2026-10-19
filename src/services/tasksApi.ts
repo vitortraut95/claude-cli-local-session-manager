@@ -20,7 +20,7 @@ export async function fetchProjectFolders(): Promise<ProjectFolderOption[]> {
   return data.projects;
 }
 
-export type Language = "en" | "pt" | "es";
+export type Language = "en" | "pt";
 
 export type UserPreferences = {
   defaultPrompt: string;

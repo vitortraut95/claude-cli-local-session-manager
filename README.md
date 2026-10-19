@@ -35,7 +35,7 @@ and clean them up. Everything runs on your machine — no external server involv
 - Initial setup on first start (repo folders, Jenkins URL, team skills repo) and full settings
   export/import in Settings — share a `userPreferences.json` with your team to set everything up
 - Self-update button from the header
-- pt/en/es language switcher
+- pt/en language switcher
 
 ## Prerequisites
 
