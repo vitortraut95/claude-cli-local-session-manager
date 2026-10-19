@@ -1,12 +1,3 @@
-export type SubagentDetail = {
-  agentId: string;
-  agentType: string | null;
-  description: string | null;
-  resultText: string | null;
-  startedAt: string | null;
-  endedAt: string | null;
-};
-
 export type Session = {
   id: string;
   title: string;
@@ -33,8 +24,6 @@ export type Session = {
   missingWorktreeRepoRoot: string | null;
   /** Size of the session's own `.jsonl` file in bytes — powers the "session size" meter. */
   sizeBytes: number;
-  /** Number of subagents (via the Agent tool) spawned during this session. */
-  subagentCount: number;
   /** Sum of the CLI's own `turn_duration` entries — actual time spent processing, a more honest
    *  signal than `updatedAt` (the file's mtime, which only says when it was last written). */
   activeTimeMs: number;

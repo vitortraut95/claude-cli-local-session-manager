@@ -4,7 +4,6 @@ import type {
   Session,
   SessionImportPreview,
   SessionImportResult,
-  SubagentDetail,
   WorktreeToRootPreview,
 } from "../types/session";
 import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
@@ -104,14 +103,6 @@ export async function fetchSessionPrompts(id: string): Promise<string[]> {
     client.get<{ prompts: string[] }>(`/${encodeURIComponent(id)}/prompts`),
   );
   return data.prompts;
-}
-
-/** Per-subagent detail (type, task description, result) — fetched on demand, see SubagentsModal. */
-export async function fetchSessionSubagents(id: string): Promise<SubagentDetail[]> {
-  const { data } = await withServerErrorMessage(() =>
-    client.get<{ subagents: SubagentDetail[] }>(`/${encodeURIComponent(id)}/subagents`),
-  );
-  return data.subagents;
 }
 
 /** PR/compare URL for `branch` on GitHub or Bitbucket — see server-side getSessionPrUrl. `branch`

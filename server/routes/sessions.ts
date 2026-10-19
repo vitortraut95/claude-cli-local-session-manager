@@ -10,7 +10,6 @@ import {
   getSessionPrompts,
   getRootStatus,
   getScanProgress,
-  getSessionSubagents,
   getWorktreeToRootPreview,
   listSessions,
   openInCursor,
@@ -197,15 +196,6 @@ sessionsRouter.get("/:id/prompts", async (req, res) => {
   try {
     const prompts = await getSessionPrompts(req.params.id);
     res.json({ prompts });
-  } catch (err) {
-    sendErrorResponse(res, err, notFoundOrActive);
-  }
-});
-
-sessionsRouter.get("/:id/subagents", async (req, res) => {
-  try {
-    const subagents = await getSessionSubagents(req.params.id);
-    res.json({ subagents });
   } catch (err) {
     sendErrorResponse(res, err, notFoundOrActive);
   }

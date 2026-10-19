@@ -1,9 +1,6 @@
 import {
-  Bot,
-  Check,
   Clock,
   Code2,
-  Copy,
   Folder,
   GitBranch,
   GitFork,
@@ -21,7 +18,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import jenkinsIcon from "../assets/jenkins.svg";
-import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
@@ -40,7 +36,6 @@ import { SessionBranchesModal } from "./SessionBranchesModal";
 import { OpenPrBaseChoiceModal } from "./OpenPrBaseChoiceModal";
 import { ResetRootConfirmModal } from "./ResetRootConfirmModal";
 import { SessionSizeMeter } from "./SessionSizeMeter";
-import { SubagentsModal } from "./SubagentsModal";
 import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
@@ -99,10 +94,7 @@ export function SessionCard({
   const isResumingAtMissingWorktreeRoot = pendingAction === "missing-root-resume";
   const isBusy = isDeleting || isContinuing || isSettingNickname;
   const [resumingAtRoot, setResumingAtRoot] = useState(false);
-  const { copiedKey: copiedCommandKey, copy } = useCopyFeedback();
-  const copiedCommand = copiedCommandKey === "resume-command";
   const [showPreview, setShowPreview] = useState(false);
-  const [showSubagents, setShowSubagents] = useState(false);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [showBranchesModal, setShowBranchesModal] = useState(false);
   // null = closed; otherwise whether it opens straight on the "add repo" form.
@@ -115,12 +107,6 @@ export function SessionCard({
   const [showJenkinsModal, setShowJenkinsModal] = useState(false);
   const [openingPrUrl, setOpeningPrUrl] = useState(false);
   const { showToast } = useToast();
-  const resumeCommand = `claude --resume ${session.id}`;
-  const subagentsLabel = `${
-    session.subagentCount === 1
-      ? t("sessionCard.subagentCount.one", { count: session.subagentCount })
-      : t("sessionCard.subagentCount.many", { count: session.subagentCount })
-  } - ${t("sessionCard.subagents.tooltip")}`;
   const worktreePathParts =
     session.isWorktree && session.workingDirectory
       ? formatWorktreePath(session.workingDirectory)
@@ -144,15 +130,6 @@ export function SessionCard({
           taskBranch ?? null,
           originBranch,
         );
-
-  const handleCopyCommand = async () => {
-    try {
-      await copy(resumeCommand, "resume-command");
-      showToast(t("sessionCard.copyCommand.success"), "success");
-    } catch {
-      showToast(t("sessionCard.copyCommand.error"), "error");
-    }
-  };
 
   // Fetched on click rather than eagerly for every card — this is a git call (origin remote →
   // host + repo slug) on the server, only worth paying for when the user actually wants the link.
@@ -530,15 +507,6 @@ export function SessionCard({
           (no two actions share one) so they stay easy to tell apart at a glance; pick an unused
           ToolbarIconButtonColor when adding a new action here. */}
       <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 pt-3 dark:border-gray-800">
-        {!!session.subagentCount && (
-          <ToolbarIconButton
-            tooltip={subagentsLabel}
-            ariaLabel={subagentsLabel}
-            color="pink"
-            onClick={() => setShowSubagents(true)}
-            icon={<Bot className="h-4 w-4" />}
-          />
-        )}
         {session.prompts.length > 0 && (
           <ToolbarIconButton
             tooltip={t("sessionCard.previewTooltip")}
@@ -623,36 +591,6 @@ export function SessionCard({
         )}
       </div>
 
-      <div className="flex items-center gap-1 text-sm text-gray-600 border-t border-gray-100 pt-3 dark:text-gray-400 dark:border-gray-800">
-        <span
-          className="inline-flex items-center gap-1 font-mono text-[10px]"
-          title={t("sessionCard.resumeCommandTitle")}
-        >
-          {resumeCommand}
-        </span>
-        <Tooltip
-          content={
-            copiedCommand
-              ? t("sessionCard.copyCommandTooltip.copied")
-              : t("sessionCard.copyCommandTooltip.default")
-          }
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleCopyCommand}
-            aria-label={t("sessionCard.copyCommandAriaLabel")}
-            icon={
-              copiedCommand ? (
-                <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )
-            }
-          />
-        </Tooltip>
-      </div>
-
       <div className="flex gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
         {continueDisabledReason !== null ? (
           // Native `disabled` buttons don't reliably fire hover events, so the tooltip needs a
@@ -679,11 +617,6 @@ export function SessionCard({
         session={session}
         open={showPreview}
         onClose={() => setShowPreview(false)}
-      />
-      <SubagentsModal
-        session={session}
-        open={showSubagents}
-        onClose={() => setShowSubagents(false)}
       />
       {taskModal && (
         <TaskModal

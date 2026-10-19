@@ -3,15 +3,9 @@ import { accessSync, constants, realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type {
-  RootStatus,
-  Session,
-  SubagentDetail,
-  WorktreeToRootPreview,
-} from "../types/session.js";
+import type { RootStatus, Session, WorktreeToRootPreview } from "../types/session.js";
 import {
   findJsonlFiles,
-  findSubagentFiles,
   forgetCachedSession,
   getClaudeProjectsDir,
   readFullSessionPrompts,
@@ -20,8 +14,6 @@ import {
   readSessionLatestGitBranch,
   readSessionPrompts,
   readSessionRecap,
-  readSubagentMeta,
-  readSubagentSummary,
   type SessionHead,
 } from "../utils/claudeProjects.js";
 import { inferTaskKey } from "../utils/taskKeys.js";
@@ -109,16 +101,14 @@ type BuiltSession = Omit<
 
 async function buildSession(filePath: string): Promise<BuiltSession | null> {
   try {
-    const [head, fileStat, prompts, subagentFiles, activeTimeMs, recap, latestGitBranch] =
-      await Promise.all([
-        readSessionHead(filePath),
-        stat(filePath),
-        readSessionPrompts(filePath),
-        findSubagentFiles(filePath),
-        readSessionActiveTimeMs(filePath),
-        readSessionRecap(filePath),
-        readSessionLatestGitBranch(filePath),
-      ]);
+    const [head, fileStat, prompts, activeTimeMs, recap, latestGitBranch] = await Promise.all([
+      readSessionHead(filePath),
+      stat(filePath),
+      readSessionPrompts(filePath),
+      readSessionActiveTimeMs(filePath),
+      readSessionRecap(filePath),
+      readSessionLatestGitBranch(filePath),
+    ]);
     const id = head.sessionId ?? path.basename(filePath, ".jsonl");
     // Unknown cwd (older session, or head parse didn't find one) isn't treated as missing —
     // only flag it once we actually know the original directory and it's gone.
@@ -149,7 +139,6 @@ async function buildSession(filePath: string): Promise<BuiltSession | null> {
       directoryMissing,
       missingWorktreeRepoRoot,
       sizeBytes: fileStat.size,
-      subagentCount: subagentFiles.length,
       activeTimeMs,
     };
   } catch {
@@ -463,45 +452,6 @@ export async function getSessionPrompts(id: string): Promise<string[]> {
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
   return readFullSessionPrompts(filePath);
-}
-
-/** `agent-<id>.jsonl` and its sibling `agent-<id>.meta.json` share a directory and id. */
-function subagentMetaPath(jsonlPath: string): string {
-  const agentId = path.basename(jsonlPath, ".jsonl").replace(/^agent-/, "");
-  return path.join(path.dirname(jsonlPath), `agent-${agentId}.meta.json`);
-}
-
-/**
- * Fetched on demand (mirrors getSessionPrompts above) rather than embedded in listSessions() —
- * each subagent's own transcript has to be read in full to find its last assistant text (see
- * readSubagentSummary), which would be too heavy to do for every session up front.
- */
-export async function getSessionSubagents(id: string): Promise<SubagentDetail[]> {
-  const filePath = await findSessionFilePath(id);
-  if (!filePath) throw new SessionNotFoundError(id);
-
-  const subagentFiles = await findSubagentFiles(filePath);
-  const details = await Promise.all(
-    subagentFiles.map(async (jsonlPath): Promise<SubagentDetail> => {
-      const agentId = path.basename(jsonlPath, ".jsonl").replace(/^agent-/, "");
-      const metaPath = subagentMetaPath(jsonlPath);
-      const [meta, summary] = await Promise.all([
-        readSubagentMeta(metaPath),
-        readSubagentSummary(jsonlPath),
-      ]);
-
-      return {
-        agentId,
-        agentType: meta.agentType,
-        description: meta.description,
-        resultText: summary.resultText,
-        startedAt: summary.startedAt,
-        endedAt: summary.endedAt,
-      };
-    }),
-  );
-
-  return details.sort((a, b) => (a.startedAt ?? "").localeCompare(b.startedAt ?? ""));
 }
 
 /**
