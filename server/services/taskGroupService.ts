@@ -4,12 +4,7 @@ import { isTaskKey, normalizeTaskKey } from "../utils/taskKeys.js";
 import { getTaskStore, linkRepoBranchToTask, upsertTask } from "../utils/taskStore.js";
 import type { Session, TaskRepoRef } from "../types/session.js";
 import { collectTaskRepos } from "../utils/taskRepos.js";
-import {
-  buildPrUrl,
-  isSafeSessionId,
-  listSessions,
-  SessionNotFoundError,
-} from "./sessionService.js";
+import { buildPrUrl, listSessions, SessionNotFoundError } from "./sessionService.js";
 import { createTaskWorktree, getRepoInfo, resolveBaseBranch } from "./taskService.js";
 
 /**
@@ -114,7 +109,6 @@ export type SessionTask = {
 
 /** What a CLI skill asks first: "which task is this session part of, and where are the others?" */
 export async function getSessionTask(id: string): Promise<SessionTask> {
-  if (!isSafeSessionId(id)) throw new SessionNotFoundError(id);
   const sessions = await listSessions();
   const session = sessions.find((s) => s.id === id);
   if (!session) throw new SessionNotFoundError(id);
@@ -136,7 +130,6 @@ export async function setSessionTask(
   rawKey: string,
   link: string | null,
 ): Promise<void> {
-  if (!isSafeSessionId(id)) throw new SessionNotFoundError(id);
   const session = (await listSessions()).find((s) => s.id === id);
   if (!session) throw new SessionNotFoundError(id);
   if (!session.repoRoot || !session.gitBranch) {

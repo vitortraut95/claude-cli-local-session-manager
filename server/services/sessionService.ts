@@ -358,7 +358,7 @@ export class SessionActiveError extends AppError {
   }
 }
 
-function invalidSessionIdError(id: string): AppError {
+export function invalidSessionIdError(id: string): AppError {
   return new BadRequestError("INVALID_SESSION_ID", `Invalid session id "${id}"`);
 }
 
@@ -456,9 +456,6 @@ export async function deleteSession(id: string): Promise<void> {
 
 /** Deletes a local branch in a (non-worktree) session's directory. */
 export async function deleteSessionBranch(id: string, branch: string): Promise<void> {
-  if (!isSafeSessionId(id)) {
-    throw invalidSessionIdError(id);
-  }
   const trimmedBranch = branch.trim();
   if (!trimmedBranch) {
     throw branchNameRequiredError();
@@ -480,10 +477,6 @@ export async function deleteSessionBranch(id: string, branch: string): Promise<v
 
 /** Local only (`tasks.json`), never touches the `.jsonl`, so no active-session gate. */
 export async function setSessionNickname(id: string, nickname: string): Promise<void> {
-  if (!isSafeSessionId(id)) {
-    throw invalidSessionIdError(id);
-  }
-
   await setNickname(id, nickname);
 }
 
@@ -493,10 +486,6 @@ export async function setSessionBranches(
   origin: string,
   destination: string,
 ): Promise<void> {
-  if (!isSafeSessionId(id)) {
-    throw invalidSessionIdError(id);
-  }
-
   await setSessionBranchOverride(id, origin, destination);
 }
 
@@ -696,10 +685,6 @@ export async function openFileInVSCode(filePath: string): Promise<void> {
 }
 
 export async function openInVSCode(id: string): Promise<void> {
-  if (!isSafeSessionId(id)) {
-    throw invalidSessionIdError(id);
-  }
-
   const cwd = await findSessionCwd(id);
   if (!cwd) {
     throw new AppError(
@@ -736,10 +721,6 @@ async function openDirInCursor(dir: string): Promise<void> {
 
 /** Opens a session's working directory in Cursor (no git involved). */
 export async function openInCursor(id: string): Promise<void> {
-  if (!isSafeSessionId(id)) {
-    throw invalidSessionIdError(id);
-  }
-
   const cwd = await findSessionCwd(id);
   if (!cwd) {
     throw new AppError(
@@ -769,9 +750,6 @@ export async function openWorktreeRootInVSCode(id: string): Promise<void> {
 async function resolveMissingWorktreeRepoRoot(
   id: string,
 ): Promise<{ head: SessionHead; filePath: string; repoRoot: string }> {
-  if (!isSafeSessionId(id)) {
-    throw invalidSessionIdError(id);
-  }
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
 
@@ -852,10 +830,6 @@ export async function launchInTerminal(command: string, cwd?: string): Promise<v
 
 /** Refuses an active session: a second `claude --resume` would race the first one's writes. */
 export async function continueSession(id: string): Promise<void> {
-  if (!isSafeSessionId(id)) {
-    throw invalidSessionIdError(id);
-  }
-
   const activeIds = await getActiveResumeSessionIds();
   if (activeIds.has(id)) {
     throw new SessionActiveError(`Session "${id}" is already open in a terminal.`);
@@ -881,9 +855,6 @@ export async function continueSession(id: string): Promise<void> {
  * on a new `worktree-<name>` branch.
  */
 export async function createSessionWorktree(id: string, requestedName: string): Promise<void> {
-  if (!isSafeSessionId(id)) {
-    throw invalidSessionIdError(id);
-  }
   const name = requestedName.trim();
   if (!name) {
     throw new BadRequestError("WORKTREE_NAME_REQUIRED", "A worktree name is required.");
@@ -908,10 +879,6 @@ export async function createSessionWorktree(id: string, requestedName: string): 
 
 /** Removes the worktree `id` runs in and its branch; refused while any session is active in it. */
 export async function deleteSessionWorktree(id: string): Promise<void> {
-  if (!isSafeSessionId(id)) {
-    throw invalidSessionIdError(id);
-  }
-
   const cwd = await findSessionCwd(id);
   if (!cwd) throw new SessionNotFoundError(id);
   if (!(await directoryExists(cwd))) {
@@ -942,10 +909,6 @@ export async function deleteSessionWorktree(id: string): Promise<void> {
 
 /** Resolves a worktree session's cwd and repo root, or throws. */
 async function resolveWorktreeAndRepoRoot(id: string): Promise<{ cwd: string; repoRoot: string }> {
-  if (!isSafeSessionId(id)) {
-    throw invalidSessionIdError(id);
-  }
-
   const cwd = await findSessionCwd(id);
   if (!cwd) throw new SessionNotFoundError(id);
   if (!(await directoryExists(cwd))) {
@@ -1105,7 +1068,6 @@ export async function stopSiblingAndResume(
   siblingSessionId: string,
   requestedBranch: string,
 ): Promise<void> {
-  if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
   if (!isSafeSessionId(siblingSessionId)) throw invalidSessionIdError(siblingSessionId);
   const branch = requestedBranch.trim();
   if (!branch) {

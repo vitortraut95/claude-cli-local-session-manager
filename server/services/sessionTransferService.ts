@@ -138,7 +138,6 @@ function slugify(value: string): string {
 
 /** Read-only snapshot, so not gated on the session being inactive. */
 export async function exportSession(id: string): Promise<{ fileName: string; data: Buffer }> {
-  if (!isSafeSessionId(id)) throw new SessionNotFoundError(id);
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
   const session = (await listSessions()).find((s) => s.id === id);

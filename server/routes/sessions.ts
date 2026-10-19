@@ -8,6 +8,8 @@ import {
   deleteSessionWorktree,
   getSessionPrUrl,
   getSessionPrompts,
+  invalidSessionIdError,
+  isSafeSessionId,
   getRootStatus,
   getScanProgress,
   getWorktreeToRootPreview,
@@ -35,6 +37,15 @@ import { extractStringField } from "../utils/httpBody.js";
 import { AppError, sendErrorResponse } from "../utils/httpError.js";
 
 export const sessionsRouter = Router();
+
+/** Every `/:id` route: an id that isn't UUID-shaped (could be a path segment) is a 400. */
+sessionsRouter.param("id", (_req, res, next, id: string) => {
+  if (isSafeSessionId(id)) {
+    next();
+    return;
+  }
+  sendErrorResponse(res, invalidSessionIdError(id));
+});
 
 /** Maps an unknown session id to 404 and a session open in another terminal to 409. */
 function notFoundOrActive(err: AppError): number | null {
