@@ -26,13 +26,11 @@ const TEXTAREA_CLASSNAME =
   "dark:focus:ring-gray-100/10";
 
 /**
- * The lightweight sibling of NewTaskModal: no Jira link, branch, base branch or worktree — just a
- * project, the team skills and a prompt (`defaultSessionPrompt`, separate from the task one), then
- * `claude "<prompt>"` in the project's root as-is. The only check is whether a session is already
- * active in that root, which asks for a confirmation instead of blocking.
+ * Project + team skills + prompt, then `claude "<prompt>"` in the project's root. A session already
+ * active in that root asks for confirmation instead of blocking.
  *
- * Always mounted for the same reason as NewTaskModal: an accidental close must not lose what the
- * user already typed — only "Clear" or a successful launch resets the form.
+ * Always mounted so an accidental close doesn't lose what the user typed — only "Clear" or a
+ * successful launch resets the form.
  */
 export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionModalProps) {
   const { showToast } = useToast();

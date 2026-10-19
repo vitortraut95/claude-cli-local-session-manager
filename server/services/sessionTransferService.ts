@@ -10,8 +10,8 @@ import type {
   SessionImportResult,
 } from "../types/session.js";
 import { forgetCachedSession, getClaudeProjectsDir } from "../utils/claudeProjects.js";
-import { branchExists, runGit } from "../utils/git.js";
-import { AppError } from "../utils/httpError.js";
+import { branchExists, cloneRepository, runGit } from "../utils/git.js";
+import { AppError, BadRequestError } from "../utils/httpError.js";
 import { getNicknames, setNickname } from "../utils/taskStore.js";
 import {
   directoryExists,
@@ -22,23 +22,17 @@ import {
   SessionNotFoundError,
 } from "./sessionService.js";
 import { getKnownProjectFolders } from "./taskService.js";
-import { withWorkspaceRepos } from "./workspaceService.js";
+import { getUserPreferences } from "./preferencesService.js";
+import { expandHome, withWorkspaceRepos } from "./workspaceService.js";
 
 /**
- * Session export/import ("share a session with another dev/machine"). A bundle is one gzipped
- * JSON file carrying the session's own `.jsonl`, everything under its `<id>/` sidecar folder
- * (`subagents/`, `tool-results/`, ...) and enough git metadata (origin URL, branch, commit, cwd
- * relative to the repo's top level) for the importing machine to find its own clone of the same
- * repo. Plain JSON inside the gzip on purpose — `zcat file | less` is enough to review what's in
- * it before sending, which matters since a transcript holds every file/command output Claude saw.
+ * Session export/import. A bundle is one gzipped JSON file (plain JSON so `zcat` can review it)
+ * with the `.jsonl`, its `<id>/` sidecar folder and git metadata (origin, branch, commit, cwd
+ * relative to the repo top) so the importer can find its own clone.
  *
- * Importing rewrites the original absolute paths (cwd, repo top level, the CLI's own per-project
- * folder under `~/.claude/projects`) to the importing machine's equivalents inside every string of
- * every line, so both the CLI (which ties a transcript to its exact `cwd`, see `findSessionCwd`)
- * and the model itself (which otherwise "remembers" file paths that don't exist locally) see local
- * paths. A session id that already exists locally (re-importing an updated export, or importing
- * back on the sender's own machine) is never resolved silently — the caller must say whether to
- * overwrite it or import a copy under a fresh id (`onConflict`), after the modal has shown both.
+ * Import rewrites the original absolute paths inside every string of every line to local ones —
+ * the CLI ties a transcript to its exact `cwd`. A session id that already exists locally needs an
+ * explicit `onConflict` (overwrite or copy under a fresh id).
  */
 
 const BUNDLE_FORMAT = "claude-session-manager/session-export";
@@ -74,22 +68,19 @@ type SessionBundle = {
 };
 
 function invalidBundleError(): AppError {
-  return new AppError(
+  return new BadRequestError(
     "IMPORT_INVALID_BUNDLE",
     "This file isn't a session exported by Claude Session Manager.",
   );
 }
 
-/** Same scheme the CLI itself uses for `~/.claude/projects/<encoded-cwd>` — every
- *  non-alphanumeric character becomes "-" (verified against real transcripts' own `cwd`). */
+/** The CLI's own `~/.claude/projects/<encoded-cwd>` scheme: every non-alphanumeric char → "-". */
 function encodeProjectDirName(cwd: string): string {
   return cwd.replace(/[^a-zA-Z0-9]/g, "-");
 }
 
-/** `git@github.com:Owner/Repo.git`, `https://user@github.com/owner/repo` and friends all collapse
- *  to just `owner/repo` — the host is dropped on purpose, since it's often a per-machine SSH alias
- *  (`git@github-personal:owner/repo.git` via `~/.ssh/config`) that would never match another
- *  dev's plain `github.com` clone of the same repo. */
+/** Collapses any remote URL to `owner/repo`. The host is dropped: it's often a per-machine SSH
+ *  alias (`git@github-personal:...`) that would never match another dev's clone. */
 export function normalizeRemoteUrl(url: string): string {
   return url
     .trim()
@@ -125,8 +116,7 @@ async function readSidecarFiles(dir: string, prefix = ""): Promise<BundleFile[]>
       if (!entry.isFile()) return [];
       const buf = await readFile(full);
       const asText = buf.toString("utf8");
-      // Round-trip check rather than guessing from the extension — anything that isn't valid
-      // UTF-8 travels as base64 so it arrives byte-identical.
+      // Anything that isn't valid UTF-8 travels as base64 so it arrives byte-identical.
       return Buffer.from(asText, "utf8").equals(buf)
         ? [{ path: relative, encoding: "utf8", content: asText }]
         : [{ path: relative, encoding: "base64", content: buf.toString("base64") }];
@@ -147,8 +137,7 @@ function slugify(value: string): string {
   );
 }
 
-/** Read-only snapshot — deliberately not gated on the session being inactive: exporting never
- *  touches the session's own files, it just captures whatever has been written so far. */
+/** Read-only snapshot, so not gated on the session being inactive. */
 export async function exportSession(id: string): Promise<{ fileName: string; data: Buffer }> {
   if (!isSafeSessionId(id)) throw new SessionNotFoundError(id);
   const filePath = await findSessionFilePath(id);
@@ -281,8 +270,8 @@ async function resolveCandidate(
   };
 }
 
-/** `repoRelativeCwd` re-applied under the importer's own clone — falls back to the clone's root
- *  when that subfolder doesn't exist there (or the bundle didn't record one). */
+/** `repoRelativeCwd` under the importer's clone, or the clone's root when that subfolder is
+ *  missing. */
 async function resolveTargetCwd(
   targetDir: string,
   repoRelativeCwd: string | null,
@@ -304,9 +293,62 @@ async function getActiveWorkingDirectories(): Promise<Set<string>> {
   return activeWorkingDirectoriesOf(await listSessions());
 }
 
+/** First of the user's `workspaceDirs` that exists — where "Clone repository" clones into. */
+async function getCloneParentDir(): Promise<string | null> {
+  const { workspaceDirs } = await getUserPreferences();
+  for (const dir of workspaceDirs ?? []) {
+    const expanded = expandHome(dir);
+    if (await directoryExists(expanded)) return expanded;
+  }
+  return null;
+}
+
+/**
+ * Import's "Clone repository": `git clone <url>` into `<first workspace dir>/<repo name>`. An
+ * existing folder of that name is reused when it's a clone of the same repo, refused otherwise.
+ */
+export async function cloneRepositoryForImport(url: string): Promise<{ repoRoot: string }> {
+  const trimmed = url.trim();
+  // From the raw URL, not normalizeRemoteUrl's lowercased slug, so the folder keeps the repo's case.
+  const repoName = trimmed
+    .replace(/\/+$/, "")
+    .replace(/\.git$/, "")
+    .split(/[/:]/)
+    .pop();
+  if (!trimmed || !repoName || !/^[\w.-]+$/.test(repoName) || /^\.+$/.test(repoName)) {
+    throw new BadRequestError("IMPORT_CLONE_URL_REQUIRED", "A repository URL is required.");
+  }
+  const parent = await getCloneParentDir();
+  if (!parent) {
+    throw new AppError("IMPORT_CLONE_NO_WORKSPACE", "No workspace folder is set up to clone into.");
+  }
+  const target = path.join(parent, repoName);
+  if (await directoryExists(target)) {
+    const remote = await tryGit(["remote", "get-url", "origin"], target);
+    if (remote && normalizeRemoteUrl(remote) === normalizeRemoteUrl(trimmed)) {
+      return { repoRoot: target };
+    }
+    throw new AppError("IMPORT_CLONE_TARGET_EXISTS", `${target} already exists.`);
+  }
+  try {
+    await cloneRepository(trimmed, target);
+  } catch (err) {
+    throw new AppError(
+      "IMPORT_CLONE_FAILED",
+      `git clone failed: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
+  }
+  return { repoRoot: target };
+}
+
 export async function inspectSessionBundle(raw: Buffer): Promise<SessionImportPreview> {
   const bundle = parseBundle(raw);
-  const [sessions, knownFolders] = await Promise.all([listSessions(), getKnownProjectFolders()]);
+  const [sessions, knownFolders, cloneParentDir] = await Promise.all([
+    listSessions(),
+    getKnownProjectFolders(),
+    getCloneParentDir(),
+  ]);
   // Workspace repos too — finds the matching clone even when it was never used with Claude here.
   const folders = await withWorkspaceRepos(knownFolders, (repoPath) => ({
     path: repoPath,
@@ -317,7 +359,7 @@ export async function inspectSessionBundle(raw: Buffer): Promise<SessionImportPr
   const candidates = await Promise.all(
     folders.map((folder) => resolveCandidate(folder.path, bundle, activeDirs)),
   );
-  // Same-remote clones first — those are the only ones that can actually hold the same code.
+  // Same-remote clones first.
   candidates.sort((a, b) => Number(b.remoteMatches) - Number(a.remoteMatches));
 
   const { session } = bundle;
@@ -346,6 +388,7 @@ export async function inspectSessionBundle(raw: Buffer): Promise<SessionImportPr
       isActive: existing.isActive,
     },
     candidates,
+    cloneParentDir,
   };
 }
 
@@ -355,11 +398,9 @@ function escapeRegExp(value: string): string {
 
 type Rewriter = (value: string) => string;
 
-/** Builds one string → string function applying every (old prefix → new prefix) path mapping,
- *  longest first so a nested path wins over its parent, each only at a path-segment boundary
- *  (`/repo` must not also rewrite `/repo-other`). The session id itself is replaced as a plain
- *  substring — it's a UUID, and it appears both as the `sessionId` field and inside paths like
- *  `<project>/<id>/tool-results/...`. */
+/** Applies every (old prefix → new prefix) path mapping, longest first, only at a path-segment
+ *  boundary (`/repo` must not rewrite `/repo-other`). The session id (a UUID) is replaced as a
+ *  plain substring, since it also appears inside paths. */
 function buildRewriter(
   pathMappings: [string, string][],
   idMapping: [string, string] | null,
@@ -395,9 +436,7 @@ function rewriteDeep(value: unknown, rewrite: Rewriter): unknown {
   return value;
 }
 
-/** Rewrites every string inside every JSON line; a line that doesn't parse (shouldn't happen in
- *  a CLI-written transcript) gets the same rewrite applied to its raw text instead of being
- *  dropped. */
+/** Rewrites every string in every JSON line; an unparseable line gets its raw text rewritten. */
 function rewriteJsonl(text: string, rewrite: Rewriter): string {
   return text
     .split("\n")
@@ -437,12 +476,11 @@ async function checkoutImportedBranch(cwd: string, branch: string): Promise<void
     await tryGit(["fetch", "origin", `refs/heads/${branch}:refs/remotes/origin/${branch}`], cwd);
   }
   try {
-    // No --force — uncommitted changes that would be overwritten block it, same as everywhere else.
+    // No --force: uncommitted changes that would be overwritten block it.
     await runGit(["checkout", branch], cwd);
   } catch (err) {
-    // Uncoded-message fallback isn't wanted here: git's own reason ("your local changes would be
-    // overwritten...") is the useful part, so it's folded into the message, which the frontend
-    // shows as-is (this code isn't in SERVER_ERROR_CODE_KEYS on purpose).
+    // git's own reason is the useful part, so the frontend shows this message as-is (the code
+    // must stay out of SERVER_ERROR_CODE_KEYS).
     throw new AppError(
       "IMPORT_CHECKOUT_FAILED",
       `Couldn't check out "${branch}": ${err instanceof Error ? err.message : String(err)}`,
@@ -458,7 +496,10 @@ export async function importSessionBundle(
   const bundle = parseBundle(raw);
   const trimmedTarget = targetDir.trim();
   if (!trimmedTarget) {
-    throw new AppError("IMPORT_TARGET_REQUIRED", "Choose the folder to import the session into.");
+    throw new BadRequestError(
+      "IMPORT_TARGET_REQUIRED",
+      "Choose the folder to import the session into.",
+    );
   }
   const resolvedTarget = path.resolve(trimmedTarget.replace(/^~(?=$|\/)/, os.homedir()));
   if (!(await directoryExists(resolvedTarget))) {
@@ -514,9 +555,8 @@ export async function importSessionBundle(
   await mkdir(projectDir, { recursive: true });
   const transcriptPath = path.join(projectDir, `${newId}.jsonl`);
   const sidecarRoot = path.join(projectDir, newId);
-  // Everything is first written under staging names the session list never picks up (only
-  // `*.jsonl` directly inside a project folder counts, see `findJsonlFiles`), then moved into
-  // place — so an overwrite that fails halfway through still leaves the old session intact.
+  // Written under staging names the session list never picks up, then moved into place, so an
+  // overwrite that fails halfway leaves the old session intact.
   const stagingTranscript = `${transcriptPath}.importing`;
   const stagingSidecar = `${sidecarRoot}.importing`;
   const discardStaging = async () => {

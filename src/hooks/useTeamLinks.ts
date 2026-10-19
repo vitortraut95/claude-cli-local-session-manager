@@ -2,9 +2,8 @@ import { useSyncExternalStore } from "react";
 import * as tasksApi from "../services/tasksApi";
 import type { EnvPreviews } from "../services/tasksApi";
 
-/** Legacy per-machine `.env` value, from before the Jenkins URL moved into userPreferences.json —
- *  still honored while `jenkinsBaseUrl` was never set (null), so the button keeps working right
- *  after the update, and used as the startup prompt's prefill. */
+/** Legacy `.env` value: used while `jenkinsBaseUrl` is null (never set), and as the prompt's
+ *  prefill. */
 export const LEGACY_ENV_JENKINS_BASE_URL =
   (import.meta.env.VITE_JENKINS_BASE_URL as string | undefined)?.trim() ?? "";
 
@@ -42,8 +41,8 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-/** The Jenkins/preview-link config every session card needs — fetched once for all of them and
- *  reloaded on `PREFERENCES_CHANGED_EVENT`, instead of one preferences fetch per card. */
+/** Jenkins/preview-link config for the session cards — fetched once for all of them and reloaded
+ *  on `PREFERENCES_CHANGED_EVENT`. */
 export function useTeamLinks(): TeamLinks {
   return useSyncExternalStore(subscribe, () => snapshot);
 }

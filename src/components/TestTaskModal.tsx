@@ -18,9 +18,8 @@ type TestTaskModalProps = {
 };
 
 /**
- * The header's "Test task": a ticket link and the permission-mode checkbox, nothing else — opens a
- * terminal running `/<skill> <link>` and leaves everything (finding the project, the test plan) to
- * the skill. Deliberately no active-session check: the skill only reads.
+ * The header's "Test task": opens a terminal running `/<skill> <link>`. No active-session check,
+ * since the skill only reads.
  */
 export function TestTaskModal({
   skill,

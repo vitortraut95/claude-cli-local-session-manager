@@ -48,11 +48,8 @@ type AddRepoOutcome =
     };
 
 /**
- * Everything this app keeps about a session's task, editable in one place (all of it lives in
- * `tasks.json`): the task key/link, the session's nickname and base/task branches, the task's
- * repos (unlink, copy an `/add-dir` command) and adding another repo to it — the same
- * `POST /tasks/by-key/:key/repos` a CLI skill calls. Mounted only while open, like NicknameModal,
- * so every field starts fresh from the session.
+ * Edits everything kept about a session's task: key/link, nickname, base/task branches, the
+ * task's repos, and adding another repo. Mounted only while open, so fields start fresh.
  */
 export function TaskModal({
   session,
@@ -364,8 +361,8 @@ type AddRepoFormProps = {
   copiedKey: string | null;
 };
 
-/** Creates the task's branch in another repo and links it — then the `/add-dir` command to paste
- *  into the session already working on the task (one session per task, not one per repo). */
+/** Creates the task's branch in another repo and links it, then shows the `/add-dir` command to
+ *  paste into the task's session. */
 function AddRepoForm({
   taskKey,
   taskLink,
@@ -393,8 +390,7 @@ function AddRepoForm({
   const [submitting, setSubmitting] = useState(false);
   const [outcome, setOutcome] = useState<AddRepoOutcome | null>(null);
 
-  // Same smart worktree default as "New task": only when the repo root already has an active
-  // session — unless the checkbox was changed by hand for this folder.
+  // Worktree defaults on only when the repo root has an active session, unless changed by hand.
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {

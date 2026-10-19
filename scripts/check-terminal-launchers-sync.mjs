@@ -4,10 +4,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 /**
- * `server/services/sessionService.ts`'s Linux TERMINAL_LAUNCHERS list is duplicated by hand in
- * `open-terminal.sh` (a plain Bash array) — that script has to work before Node/yarn are even
- * guaranteed to be on PATH (see CLAUDE.md), so it can't just import/call the TS implementation.
- * This catches silent drift between the two: same binaries, same order, nothing more.
+ * Fails when `open-terminal.sh`'s TERMINAL_LAUNCHERS array drifts from the one in
+ * `server/services/sessionService.ts` (same binaries, same order). The script must run before
+ * Node is on PATH, so it can't import the TS list.
  */
 
 const rootDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");

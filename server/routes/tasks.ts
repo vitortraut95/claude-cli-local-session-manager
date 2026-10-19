@@ -4,7 +4,7 @@ import {
   getUserPreferences,
   isEnvPreviews,
   isSkillsHubPreferences,
-  saveUserPreferences,
+  updateUserPreferences,
   type UserPreferences,
 } from "../services/preferencesService.js";
 import { openFileInVSCode } from "../services/sessionService.js";
@@ -30,7 +30,7 @@ import {
   resolveBaseBranch,
 } from "../services/taskService.js";
 import { extractBooleanField, extractStringField } from "../utils/httpBody.js";
-import { AppError, errorCode } from "../utils/httpError.js";
+import { BadRequestError, errorCode } from "../utils/httpError.js";
 import { normalizeTaskKey } from "../utils/taskKeys.js";
 import {
   addRepoToTask,
@@ -53,9 +53,8 @@ type LateFields =
   | "taskTestSkill"
   | "taskTestPermissionModeAuto";
 
-/** The fields added after the file's first release are optional on purpose: a browser tab still
- *  running an older frontend bundle (see CLAUDE.md's update-safety policy) sends the full object
- *  without them — the PUT handler below keeps the stored value instead of rejecting or wiping it. */
+/** Optional fields: an older frontend bundle sends the object without them, and the PUT handler
+ *  keeps the stored value instead of rejecting or wiping it. */
 function isValidPreferences(
   body: unknown,
 ): body is Omit<UserPreferences, LateFields> & Partial<Pick<UserPreferences, LateFields>> {
@@ -118,7 +117,7 @@ tasksRouter.get("/preferences", async (_req, res) => {
 tasksRouter.put("/preferences", async (req, res) => {
   try {
     if (!isValidPreferences(req.body)) {
-      throw new AppError(
+      throw new BadRequestError(
         "MALFORMED_PREFERENCES",
         "Malformed preferences payload — expected { defaultPrompt: string, " +
           "defaultSessionPrompt?: string, branchTypes: string[], " +
@@ -130,14 +129,13 @@ tasksRouter.put("/preferences", async (req, res) => {
           "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean }.",
       );
     }
-    const stored = await getUserPreferences();
-    // skillsHub merged one level deep: an older bundle's skillsHub lacks `repoUrl`, which must
-    // survive its save.
-    await saveUserPreferences({
+    const body = req.body;
+    // Merged one level deep: an older bundle's skillsHub lacks `repoUrl`, which must survive.
+    await updateUserPreferences((stored) => ({
       ...stored,
-      ...req.body,
-      skillsHub: { ...stored.skillsHub, ...req.body.skillsHub },
-    });
+      ...body,
+      skillsHub: { ...stored.skillsHub, ...body.skillsHub },
+    }));
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({
@@ -148,11 +146,10 @@ tasksRouter.put("/preferences", async (req, res) => {
   }
 });
 
-/** Escape hatch from the settings modal — opens the raw file, writing the defaults out first if
- *  it was never saved (it's created lazily, see `saveUserPreferences`). */
+/** Opens the raw file, writing the defaults out first if it was never saved. */
 tasksRouter.post("/preferences/open-in-editor", async (_req, res) => {
   try {
-    await saveUserPreferences(await getUserPreferences());
+    await updateUserPreferences((stored) => stored);
     await openFileInVSCode(getPreferencesPath());
     res.json({ success: true });
   } catch (err) {
@@ -260,7 +257,7 @@ function extractStringArray(body: unknown, key: string): string[] {
     : [];
 }
 
-// Tasks spanning several repos — see taskGroupService.ts. `:key` may also be a ticket URL.
+// Tasks spanning several repos. `:key` may also be a ticket URL.
 
 function sendTaskError(res: Response, err: unknown): void {
   res.status(400).json({
@@ -359,8 +356,7 @@ tasksRouter.post("/test-task", async (req, res) => {
   }
 });
 
-// Team skills hub — see skillsHubService.ts. All optional: nothing here is ever run
-// as part of creating a task.
+// Team skills hub.
 
 tasksRouter.get("/skills-hub/status", async (_req, res) => {
   try {
@@ -423,7 +419,7 @@ tasksRouter.put("/skills-hub/selection", async (req, res) => {
   }
 });
 
-/** The startup prompt's prefill: the `origin` of a hub clone set up before the URL was a preference. */
+/** The startup prompt's prefill: the `origin` of an existing hub clone, while no URL is saved. */
 tasksRouter.get("/skills-hub/detected-repo-url", async (_req, res) => {
   try {
     res.json({ repoUrl: await detectHubRepoUrl() });

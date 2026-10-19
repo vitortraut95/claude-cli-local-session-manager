@@ -2,16 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import * as tasksApi from "../services/tasksApi";
 import type { SkillsHubStatus } from "../services/tasksApi";
 
-/** Last status any instance loaded — seeds every new/reopened consumer so the New Task / New
- *  Session panel shows right away (then refreshes quietly) instead of popping in after a fetch. */
+/** Last status any instance loaded — seeds new consumers so they render before the fetch. */
 let lastStatus: SkillsHubStatus | null = null;
 
 /**
- * The team skills hub status, loaded whenever `enabled` turns true and again on
- * every `SKILLS_HUB_CHANGED_EVENT` — shared by the New Task panel, the settings row and the
- * management modal so a change made in one shows up in the others. A failed load (including a
- * backend older than these routes) leaves `status` null with `failed` set: callers hide the feature
- * instead of showing an error, since it's optional. `status` null without `failed` = still loading.
+ * Skills hub status, loaded when `enabled` turns true and on every `SKILLS_HUB_CHANGED_EVENT`.
+ * `status` null + `failed` = load failed (callers hide the feature); null without `failed` =
+ * still loading.
  */
 export function useSkillsHubStatus(enabled: boolean) {
   const [status, setStatus] = useState<SkillsHubStatus | null>(lastStatus);

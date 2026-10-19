@@ -20,7 +20,7 @@ app.use("/cleanup", cleanupRouter);
 
 app.listen(PORT, () => {
   console.log(`Claude Session Manager API listening on http://localhost:${PORT}`);
-  // Background, after the server is already answering — never delays startup.
+  // Background, after the server is already answering.
   void autoUpdateSkillsHubOnStart();
   // Also runs lazily on the first read/write, so a request arriving first can't miss it.
   migrateLegacySidecars()

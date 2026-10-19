@@ -54,13 +54,8 @@ function parseEnvPreviews(raw: string): EnvPreviews | null {
 }
 
 /**
- * Every `userPreferences.json` key, one row each (friendly name, description, the raw key, a
- * one-line preview of the value), with an editor matched to the value's type instead of raw JSON
- * — a malformed value would just be rejected by the server's PUT validation. Text and lists open a
- * big editor modal; booleans and the number are edited right in their row. `language` is left out
- * on purpose — the header's own switcher already covers it. Every
- * save goes through `tasksApi.updatePreferences` (fetch-merge-PUT, serialized) and then
- * `notifyPreferencesChanged`, so components holding their own copy (NewTaskModal) reload it.
+ * One row per `userPreferences.json` key (except `language`, set from the header), with an editor
+ * matched to the value's type. Saves call `notifyPreferencesChanged` so other copies reload.
  */
 export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalProps) {
   const { t } = useLanguage();
@@ -104,10 +99,9 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
     }
   };
 
-  /** Repo URL + local clone path, through their own routes (not the generic PUT): changing the URL
-   *  also forgets a clone path that belonged to the previous repo, and a path is validated against
-   *  the (new) URL — so the URL goes first. URL "" = not used; path "" = auto-detect. The path is
-   *  only sent when it changed, so an untouched field never pins the auto-detected folder. */
+  /** URL is saved first: changing it forgets the old clone path, and the path is validated against
+   *  the new URL. URL "" = not used; path "" = auto-detect. The path is only sent when changed, so
+   *  an untouched field never pins the auto-detected folder. */
   const saveHubConfig = async (value: { repoUrl: string; path: string }): Promise<boolean> => {
     const repoUrl = value.repoUrl.trim();
     const path = value.path.trim();
@@ -575,8 +569,7 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
   );
 }
 
-/** Theme isn't a `userPreferences.json` key — it's per-browser (localStorage, see useTheme) — so
- *  this row shows no key name, just a note saying where it lives. */
+/** Theme is per-browser (localStorage), not a `userPreferences.json` key, so no key name shown. */
 function ThemeRow({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
   const { t } = useLanguage();
   return (

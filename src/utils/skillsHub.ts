@@ -1,8 +1,8 @@
 import type { TranslationKey } from "../i18n/translations";
 import type { SkillsHubSyncResult } from "../services/tasksApi";
 
-/** One-line human summary of a skills-hub sync — shown under the management modal's "Update now".
- *  `warning` = worth flagging (offline, update skipped, name conflicts), though never fatal. */
+/** One-line summary of a skills-hub sync. `warning` = worth flagging (offline, update skipped,
+ *  name conflicts), never fatal. */
 export function describeSync(
   result: SkillsHubSyncResult,
   t: (key: TranslationKey, params?: Record<string, string | number>) => string,

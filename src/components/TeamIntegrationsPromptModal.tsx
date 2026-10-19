@@ -18,11 +18,9 @@ type TeamIntegrationsPromptModalProps = {
 };
 
 /**
- * Asked on app start while `jenkinsBaseUrl` or `skillsHub.repoUrl` was never saved (null) — see
- * Header. Both are company-specific, so they live only in the local userPreferences.json, never in
- * this public repo. Prefilled from what this machine already uses (the legacy
- * `VITE_JENKINS_BASE_URL` in `.env`, the `origin` of an existing hub clone), so someone who had it
- * working before only confirms. An empty field saves "" (explicitly not used) and stops the prompt.
+ * Asked on app start while `jenkinsBaseUrl` or `skillsHub.repoUrl` was never saved (null).
+ * Prefilled from `VITE_JENKINS_BASE_URL` and an existing hub clone's `origin`. An empty field
+ * saves "" (not used) and stops the prompt.
  */
 export function TeamIntegrationsPromptModal({
   prefs,

@@ -47,8 +47,7 @@ export function useSessions() {
   const perPage = parsePerPage(perPageRaw);
   const page = parsePage(pageRaw);
 
-  // Any change to what's being shown resets to page 1, so the user never lands
-  // on a page that no longer has anything on it.
+  // Any change to what's being shown resets to page 1.
   const setSearchQuery = useCallback(
     (value: string) => {
       setSearchQueryRaw(value);
@@ -90,9 +89,7 @@ export function useSessions() {
     } finally {
       setLoading(false);
     }
-    // `t` is intentionally omitted: useLanguage() returns a new `t` function identity on every
-    // render, and this callback feeds the mount-only useEffect below — depending on `t` here
-    // would re-fire that effect (and refetch sessions) on every render instead of just once.
+    // `t` omitted so a language switch doesn't re-run the mount-only fetch below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -102,15 +99,9 @@ export function useSessions() {
     void loadSessions();
   }, [loadSessions]);
 
-  // "New task"/resume launch their terminal fire-and-forget — `claude` itself only writes the
-  // session's `.jsonl` (or its active-session pid file) once it actually starts, which can take a
-  // few seconds. A single immediate refresh right after almost always misses it, so `refreshSoon`
-  // follows up with a couple of staggered retries instead of one-shot continuous polling —
-  // cleared on unmount/re-call so a second task/resume shortly after doesn't pile up overlapping
-  // retries. Uses `loadSessions` directly rather than `refresh`: `refresh` flips `loading` to
-  // true, which blanks the whole list behind <LoadingState /> — fine for an explicit "Refresh
-  // sessions" click, but distracting as a flicker repeated 3-4 times in a row here. `loadSessions`
-  // swaps the data in once it arrives without ever blanking the page in between.
+  // After a fire-and-forget terminal launch, `claude` takes a few seconds to write its `.jsonl` /
+  // pid file, so `refreshSoon` reloads a few times, staggered (re-calling cancels pending retries).
+  // Uses `loadSessions`, not `refresh`, so the list isn't blanked by <LoadingState /> each time.
   const refreshRetryTimeoutsRef = useRef<number[]>([]);
 
   useEffect(() => {
@@ -128,24 +119,14 @@ export function useSessions() {
   }, [loadSessions]);
 
   useEffect(() => {
-    // loadSessions only touches state after its internal `await`, but the rule's
-    // static analysis can't see that far — this is the standard fetch-on-mount pattern.
+    // Fetch-on-mount: loadSessions only sets state after its internal `await`.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadSessions();
   }, [loadSessions]);
 
   /**
-   * Shown by <LoadingState/> only for the very first, mount-time load — a cold cache (server
-   * restart, or a session's transcript grown since last read, see claudeProjects.ts) can make a
-   * user with hundreds of sessions stare at a bare spinner with no idea why. Deliberately not
-   * wired into `refresh()`/`loadSessions()` in general: every later reload (delete, nickname,
-   * resume, the manual refresh button) almost always hits a warm cache, so polling there would
-   * just be wasted requests for a state that will resolve near-instantly anyway.
-   *
-   * Polling (not a single check) because the scan's total isn't known until the server's own
-   * `findJsonlFiles` resolves, and its `done` count climbs over the scan's lifetime — a fixed
-   * short delay before the first poll avoids ever showing progress for a load that was going to
-   * finish fast regardless.
+   * Scan progress for <LoadingState/>, polled only during the first (mount-time) load, which may
+   * hit a cold cache. The first poll is delayed so fast loads never show progress.
    */
   const [scanProgress, setScanProgress] = useState<{ done: number; total: number } | null>(null);
 
@@ -162,7 +143,7 @@ export function useSessions() {
         setScanProgress({ done: progress.done, total: progress.total });
         timeouts.push(window.setTimeout(() => void poll(), 300));
       } catch {
-        // Best-effort only — a failed progress check shouldn't affect the real load.
+        // Best-effort: a failed progress check doesn't affect the real load.
       }
     };
 
@@ -180,10 +161,8 @@ export function useSessions() {
     [sessions],
   );
 
-  // One extra path segment per project for the filter dropdown's display text only (e.g.
-  // "git/my-app") — the filter itself still matches on the plain `project` string, this
-  // is purely a label. See `resolveProjectParentSegment`'s own doc comment for what it can and
-  // can't derive reliably from the session payload alone.
+  // Parent folder per project for the filter dropdown's label only (e.g. "git/my-app"); the
+  // filter still matches on `project`.
   const projectLabels = useMemo(() => {
     const labels: Record<string, string> = {};
     for (const session of sessions) {
@@ -216,8 +195,8 @@ export function useSessions() {
   }, [sessions, searchQuery, projectFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filteredSessions.length / perPage));
-  // Clamp for display without writing back to the URL — a stale `page` param
-  // (filters changed, sessions got deleted) just renders the nearest valid page.
+  // Clamp for display without writing back to the URL — a stale `page` param renders the
+  // nearest valid page.
   const currentPage = Math.min(page, pageCount);
 
   const paginatedSessions = useMemo(
@@ -239,14 +218,11 @@ export function useSessions() {
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
-  // Selection isn't cleared on page/filter changes — a session selected on page 1 stays
-  // selected after navigating to page 2, so a bulk delete can span pages.
+  // Selection survives page/filter changes, so a bulk delete can span pages.
   const selectAllOnPage = useCallback(() => {
     setSelectedIds((current) => {
       const next = new Set(current);
-      // Active sessions' checkboxes are disabled (can't bulk-delete/continue a session that's
-      // open in a terminal), so skip them here too rather than selecting something the UI
-      // won't let the user act on.
+      // Active sessions can't be selected (their checkboxes are disabled).
       for (const session of paginatedSessions) {
         if (!session.isActive) next.add(session.id);
       }
@@ -266,13 +242,8 @@ export function useSessions() {
   }, []);
 
   /**
-   * `cleanupWorktree`/`cleanupBranch` run before deleting the session, each with its own
-   * independent success/error toast — a failure there (e.g. uncommitted changes blocking a
-   * worktree removal, or the branch being checked out elsewhere) doesn't stop the session
-   * deletion that follows, since none of these are actually coupled server-side. The caller
-   * (SessionsPage's delete-confirm checkboxes) offers worktree cleanup for worktree-backed
-   * sessions and branch cleanup for everything else — a worktree's own cleanup already deletes
-   * its branch, so the two are mutually exclusive, never both true at once.
+   * `cleanupWorktree`/`cleanupBranch` run first, each with its own toast; their failure doesn't
+   * stop the session deletion. Mutually exclusive (worktree cleanup already deletes the branch).
    */
   const removeSession = useCallback(
     async (id: string, cleanupWorktree = false, cleanupBranch = false, branchName?: string) => {
@@ -354,8 +325,7 @@ export function useSessions() {
       setPending(id, "nickname");
       try {
         await sessionsApi.setNickname(id, nickname);
-        // Reload from the server rather than optimistically patching locally — a blank nickname
-        // clears the override server-side, and this keeps that resolution in one place.
+        // Reloaded, not patched locally: a blank nickname is resolved server-side.
         await loadSessions();
         showToast(
           nickname.trim() ? t("useSessions.nicknameSaved") : t("useSessions.nicknameRemoved"),
@@ -394,15 +364,8 @@ export function useSessions() {
   const clearResumeConflict = useCallback(() => setResumeConflict(null), []);
 
   /**
-   * Refetches the session list right before resuming rather than trusting whatever's already
-   * in `sessions` state — that list only reloads on mount or an explicit refresh (see
-   * useSessions' module doc / CLAUDE.md), so another terminal could have opened a session in the
-   * same directory since the last load without this page knowing. If a fresh check finds a
-   * conflict — either a different session active in the same directory, or this exact session
-   * already open in another terminal — resuming is deferred to `resumeConflict` (rendered by the
-   * caller as a modal) instead of either silently double-opening it or refusing outright. The
-   * Resume button itself is never disabled for this (see SessionCard's continueDisabledReason) —
-   * this check is what makes that safe.
+   * Refetches the list before resuming (the loaded one may be stale). If another session is active
+   * in the same directory, or this one is already open, sets `resumeConflict` instead of resuming.
    */
   const resumeSession = useCallback(
     async (id: string) => {
@@ -424,14 +387,9 @@ export function useSessions() {
         }
 
         await sessionsApi.continueSession(id);
-        // Linux window managers won't let a background process steal focus, so the new
-        // terminal window may open behind this one — this toast is the only reliable signal
-        // that it actually opened.
+        // The new terminal may open behind this window (no focus stealing on Wayland).
         showToast(t("useSessions.terminalOpened"), "success");
-        // Same fire-and-forget gap as the New Task modal: the resumed `claude` process needs a
-        // moment to start and write its active-session pid file, so the card's "active" status
-        // wouldn't otherwise update until a manual refresh. refreshSoon() re-fetches now and a
-        // few more times over the following seconds to pick that up once it lands.
+        // Picks up the "active" status once the resumed process writes its pid file.
         refreshSoon();
       } catch (err) {
         showToast(resolveApiErrorMessage(err, t, "useSessions.resumeError"), "error");
@@ -449,8 +407,7 @@ export function useSessions() {
         await sessionsApi.stopAndCheckoutResume(targetId, siblingId, branch);
         showToast(t("useSessions.stoppedAndResumed"), "success");
         setResumeConflict(null);
-        // Same fire-and-forget gap as resumeSession above — the newly-resumed terminal takes a
-        // moment to become "active", and the sibling's own status just changed too.
+        // Both the resumed and the stopped session's status are about to change.
         refreshSoon();
       } catch (err) {
         showToast(resolveApiErrorMessage(err, t, "useSessions.switchSessionsError"), "error");
@@ -507,14 +464,9 @@ export function useSessions() {
   );
 
   /**
-   * Backs the "New session in this folder" action on an orphaned worktree session's card (see
-   * `Session.missingWorktreeRepoRoot`) — always a brand-new conversation, never a `claude
-   * --resume`: the CLI ties a transcript to its exact original directory, which is gone, so
-   * there's nothing of this session's own to resume. Seeded with the old session's recap so the
-   * new conversation starts with real context instead of a blank slate. Earlier versions of this
-   * action tried to resume some *other*, unrelated session already recorded at that root
-   * directory when one existed — dropped after that surprised a user with a completely unrelated
-   * conversation; a plain, honestly-labeled new session is simpler and never surprising.
+   * "New session in this folder" for an orphaned worktree session: a new conversation (a
+   * transcript can't be resumed outside its original, now missing, directory), seeded with the
+   * old session's recap.
    */
   const startNewSessionAtMissingWorktreeRoot = useCallback(
     async (session: Session) => {
@@ -531,8 +483,6 @@ export function useSessions() {
     [showToast, setPending, t],
   );
 
-  // Only remaining caller is ResumeConflictModal's "create a worktree instead" option
-  // (SessionsPage.tsx) — SessionCard itself doesn't offer worktree creation directly.
   const createWorktree = useCallback(
     async (id: string, name: string) => {
       setPending(id, "worktree-create");

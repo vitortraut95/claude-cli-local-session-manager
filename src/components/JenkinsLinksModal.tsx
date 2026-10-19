@@ -13,11 +13,8 @@ type JenkinsLinksModalProps = {
 };
 
 /**
- * Every Jenkins link that could apply to this session (project index, the current branch, the
- * branch it was created from, the same ticket under each common branch prefix, PR and tag views —
- * see `getJenkinsLinks`), as plain new-tab links. None are checked for existence, so the modal
- * deliberately stays open after a click: if one turns out to be a 404, the next candidate is right
- * there.
+ * Every Jenkins link that could apply to this session, as new-tab links. None are checked for
+ * existence, so the modal stays open after a click in case one is a 404.
  */
 export function JenkinsLinksModal({
   project,
@@ -98,7 +95,6 @@ export function JenkinsLinksModal({
     <Modal
       open
       title={t("jenkinsLinksModal.title")}
-      // No footer — just the header's X (no onCancel/onConfirm), to keep the modal short.
       onClose={onClose}
       size="lg"
       icon={<img src={jenkinsIcon} alt="" className="h-5 w-5" />}
@@ -114,8 +110,7 @@ export function JenkinsLinksModal({
   );
 }
 
-/** One `env/*` branch's preview sites as a single line of locale links ("BR · MX · AR ..."), each
- *  opening its full preview URL in a new tab — everything visible at once, no picker. */
+/** One `env/*` branch's preview sites as a single line of locale links ("BR · MX · AR ..."). */
 function EnvPreviewLinks({ group }: { group: EnvPreviewGroup }) {
   const { t } = useLanguage();
   return (

@@ -1,10 +1,8 @@
 /**
- * Task keys are ticket keys (`PROJ-123`). Two levels of strictness on purpose:
- * - `normalizeTaskKey`, for text someone typed or pasted *as* a ticket (a bare key or a browse
- *   URL): case-insensitive, same as the "New task" modal's own `extractJiraId`.
- * - `inferTaskKey`, for text that merely *might* mention one (a branch name):
- *   uppercase-only (so `fix/utf-8` isn't read as ticket `UTF-8`), and only when exactly one
- *   distinct key appears — `env/PROJ-1-PROJ-2` is ambiguous and yields nothing rather than a guess.
+ * Task keys are ticket keys (`PROJ-123`).
+ * - `normalizeTaskKey`, for text given *as* a ticket (bare key or URL): case-insensitive.
+ * - `inferTaskKey`, for text that might mention one (a branch name): uppercase-only (so
+ *   `fix/utf-8` isn't `UTF-8`), and only when exactly one distinct key appears.
  */
 
 const LOOSE_KEY_PATTERN = /([A-Za-z][A-Za-z0-9]+-\d+)/;

@@ -1,5 +1,5 @@
 import { getDefaultBaseBranch } from "../utils/git.js";
-import { AppError } from "../utils/httpError.js";
+import { AppError, BadRequestError } from "../utils/httpError.js";
 import { isTaskKey, normalizeTaskKey } from "../utils/taskKeys.js";
 import {
   getTaskStore,
@@ -18,11 +18,9 @@ import {
 import { createTaskWorktree, getRepoInfo, resolveBaseBranch } from "./taskService.js";
 
 /**
- * Tasks that span several repos: one ticket key (`PROJ-123`) grouping branches in different repos
- * and the sessions working on them. Each repo keeps its own branch, base, PR and session — this
- * only records that they belong together (`tasks.json`, see `taskStore.ts`) and adds repos to a
- * task after the fact, which is the usual case: a site task turns out to need a cart change
- * halfway through. Same route for the card's "+ repo" and for a CLI skill calling the local API.
+ * Tasks that span several repos: one ticket key (`PROJ-123`) grouping branches in different repos.
+ * Each repo keeps its own branch, base, PR and session; this records that they belong together and
+ * adds repos to a task.
  */
 
 export type TaskRepo = TaskRepoRef & { defaultBranch: string | null };
@@ -48,7 +46,7 @@ export type TaskDetails = {
 };
 
 function invalidTaskKeyError(raw: string): AppError {
-  return new AppError("TASK_INVALID_KEY", `"${raw}" isn't a ticket key (e.g. PROJ-123).`);
+  return new BadRequestError("TASK_INVALID_KEY", `"${raw}" isn't a ticket key (e.g. PROJ-123).`);
 }
 
 /** Route param → canonical key; accepts a ticket URL too, so a skill can pass whatever it has. */
@@ -96,8 +94,8 @@ export async function getTaskDetails(key: string, sessions?: Session[]): Promise
   };
 }
 
-/** "Open PR" for a task repo that may have no session of its own — only for a repo/branch that
- *  actually belongs to the task, so the route can't be pointed at an arbitrary folder. */
+/** "Open PR" for a task repo that may have no session; only for a repo/branch of the task, so
+ *  the route can't be pointed at an arbitrary folder. */
 export async function getTaskRepoPrUrl(
   key: string,
   repoRoot: string,
@@ -135,9 +133,8 @@ export async function getSessionTask(id: string): Promise<SessionTask> {
 }
 
 /**
- * A blank `rawKey` clears the saved key (it's then inferred from the branch again); anything else
- * must contain a ticket key. A session can be linked before it exists in the list (e.g. right
- * after a launch), so the id isn't looked up — only checked for shape.
+ * A blank `rawKey` clears the saved key (inferred from the branch again). The session id is only
+ * shape-checked, since a session can be linked right after launch, before it's listed.
  */
 export async function setSessionTask(
   id: string,
@@ -160,8 +157,7 @@ export async function setTaskLink(key: string, link: string): Promise<void> {
 
 export type AddRepoStep = "repo" | "base" | "worktree";
 
-/** Carries which step failed and which had already finished — nothing is rolled back, so the
- *  caller can tell the user exactly what exists now (same idea as "New task"'s step list). */
+/** Carries which step failed and which had already finished — nothing is rolled back. */
 export class TaskStepError extends AppError {
   constructor(
     public readonly step: AddRepoStep,
@@ -184,8 +180,7 @@ export type AddRepoInput = {
   /** Blank = the repo's default branch. */
   baseBranch: string;
   useLocalBranch: boolean;
-  /** null = same smart default as "New task": a worktree only when the root already has an
-   *  active session. */
+  /** null = a worktree only when the root already has an active session. */
   useWorktree: boolean | null;
   taskLink: string | null;
 };
@@ -200,11 +195,8 @@ export type AddRepoResult = {
   task: TaskDetails;
 };
 
-/**
- * Creates the task's branch in another repo and links it to the task. Deliberately doesn't open a
- * session: the repo is meant to join one already working on the task (`/add-dir <path>`), or the
- * "New task" one via `--add-dir` — one session per task, not one per repo.
- */
+/** Creates the task's branch in another repo and links it to the task. Opens no session: the repo
+ *  joins the task's existing one via `/add-dir <path>` or `--add-dir`. */
 export async function addRepoToTask(key: string, input: AddRepoInput): Promise<AddRepoResult> {
   const completed: AddRepoStep[] = [];
   async function step<T>(name: AddRepoStep, run: () => Promise<T>): Promise<T> {
@@ -226,7 +218,7 @@ export async function addRepoToTask(key: string, input: AddRepoInput): Promise<A
     throw new TaskStepError(
       "repo",
       [],
-      new AppError(
+      new BadRequestError(
         "TASK_BRANCH_NAME_REQUIRED",
         "A branch name is required (the task has no other repo to copy it from).",
       ),

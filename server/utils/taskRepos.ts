@@ -9,8 +9,7 @@ type SessionForRepos = Pick<
 
 /**
  * Every task's repos, keyed by task key: the branches linked in `tasks.json` plus the
- * `(repoRoot, gitBranch)` of each session carrying that key, deduped. Shared by `listSessions`
- * (each card's "also in" line) and `getTaskDetails`, so both always agree.
+ * `(repoRoot, gitBranch)` of each session carrying that key, deduped.
  */
 export function collectTaskRepos(
   store: TaskStore,

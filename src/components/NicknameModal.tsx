@@ -15,14 +15,9 @@ const TEXTAREA_CLASSNAME =
   "dark:placeholder:text-gray-500 dark:focus:border-gray-600 dark:focus:ring-gray-100/10";
 
 /**
- * The caller only mounts this component while the modal is open (`{showNicknameModal && <NicknameModal ... />}`,
- * not an always-mounted `open` prop) specifically so `useState(currentNickname)` re-initializes
- * fresh on every open — no effect-based resync needed, which would otherwise trip the
- * `set-state-in-effect` lint rule for a plain "sync from a prop" pattern.
- *
- * A wrapping textarea rather than a single-line input so long nicknames (e.g. the "New task"
- * auto nickname with its full Jira URL) are readable while editing. A nickname is still one line:
- * Enter saves, and pasted line breaks are collapsed into spaces.
+ * Mounted only while open, so `useState(currentNickname)` re-initializes on every open.
+ * A wrapping textarea for readability, but a nickname is one line: Enter saves, pasted line breaks
+ * become spaces.
  */
 export function NicknameModal({ currentNickname, onSave, onCancel }: NicknameModalProps) {
   const [nickname, setNickname] = useState(currentNickname);

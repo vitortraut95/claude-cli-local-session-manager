@@ -35,20 +35,16 @@ import { WorkspaceDirsPromptModal } from "./WorkspaceDirsPromptModal";
 import * as tasksApi from "../services/tasksApi";
 
 type HeaderProps = {
-  /** Fired after a new task/session is successfully created via the "New task"/"New session"
-   *  modals, so the page's session list can pick up the newly created session/worktree. */
+  /** Fired after a new task/session is created, so the session list can refresh. */
   onSessionCreated?: () => void;
-  /** Fired after any Cleanup modal finding is successfully executed — only `prune-old-sessions`
-   *  actually changes the session list, but refreshing unconditionally keeps this as simple as
-   *  `onSessionCreated` above. */
+  /** Fired after any Cleanup modal finding is successfully executed. */
   onSessionsChanged?: () => void;
   /** Fired with the new session's id after an exported session file is imported. */
   onSessionImported?: (sessionId: string) => void;
 };
 
 export function Header({ onSessionCreated, onSessionsChanged, onSessionImported }: HeaderProps) {
-  // Stays up here (not inside SettingsModal, which only mounts while open) — this is what applies
-  // the stored theme to <html> on load.
+  // Must stay here (SettingsModal only mounts while open): this applies the stored theme on load.
   const { theme, toggleTheme } = useTheme();
   const {
     status: updateStatus,
@@ -77,16 +73,14 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   // the server picks the first workspace dir that exists, else the home dir).
   const [taskTestSkill, setTaskTestSkill] = useState("");
   const [testTaskFolderHint, setTestTaskFolderHint] = useState("~");
-  // Always loaded (the header is always mounted) — also keeps the shared cached status warm, so the
-  // New Task / New Session skills panel opens already filled in.
+  // Also keeps the shared cached status warm for the New Task / New Session skills panels.
   const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(true);
   // `workspaceDirs` never saved (null) → ask on every start until it is; "not now" only skips it
   // for this page load. Re-checked whenever the settings modal saves something.
   const [needsWorkspaceDirs, setNeedsWorkspaceDirs] = useState(false);
   const [workspacePromptSkipped, setWorkspacePromptSkipped] = useState(false);
-  // Same idea for the team integrations (Jenkins URL, skills hub repo): asked while either was never
-  // saved (null — `undefined` means a backend without the field, never asked). Holds the prefs that
-  // triggered it, for the prompt's prefill.
+  // Team integrations (Jenkins URL, skills hub repo): asked while either is null (never saved;
+  // `undefined` = backend without the field). Holds the prefs for the prompt's prefill.
   const [teamPromptPrefs, setTeamPromptPrefs] = useState<tasksApi.UserPreferences | null>(null);
   const [teamPromptSkipped, setTeamPromptSkipped] = useState(false);
 

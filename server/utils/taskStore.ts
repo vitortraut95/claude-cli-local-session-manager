@@ -1,44 +1,23 @@
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { REPO_ROOT } from "./repoRoot.js";
 
 /**
- * This app's own per-session/per-task data, in one gitignored sidecar file at the repo root
- * (`tasks.json`) — same convention as `userPreferences.json`, so it's visible/editable/deletable
- * right alongside the project instead of buried in a dotfolder under the home directory. Never
- * written to `~/.claude/projects/`: that's the Claude CLI's own data.
+ * This app's per-session/per-task data, in the gitignored `tasks.json` at the repo root (never in
+ * `~/.claude/projects/`, which is the CLI's data).
  *
- * Three sections, each keyed the way its data is actually identified:
- * - `tasks[<ticket key>]` — a task (usually a Jira ticket, e.g. `PROJ-123`) that may span several
- *   repos and sessions: just its metadata (`link`). Which repos and sessions belong to it is
- *   recorded on those entries' own `taskKey`, below, so deleting a branch also drops it from its
- *   task without a second place to keep in sync.
- * - `sessions[<session id>]` — what this app knows about one session:
- *   - `nickname`: a purely local label shown alongside the session's real (auto-derived) title,
- *     never replacing it and with no effect outside this app (e.g. a Warp tab's title, which
- *     Claude Code itself controls — see CLAUDE.md).
- *   - `origin`/`destination`: the base/task branches set by hand on the card or recorded by
- *     "New task" at launch — one session's view of its branches (e.g. correcting a stale
- *     transcript-recorded `gitBranch`), not a fact about the branch itself. Either may be null.
- *   - `taskKey`: the task this session belongs to, when set by "New task"/"add repo" or by hand.
- *     null = not set (the key is then inferred from the branch, see `taskKeys.ts`).
- * - `repoBranches[<repo root>][<branch>]` — facts about a branch: the base a "New task" branch was
- *   created off, the task it belongs to (`taskKey`) and the worktree it was created in, if any. Keyed by `(repoRoot, branch)` rather than worktree path or session id: the session
- *   id doesn't exist yet when the branch is created, and a "skip worktree" task checks its branch
- *   out directly in the shared repo root, while a branch name is unique within a repo either way.
- *   `baseBranch` is only set when it differs from the repo's own default (`getDefaultBaseBranch`);
- *   the whole entry is forgotten once the branch itself is deleted (the three call sites in
- *   sessionService.ts).
+ * - `tasks[<ticket key>]`: task metadata (`link`). Membership lives on the entries' own `taskKey`.
+ * - `sessions[<session id>]`: `nickname` (a local label, never replaces the real title),
+ *   `origin`/`destination` (the session's base/task branches, either may be null) and `taskKey`
+ *   (null = inferred from the branch, see `taskKeys.ts`).
+ * - `repoBranches[<repo root>][<branch>]`: the base a "New task" branch was created off (only when
+ *   it differs from the repo default), its `taskKey` and worktree. Keyed by `(repoRoot, branch)`
+ *   because the session id doesn't exist yet at creation and a non-worktree task shares the repo
+ *   root. Forgotten once the branch is deleted.
  *
- * Replaces three older files (`custom-titles.json`, `session-branches.json`,
- * `task-base-branches.json`) — `migrateLegacySidecars` below folds them in once, unattended, the
- * first time this file is missing (see CLAUDE.md's "Update safety policy": users only ever get
- * changes through the forced "Update app", with no manual step). The old files are left on disk,
- * just no longer read or written.
- *
- * Every write goes through one in-process queue (read → mutate → atomic temp-file + rename), so two
- * requests landing close together can't each read the same "before" state and clobber one another
- * — this file has more writers than any one of the old ones did.
+ * `migrateLegacySidecars` builds this file once from `custom-titles.json`, `session-branches.json`
+ * and `task-base-branches.json` when it doesn't exist yet; the old files are deleted on a later
+ * start. All writes go through one in-process queue with an atomic temp-file + rename.
  */
 
 export type TaskEntry = {
@@ -155,17 +134,23 @@ async function writeStore(store: TaskStore): Promise<void> {
   await rename(tmpPath, target);
 }
 
-/**
- * Builds the store from the three files it replaces, read with the same tolerance their own
- * modules had (a missing or malformed file just contributes nothing). Returns null when none of
- * them exists — a fresh clone, nothing to migrate.
- */
+const LEGACY_FILES = ["custom-titles.json", "session-branches.json", "task-base-branches.json"];
+
+/** Best-effort; only called once `tasks.json` exists, so the migration no longer needs them. */
+async function deleteLegacySidecars(): Promise<void> {
+  await Promise.all(
+    [...LEGACY_FILES, "session-continuations.json"].map((name) =>
+      unlink(path.join(REPO_ROOT, name)).catch(() => undefined),
+    ),
+  );
+}
+
+/** Builds the store from the legacy files (a missing or malformed one contributes nothing);
+ *  null when none exists. */
 async function buildFromLegacyFiles(): Promise<TaskStore | null> {
-  const [nicknames, branches, bases] = await Promise.all([
-    readJsonRecord(path.join(REPO_ROOT, "custom-titles.json")),
-    readJsonRecord(path.join(REPO_ROOT, "session-branches.json")),
-    readJsonRecord(path.join(REPO_ROOT, "task-base-branches.json")),
-  ]);
+  const [nicknames, branches, bases] = await Promise.all(
+    LEGACY_FILES.map((name) => readJsonRecord(path.join(REPO_ROOT, name))),
+  );
   if (!nicknames && !branches && !bases) return null;
 
   const sessions: Record<string, Record<string, unknown>> = {};
@@ -187,17 +172,18 @@ type MigrationResult = { migrated: boolean; sessions: number; branches: number }
 let migration: Promise<MigrationResult> | null = null;
 
 /**
- * Runs at most once per process: when `tasks.json` doesn't exist yet, fills it from the older
- * sidecar files. Idempotent across restarts (an existing `tasks.json` is never rebuilt), and
- * awaited by every read/write below, so nothing can see — or write over — a half-migrated state.
- * Also kicked off at server start (`server/index.ts`) just to log what it did.
+ * Runs at most once per process: when `tasks.json` doesn't exist yet, fills it from the legacy
+ * files. Awaited by every read/write so nothing sees a half-migrated state.
  */
 export function migrateLegacySidecars(): Promise<MigrationResult> {
   migration ??= (async () => {
     const existing = await readFile(storePath(), "utf8").catch((err: NodeJS.ErrnoException) =>
       err.code === "ENOENT" ? null : "",
     );
-    if (existing !== null) return { migrated: false, sessions: 0, branches: 0 };
+    if (existing !== null) {
+      await deleteLegacySidecars();
+      return { migrated: false, sessions: 0, branches: 0 };
+    }
 
     const store = await buildFromLegacyFiles();
     if (!store) return { migrated: false, sessions: 0, branches: 0 };
@@ -212,11 +198,8 @@ export function migrateLegacySidecars(): Promise<MigrationResult> {
   return migration;
 }
 
-/**
- * A `tasks.json` that exists but can't be parsed is moved aside (`tasks.json.broken-<time>`)
- * before anything is written over it, so a bad hand edit is recoverable instead of silently
- * replaced by an empty store.
- */
+/** An unparseable `tasks.json` is moved aside (`tasks.json.broken-<time>`) rather than
+ *  overwritten, so a bad hand edit stays recoverable. */
 async function readStore(): Promise<TaskStore> {
   await migrateLegacySidecars();
   let raw: string;
@@ -295,7 +278,15 @@ export function setSessionBranchOverride(
   });
 }
 
-/** One read of the whole store — for `listSessions`, which needs every section at once. */
+/** Drops everything kept about a session (called when its transcript is deleted). */
+export function forgetSession(id: string): Promise<void> {
+  return mutateStore((store) => {
+    if (!store.sessions[id]) return false;
+    delete store.sessions[id];
+    return true;
+  });
+}
+
 export function getTaskStore(): Promise<TaskStore> {
   return readStore();
 }

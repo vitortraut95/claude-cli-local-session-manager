@@ -12,10 +12,8 @@ type SkillsHeaderButtonProps = {
 };
 
 /**
- * Header entry point to the team skills (opens SkillsHubModal, which asks for the repo first when
- * it isn't set and otherwise manages the selection). Amber with a warning icon while the repo isn't
- * configured or its clone isn't on this machine; once installed, shows how many skills are linked.
- * A repo URL saved as "" (team doesn't use one) gets a plain button, no warning.
+ * Header entry point to the team skills (opens SkillsHubModal). Amber while the repo isn't
+ * configured or cloned here; once installed, shows the linked-skill count. Plain when opted out.
  */
 export function SkillsHeaderButton({ status, failed, onClick }: SkillsHeaderButtonProps) {
   const { t } = useLanguage();

@@ -23,9 +23,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   ghost:
     "text-gray-600 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200",
   link: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200",
-  // No color classes — spacing/typography from `size` still applies. Escape hatch for one-off
-  // buttons whose coloring doesn't fit the standard palette (e.g. status-driven or `text-current`
-  // based colors) and would otherwise fight a variant's own color classes for precedence.
+  // No color classes — spacing/typography from `size` still applies.
   unstyled: "",
 };
 

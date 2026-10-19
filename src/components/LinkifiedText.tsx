@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
-/** `http(s)://` up to the next whitespace — the nicknames this renders (e.g. the "New task"
- *  modal's auto nickname, see NewTaskModal's `autoNickname`) only ever embed full links. */
+/** `http(s)://` up to the next whitespace. */
 const URL_PATTERN = /https?:\/\/[^\s]+/g;
 
 /** Punctuation that usually ends a sentence rather than the link itself ("see https://x.com/a.")

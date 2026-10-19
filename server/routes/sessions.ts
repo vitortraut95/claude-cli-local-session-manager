@@ -26,6 +26,7 @@ import {
   stopSiblingAndResume,
 } from "../services/sessionService.js";
 import {
+  cloneRepositoryForImport,
   exportSession,
   importSessionBundle,
   inspectSessionBundle,
@@ -36,10 +37,7 @@ import { AppError, sendErrorResponse } from "../utils/httpError.js";
 
 export const sessionsRouter = Router();
 
-/** `statusFor` shared by every route below that can fail with either error — a session id that
- *  doesn't resolve to a file (404) or one that's currently open in another terminal (409). Most
- *  routes only ever throw one of the two, but mapping both unconditionally is harmless (the one
- *  that never actually happens for a given route just never matches). */
+/** Maps an unknown session id to 404 and a session open in another terminal to 409. */
 function notFoundOrActive(err: AppError): number | null {
   if (err instanceof SessionNotFoundError) return 404;
   if (err instanceof SessionActiveError) return 409;
@@ -58,15 +56,13 @@ sessionsRouter.get("/", async (_req, res) => {
   }
 });
 
-/** Polled by the frontend only while the initial (mount) `GET /sessions` call is still in
- *  flight — see `getScanProgress`'s own doc comment for why this is a single shared counter
- *  rather than per-request. */
+/** Polled by the frontend while the initial `GET /sessions` call is in flight. */
 sessionsRouter.get("/scan-progress", (_req, res) => {
   res.json(getScanProgress());
 });
 
-/** Exported session files are sent as the raw (gzipped) file bytes rather than JSON, so the
- *  global `express.json()` (100kb default) never sees them — a transcript is easily tens of MB. */
+/** Raw gzipped bytes, not JSON: the global `express.json()` (100kb limit) must not see them —
+ *  a transcript is easily tens of MB. */
 const rawBundleBody = express.raw({ type: "application/octet-stream", limit: "1gb" });
 
 function bundleFromBody(body: unknown): Buffer {
@@ -99,6 +95,20 @@ sessionsRouter.post("/import/inspect", rawBundleBody, async (req, res) => {
     res.json({ preview });
   } catch (err) {
     sendErrorResponse(res, err, importStatusFor);
+  }
+});
+
+sessionsRouter.post("/import/clone", async (req, res) => {
+  try {
+    res.json(await cloneRepositoryForImport(extractStringField(req.body, "url")));
+  } catch (err) {
+    sendErrorResponse(res, err, (e) =>
+      e.code === "IMPORT_CLONE_TARGET_EXISTS"
+        ? 409
+        : e.code === "IMPORT_CLONE_NO_WORKSPACE"
+          ? 400
+          : null,
+    );
   }
 });
 

@@ -27,10 +27,8 @@ export async function fetchSessions(): Promise<Session[]> {
 
 export type ScanProgress = { total: number; done: number; scanning: boolean };
 
-/** Polled by useSessions while the initial `fetchSessions()` call is still in flight, to show
- *  progress on a cold cache (see server-side getScanProgress). Best-effort only — callers should
- *  swallow errors rather than surface them, since this is a nice-to-have on top of the real
- *  request, not a fetch a failure should ever block on. */
+/** Scan progress, polled while the initial `fetchSessions()` is in flight. Best-effort: callers
+ *  swallow errors. */
 export async function fetchScanProgress(): Promise<ScanProgress> {
   const { data } = await client.get<ScanProgress>("/scan-progress");
   return data;
@@ -52,8 +50,7 @@ export async function openInCursor(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/cursor`));
 }
 
-/** Runs `claude --worktree <name>` for this session's project (see server-side
- *  createSessionWorktree for why it's not `--resume`d). */
+/** Starts a new `claude --worktree <name>` conversation in this session's project. */
 export async function createWorktree(id: string, name: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/worktree`, { name }));
 }
@@ -62,17 +59,15 @@ export async function deleteWorktree(id: string): Promise<void> {
   await withServerErrorMessage(() => client.delete(`/${encodeURIComponent(id)}/worktree`));
 }
 
-/** Deletes `branch` in the session's own working directory (git branch -D) — offered alongside
- *  session deletion for non-worktree sessions (see server-side deleteSessionBranch for why
- *  worktree-backed ones don't need this: their own worktree cleanup already deletes the branch). */
+/** Deletes `branch` (git branch -D) in the session's working directory. */
 export async function deleteBranch(id: string, branch: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.delete(`/${encodeURIComponent(id)}/branch`, { params: { branch } }),
   );
 }
 
-/** Ends `siblingSessionId`'s terminal process, checks out `branch` in the shared directory, and
- *  resumes `id` there (see server-side stopSiblingAndResume for why this is one call). */
+/** Ends `siblingSessionId`'s process, checks out `branch` in the shared directory, and resumes
+ *  `id` there. */
 export async function stopAndCheckoutResume(
   id: string,
   siblingSessionId: string,
@@ -89,15 +84,14 @@ export async function setNickname(id: string, nickname: string): Promise<void> {
   );
 }
 
-/** Blank clears that side; both blank removes the saved branches (see server taskStore.ts). */
+/** Blank clears that side; both blank removes the saved branches. */
 export async function setBranches(id: string, origin: string, destination: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.patch(`/${encodeURIComponent(id)}/branches`, { origin, destination }),
   );
 }
 
-/** Full, untruncated prompts for one session — see PromptPreviewModal for why this is fetched
- *  separately from `Session.prompts` rather than reused (that copy is capped for the list payload). */
+/** Full prompts for one session (`Session.prompts` is truncated). */
 export async function fetchSessionPrompts(id: string): Promise<string[]> {
   const { data } = await withServerErrorMessage(() =>
     client.get<{ prompts: string[] }>(`/${encodeURIComponent(id)}/prompts`),
@@ -105,16 +99,8 @@ export async function fetchSessionPrompts(id: string): Promise<string[]> {
   return data.prompts;
 }
 
-/** PR/compare URL for `branch` on GitHub or Bitbucket — see server-side getSessionPrUrl. `branch`
- *  is passed from the caller's own `session.gitBranch` rather than re-derived server-side, same
- *  convention as `deleteBranch`/`stopAndCheckoutResume` above. Throws (via withServerErrorMessage)
- *  when the session's repo isn't a recognized remote — the caller decides how to surface that
- *  (a toast, in SessionCard's case) rather than this returning a silent null.
- *
- * `base`, when given, is spelled out explicitly in the built link (`<base>...<branch>` on GitHub,
- * `&dest=<base>` on Bitbucket) instead of relying on the host's implicit default-branch comparison
- * — passed only when the user picked "use the creation-time base branch" in
- * `OpenPrBaseChoiceModal`. */
+/** PR/compare URL for `branch` on GitHub or Bitbucket; throws when the remote isn't recognized.
+ *  `base` makes the comparison base explicit instead of the host's default branch. */
 export async function fetchPrUrl(id: string, branch: string, base?: string): Promise<string> {
   const { data } = await withServerErrorMessage(() =>
     client.get<{ url: string }>(`/${encodeURIComponent(id)}/pr-url`, { params: { branch, base } }),
@@ -122,9 +108,8 @@ export async function fetchPrUrl(id: string, branch: string, base?: string): Pro
   return data.url;
 }
 
-/** Read-only snapshot for the "worktree → root" modal — branches, root's dirty files, and a plain
- *  file diff between the worktree and root. Cheap enough to call again right before the final
- *  destructive confirm, to re-check root's dirty-file list hasn't changed since the modal opened. */
+/** Read-only snapshot for the "worktree → root" modal: branches, root's dirty files and a file
+ *  diff between the worktree and root. */
 export async function fetchWorktreeToRootPreview(id: string): Promise<WorktreeToRootPreview> {
   const { data } = await withServerErrorMessage(() =>
     client.get<{ preview: WorktreeToRootPreview }>(
@@ -134,9 +119,7 @@ export async function fetchWorktreeToRootPreview(id: string): Promise<WorktreeTo
   return data.preview;
 }
 
-/** Lighter counterpart to `fetchWorktreeToRootPreview` — just root's branch and dirty-file list,
- *  no file diff. Backs the standalone "Reset root" quick action's confirm dialog and the wizard's
- *  own final-confirm re-check, cheap enough to call right before either one commits. */
+/** Root's branch, dirty files and app stashes — `fetchWorktreeToRootPreview` without the diff. */
 export async function fetchRootStatus(id: string): Promise<RootStatus> {
   const { data } = await withServerErrorMessage(() =>
     client.get<{ status: RootStatus }>(`/${encodeURIComponent(id)}/worktree-to-root/root-status`),
@@ -144,18 +127,15 @@ export async function fetchRootStatus(id: string): Promise<RootStatus> {
   return data.status;
 }
 
-/** Opens the repo *root* (not the worktree) in VS Code — lets the "code ." button next to the
- *  root dirty-files list actually show what's about to be discarded/overwritten. */
+/** Opens the repo *root* (not the worktree) in VS Code. */
 export async function openWorktreeRootInVSCode(id: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.post(`/${encodeURIComponent(id)}/worktree-to-root/vscode-root`),
   );
 }
 
-/** Step 1 (both "worktree → root" modes, and the standalone "Reset root" quick action): discards
- *  every uncommitted change in the repo's main checkout — recoverably, via `git stash` server-side
- *  (see resetRootWorkingTree in sessionService.ts) — returning the resulting stash ref (null if
- *  root had nothing dirty) so the UI can tell the user how to get it back. */
+/** Stashes every uncommitted change in the repo's main checkout; returns the stash ref (null if
+ *  nothing was dirty). */
 export async function resetRootWorkingTree(id: string): Promise<{ stashRef: string | null }> {
   const { data } = await withServerErrorMessage(() =>
     client.post<{ success: true; stashRef: string | null }>(
@@ -165,35 +145,30 @@ export async function resetRootWorkingTree(id: string): Promise<{ stashRef: stri
   return { stashRef: data.stashRef };
 }
 
-/** Step 2 ("copy" mode): recomputes the file diff fresh and copies/deletes root's files to match
- *  the worktree — the worktree itself is left untouched. */
+/** "Copy" mode: copies/deletes root's files to match the worktree (worktree left untouched). */
 export async function applyWorktreeCopyToRoot(id: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.post(`/${encodeURIComponent(id)}/worktree-to-root/copy`),
   );
 }
 
-/** Opens an orphaned worktree session's repo root in VS Code — its own directory is gone, see
- *  `Session.missingWorktreeRepoRoot`. */
+/** Opens an orphaned worktree session's repo root (`missingWorktreeRepoRoot`) in VS Code. */
 export async function openMissingWorktreeRootInVSCode(id: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.post(`/${encodeURIComponent(id)}/missing-worktree-root/vscode`),
   );
 }
 
-/** Starts a brand-new `claude` conversation (not a resume — see server-side
- *  startFreshSessionAtMissingWorktreeRoot for why) in an orphaned worktree session's repo root,
- *  seeded with that session's own recap as the first message. */
+/** Starts a new `claude` conversation in an orphaned worktree session's repo root, seeded with
+ *  that session's recap. */
 export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.post(`/${encodeURIComponent(id)}/missing-worktree-root/resume`),
   );
 }
 
-/** Step 2 ("checkout" mode): removes the worktree (keeping its branch) and checks that branch out
- *  in root, as one operation — see server-side removeWorktreeAndCheckoutRoot for why it's not two
- *  separate calls. Returns the branch root switched from/to, since nothing else records what root
- *  used to be on. */
+/** "Checkout" mode: removes the worktree (keeping its branch) and checks that branch out in root.
+ *  Returns the branches root switched from/to. */
 export async function removeWorktreeAndCheckoutRoot(
   id: string,
 ): Promise<{ previousRootBranch: string | null; newBranch: string }> {
@@ -205,9 +180,8 @@ export async function removeWorktreeAndCheckoutRoot(
   return { previousRootBranch: data.previousRootBranch, newBranch: data.newBranch };
 }
 
-/** `withServerErrorMessage` for a `responseType: "blob"` request — the server's JSON error body
- *  arrives as a Blob too there, so it has to be read back as text before the usual
- *  error/code unwrapping can see it. */
+/** `withServerErrorMessage` for a `responseType: "blob"` request, whose JSON error body also
+ *  arrives as a Blob. */
 async function withBlobServerErrorMessage<T>(request: () => Promise<T>): Promise<T> {
   try {
     return await request();
@@ -227,10 +201,8 @@ async function withBlobServerErrorMessage<T>(request: () => Promise<T>): Promise
   }
 }
 
-/** Downloads the session as a single `.claude-session.json.gz` file (see server-side
- *  `exportSession`) by handing the browser an object URL — goes through axios rather than a
- *  plain `<a href download>` so a server error surfaces as a toast instead of a downloaded file
- *  full of error JSON. */
+/** Downloads the session as a `.claude-session.json.gz` file. Fetched via axios (not
+ *  `<a download>`) so a server error becomes a toast, not a downloaded error file. */
 export async function exportSession(id: string): Promise<void> {
   const response = await withBlobServerErrorMessage(() =>
     client.get<Blob>(`/${encodeURIComponent(id)}/export`, { responseType: "blob" }),
@@ -249,8 +221,7 @@ export async function exportSession(id: string): Promise<void> {
 
 const RAW_BUNDLE_HEADERS = { "Content-Type": "application/octet-stream" };
 
-/** Reads an exported session file and reports what's in it plus where it could go on this
- *  machine — nothing is written yet (see `importSession`). */
+/** Reports an exported session file's contents and local candidates; writes nothing. */
 export async function inspectSessionImport(file: Blob): Promise<SessionImportPreview> {
   const { data } = await withServerErrorMessage(() =>
     client.post<{ preview: SessionImportPreview }>("/import/inspect", file, {
@@ -258,6 +229,14 @@ export async function inspectSessionImport(file: Blob): Promise<SessionImportPre
     }),
   );
   return data.preview;
+}
+
+/** Clones `url` into the first workspace dir. */
+export async function cloneRepositoryForImport(url: string): Promise<string> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ repoRoot: string }>("/import/clone", { url }),
+  );
+  return data.repoRoot;
 }
 
 export type ImportConflictResolution = "overwrite" | "copy";

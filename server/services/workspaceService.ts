@@ -6,11 +6,8 @@ import { directoryExists } from "./sessionService.js";
 import { getKnownProjectFolders } from "./taskService.js";
 
 /**
- * "Workspace dirs" — the folders a user keeps their repos in (e.g. `~/git`), stored as
- * `userPreferences.json`'s `workspaceDirs`. Each is scanned exactly one level deep: a direct child
- * holding a `.git` entry (folder for a normal clone, file for a linked worktree/submodule) counts as
- * a repo. Deliberately shallow — cheap enough to run on demand, and nested layouts are covered by
- * just adding the nested folder as another workspace dir.
+ * "Workspace dirs" — the folders a user keeps their repos in (e.g. `~/git`). Each is scanned one
+ * level deep: a direct child with a `.git` entry (folder, or file for a worktree) is a repo.
  */
 
 export function expandHome(dir: string): string {
@@ -52,11 +49,8 @@ export type WorkspaceDirSuggestion = {
   recommended: boolean;
 };
 
-/**
- * Parent folders of the repos this app already knows about (from sessions and "New task" history),
- * most-used first. The home directory itself is offered but never preselected — a repo sitting
- * right in `~` (e.g. a one-off clone) is usually the exception, not the user's repos folder.
- */
+/** Parent folders of the repos this app already knows about, most-used first. `~` is offered but
+ *  never preselected. */
 export async function suggestWorkspaceDirs(): Promise<WorkspaceDirSuggestion[]> {
   const folders = await getKnownProjectFolders();
   const counts = new Map<string, number>();
@@ -87,8 +81,7 @@ export async function suggestWorkspaceDirs(): Promise<WorkspaceDirSuggestion[]> 
 
 export type WorkspaceDirStatus = { dir: string; exists: boolean; repoCount: number };
 
-/** Normalizes (`~` expanded, absolute) and checks each folder — powers the editor's per-row
- *  "N repos" / "doesn't exist" hint, so a typo is caught before it's saved. */
+/** Normalizes (`~` expanded, absolute) and checks each folder for the editor's per-row hint. */
 export async function inspectWorkspaceDirs(dirs: string[]): Promise<WorkspaceDirStatus[]> {
   return Promise.all(
     dirs.map(async (raw) => {

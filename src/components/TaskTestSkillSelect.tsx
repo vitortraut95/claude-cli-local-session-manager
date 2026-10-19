@@ -15,10 +15,8 @@ type TaskTestSkillSelectProps = {
 };
 
 /**
- * Picks `taskTestSkill` (the header's "Test task" button). Self-contained — loads and saves the
- * preference itself and fires `notifyPreferencesChanged`, so the header shows/hides the button
- * right away — because it lives both in the Skills window and in Settings. Saves on change, no
- * separate save step. A saved skill that's no longer installed stays listed, marked as such.
+ * Picks `taskTestSkill`; loads and saves it on change itself, then fires
+ * `notifyPreferencesChanged` so the header updates. A saved skill no longer installed stays listed.
  */
 export function TaskTestSkillSelect({
   installedSkills,

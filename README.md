@@ -17,8 +17,8 @@ and clean them up. Everything runs on your machine — no external server involv
 - **Team skills** — optional integration with your team's own skills repo (a git repo with a
   `catalog/<catalog>/` tree of skills; its URL is asked on first start and kept only in your local
   `userPreferences.json`): the New task/New session modals invite you to clone it, you pick whole catalogs and/or single skills, and
-  their skills get linked into `~/.claude/skills`; "Update now" (never automatic) fetches/
-  fast-forwards the hub and links new skills (Settings → "Team skills" to manage)
+  their skills get linked into `~/.claude/skills`; the hub is fast-forwarded on server start (when
+  clean) and on "Update now", which also links new skills (Settings → "Team skills" to manage)
 - **Worktree → root** — copy a worktree's files into the project root to test locally, or move
   the branch there for real once it's ready to push
 - **Multi-repo tasks** — a task (ticket key, e.g. `PROJ-123`) can span several repos: New task can
@@ -37,8 +37,7 @@ and clean them up. Everything runs on your machine — no external server involv
 
 ## Prerequisites
 
-- **Linux.** This app is Linux-only — Windows/macOS aren't supported (see the terminal-launching
-  and active-session-detection notes in `CLAUDE.md` for why).
+- **Linux.** Windows/macOS aren't supported.
 - [Node.js](https://nodejs.org/) 20+ with [Corepack](https://nodejs.org/api/corepack.html) enabled
 - [Claude CLI](https://claude.com/claude-code) installed, logged in, and working from your
   terminal as the `claude` command — confirm with `claude --version` before running this app. Every
@@ -103,6 +102,7 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | GET    | `/sessions/:id/task`                  | The session's task (key, inferred or saved) and that task's repos              |
 | PUT    | `/sessions/:id/task`                  | Save `{ taskKey, link? }` on the session (`""` = back to detecting it)         |
 | POST   | `/sessions/import/inspect`            | Read an exported file (raw body) and list local target clones                  |
+| POST   | `/sessions/import/clone`              | Clone `{ url }` into the first workspace folder (import without a local clone) |
 | POST   | `/sessions/import`                    | Import an exported file into `?targetDir=` (optional `&checkoutBranch=true`)   |
 | GET    | `/tasks/by-key/:key`                  | A task's link, repos (branch, base, folder) and sessions                       |
 | PUT    | `/tasks/by-key/:key`                  | Save the task's `{ link }`                                                     |
@@ -119,9 +119,3 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | PUT    | `/tasks/skills-hub/selection`         | Save `{ catalogs, skills }` (whole catalogs + single skills) and (un)link them |
 | PUT    | `/tasks/skills-hub/path`              | Point at an existing clone (`null` = auto-detect)                              |
 | PUT    | `/tasks/skills-hub/flags`             | `{ inviteDismissed? }`                                                         |
-
-## Changelog
-
-| Date       | Feature    |
-| ---------- | ---------- |
-| 2026-09-01 | Project v1 |

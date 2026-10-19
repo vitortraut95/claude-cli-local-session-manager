@@ -13,11 +13,7 @@ type SessionSizeMeterProps = {
   sizeBytes: number;
 };
 
-/**
- * Meant to be placed flush against the bottom edge of its container (see SessionCard, which
- * cancels its own padding around this) — a full-width footer strip rather than an inline badge,
- * so it reads at a glance across every card in the list.
- */
+/** Full-width footer strip, meant to sit flush against its container's bottom edge. */
 export function SessionSizeMeter({ sizeBytes }: SessionSizeMeterProps) {
   const { t } = useLanguage();
   const status = sessionSizeStatus(sizeBytes);

@@ -15,10 +15,7 @@ export function PromptPreviewModal({ session, open, onClose }: PromptPreviewModa
   const [loadError, setLoadError] = useState(false);
   const { t } = useLanguage();
 
-  // `session.prompts` (from the /sessions list payload) is capped per-prompt at 300 chars to
-  // keep that payload light — fetched here in full, on demand, only while this modal is open.
-  // Guarded on `fullPrompts !== null || loadError` so reopening the same already-loaded (or
-  // already-failed) session doesn't refetch every time.
+  // `session.prompts` is truncated per prompt; the full text is fetched once, on first open.
   useEffect(() => {
     if (!open || fullPrompts !== null || loadError) return;
     let cancelled = false;
@@ -35,8 +32,7 @@ export function PromptPreviewModal({ session, open, onClose }: PromptPreviewModa
     };
   }, [open, fullPrompts, loadError, session.id]);
 
-  // Falls back to the truncated list-payload copy if the full fetch fails — still useful, just
-  // possibly cut off, rather than showing nothing.
+  // Falls back to the truncated copy if the full fetch fails.
   const displayPrompts = fullPrompts ?? (loadError ? session.prompts : null);
 
   return (

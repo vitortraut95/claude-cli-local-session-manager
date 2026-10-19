@@ -14,10 +14,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Polls until the update job leaves "running"/"idle". Tolerant of individual poll failures: the
- * forced git reset rewrites source files the dev server's `tsx watch` is watching, which restarts
- * the API process mid-update — polls landing in that brief gap fail transiently and just get
- * retried, rather than aborting the whole wait.
+ * Polls until the update job leaves "running"/"idle". Failed polls are retried: the reset makes
+ * `tsx watch` restart the API process mid-update.
  */
 async function waitForUpdateJob(timeoutMessage: string): Promise<UpdateJobStatus> {
   const deadline = Date.now() + JOB_POLL_TIMEOUT_MS;
@@ -42,18 +40,15 @@ export function useUpdate() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [checking, setChecking] = useState(true);
   const [updating, setUpdating] = useState(false);
-  // Separate from `updating`: only true for the silent, startup-triggered update below — this is
-  // what drives the blocking full-screen overlay, so a manual click of the update button (which
-  // already has its own inline spinner/toast) never gets the overlay treatment too.
+  // Only true for the silent startup update; drives the blocking full-screen overlay.
   const [autoUpdating, setAutoUpdating] = useState(false);
   const [autoUpdateError, setAutoUpdateError] = useState<string | null>(null);
   const { showToast } = useToast();
   const { t } = useLanguage();
   const lastRefreshRef = useRef(0);
   const mountedRef = useRef(true);
-  // Guards the auto-update effect below so it only ever acts on the very first status check (app
-  // launch) — later checks (on window focus/visibility) must never yank the app into a blocking
-  // overlay while someone's mid-task.
+  // The auto-update only acts on the first status check; later focus/visibility checks must never
+  // throw up the blocking overlay mid-task.
   const initialCheckDoneRef = useRef(false);
 
   useEffect(() => {
@@ -99,9 +94,7 @@ export function useUpdate() {
     };
   }, [refreshStatus]);
 
-  /** `silent: true` is the startup auto-update path (see the effect below): no toast, and a
-   *  successful run reloads the page instead, since the point is to land the user straight on the
-   *  freshly updated app rather than have them notice a toast and keep using the stale bundle. */
+  /** `silent: true` = startup auto-update: no toast; success reloads the page. */
   const applyUpdate = useCallback(
     async (options?: { silent?: boolean }) => {
       const silent = options?.silent ?? false;
@@ -137,19 +130,13 @@ export function useUpdate() {
     [showToast, refreshStatus, t],
   );
 
-  // Startup auto-update: once the very first status check resolves, if an update is already
-  // available, apply it immediately and silently rather than waiting for the user to notice and
-  // click the button — see `autoUpdating`/`autoUpdateError` above for how the caller surfaces this.
-  // `applyUpdate` itself owns every setState call for this path (including flipping `autoUpdating`
-  // on) — the effect body only ever calls it, never sets state directly.
+  // Startup auto-update: applies an available update silently after the first status check.
   useEffect(() => {
     if (checking) return;
     if (initialCheckDoneRef.current) return;
     initialCheckDoneRef.current = true;
     if (!status?.updateAvailable) return;
-    // Deferred via a 0ms timer so applyUpdate's setState calls happen in a callback, not
-    // synchronously in the effect body itself (same pattern NewTaskModal's project-folder fetch
-    // uses, for the same reason).
+    // 0ms timer keeps applyUpdate's setState calls out of the effect body.
     const timer = setTimeout(() => {
       void applyUpdate({ silent: true });
     }, 0);

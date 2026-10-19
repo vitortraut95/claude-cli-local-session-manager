@@ -25,15 +25,10 @@ import { resolveApiErrorMessage } from "../utils/apiClient";
 type WorktreeToRootModalProps = {
   session: Session;
   onClose: () => void;
-  /** Called once, right before `onClose`, after every step of a run has succeeded — the caller
-   *  re-fetches the session list, since root's branch and (in "checkout" mode) this session's own
-   *  `directoryMissing`/`isWorktree` can both have changed. */
+  /** Called right before `onClose` after a fully successful run, so the caller refetches. */
   onComplete: () => void;
-  /** Called only from the "checkout" mode success screen's "Delete this session" button — this
-   *  session's transcript is unresumable from this point on (its cwd, the worktree, is gone), so
-   *  the modal offers to clean up its now-dead card instead of leaving it to linger forever. The
-   *  caller reuses whatever delete-confirmation flow it already has for the normal Delete button
-   *  (SessionCard forwards its own `onDeleteRequest`) rather than this modal building a second one. */
+  /** "Checkout" mode's "Delete this session" button: the session can't be resumed once its
+   *  worktree is gone. The caller runs its usual delete confirmation. */
   onOfferDeleteSession: () => void;
 };
 
@@ -70,8 +65,6 @@ function buildSteps(mode: Mode, t: TFn): Step[] {
       ];
 }
 
-/** Exported for reuse by `ResetRootConfirmModal` — the standalone "Reset root" quick action shows
- *  the same live dirty-files list this modal's own confirm stage does. */
 export function FileListBox({
   title,
   files,
@@ -81,8 +74,7 @@ export function FileListBox({
   title: string;
   files: string[];
   tone?: "neutral" | "danger";
-  /** Rendered next to the title, e.g. the "code ." button that opens the folder these files
-   *  belong to — lets the user actually look before something discards/overwrites them. */
+  /** Rendered next to the title, e.g. a "code ." button opening the files' folder. */
   titleAction?: ReactNode;
 }) {
   const { t } = useLanguage();
@@ -119,10 +111,7 @@ export function FileListBox({
   );
 }
 
-/** One "reset root" quick-action's past stashes — see `RootStatus.appStashes`/`listAppStashes`
- *  in git.ts for why these are traceable by message now instead of relying on a toast shown once
- *  at creation time. Exported for reuse by `ResetRootConfirmModal`, same convention as
- *  `FileListBox` above. */
+/** Stashes created by "reset root" (`RootStatus.appStashes`), each with a copyable apply command. */
 export function StashList({ stashes }: { stashes: RootStatus["appStashes"] }) {
   const { t } = useLanguage();
   const { showToast } = useToast();
@@ -181,17 +170,9 @@ export function StashList({ stashes }: { stashes: RootStatus["appStashes"] }) {
 }
 
 /**
- * Mounted only while open (same convention as NicknameModal) so all of this
- * wizard's state resets fresh every time — there's no in-progress form input here worth preserving
- * across an accidental close.
- *
- * Four stages: pick a sub-flow ("choice") → see exactly what's about to happen ("preview",
- * fetched from the server) → one final unambiguous destructive confirm ("confirm", which
- * re-fetches the preview so the "here's what you're about to lose" copy can't be stale) →
- * step-by-step execution ("progress"). Each progress step is one real awaited HTTP request (see
- * sessionsApi's worktree-to-root functions) — no simulated/optimistic progress, matching
- * NewTaskModal's own convention: a failure stops the sequence right there, leaving later steps
- * visibly "pending" rather than faking completion.
+ * Stages: "choice" → "preview" → "confirm" (re-fetches root status so it can't be stale) →
+ * "progress" → "done". Each progress step is one awaited request; a failure stops the sequence,
+ * leaving later steps pending. Mounted only while open, so state resets on every open.
  */
 export function WorktreeToRootModal({
   session,
@@ -206,9 +187,7 @@ export function WorktreeToRootModal({
   const [preview, setPreview] = useState<WorktreeToRootPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  // Separate from `preview` — the final confirm step only needs root's branch/dirty-files, not
-  // the (comparatively expensive) full file diff, so it re-checks via the lighter root-status
-  // endpoint instead of re-running fetchWorktreeToRootPreview a second time.
+  // The confirm step re-checks only root's branch/dirty files, not the full diff.
   const [confirmStatus, setConfirmStatus] = useState<RootStatus | null>(null);
   const [loadingConfirmStatus, setLoadingConfirmStatus] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
@@ -260,15 +239,12 @@ export function WorktreeToRootModal({
   };
 
   const handleClose = () => {
-    // Steps are already firing server-side once "progress" starts — closing mid-run wouldn't
-    // stop them, it would just hide the one place that shows how far they got.
+    // Closing mid-run wouldn't stop the server-side steps, only hide their progress.
     if (executing) return;
     onClose();
   };
 
-  // Both ways out of the "done" stage (keep the card, or offer to delete it) — the parent's
-  // session-list refresh is deferred to here rather than fired right when "checkout" mode
-  // succeeds, so the "done" stage actually gets to render first (see handleExecute's comment).
+  // Both exits of the "done" stage; the parent's refresh runs here (see handleExecute).
   const finishDone = () => {
     onComplete();
     onClose();
@@ -318,11 +294,8 @@ export function WorktreeToRootModal({
           }${stashNote(stashRef)}`,
           "success",
         );
-        // Not onComplete()/onClose() here: onComplete() triggers the parent's session-list
-        // refresh, which flips its `loading` state and unmounts the whole grid (this modal
-        // included) for the duration of the refetch — done from here, the "done" stage below
-        // would get torn down before the user ever saw it. Deferred to the "done" stage's own
-        // exit handlers (both "keep the card" and "delete the session") instead.
+        // No onComplete() here: the parent's refresh unmounts the grid (this modal included), so
+        // the "done" stage would never render. It runs from the "done" stage's exits instead.
         setStage("done");
       }
     } catch (err) {
@@ -539,9 +512,8 @@ export function WorktreeToRootModal({
         <div className="flex flex-col gap-3">
           <p className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-400">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            {/* One child span, not bare text/<code> siblings — see ResetRootConfirmModal's same
-                fix: mixed siblings inside a flex <p> each become their own flex item instead of
-                flowing as one paragraph. */}
+            {/* One wrapping span: inside this flex <p>, bare text + <code> siblings would each
+                become a flex item and break text wrapping. */}
             <span>
               {t("worktreeToRootModal.confirm.stashIntro")} <code>git stash apply</code>
               {t("worktreeToRootModal.confirm.stashIntroSuffix")}{" "}

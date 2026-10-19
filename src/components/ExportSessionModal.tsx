@@ -12,11 +12,8 @@ type ExportSessionModalProps = {
   onClose: () => void;
 };
 
-/**
- * Confirm step before downloading a session's export file (see server-side `exportSession`) —
- * exists mainly to say plainly that the file holds the *whole* conversation, including every file
- * and command output Claude saw, before it gets sent to someone else.
- */
+/** Confirm step before downloading a session's export file, warning that it holds the whole
+ *  conversation (every file and command output Claude saw). */
 export function ExportSessionModal({ session, onClose }: ExportSessionModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();

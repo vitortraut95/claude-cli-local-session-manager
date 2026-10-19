@@ -1,14 +1,10 @@
 import type { EnvPreviews } from "../services/tasksApi";
 
-// Jenkins multibranch pipeline links. The job name matches the repo's own folder name 1:1 (e.g.
-// "my-repo") one level below "job/", so `session.project` — already the repo folder's basename —
-// is the job name; no per-project config needed. The base URL is per-machine config
-// (`jenkinsBaseUrl` in userPreferences.json, see useTeamLinks), never hardcoded — this repo is
-// public.
+// Jenkins multibranch pipeline links. The job name is the repo folder name (`session.project`);
+// the base URL is per-machine config (`jenkinsBaseUrl` in userPreferences.json).
 
-/** Branch prefixes teams use for Jenkins-built branches — offered as variations of the session's
- *  own ticket, since the branch that actually has a pipeline isn't always the one checked out
- *  locally (e.g. work on `feature/PROJ-1` while the preview pipeline runs on `env/PROJ-1`). */
+/** Branch prefixes offered as variations of the session's ticket — the branch with a pipeline
+ *  isn't always the one checked out (e.g. `feature/PROJ-1` locally, `env/PROJ-1` in Jenkins). */
 const BRANCH_PREFIXES = ["env", "feature", "feat", "fix", "hotfix", "poc"];
 
 /** Default branches — a "ticket" variation of these makes no sense (no `env/main`). */
@@ -30,11 +26,8 @@ function branchJobUrl(projectUrl: string, branch: string): string {
 }
 
 /**
- * Every Jenkins link worth offering for a session, built purely from naming conventions — none
- * are checked for existence (there's no Jenkins API call or credential here), so the modal lets
- * the user pick whichever one makes sense. `originBranch` is the branch the task was created
- * from (see `resolveSessionBranches`), e.g. an `env/*` preview branch with its own pipeline. Null
- * when no Jenkins base URL is configured.
+ * Candidate Jenkins links for a session, built from naming conventions only (none checked for
+ * existence). `originBranch` is the task's base branch. Null when no base URL is configured.
  */
 export function getJenkinsLinks(
   jenkinsBaseUrl: string | null,
@@ -84,10 +77,9 @@ export type EnvPreview = { label: string; url: string };
 export type EnvPreviewGroup = { branch: string; previews: EnvPreview[] };
 
 /**
- * Preview URLs for each `env/*` branch among the session's current and origin branches (a
- * `feature/*` task branched off `env/vitrine` still has that env's previews worth opening), from
- * the per-machine `envPreviews` templates of the session's project: `{env}` in each template's URL
- * becomes the branch slug (`env/PROJ-123` → `env-proj-123`). Empty for projects without templates.
+ * Preview URLs for each `env/*` branch among the session's current and origin branches, from the
+ * project's `envPreviews` templates: `{env}` becomes the branch slug (`env/PROJ-123` →
+ * `env-proj-123`). Empty for projects without templates.
  */
 export function getEnvPreviewGroups(
   envPreviews: EnvPreviews,

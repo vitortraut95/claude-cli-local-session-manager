@@ -13,17 +13,11 @@ import { formatBytes } from "../utils/sessionSize";
 type CleanupModalProps = {
   open: boolean;
   onClose: () => void;
-  /** Fired right after any finding is successfully executed, so the page's session list can drop
-   *  whatever was just deleted — only `prune-old-sessions` actually changes it, but firing this
-   *  unconditionally keeps the wiring simple (the same cheap refresh NewTaskModal's
-   *  `onTaskCreated` already triggers). */
+  /** Fired after any finding is successfully executed, so the session list can refresh. */
   onFindingExecuted?: () => void;
 };
 
-/** Renders a finding's title/description from its structured data rather than a pre-rendered
- *  server-side string — cleanupService.ts only knows English, so building the copy here is what
- *  lets it participate in the app's i18n instead of always showing up in English regardless of
- *  the selected language. */
+/** Builds a finding's title/description client-side from its structured data, so it's translated. */
 function findingTitle(finding: CleanupFinding, t: ReturnType<typeof useLanguage>["t"]): string {
   const project = finding.repoRoot.split("/").pop() ?? finding.repoRoot;
   if (finding.kind === "prune-worktrees") {
@@ -68,13 +62,7 @@ function findingDescription(
   });
 }
 
-/**
- * Lists local, one-click-safe cleanup findings (currently: stale worktree git metadata, and
- * worktrees whose branch is already merged — see cleanupService.ts for exactly what qualifies)
- * and lets each be fixed independently. Not always-mounted like NewTaskModal — there's no
- * in-progress form input here worth preserving across an accidental close, so a plain
- * conditional-fetch-on-open is enough.
- */
+/** Lists local, one-click-safe cleanup findings and lets each be fixed independently. */
 export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalProps) {
   const { showToast } = useToast();
   const { t } = useLanguage();
@@ -84,9 +72,8 @@ export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalP
   const [loadError, setLoadError] = useState<string | null>(null);
   const [executingId, setExecutingId] = useState<string | null>(null);
 
-  // Re-fetched every time the modal opens (not just once on mount) — deferred via a 0ms timer so
-  // its setState calls happen in a callback, not synchronously in the effect body (same pattern
-  // as NewTaskModal's project-folder refresh).
+  // Re-fetched on every open; deferred via a 0ms timer so setState doesn't run synchronously in
+  // the effect body.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;

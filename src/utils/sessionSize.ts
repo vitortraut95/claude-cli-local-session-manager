@@ -2,10 +2,8 @@ const KB = 1024;
 const MB = 1024 * KB;
 
 /**
- * Thresholds calibrated against real session sizes on disk rather than a token-accurate context
- * estimate (the .jsonl file's size is a loose proxy for cumulative spend, not the live context
- * window — it keeps growing even across a /compact). Most sessions land well under 2 MB; only a
- * handful of unusually long-running ones cross into double digits.
+ * Thresholds on the .jsonl file size, a loose proxy for cumulative spend (not the live context
+ * window — it keeps growing across a /compact).
  */
 const HEALTHY_MAX_BYTES = 2 * MB;
 const CAUTION_MAX_BYTES = 8 * MB;
@@ -37,9 +35,7 @@ export function sessionSizeMessage(bytes: number): string {
 
 /**
  * Piecewise-linear position in [0, 1] for the meter's fill width: the healthy/caution/critical
- * bands each get an equal third of the bar, regardless of how skewed the underlying byte
- * thresholds are — otherwise the common (small) case would be squashed into a sliver next to a
- * rare 17 MB outlier.
+ * bands each get an equal third of the bar, regardless of the byte thresholds.
  */
 export function sessionSizeFraction(bytes: number): number {
   if (bytes <= 0) return 0;
