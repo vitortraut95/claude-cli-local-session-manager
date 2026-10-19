@@ -489,6 +489,10 @@ export const translations = {
     "That file isn't valid JSON.",
     "Esse arquivo não é um JSON válido.",
   ),
+  "apiError.taskSessionHasNoBranch": dict(
+    "This session isn't on a git branch, so it can't be linked to a task.",
+    "Esta sessão não está numa branch git, então não dá para vinculá-la a uma tarefa.",
+  ),
   "apiError.malformedPreferencesFile": dict(
     "That file isn't a settings file.",
     "Esse arquivo não é um arquivo de configurações.",

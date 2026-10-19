@@ -98,6 +98,7 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   IMPORT_SESSION_EXISTS: "apiError.importSessionExists",
   IMPORT_OVERWRITE_ACTIVE: "apiError.importOverwriteActive",
   MALFORMED_PREFERENCES_FILE: "apiError.malformedPreferencesFile",
+  TASK_SESSION_HAS_NO_BRANCH: "apiError.taskSessionHasNoBranch",
   // IMPORT_CHECKOUT_FAILED unmapped: their messages carry git's reason.
 };
 

@@ -420,7 +420,6 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         autoNickname,
         trimmedBase,
         trimmedBranch,
-        jiraId ?? "",
         addDirs,
       );
       updateStep("launch", "done");

@@ -28,7 +28,6 @@ import {
   recordTaskBaseBranch,
   setNickname,
   setSessionBranchOverride,
-  setSessionTaskKey,
   upsertTask,
 } from "../utils/taskStore.js";
 
@@ -311,7 +310,7 @@ async function linkBranchToTaskBestEffort(
  * first message; blank = plain interactive `claude`). `repoRoot` is only remembered for next time
  * ("" skips that).
  *
- * When `nickname`, `originBranch`/`destinationBranch` or `taskKey` is given, a `--session-id` is
+ * When `nickname` or `originBranch`/`destinationBranch` is given, a `--session-id` is
  * pre-generated and they're recorded in `tasks.json` before the terminal opens — there's no other
  * way to learn the new session's id. Returns that id, or null when none was needed.
  */
@@ -323,7 +322,6 @@ export type LaunchTaskOptions = {
   nickname?: string;
   originBranch?: string;
   destinationBranch?: string;
-  taskKey?: string | null;
   /** Other folders the session gets tool access to (`--add-dir`); each must exist. */
   addDirs?: string[];
 };
@@ -336,7 +334,6 @@ export async function launchTaskTerminal({
   nickname = "",
   originBranch = "",
   destinationBranch = "",
-  taskKey = null,
   addDirs = [],
 }: LaunchTaskOptions): Promise<{ sessionId: string | null }> {
   const trimmedWorktreePath = worktreePath.trim();
@@ -348,11 +345,10 @@ export async function launchTaskTerminal({
   let sessionIdFlag = "";
   let newSessionId: string | null = null;
   const hasBranches = Boolean(originBranch.trim() || destinationBranch.trim());
-  if (trimmedNickname || hasBranches || taskKey) {
+  if (trimmedNickname || hasBranches) {
     newSessionId = randomUUID();
     if (trimmedNickname) await setNickname(newSessionId, trimmedNickname);
     if (hasBranches) await setSessionBranchOverride(newSessionId, originBranch, destinationBranch);
-    if (taskKey) await setSessionTaskKey(newSessionId, taskKey);
     sessionIdFlag = `--session-id ${newSessionId} `;
   }
 

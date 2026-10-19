@@ -260,7 +260,6 @@ tasksRouter.post("/launch", async (req, res) => {
       nickname: extractStringField(req.body, "nickname"),
       originBranch: extractStringField(req.body, "originBranch"),
       destinationBranch: extractStringField(req.body, "destinationBranch"),
-      taskKey: normalizeTaskKey(extractStringField(req.body, "taskKey")),
       addDirs: extractStringArray(req.body, "addDirs"),
     });
     res.json({ success: true, sessionId });
