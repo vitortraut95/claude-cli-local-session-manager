@@ -1,5 +1,6 @@
 import {
   Copy,
+  Download,
   FolderOpen,
   GitBranch,
   Import,
@@ -51,10 +52,9 @@ function defaultCheckout(preview: SessionImportPreview, candidate: SessionImport
 }
 
 /**
- * Two steps, both inside this one modal: pick an exported session file (inspected server-side,
- * nothing written — see `inspectSessionBundle`), then choose which local clone it lands in and
- * whether to check out its branch there first. Mounted only while open (same convention as
- * NicknameModal), so every open starts from a clean "pick a file" state.
+ * Two steps: pick an exported session file (inspected server-side, nothing written), then choose
+ * the local clone it lands in and whether to check out its branch first. Mounted only while open,
+ * so every open starts from a clean "pick a file" state.
  */
 export function ImportSessionModal({ onClose, onImported }: ImportSessionModalProps) {
   const { t } = useLanguage();
@@ -68,13 +68,17 @@ export function ImportSessionModal({ onClose, onImported }: ImportSessionModalPr
   const [customFolder, setCustomFolder] = useState("");
   const [checkoutBranch, setCheckoutBranch] = useState(false);
   const [importing, setImporting] = useState(false);
-  // No default on purpose — when the id already exists, the user has to pick explicitly.
+  // No default — when the id already exists, the user has to pick explicitly.
   const [onConflict, setOnConflict] = useState<ImportConflictResolution | null>(null);
 
   const candidate = preview?.candidates.find((c) => c.repoRoot === folder) ?? null;
   const targetDir = folder === OTHER_FOLDER ? customFolder.trim() : folder;
 
-  const handleFileChosen = async (chosen: File | undefined) => {
+  const [cloneUrl, setCloneUrl] = useState("");
+  const [cloning, setCloning] = useState(false);
+
+  /** `preferredFolder`: select that candidate when present (after "Clone repository"). */
+  const handleFileChosen = async (chosen: File | undefined, preferredFolder?: string) => {
     if (!chosen) return;
     setFile(chosen);
     setPreview(null);
@@ -83,7 +87,11 @@ export function ImportSessionModal({ onClose, onImported }: ImportSessionModalPr
     setInspecting(true);
     try {
       const result = await sessionsApi.inspectSessionImport(chosen);
-      const initialFolder = defaultFolder(result);
+      const initialFolder =
+        preferredFolder && result.candidates.some((c) => c.repoRoot === preferredFolder)
+          ? preferredFolder
+          : defaultFolder(result);
+      setCloneUrl(result.remoteUrl ?? "");
       setPreview(result);
       setFolder(initialFolder);
       setCheckoutBranch(
@@ -105,6 +113,20 @@ export function ImportSessionModal({ onClose, onImported }: ImportSessionModalPr
       setCheckoutBranch(
         defaultCheckout(preview, preview.candidates.find((c) => c.repoRoot === value) ?? null),
       );
+    }
+  };
+
+  const handleClone = async () => {
+    if (!file) return;
+    setCloning(true);
+    try {
+      const repoRoot = await sessionsApi.cloneRepositoryForImport(cloneUrl);
+      showToast(t("importSessionModal.cloneSuccess"), "success");
+      await handleFileChosen(file, repoRoot);
+    } catch (err) {
+      showToast(resolveApiErrorMessage(err, t, "importSessionModal.cloneError"), "error");
+    } finally {
+      setCloning(false);
     }
   };
 
@@ -248,6 +270,48 @@ export function ImportSessionModal({ onClose, onImported }: ImportSessionModalPr
             />
           )}
 
+          {preview.remoteUrl && !preview.candidates.some((c) => c.remoteMatches) && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900/60 dark:bg-amber-950/30">
+              <p className="font-medium text-amber-800 dark:text-amber-300">
+                {t("importSessionModal.noClone")}
+              </p>
+              {preview.cloneParentDir ? (
+                <>
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                    {t("importSessionModal.cloneHint", { dir: preview.cloneParentDir })}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Input
+                      type="text"
+                      value={cloneUrl}
+                      onChange={(event) => setCloneUrl(event.target.value)}
+                      className="min-w-0 flex-1 font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleClone()}
+                      disabled={cloning || importing || !cloneUrl.trim()}
+                      icon={
+                        cloning ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )
+                      }
+                    >
+                      {t("importSessionModal.cloneButton")}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                  {t("importSessionModal.cloneNoWorkspace")}
+                </p>
+              )}
+            </div>
+          )}
+
           <label className="mt-4 block text-sm font-medium text-gray-700 dark:text-gray-300">
             {t("importSessionModal.targetLabel")}
           </label>
@@ -337,9 +401,8 @@ type ConflictChoiceProps = {
   onChange: (value: ImportConflictResolution) => void;
 };
 
-/** Shown only when the file's session id already exists here: what's local vs. what's coming in
- *  (last activity + size is usually enough to tell "newer export of the same session" from "an
- *  old one"), then an explicit overwrite-or-copy pick before Import enables. */
+/** Shown only when the file's session id already exists here: local vs. incoming (last activity +
+ *  size), then an explicit overwrite-or-copy pick before Import enables. */
 function ConflictChoice({
   existing,
   incomingUpdatedAt,

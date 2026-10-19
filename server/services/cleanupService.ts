@@ -30,9 +30,7 @@ export type CleanupFinding = {
     | "remove-merged-worktree"
     | "remove-abandoned-worktree"
     | "prune-old-sessions";
-  /** Structured data the client renders its own (translated) title/description from — this
-   *  service used to build those as hardcoded English prose here, which meant they were the one
-   *  corner of the app the i18n system (see LanguageProvider/translations.ts) could never reach. */
+  /** Structured data the client renders its own translated title/description from. */
   command: string;
   repoRoot: string;
   /** Only set for `prune-worktrees`; empty for the other kinds. */
@@ -42,37 +40,39 @@ export type CleanupFinding = {
   branch: string | null;
   /** Only set for `remove-merged-worktree`; null for the other kinds. */
   defaultBranch: string | null;
-  /** Only set for `prune-old-sessions` — the sessions beyond the configured keep-count for this
-   *  repo that this finding would delete, most-recently-updated first; empty for the other kinds. */
+  /** Only set for `prune-old-sessions` — the sessions beyond the keep-count this finding would
+   *  delete, most recent first; empty for the other kinds. */
   staleSessions: StaleSession[];
-  /** Only set for `prune-old-sessions` — how many of this repo's most-recent sessions are being
-   *  kept (from userPreferences.json's `keepRecentSessionsPerProject`); 0 for the other kinds. */
+  /** Only set for `prune-old-sessions` — how many most-recent sessions are kept; 0 otherwise. */
   keepCount: number;
 };
 
 /**
- * Scans every known project (same repo roots the "new task" folder dropdown offers, see
- * `getKnownProjectFolders`) for two kinds of local, one-click-safe worktree cleanup:
+ * Scans every known project plus every workspace repo (local-only, no fetch) for:
  *
- * 1. `prune-worktrees` — a linked worktree's directory was deleted by hand (outside this app),
- *    leaving git's own bookkeeping still pointing at it. Fixing this never touches real files.
- * 2. `remove-merged-worktree` — a linked worktree whose branch is already fully merged into the
- *    repo's default branch, has no uncommitted changes, and isn't backing an active session right
- *    now. Deleting it can't lose any work, by the same test `git branch -d` (not `-D`) uses.
+ * 1. `prune-worktrees` — a linked worktree's directory was deleted by hand, leaving git's
+ *    bookkeeping pointing at it. Fixing this never touches real files.
+ * 2. `remove-merged-worktree` — a linked worktree whose branch is fully merged into the default
+ *    branch, with no uncommitted changes and no active session (the `git branch -d` test).
+ * 3. `remove-abandoned-worktree` — a worktree under `<repo>/.claude/worktrees/` no session ever ran
+ *    in, with no uncommitted changes and no commit only its branch holds. Limited to
+ *    `.claude/worktrees/`: a worktree created by hand elsewhere may be in use without a session.
+ * 4. `prune-old-sessions` — see `scanForOldSessionFindings`.
  *
- * 3. `remove-abandoned-worktree` — a worktree under `<repo>/.claude/worktrees/` (created by the
- *    Claude CLI's `--worktree` or this app's "New task") that no session — active or not — ever ran
- *    in, with no uncommitted changes and no commit that only its branch holds
- *    (`branchHasUniqueCommits`). Covers what (2) can't: a task branched off something other than
- *    the default branch, abandoned before its first prompt. Limited to `.claude/worktrees/` on
- *    purpose — a worktree the user created by hand elsewhere may be in use without any Claude
- *    session.
- *
- * Scans every known project plus every repo in the user's workspace dirs (see
- * `withWorkspaceRepos`). Everything here is local-only (no network fetch) and re-validated again in
- * `executeCleanupFinding` right before acting, since the scan and the click can be minutes apart.
+ * Every finding is re-validated in `executeCleanupFinding` before acting.
  */
-export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
+export function scanForCleanupFindings(): Promise<CleanupFinding[]> {
+  // Concurrent callers (the modal opened in two tabs, a double click) share the scan already
+  // running instead of each walking every repo again.
+  inFlightScan ??= runCleanupScan().finally(() => {
+    inFlightScan = null;
+  });
+  return inFlightScan;
+}
+
+let inFlightScan: Promise<CleanupFinding[]> | null = null;
+
+async function runCleanupScan(): Promise<CleanupFinding[]> {
   const [knownFolders, sessions] = await Promise.all([getKnownProjectFolders(), listSessions()]);
   const projectFolders = await withWorkspaceRepos(knownFolders, (repoPath) => ({
     path: repoPath,
@@ -171,8 +171,7 @@ export async function scanForCleanupFindings(): Promise<CleanupFinding[]> {
   return findings;
 }
 
-/** Under `<repoRoot>/.claude/worktrees/` — where both the Claude CLI's `--worktree` and this app's
- *  "New task" put the worktrees they create. */
+/** Under `<repoRoot>/.claude/worktrees/`, where `--worktree` and "New task" create them. */
 function isAppWorktree(repoRoot: string, worktreePath: string): boolean {
   const base = path.join(path.resolve(repoRoot), ".claude", "worktrees") + path.sep;
   return path.resolve(worktreePath).startsWith(base);
@@ -189,19 +188,10 @@ function hasAnySession(sessions: Session[], worktreePath: string): boolean {
 }
 
 /**
- * Finds which known repo root a session's working directory actually belongs to — covers the
- * repo's main checkout, any worktree this app created under `<repoRoot>/.claude/worktrees/`, and
- * (via `missingWorktreeRepoRoot`) an orphaned worktree whose directory is already gone. Pure path
- * comparison, no extra git/filesystem call — `repoRoots` is already known from
- * `getKnownProjectFolders()` above.
- *
- * Picks the *longest* (most specific/innermost) matching root rather than the first one found:
- * some users keep several independent git repos nested inside one outer git repo (e.g. a plain
- * `~/git` checkout with individual project repos underneath it, or the home directory itself
- * being a repo) — a naive "starts with" match against every known root would otherwise attribute
- * the same session to both the inner project *and* every outer ancestor repo, double-pooling it
- * and corrupting the "keep the N most recent" count for both. Confirmed by direct reproduction
- * against this exact layout.
+ * Which known repo root a session's working directory belongs to (main checkout, a worktree under
+ * `.claude/worktrees/`, or an orphaned worktree via `missingWorktreeRepoRoot`). Pure path
+ * comparison. Picks the *longest* matching root: repos can be nested inside an outer repo (e.g.
+ * `~` itself), and a session must count toward only its innermost one.
  */
 function resolveOwningRepoRoot(session: Session, repoRoots: string[]): string | null {
   if (session.missingWorktreeRepoRoot) {
@@ -224,11 +214,8 @@ function resolveOwningRepoRoot(session: Session, repoRoots: string[]): string | 
 }
 
 /**
- * Per project, keeps the `keepRecentSessionsPerProject` most-recently-updated sessions and offers
- * to delete the rest — but only the ones that are safe to lose outright: never the active session
- * (defense in depth, `executeCleanupFinding`/`deleteSession` re-check this again right before
- * acting). A session that's merely old but *not* in the deletable set still
- * counts toward "kept" — it just doesn't get suggested for deletion.
+ * Per project, keeps the `keepRecentSessionsPerProject` most recent sessions and offers to delete
+ * the rest, never an active one. An old session that isn't deletable still counts toward "kept".
  */
 async function scanForOldSessionFindings(
   projectFolders: { path: string }[],
@@ -279,11 +266,7 @@ async function scanForOldSessionFindings(
   return findings;
 }
 
-/**
- * Re-validates the specific finding's conditions from scratch (not just a lookup by `id` in a
- * fresh scan) before acting — the scan that produced it may be stale by the time the user clicks,
- * e.g. a session started in that worktree, or someone committed a fix in the meantime.
- */
+/** Re-validates the finding's conditions from scratch before acting — the scan may be stale. */
 export async function executeCleanupFinding(finding: CleanupFinding): Promise<void> {
   if (finding.kind === "prune-worktrees") {
     await pruneWorktrees(finding.repoRoot);
@@ -291,14 +274,12 @@ export async function executeCleanupFinding(finding: CleanupFinding): Promise<vo
   }
 
   if (finding.kind === "prune-old-sessions") {
-    // Best-effort per id, not all-or-nothing: a session already gone (deleted since the scan) or
-    // that became active in the meantime just gets skipped, rather than aborting the whole batch
-    // over one stale entry — deleteSession() re-checks "not currently active" itself either way.
+    // Best-effort per id: a session gone or active since the scan is skipped.
     for (const { id } of finding.staleSessions) {
       try {
         await deleteSession(id);
       } catch {
-        // Already gone or became active since the scan — not a real failure, keep going.
+        // Not a real failure, keep going.
       }
     }
     return;

@@ -33,10 +33,8 @@ type ToolbarIconButtonProps = {
 };
 
 /**
- * One entry in a card's action toolbar (see SessionCard) — same footprint and interaction for
- * every icon, distinguished only by its color, so the row keeps reading consistently as more
- * actions get added to it over time. Icon size is forced here (`[&_svg]` below) rather than by
- * each caller's own `h-4 w-4`, so the whole toolbar resizes from one place.
+ * One entry in a card's action toolbar, distinguished only by its color. Icon size is forced
+ * here (`[&_svg]`), not by callers.
  */
 export function ToolbarIconButton({
   tooltip,
@@ -48,9 +46,7 @@ export function ToolbarIconButton({
 }: ToolbarIconButtonProps) {
   return (
     <Tooltip content={tooltip}>
-      {/* A native `disabled` button doesn't reliably fire hover events, so the tooltip is
-          anchored to this always-enabled wrapping span instead — same trick SessionCard uses for
-          its own disabled Continue/Delete buttons. */}
+      {/* Disabled buttons don't fire hover events, so the tooltip anchors to this span. */}
       <span className="inline-flex shrink-0">
         <button
           type="button"

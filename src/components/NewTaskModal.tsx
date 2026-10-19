@@ -28,14 +28,12 @@ import { resolveApiErrorMessage } from "../utils/apiClient";
 type NewTaskModalProps = {
   open: boolean;
   onClose: () => void;
-  /** Fired right after a successful launch so the page's session list picks up the new
-   *  worktree/session as soon as it exists — not called on a failed/aborted create. */
+  /** Fired after a successful launch so the session list picks up the new session. */
   onTaskCreated?: () => void;
 };
 
 const OTHER_PREFIX_VALUE = "__other__";
-// Just the pre-load fallback shown before userPreferences.json's own `branchTypes` arrives (see
-// the preferences-fetch effect below) — the real, user-editable list lives in that file.
+// Fallback until userPreferences.json's `branchTypes` loads.
 const FALLBACK_BRANCH_TYPES = ["feature", "fix"];
 
 /** Matches a Jira-style ticket key both in a bare form ("PROJ-123") and inside a full browse URL
@@ -66,8 +64,7 @@ const STEP_LABEL_KEYS: Record<StepKey, TranslationKey> = {
 };
 const STEP_ORDER: StepKey[] = ["repo", "base", "worktree", "launch"];
 
-/** The "worktree" step's label changes when the "no worktree" checkbox is on — the other three
- *  steps read the same regardless. */
+/** The "worktree" step's label changes when the "no worktree" checkbox is on. */
 function getStepLabelKey(key: StepKey, useWorktree: boolean): TranslationKey {
   if (key === "worktree" && !useWorktree) {
     return "newTaskModal.step.worktreeNoWorktree";
@@ -76,11 +73,8 @@ function getStepLabelKey(key: StepKey, useWorktree: boolean): TranslationKey {
 }
 
 /**
- * Always mounted (Header renders it unconditionally, toggling `open`) rather than the
- * mount-on-open convention other modals use — an accidental close (Escape, backdrop click, the
- * X button) must not lose whatever the user already typed, so state has to survive across
- * `open` going false and true again. `resetForm` (used by the Clear button and after a
- * successful create) is the only thing that intentionally wipes it.
+ * Always mounted (toggled via `open`) so an accidental close doesn't lose what the user typed;
+ * only `resetForm` (Clear button, successful create) wipes it.
  */
 export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps) {
   const { showToast } = useToast();
@@ -103,68 +97,52 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   const [promptText, setPromptText] = useState("");
   const [savingDefaultPrompt, setSavingDefaultPrompt] = useState(false);
 
-  // The user-editable list backing the "Branch type" select — loaded from userPreferences.json
-  // and grown automatically (see handleCreate) whenever a task is created with a custom ("Other")
-  // type, so it shows up as a normal option next time without any separate management step.
+  // Options of the "Branch type" select, from userPreferences.json; a custom ("Other") type used
+  // to create a task is prepended (see handleCreate).
   const [branchTypes, setBranchTypes] = useState<string[]>(FALLBACK_BRANCH_TYPES);
   const [prefixChoice, setPrefixChoice] = useState<string>(FALLBACK_BRANCH_TYPES[0] ?? "feature");
   const [customPrefix, setCustomPrefix] = useState("");
-  // null means "not yet edited by hand" — the branch suffix field then tracks the Jira id
-  // automatically. Once the user types into it, it holds their exact text from then on. The
-  // prefix is kept separate so switching it never has to touch this field at all — the full
-  // branch name (prefix + suffix) is only ever computed for display/submission, below.
+  // null = not edited by hand, so the branch suffix tracks the Jira id. The prefix is kept
+  // separate; the full branch name is computed for display/submission.
   const [branchSuffixManual, setBranchSuffixManual] = useState<string | null>(null);
 
   const [baseBranch, setBaseBranch] = useState("master");
   const [baseBranchTouched, setBaseBranchTouched] = useState(false);
-  // Unchecked (default) = fetch the latest published version from the remote (origin); checked =
-  // use the local branch as-is, skipping the fetch entirely. See `resolveBaseBranchRef` (git.ts)
-  // for why "local" has to be a real skip, not just a fallback: a base branch with local commits
-  // not yet pushed would otherwise have those commits silently discarded by the fetch.
+  // Unchecked = fetch the latest version from origin; checked = use the local branch as-is,
+  // skipping the fetch (which would discard unpushed local commits).
   const [useLocalBaseBranch, setUseLocalBaseBranch] = useState(false);
   const [loadingRepoInfo, setLoadingRepoInfo] = useState(false);
   const [repoError, setRepoError] = useState<string | null>(null);
 
   // Smart default: suggest a worktree only when the chosen project's root already has an active
-  // session (see the repo-info effect below, `RepoInfo.hasActiveSessionInRoot`) — otherwise default
-  // to no worktree. `useWorktreeDefault` mirrors userPreferences.json's stored *fallback* (used
-  // before that check resolves, or if it fails — see `handleSaveWorktreeDefault` below);
-  // `useWorktree` is this form's own live, possibly-unsaved value — kept separate the same way
-  // `promptText`/`defaultPromptLoaded` are for the prompt. `useWorktreeTouched` tracks whether the
-  // user has manually overridden the checkbox for the *currently selected* folder — once they have,
-  // the auto-suggestion stops overwriting it until a different folder is chosen.
+  // session. `useWorktreeDefault` is the stored fallback (used before that check resolves or if it
+  // fails); `useWorktree` is the live value. `useWorktreeTouched` = manually overridden for the
+  // current folder, so the auto-suggestion stops overwriting it until a different folder is chosen.
   const [useWorktree, setUseWorktree] = useState(false);
   const [useWorktreeTouched, setUseWorktreeTouched] = useState(false);
 
   const [useWorktreeDefault, setUseWorktreeDefault] = useState(false);
   const [savingWorktreeDefault, setSavingWorktreeDefault] = useState(false);
-  // null = not yet known for the current folder (no folder chosen, still loading, or the repo-info
-  // check failed) — the modal shows a neutral/loading state instead of claiming either answer.
+  // null = not yet known for the current folder (none chosen, loading, or the check failed).
   const [activeSessionInRoot, setActiveSessionInRoot] = useState<boolean | null>(null);
 
-  // No separate "draft vs. saved default" split like useWorktree/promptText above — this is
-  // just remembered as whatever it was last left at (see handleCreate), so there's nothing to
-  // preserve across an accidental close that the loaded preference itself doesn't already cover.
+  // Remembered as whatever it was last left at (see handleCreate); no separate draft value.
   const [permissionModeAuto, setPermissionModeAuto] = useState(false);
 
   const [creating, setCreating] = useState(false);
-  // Empty while idle — the static "what will happen" explanation renders instead. Populated with
-  // all four steps (each "pending") right when a create attempt starts, so the modal always shows
-  // exactly which step is running, finished, or failed rather than one opaque success/failure.
+  // Empty while idle; filled with every step ("pending") when a create attempt starts, so the
+  // modal shows which step is running, finished, or failed.
   const [steps, setSteps] = useState<Step[]>([]);
   const [extraRepos, setExtraRepos] = useState<ExtraRepo[]>([]);
   const [useExtraRepos, setUseExtraRepos] = useState(false);
 
-  // Team skills hub: status reloaded on every open, shown as a panel only — never
-  // updated as part of creating a task (someone may not want their clone pulled); updating is an
-  // explicit "Update now" in the skills modal.
+  // Team skills hub status, reloaded on every open — display only, never updated while creating a
+  // task.
   const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(open);
   const [skillsHubModalOpen, setSkillsHubModalOpen] = useState(false);
 
-  // Fetched once on mount (not on every open, unlike the project-folder list above) — the loaded
-  // values only ever seed the form's initial state, and re-running this on every open would
-  // clobber whatever the user already typed/picked across an accidental close, exactly what the
-  // "always mounted" doc comment above is there to prevent.
+  // Fetched once on mount, not on every open — re-seeding on open would clobber in-progress input
+  // across an accidental close.
   useEffect(() => {
     let cancelled = false;
     tasksApi
@@ -192,9 +170,8 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     };
   }, []);
 
-  // The settings modal can change these stored defaults while this (always-mounted) modal keeps
-  // its own copy — reload them when it says so. Drafts follow along only when they still equal
-  // the old stored value (i.e. the user never touched them), so in-progress edits survive.
+  // The settings modal can change these stored defaults — reload them when it says so. Drafts
+  // follow along only when they still equal the old stored value, so in-progress edits survive.
   const latestRef = useRef({ defaultPrompt: defaultPromptLoaded, useWorktreeTouched });
   useEffect(() => {
     latestRef.current = { defaultPrompt: defaultPromptLoaded, useWorktreeTouched };
@@ -229,28 +206,20 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
 
   const effectivePrefix = prefixChoice === OTHER_PREFIX_VALUE ? customPrefix.trim() : prefixChoice;
 
-  // Derived (not effect-driven) so it's always reflected live, right up until the user types
-  // their own text into the field.
+  // Derived, so it tracks the Jira id live until the user types their own text.
   const branchSuffix = branchSuffixManual ?? jiraId ?? "";
   const branchName = effectivePrefix ? `${effectivePrefix}/${branchSuffix}` : branchSuffix;
 
-  // A newly chosen/typed folder is a fresh detection context — forget any manual override of the
-  // worktree checkbox from whatever folder was selected before, so the auto-suggestion below gets
-  // to decide again for this one. Adjusted during render (React's own pattern for "reset state
-  // when a prop/derived value changes", see react.dev/learn/you-might-not-need-an-effect) rather
-  // than in an effect, so it takes effect on the very render the folder changes, not one tick
-  // later — and to sidestep this project's own set-state-in-effect lint rule.
+  // A newly chosen folder forgets any manual override of the worktree checkbox. Adjusted during
+  // render (not in an effect) so it applies on the same render the folder changes.
   const [lastFolderForWorktreeTouch, setLastFolderForWorktreeTouch] = useState(effectiveFolderPath);
   if (effectiveFolderPath !== lastFolderForWorktreeTouch) {
     setLastFolderForWorktreeTouch(effectiveFolderPath);
     setUseWorktreeTouched(false);
   }
 
-  // Prefills the source branch from the selected folder's actual default (main/master/whatever
-  // origin/HEAD points at) and checks whether that folder's root already has an active session —
-  // debounced since typing a custom path fires this on every keystroke. The state updates all
-  // happen inside the timeout callback (not synchronously in the effect body) since they're a
-  // response to the async fetch settling, not a direct render-time sync.
+  // Prefills the source branch from the folder's default branch and checks whether its root
+  // already has an active session — debounced since typing a path fires this per keystroke.
   useEffect(() => {
     const folder = effectiveFolderPath.trim();
     let cancelled = false;
@@ -268,9 +237,8 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
           setRepoError(null);
           if (!baseBranchTouched) setBaseBranch(info.defaultBaseBranch);
           setActiveSessionInRoot(info.hasActiveSessionInRoot);
-          // Only follow the suggestion if the user hasn't already hand-picked a value for this
-          // folder — `useWorktreeTouched` is read fresh here (not captured from the outer
-          // closure) since this callback can resolve well after a later render set it.
+          // `useWorktreeTouched` is read fresh (not from the closure) since this callback can
+          // resolve after a later render set it.
           setUseWorktreeTouched((touched) => {
             if (!touched) setUseWorktree(info.hasActiveSessionInRoot);
             return touched;
@@ -291,8 +259,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     };
   }, [effectiveFolderPath, baseBranchTouched, t]);
 
-  // Used both by the Clear button and after a successful create — keeps the loaded projects list
-  // and preferences (no need to refetch either), only wipes what the user filled in.
+  // Wipes only what the user filled in; keeps the loaded projects list and preferences.
   const resetForm = useCallback(() => {
     setJiraLink("");
     resetFolder();
@@ -328,8 +295,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     }
   };
 
-  // Whether the "use a worktree" checkbox's current value differs from the stored default —
-  // mirrors `promptDirty`'s role for the prompt, gating the "Use as default" link below.
+  // Whether the checkbox differs from the stored default — gates the "Use as default" link.
   const worktreeDefaultDirty = useWorktree !== useWorktreeDefault;
 
   const handleSaveWorktreeDefault = async () => {
@@ -350,14 +316,9 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   const trimmedBranch = branchName.trim();
   const trimmedBase = baseBranch.trim();
   const trimmedPrompt = promptText.trim();
-  // Auto nickname: just the full pasted Jira link (not only the extracted id), so the nickname
-  // itself is clickable/copyable straight into e.g. a PR description. The branches are no longer
-  // encoded here — they're recorded separately at launch (`tasks.json`); the old
-  // "<base> -> <branch> - <link>" shape is still parsed for sessions created before that.
+  // Auto nickname: the full pasted Jira link, so it stays clickable/copyable.
   const autoNickname = jiraLink.trim();
-  // Every other field is always visible now (no more link-gated reveal — see the render below),
-  // but the Jira link is the only one still required to submit: it's the one piece of information
-  // the rest of the form can't reasonably default/infer on its own.
+  // The Jira link is the only required field.
   const canSubmit =
     jiraLink.trim().length > 0 && !creating && (extraRepos.length === 0 || jiraId !== null);
 
@@ -368,12 +329,8 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   };
 
   /**
-   * Runs the four steps in sequence, each awaited before the next starts, updating `steps` as it
-   * goes — this is what powers the live checklist below (see STEP_ORDER/STEP_LABELS). A failure at
-   * any step stops the sequence right there (steps after it stay "pending", never attempted), marks
-   * that one step "error" with the server's message, and leaves the modal open with the checklist
-   * visible so it's obvious exactly where things stopped — no resetForm()/onClose() on failure,
-   * unlike a clean run.
+   * Runs the steps in sequence, updating `steps` for the live checklist. A failure stops there,
+   * marks that step "error" and leaves the modal open with the checklist visible.
    */
   const handleCreate = async () => {
     if (!canSubmit) return;
@@ -426,8 +383,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       );
       updateStep("worktree", "done");
 
-      // Extra repos: a failure in one doesn't stop the others or the main launch — the main
-      // branch already exists, so stopping here would leave nothing to retry with.
+      // Extra repos: a failure in one doesn't stop the others or the main launch.
       const addDirs: string[] = [];
       let extraFailed = false;
       for (const repo of extras) {
@@ -469,21 +425,14 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       );
       updateStep("launch", "done");
 
-      // Both auto-remembered fields below are folded into one `updatePreferences` call — each
-      // call does its own fetch-current-then-merge-then-PUT round trip (see tasksApi.ts), so two
-      // separate fire-and-forget calls here would race: whichever's PUT lands second would
-      // overwrite the other's change with the branchTypes/permissionModeAuto value from *its*
-      // own (now-stale) fetch. Reproduced directly: a custom branch type used to silently vanish
-      // on the very next task-creation because of exactly this race.
+      // Both auto-remembered fields go in one `updatePreferences` call — each call does its own
+      // fetch-merge-PUT, so two concurrent calls would race and one would overwrite the other.
       const preferencesUpdate: Partial<tasksApi.UserPreferences> = {
         useAutoPermissionModeByDefault: permissionModeAuto,
       };
 
-      // A custom ("Outro") branch type that was actually used becomes a normal option from now on
-      // — no separate "manage branch types" step, it just remembers itself. Prepended, not
-      // appended: the most recently added type is the one most likely wanted again next time, so
-      // it becomes the new default selection (branchTypes[0]) instead of landing at the end of
-      // the list.
+      // A used custom ("Outro") branch type is prepended, becoming the default selection
+      // (branchTypes[0]).
       if (
         prefixChoice === OTHER_PREFIX_VALUE &&
         effectivePrefix &&
@@ -494,14 +443,13 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         preferencesUpdate.branchTypes = updatedBranchTypes;
       }
 
-      // Best-effort/non-blocking — a failure here doesn't undo the task that was just
-      // successfully created.
+      // Best-effort — a failure here doesn't undo the created task.
       tasksApi.updatePreferences(preferencesUpdate).catch(() => {
         // Still usable for the rest of this session even if persisting it failed.
       });
 
-      // A real form submission is what makes the browser save each named input's value to its own
-      // autocomplete history (same as any ordinary site's form) — see the <form> below.
+      // A real form submission makes the browser save each input's value to its autocomplete
+      // history — see the <form> below.
       formRef.current?.requestSubmit();
 
       if (extraFailed) {
@@ -545,12 +493,9 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       secondaryLabel={t("newTaskModal.clear")}
       size="xxxl"
     >
-      {/* Native browser autocomplete: the browser only remembers an input's value (keyed by its
-          `name`) when its form is actually submitted, and a React `preventDefault()` submit doesn't
-          count. So after a successful create the form is really submitted — into a hidden iframe
-          pointing at about:blank, so the page itself never navigates. The Modal's own confirm
-          button stays the only way to create a task; with several fields and no submit button,
-          Enter in a field doesn't trigger an implicit submission. */}
+      {/* The browser only saves autocomplete values on a real form submission (not a React
+          `preventDefault()` one), so after a successful create the form is submitted into a hidden
+          iframe at about:blank. With no submit button, Enter doesn't submit implicitly. */}
       <iframe name="new-task-autocomplete-sink" title="" hidden />
       <form
         ref={formRef}
@@ -730,8 +675,6 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
             )}
           </div>
 
-          {/* Always-visible explanation of the mechanism itself — not just the outcome for the
-              currently selected folder — so the checkbox's state never looks arbitrary. */}
           <p className="mt-1 pl-6 text-xs text-gray-500 dark:text-gray-400">
             {t("newTaskModal.worktreeAutoExplanation")}
           </p>

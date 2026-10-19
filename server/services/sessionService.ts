@@ -20,12 +20,13 @@ import { inferTaskKey } from "../utils/taskKeys.js";
 import { collectTaskRepos } from "../utils/taskRepos.js";
 import {
   forgetRepoBranch,
+  forgetSession,
   getTaskStore,
   setNickname,
   setSessionBranchOverride,
 } from "../utils/taskStore.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
-import { AppError } from "../utils/httpError.js";
+import { AppError, BadRequestError } from "../utils/httpError.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import {
   applyFileDiff,
@@ -59,12 +60,7 @@ function cleanTitle(raw: string): string {
     : collapsed;
 }
 
-/**
- * `recap` (the CLI's own auto-generated "what we did / what's next" away-summary, see
- * `readSessionRecap`) is preferred over `firstUserText`: both are prose fallbacks for when there's
- * no proper `aiTitle`/`summaryTitle`, but the recap describes the session's actual outcome instead
- * of just repeating whatever the user originally typed.
- */
+/** `aiTitle` > `summaryTitle` > the CLI's away-summary recap > the first prompt. */
 function resolveTitle(head: SessionHead, recap: string | null): string {
   const source = head.aiTitle ?? head.summaryTitle ?? recap ?? head.firstUserText;
   return source ? cleanTitle(source) : UNTITLED;
@@ -76,11 +72,8 @@ function resolveProject(head: SessionHead, filePath: string): string {
   return projectDir.replace(/^-/, "") || projectDir;
 }
 
-/** This app always creates its own worktrees at `<repoRoot>/.claude/worktrees/<name>` (see
- *  createSessionWorktree below). Once a worktree-backed session's original directory is gone
- *  (directoryMissing), that's the only way left to recover its repo root — the worktree itself no
- *  longer exists for git to tell us, so this is a plain string split on the recorded `cwd`, not a
- *  git call. */
+/** Worktrees live at `<repoRoot>/.claude/worktrees/<name>`; once one is gone, splitting the
+ *  recorded `cwd` is the only way left to recover its repo root. */
 const WORKTREE_PATH_SEGMENT = "/.claude/worktrees/";
 
 function repoRootFromMissingWorktreePath(cwd: string): string | null {
@@ -110,11 +103,8 @@ async function buildSession(filePath: string): Promise<BuiltSession | null> {
       readSessionLatestGitBranch(filePath),
     ]);
     const id = head.sessionId ?? path.basename(filePath, ".jsonl");
-    // Unknown cwd (older session, or head parse didn't find one) isn't treated as missing —
-    // only flag it once we actually know the original directory and it's gone.
+    // An unknown cwd isn't treated as missing.
     const directoryMissing = head.cwd ? !(await directoryExists(head.cwd)) : false;
-    // Only surfaced once the repo root itself is confirmed to still exist — otherwise the UI
-    // would offer "code ."/"resume" actions against a folder that's also gone.
     const repoRootGuess =
       directoryMissing && head.cwd ? repoRootFromMissingWorktreePath(head.cwd) : null;
     const missingWorktreeRepoRoot =
@@ -126,13 +116,9 @@ async function buildSession(filePath: string): Promise<BuiltSession | null> {
       project: resolveProject(head, filePath),
       path: filePath,
       workingDirectory: head.cwd,
-      // The *last* branch recorded in the transcript, not the first — a session can switch
-      // branches mid-way (e.g. a manual `git checkout` outside the "New task" modal's
-      // branch-per-task flow), and `head.gitBranch` would otherwise stay pinned to whatever was
-      // checked out when the session started. See `readSessionLatestGitBranch`.
+      // The last branch logged: a session can switch branches mid-way.
       gitBranch: latestGitBranch ?? head.gitBranch,
-      // Placeholder — listSessions() fills in the real value once, memoized per unique
-      // workingDirectory, rather than re-running `git rev-parse` for every session that shares one.
+      // Placeholder; listSessions() fills it in once per unique workingDirectory.
       isWorktree: false,
       updatedAt: fileStat.mtime.toISOString(),
       prompts,
@@ -147,15 +133,9 @@ async function buildSession(filePath: string): Promise<BuiltSession | null> {
 }
 
 /**
- * Finds every session id currently running in a live `claude` process.
- *
- * Used to key off `ps -eo args=` output for a `claude --resume <id>` command line, but the CLI
- * (>=2.1.210) now hides its args from `ps`/`/proc/<pid>/cmdline` — every process shows up as bare
- * `claude`, so that regex never matches anymore. Instead, read the CLI's own state files at
- * `~/.claude/sessions/<pid>.json` (`{pid, sessionId, ...}`, one per running instance, written on
- * start and removed on clean exit) and confirm the pid is still alive with a signal-0 `kill` — a
- * dead pid means the file is a leftover from an unclean exit (e.g. `kill -9`) and its sessionId
- * should not count as active.
+ * Active sessions come from the CLI's state files `~/.claude/sessions/<pid>.json`
+ * (`{pid, sessionId, ...}`, removed on clean exit), confirmed with a signal-0 `kill` since a dead
+ * pid's file is a leftover. `ps` can't be used: the CLI hides its args.
  */
 function getClaudeSessionsDir(): string {
   return path.join(os.homedir(), ".claude", "sessions");
@@ -198,8 +178,7 @@ export async function getActiveResumeSessionIds(): Promise<Set<string>> {
   return ids;
 }
 
-/** Finds the live pid backing a specific active session id, if any — used by
- *  `stopSiblingAndResume` to know what to signal. */
+/** The live pid running `sessionId`, if any. */
 async function findActiveSessionPid(sessionId: string): Promise<number | null> {
   const dir = getClaudeSessionsDir();
   let entries: string[];
@@ -223,8 +202,7 @@ async function findActiveSessionPid(sessionId: string): Promise<number | null> {
   return null;
 }
 
-/** Polls until `pid` is gone or `timeoutMs` elapses — gives a just-signaled process a chance to
- *  actually exit (and release its worktree lock) before the caller moves on to `git checkout`. */
+/** Polls until `pid` is gone or `timeoutMs` elapses. */
 function waitForProcessExit(pid: number, timeoutMs: number): Promise<void> {
   return new Promise((resolve) => {
     const start = Date.now();
@@ -239,16 +217,8 @@ function waitForProcessExit(pid: number, timeoutMs: number): Promise<void> {
 
 export type ScanProgress = { total: number; done: number; scanning: boolean };
 
-/**
- * Lets the frontend show a "first scan, this can take a while" progress message instead of the
- * generic loading spinner on a cold cache (see `readCache`/`getFullScan` in claudeProjects.ts) —
- * without this, someone installing the app with hundreds of sessions has no idea why the initial
- * load is slow. A single mutable module-level object rather than one entry per request: this app
- * has no per-request tracking anywhere else (see the concurrent-scan to-do for `/cleanup/findings`),
- * and a second `GET /sessions` landing mid-scan (e.g. a second browser tab) just overwrites this
- * with its own totals — acceptable since it's a coarse "is *a* scan in flight" signal, not a
- * per-client one.
- */
+/** Progress of the in-flight `listSessions` scan (slow on a cold cache). Process-wide: a second
+ *  concurrent scan overwrites it. */
 const scanProgress: ScanProgress = { total: 0, done: 0, scanning: false };
 
 export function getScanProgress(): ScanProgress {
@@ -283,8 +253,7 @@ async function listSessionsUncached(): Promise<Session[]> {
 
   const sessions = built.filter((session): session is BuiltSession => session !== null);
 
-  // Many sessions share the same workingDirectory — run `git rev-parse` once per unique
-  // directory rather than once per session (buildSession itself only sets a false placeholder).
+  // Once per unique workingDirectory, not per session.
   const uniqueDirs = [
     ...new Set(sessions.map((s) => s.workingDirectory).filter((d) => d !== null)),
   ];
@@ -292,8 +261,7 @@ async function listSessionsUncached(): Promise<Session[]> {
   const gitDirsByDir = new Map(uniqueDirs.map((dir, i) => [dir, gitDirsList[i]]));
   // git reports real paths, so compare against REPO_ROOT's real path too (symlinked checkout).
   const appRepoRoot = realpathSync(REPO_ROOT);
-  // Once per repo, not per session — the base shown for a task branched off the default, which
-  // `taskBaseBranches` deliberately never records.
+  // Once per repo: the base shown for a task branched off the default (never recorded).
   const uniqueRepoRoots = [
     ...new Set(gitDirsList.filter((d) => d !== null).map((d) => path.dirname(d.commonGitDir))),
   ];
@@ -306,26 +274,15 @@ async function listSessionsUncached(): Promise<Session[]> {
     .map((session) => {
       const gitDirs = session.workingDirectory ? gitDirsByDir.get(session.workingDirectory) : null;
       const isWorktree = gitDirs ? gitDirs.gitDir !== gitDirs.commonGitDir : false;
-      // A worktree-backed session's own `project` (derived from its cwd's basename, see
-      // `resolveProject`) is the worktree/branch folder name, not the repo's — override it with
-      // the shared repo root's basename so worktree sessions collapse onto the same "project" as
-      // their main checkout, matching how the "new task" modal's `getKnownProjectFolders` already
-      // dedups by repo root instead of raw directory. `gitDirs` is null (no live git call possible)
-      // for an orphaned worktree whose directory no longer exists — fall back to
-      // `missingWorktreeRepoRoot` there instead of session.project's raw (dead) worktree folder name.
+      // The repo root's name, so worktree sessions group with their main checkout (also for a
+      // worktree whose directory is gone, via missingWorktreeRepoRoot).
       const project = gitDirs
         ? path.basename(path.dirname(gitDirs.commonGitDir))
         : session.missingWorktreeRepoRoot
           ? path.basename(session.missingWorktreeRepoRoot)
           : session.project;
-      // `session.gitBranch` comes from the CLI's historical transcript log, not live git state —
-      // if the directory isn't a git repo right now (deleted/moved since the session ran), null it
-      // out so callers (e.g. the "delete branch" checkbox) don't act on a branch that doesn't exist.
+      // The transcript's branch only counts while the directory is still a git repo.
       const gitBranch = gitDirs ? session.gitBranch : null;
-      // Same repo root used for `project` above — looked up by (repoRoot, branch) rather than by
-      // workingDirectory, since a "New task" branch checked out directly in the repo root (no
-      // worktree) shares that directory with every other session in the same repo; branch name is
-      // what's actually unique. Null whenever gitBranch itself is null (no live git state to key on).
       const repoRoot = gitDirs ? path.dirname(gitDirs.commonGitDir) : null;
       const saved = store.sessions[session.id];
       const branchEntry = repoRoot && gitBranch ? store.repoBranches[repoRoot]?.[gitBranch] : null;
@@ -372,12 +329,8 @@ export async function findSessionFilePath(id: string): Promise<string | null> {
   return match ?? null;
 }
 
-/**
- * The Claude CLI scopes sessions to the working directory they were started in
- * (`~/.claude/projects/<encoded-cwd>/`). To resume one, the new shell must start
- * in that same directory, or `claude --resume` looks in the wrong project and
- * reports the session as not found.
- */
+/** The CLI ties a session to the exact directory it started in, so `claude --resume` must run
+ *  from that same `cwd` or it reports the session as not found. */
 async function findSessionCwd(id: string): Promise<string | null> {
   const filePath = await findSessionFilePath(id);
   if (!filePath) return null;
@@ -399,16 +352,10 @@ export class SessionActiveError extends AppError {
   }
 }
 
-/** Shared by every `isSafeSessionId` guard below — same code regardless of which function's
- *  check failed, so the frontend only needs one translated message for all of them. */
 function invalidSessionIdError(id: string): AppError {
-  return new AppError("INVALID_SESSION_ID", `Invalid session id "${id}"`);
+  return new BadRequestError("INVALID_SESSION_ID", `Invalid session id "${id}"`);
 }
 
-/** Shared by every function below that resolves a session's `cwd` and finds the directory gone —
- *  several call sites add their own extra sentence of context (what recreating the folder would
- *  let you do next), so this only covers the common first sentence; call sites that want the
- *  extra context construct their own `AppError` with the same code instead of calling this. */
 function sessionDirectoryMissingError(cwd: string): AppError {
   return new AppError(
     "SESSION_DIRECTORY_MISSING",
@@ -416,24 +363,15 @@ function sessionDirectoryMissingError(cwd: string): AppError {
   );
 }
 
-/** Shared by every "worktree-only" action below (worktree → root, delete worktree, ...) once
- *  `isLinkedWorktree` comes back false for the session's own directory. */
 function notAWorktreeSessionError(): AppError {
   return new AppError("NOT_A_WORKTREE_SESSION", "This session isn't running in a git worktree.");
 }
 
-/** Reuses `taskService.ts`'s own "a branch name is required" code — same underlying meaning
- *  (an empty/missing branch name), just triggered from a session-management action instead of
- *  the "new task" form. */
 function branchNameRequiredError(): AppError {
-  return new AppError("TASK_BRANCH_NAME_REQUIRED", "A branch name is required.");
+  return new BadRequestError("TASK_BRANCH_NAME_REQUIRED", "A branch name is required.");
 }
 
-/** Mirrored client-side in SessionsPage.tsx, which hides the "also delete branch" checkbox for
- *  these — this is the defense-in-depth copy for direct API calls, same reasoning as the
- *  active-session re-check in `deleteSession` above. A literal name check rather than resolving
- *  the repo's actual default branch (`getDefaultBaseBranch`): simpler, and "main"/"master" should
- *  never be deletable through this action regardless of what a given repo's default happens to be. */
+/** Never deletable through "delete branch" (also hidden client-side in SessionsPage.tsx). */
 const PROTECTED_BRANCHES = new Set(["main", "master"]);
 
 function protectedBranchDeleteError(branch: string): AppError {
@@ -443,11 +381,7 @@ function protectedBranchDeleteError(branch: string): AppError {
   );
 }
 
-/**
- * Fetched on demand when the prompt-preview modal opens for a single session, rather than
- * embedded in `listSessions()` — see `readFullSessionPrompts` for why (it's untruncated, unlike
- * the copy already sitting in `Session.prompts`, which stays capped for the list payload).
- */
+/** Untruncated prompts of one session (`Session.prompts` is truncated). */
 export async function getSessionPrompts(id: string): Promise<string[]> {
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
@@ -455,27 +389,9 @@ export async function getSessionPrompts(id: string): Promise<string[]> {
 }
 
 /**
- * Builds a PR/compare URL for a session's branch, for an "Open PR" button — no API token needed,
- * since the caller just opens this in the user's own browser, which already carries that
- * provider's own session. `branch` comes from the client (the session's own `gitBranch` field),
- * same convention as `deleteSessionBranch`/`stopSiblingAndResume` — returns null (not a throw)
- * whenever a PR link can't be built: no known working directory, or `origin` isn't a recognized
- * github.com/bitbucket.org remote (see `getGitHostInfo`).
- *
- * - GitHub's compare page pre-fills the "Create pull request" form against the repo's default
- *   branch when only one ref is given, so this doesn't need to know the base branch at all —
- *   unless `explicitBase` is given (see below), in which case it's spelled out as `<base>...<branch>`.
- * - Bitbucket has no exact equivalent — `pull-requests/new?source=<branch>` opens the "create
- *   pull request" form for that branch, and if one's already open for it, Bitbucket itself shows
- *   a banner linking to the existing PR rather than this app trying to look up its number (that
- *   would need the Bitbucket API and its own credentials — see CLAUDE.md's Jenkins-integration
- *   to-do for the same tradeoff on a different provider). It does support an explicit `dest`
- *   param, added only when `explicitBase` is given.
- *
- * `explicitBase`, when given, is spelled out in the link instead of relying on the host's implicit
- * default-branch comparison — used when the session's worktree was branched off something other
- * than the repo's default (see `Session.baseBranch`/`taskStore.ts`'s `repoBranches`) and the user chose, via
- * `OpenPrBaseChoiceModal`, to compare against that actual base rather than the default.
+ * New-PR URL for a session's branch, opened in the user's browser (no API token). Null when there's
+ * no known cwd or no github.com/bitbucket.org `origin`. Without `explicitBase` the host compares
+ * against the repo's default branch.
  */
 export async function getSessionPrUrl(
   id: string,
@@ -515,12 +431,7 @@ export async function buildPrUrl(
   return `https://bitbucket.org/${hostInfo.slug}/pull-requests/new?source=${encodedBranch}${destParam}&t=1`;
 }
 
-/**
- * Deleting a session that's actively `claude --resume`d would pull the `.jsonl` file out from
- * under a running process mid-write — reject it server-side too, not just via the disabled
- * Delete button in the UI, in case a session becomes active between page load and this request
- * landing (same defense-in-depth reasoning as `continueSession` below).
- */
+/** Refuses while the session is active: the running CLI is still writing its `.jsonl`. */
 export async function deleteSession(id: string): Promise<void> {
   const activeIds = await getActiveResumeSessionIds();
   if (activeIds.has(id)) {
@@ -533,16 +444,11 @@ export async function deleteSession(id: string): Promise<void> {
   if (!filePath) throw new SessionNotFoundError(id);
   await unlink(filePath);
   forgetCachedSession(filePath);
+  // Best-effort: the transcript is already gone, a leftover entry is just clutter.
+  await forgetSession(id).catch(() => undefined);
 }
 
-/**
- * Deletes a local git branch in the session's own working directory — offered as an option
- * alongside session deletion (see routes/sessions.ts `DELETE /:id/branch`) for sessions that
- * aren't worktree-backed; a worktree's own "clean up worktree" checkbox already deletes its
- * branch as part of `removeWorktreeAndBranch`, so this is the non-worktree equivalent. `branch`
- * comes from the client (the session's own `gitBranch` field) rather than being re-derived here,
- * same as `stopSiblingAndResume`'s `branch` param.
- */
+/** Deletes a local branch in a (non-worktree) session's directory. */
 export async function deleteSessionBranch(id: string, branch: string): Promise<void> {
   if (!isSafeSessionId(id)) {
     throw invalidSessionIdError(id);
@@ -562,16 +468,11 @@ export async function deleteSessionBranch(id: string, branch: string): Promise<v
   }
 
   await deleteLocalBranch(cwd, trimmedBranch);
-  // Best-effort — `cwd` is the repo root itself for a non-worktree session (see doc comment
-  // above), which is exactly the repo-root half of taskStore.ts's `repoBranches` key.
+  // Best-effort; for a non-worktree session `cwd` is the repo root.
   await forgetRepoBranch(cwd, trimmedBranch).catch(() => undefined);
 }
 
-/**
- * Nicknames are purely local (see `taskStore.ts`) and never touch the session's own `.jsonl`, so
- * unlike `deleteSession`/`continueSession` there's no active-session gate here — relabeling a
- * session that's currently open in a terminal is safe and doesn't race with anything.
- */
+/** Local only (`tasks.json`), never touches the `.jsonl`, so no active-session gate. */
 export async function setSessionNickname(id: string, nickname: string): Promise<void> {
   if (!isSafeSessionId(id)) {
     throw invalidSessionIdError(id);
@@ -580,10 +481,7 @@ export async function setSessionNickname(id: string, nickname: string): Promise<
   await setNickname(id, nickname);
 }
 
-/**
- * Same as nicknames: purely local (`tasks.json`), never touches the session's own
- * `.jsonl`, so no active-session gate.
- */
+/** Local only (`tasks.json`), so no active-session gate. */
 export async function setSessionBranches(
   id: string,
   origin: string,
@@ -600,14 +498,9 @@ export async function setSessionBranches(
 const SPAWN_ERROR_GRACE_PERIOD_MS = 300;
 
 /**
- * Candidate terminal emulators, tried in order until one launches. Each is invoked as
- * `<bin> ...flag, "bash", "-c", shellCmd` — argv-style rather than a single shell string, since
- * most of these emulators exec their `-e`/`--` payload directly instead of passing it through a shell.
- *
- * `open-terminal.sh` (repo root) duplicates this exact list by hand, as a plain Bash array — it
- * has to work before Node/yarn are guaranteed to even be on PATH (see CLAUDE.md), so it can't
- * import this. `yarn lint` runs `scripts/check-terminal-launchers-sync.mjs` to catch the two
- * drifting apart; update both if you touch this list.
+ * Terminal emulators, tried in order. Argv-style (`bash -c <cmd>`): most exec their payload
+ * without a shell. Duplicated in `open-terminal.sh` (must work without Node); keep both in sync
+ * (`scripts/check-terminal-launchers-sync.mjs` checks it).
  */
 const TERMINAL_LAUNCHERS: { bin: string; buildArgs: (shellCmd: string) => string[] }[] = [
   { bin: "x-terminal-emulator", buildArgs: (c) => ["-e", "bash", "-c", c] },
@@ -620,13 +513,9 @@ const TERMINAL_LAUNCHERS: { bin: string; buildArgs: (shellCmd: string) => string
 const SNAP_ORIG_SUFFIX = "_VSCODE_SNAP_ORIG";
 
 /**
- * When this server itself runs inside VS Code's integrated terminal and VS Code was installed
- * as a snap, its wrapper script overrides GTK/XDG/locale env vars (GTK_PATH, LOCPATH,
- * XDG_DATA_DIRS, ...) to point at libraries bundled in the snap, stashing each original value in
- * a `<VAR>_VSCODE_SNAP_ORIG` sibling. Those overrides leak to every child process; spawning a
- * separate GTK app like gnome-terminal under them causes glibc/GTK symbol mismatches (e.g.
- * `undefined symbol: __libc_pthread_init`) because it loads mismatched libraries from the snap.
- * Undo the override for the terminal we spawn by restoring (or deleting) each affected var.
+ * Undoes snap VS Code's env overrides (GTK_PATH, LOCPATH, ...; originals kept in
+ * `<VAR>_VSCODE_SNAP_ORIG`) when the server runs in its terminal: a GTK terminal spawned under them
+ * fails with symbol errors like `undefined symbol: __libc_pthread_init`.
  */
 function sanitizedSpawnEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
@@ -677,10 +566,7 @@ export async function directoryExists(dir: string): Promise<boolean> {
   }
 }
 
-/**
- * Pure-Node PATH lookup — same job as `which`, but without shelling out to a separate binary.
- * Checks each `PATH` entry for `bin`.
- */
+/** True when `bin` is an executable in some `PATH` entry (like `which`, without spawning). */
 function commandExists(bin: string): boolean {
   const dirs = (process.env.PATH ?? "").split(path.delimiter);
 
@@ -695,10 +581,7 @@ function commandExists(bin: string): boolean {
   return false;
 }
 
-/**
- * `WARP_DATA_DIR` lets this be overridden if Warp's data directory ever moves off the Linux XDG
- * default below.
- */
+/** Warp's Linux XDG tab-config dir; `WARP_DATA_DIR` overrides it. */
 function getWarpTabConfigsDir(): string {
   if (process.env.WARP_DATA_DIR) {
     return path.join(process.env.WARP_DATA_DIR, "tab_configs");
@@ -708,22 +591,13 @@ function getWarpTabConfigsDir(): string {
 }
 
 const WARP_TAB_CONFIG_PREFIX = "claude-session-manager-";
-/**
- * Long enough that a slow cold-start Warp launch has certainly read the file by the time the
- * *next* one is written — see `pruneStaleWarpTabConfigs`'s doc comment for why this can't just
- * delete the file it opens right after opening it.
- */
+/** Long enough that a slow cold-start Warp has certainly read the file. */
 const WARP_TAB_CONFIG_MAX_AGE_MS = 5 * 60 * 1000;
 
 /**
- * Each `launchWarp` call writes a new, uniquely-named tab config and never cleans it up on its
- * own — they'd otherwise accumulate forever in Warp's own "Tab Config" list (every past resume
- * shows up as a separate entry). Deleting the file right after opening it isn't safe: `xdg-open`
- * returning success only means the URI was handed off, not that Warp has actually read the file
- * yet (cold-start, when Warp isn't already running, can take a noticeable moment). Instead, each
- * new launch sweeps up *old* ones first — anything past `WARP_TAB_CONFIG_MAX_AGE_MS` old is
- * certainly already consumed, so there's no race. Only touches files with our own naming prefix,
- * never a user's own hand-made tab configs living in the same directory.
+ * Deletes this app's tab configs older than `WARP_TAB_CONFIG_MAX_AGE_MS` (they'd pile up in Warp's
+ * list). A just-opened one can't be deleted right away: `xdg-open` returning doesn't mean Warp has
+ * read it yet. Only touches files with our own prefix.
  */
 async function pruneStaleWarpTabConfigs(dir: string): Promise<void> {
   let entries: string[];
@@ -752,13 +626,9 @@ async function pruneStaleWarpTabConfigs(dir: string): Promise<void> {
 }
 
 /**
- * Escapes `value` to sit inside a TOML basic (double-quoted, single-line) string. Backslash must
- * be escaped first — the other replacements each introduce a fresh backslash of their own, which
- * would get double-escaped if this ran after them. Newline/carriage-return escaping matters more
- * here than it looks: a TOML basic string can't contain a raw newline at all (only a multi-line
- * `"""..."""` string can), so a multi-paragraph "new task" prompt with blank lines between
- * sections used to produce a `commands = [...]` value invalid enough that Warp refused to even
- * load the tab config ("TOML parse error ... invalid basic string").
+ * Escapes `value` for a TOML basic (double-quoted) string. Backslash goes first, since the other
+ * replacements add backslashes. A basic string can't hold a raw newline, so `\n`/`\r` must be
+ * escaped or Warp rejects the whole tab config.
  */
 function toTomlBasicString(value: string): string {
   return value
@@ -768,13 +638,8 @@ function toTomlBasicString(value: string): string {
     .replace(/\n/g, "\\n");
 }
 
-/**
- * Warp has no `-e`/`--` flag to run a command on launch — the only way in is writing a "Tab
- * Config" TOML file and opening it through Warp's own `warp://tab_config/<name>` URI scheme
- * (verified working: the pane respects `directory` and runs `commands` on open, unlike the
- * older/deprecated Launch Configuration YAML format, where external triggers are known to
- * silently drop the command).
- */
+/** Warp has no flag to run a command on launch: writes a Tab Config TOML and opens it via
+ *  `warp://tab_config/<name>`. False when Warp isn't installed. */
 async function launchWarp(command: string, cwd?: string): Promise<boolean> {
   if (!commandExists("warp-terminal")) return false;
 
@@ -789,9 +654,7 @@ async function launchWarp(command: string, cwd?: string): Promise<boolean> {
   await pruneStaleWarpTabConfigs(dir);
   await writeFile(path.join(dir, `${name}.toml`), toml, "utf8");
 
-  // No `?new_window=true`: when Warp isn't already running, that flag forces a second window
-  // on top of the one Warp opens on its own during startup. Without it, the tab config opens in
-  // whichever window is already active (the one just opened, or an existing one).
+  // No `?new_window=true`: on a cold start it opens a second window besides Warp's own.
   return trySpawnDetached("xdg-open", [`warp://tab_config/${encodeURIComponent(name)}`]);
 }
 
@@ -800,14 +663,7 @@ export function posixShellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-/**
- * Opens `dir` in VS Code via its `code` CLI — no terminal involved: `code <dir>` already opens the
- * folder directly, so there's nothing to gain from wrapping it in a terminal window just to run
- * the same command and close again.
- *
- * `--new-window` forces a fresh window every time — without it, `code` reuses an already-open
- * window and swaps its folder out from under whatever the user was looking at there.
- */
+/** Opens `dir` in a new VS Code window (`--new-window`, so an open window isn't swapped out). */
 async function openDirInVSCode(dir: string): Promise<void> {
   if (!(await directoryExists(dir))) {
     throw new AppError("DIRECTORY_MISSING", `This directory no longer exists ("${dir}").`);
@@ -822,14 +678,7 @@ async function openDirInVSCode(dir: string): Promise<void> {
   }
 }
 
-/**
- * Opens a session's own working directory in VS Code. Doesn't touch git at all; `gitBranch` on
- * the session is informational only (recorded when the CLI last logged an entry, may be stale),
- * and checking it out here could collide with another Claude session or terminal still working in
- * that same directory.
- */
-/** Opens a single file (not a folder window) — used for the settings modal's "edit the raw file"
- *  escape hatch. */
+/** Opens a single file in VS Code (not a folder window). */
 export async function openFileInVSCode(filePath: string): Promise<void> {
   if (!(await trySpawnDetached("code", [filePath]))) {
     throw new AppError(
@@ -863,15 +712,8 @@ export async function openInVSCode(id: string): Promise<void> {
   }
 }
 
-/**
- * Opens `dir` in Cursor via its `cursor` CLI — same rationale as `openDirInVSCode` above (no
- * terminal needed, `--new-window` so an already-open Cursor window isn't swapped out from under
- * the user). `--classic` is also required: recent Cursor versions default a CLI-launched window to
- * the Agents panel instead of the classic file-tree/editor view, which — since the Agents panel
- * doesn't surface the opened folder path anywhere obvious — reads to the user as "it didn't open
- * in the project folder" even though the folder actually did open underneath it. See
- * https://forum.cursor.com/t/cli-launch-always-opens-agent-panel-instead-of-ide/166537.
- */
+/** Opens `dir` in a new Cursor window. `--classic`: otherwise Cursor opens the Agents panel
+ *  instead of the editor view. */
 async function openDirInCursor(dir: string): Promise<void> {
   if (!(await directoryExists(dir))) {
     throw new AppError("DIRECTORY_MISSING", `This directory no longer exists ("${dir}").`);
@@ -886,8 +728,7 @@ async function openDirInCursor(dir: string): Promise<void> {
   }
 }
 
-/** Opens a session's own working directory in Cursor — see `openInVSCode` above for the same
- *  reasoning (no git involved, deliberately not `--resume`-aware). */
+/** Opens a session's working directory in Cursor (no git involved). */
 export async function openInCursor(id: string): Promise<void> {
   if (!isSafeSessionId(id)) {
     throw invalidSessionIdError(id);
@@ -911,20 +752,14 @@ export async function openInCursor(id: string): Promise<void> {
   }
 }
 
-/**
- * Opens a worktree-backed session's *repo root* (not the worktree itself) in VS Code — backs the
- * "Worktree → root" modal's "code ." button next to the root dirty-files list, so the user can
- * actually look at what's about to be discarded/overwritten before confirming. Reuses the same
- * session-id → repo-root resolution as the rest of the "worktree → root" flow.
- */
+/** Opens a worktree session's repo root (not the worktree) in VS Code. */
 export async function openWorktreeRootInVSCode(id: string): Promise<void> {
   const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
   await openDirInVSCode(repoRoot);
 }
 
-/** Shared by the two "orphaned worktree" recovery actions below: re-derives the repo root purely
- *  from the session's recorded `cwd` (the worktree itself is gone — there's nothing left for git
- *  to tell us) and confirms it still exists on disk. */
+/** Repo root of an orphaned worktree session, derived from its recorded `cwd` (the worktree is
+ *  gone, so git can't tell); must still exist. */
 async function resolveMissingWorktreeRepoRoot(
   id: string,
 ): Promise<{ head: SessionHead; filePath: string; repoRoot: string }> {
@@ -957,22 +792,15 @@ async function resolveMissingWorktreeRepoRoot(
   return { head, filePath, repoRoot };
 }
 
-/** Opens the repo root in VS Code for an orphaned worktree session (its own directory is gone —
- *  see `missingWorktreeRepoRoot`). Unlike `openWorktreeRootInVSCode`, doesn't touch git at all;
- *  the worktree no longer exists for git to query. */
+/** Opens an orphaned worktree session's repo root in VS Code. */
 export async function openMissingWorktreeRootInVSCode(id: string): Promise<void> {
   const { repoRoot } = await resolveMissingWorktreeRepoRoot(id);
   await openDirInVSCode(repoRoot);
 }
 
 /**
- * Starts a brand-new `claude` conversation in an orphaned worktree session's repo root — not a
- * `claude --resume`: the CLI ties a transcript to the exact directory it was started in (see
- * `findSessionCwd`'s doc comment), and that directory is gone. Seeds the new conversation with the
- * old session's own away-summary recap (the CLI's "what we did / what's next" note, see
- * `readSessionRecap`) as its first message so it starts with real context instead of a blank
- * slate, falling back down the same title-resolution chain `resolveTitle` uses for sessions that
- * never triggered an away-summary.
+ * Starts a new `claude` conversation in an orphaned worktree session's repo root (it can't be
+ * resumed: its directory is gone), seeded with the old session's recap or title.
  */
 export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promise<void> {
   const { head, filePath, repoRoot } = await resolveMissingWorktreeRepoRoot(id);
@@ -995,20 +823,14 @@ export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promis
   await launchInTerminal(`claude ${posixShellQuote(prompt)}`, repoRoot);
 }
 
-/**
- * Shared by `continueSession` and `createSessionWorktree` — the only difference between resuming
- * a session and starting a fresh worktree-scoped one is the command string; the terminal-picking
- * cascade (Warp, then the plain-emulator list) is identical either way. Always tries Warp first
- * (silently falls through to the plain-emulator list below when Warp isn't installed, per
- * `launchWarp`'s own `commandExists` check) — no user-facing toggle for this anymore.
- */
+/** Runs `command` in a new terminal: Warp when installed, else the first `TERMINAL_LAUNCHERS`
+ *  entry that starts. */
 export async function launchInTerminal(command: string, cwd?: string): Promise<void> {
   if (await launchWarp(command, cwd)) {
     return;
   }
 
-  // Warp tabs stay open on their own after the command finishes, but the other emulators close
-  // their window the instant the wrapped `bash -c` exits — so only these get the "press enter" pause.
+  // These emulators close the window as soon as `bash -c` exits (Warp tabs stay open).
   const shellCmd = `${command}; echo; read -p "Press Enter to close..." _`;
 
   for (const launcher of TERMINAL_LAUNCHERS) {
@@ -1022,11 +844,7 @@ export async function launchInTerminal(command: string, cwd?: string): Promise<v
   );
 }
 
-/**
- * Rejects an already-active session server-side too, not just via the disabled Continue button
- * in the UI: opening a second `claude --resume` for the same session would race with the first
- * process's own writes to that session's `.jsonl`.
- */
+/** Refuses an active session: a second `claude --resume` would race the first one's writes. */
 export async function continueSession(id: string): Promise<void> {
   if (!isSafeSessionId(id)) {
     throw invalidSessionIdError(id);
@@ -1047,23 +865,14 @@ export async function continueSession(id: string): Promise<void> {
     );
   }
 
-  // `id` is already validated above (alphanumeric/dash/underscore only), so it's safe to interpolate.
+  // `id` is validated above, so it's safe to interpolate.
   await launchInTerminal(`claude --resume ${id}`, cwd ?? undefined);
 }
 
 /**
- * Opens a fresh `claude --worktree <name>` in `id`'s own project directory — not
- * `claude --resume <id>`: the CLI keys a session's transcript to the exact absolute path it was
- * started in (see `findSessionCwd`'s doc comment), so a past session can never be resumed from a
- * different directory, worktree or not. This is for starting a *second*, independent Claude
- * working in parallel on another branch, not for continuing this specific transcript elsewhere.
- *
- * Delegates the actual git worktree creation to the CLI's own `-w/--worktree [name]` flag rather
- * than driving `git worktree add` by hand: the CLI already creates the linked worktree at
- * `<repo>/.claude/worktrees/<name>` on a fresh `worktree-<name>` branch, locks it for the
- * session's lifetime, and starts the conversation there in one step — reimplementing that
- * wouldn't gain anything and would risk drifting from whatever the CLI does internally as it
- * evolves. `removeWorktreeAndBranch` (see git.ts) knows to unlock it again on delete.
+ * Starts a new `claude --worktree <name>` conversation in `id`'s project (a past transcript can't
+ * be resumed from another directory). The CLI creates and locks `<repo>/.claude/worktrees/<name>`
+ * on a new `worktree-<name>` branch.
  */
 export async function createSessionWorktree(id: string, requestedName: string): Promise<void> {
   if (!isSafeSessionId(id)) {
@@ -1071,7 +880,7 @@ export async function createSessionWorktree(id: string, requestedName: string): 
   }
   const name = requestedName.trim();
   if (!name) {
-    throw new AppError("WORKTREE_NAME_REQUIRED", "A worktree name is required.");
+    throw new BadRequestError("WORKTREE_NAME_REQUIRED", "A worktree name is required.");
   }
 
   const cwd = await findSessionCwd(id);
@@ -1080,13 +889,8 @@ export async function createSessionWorktree(id: string, requestedName: string): 
     throw sessionDirectoryMissingError(cwd);
   }
 
-  // Best-effort, ahead of the launch below rather than after: the CLI's own `--worktree` flag
-  // (see markWorktreeTrustAccepted's doc comment) checks *this* directory's trust before it ever
-  // creates the new one, so pre-trusting only the destination wouldn't help this specific call —
-  // but pre-trusting the destination now means a *later* worktree op sourced from it (e.g.
-  // another resume-conflict, chained off this one) won't hit the same wall. Predicts the CLI's
-  // own `<repoRoot>/.claude/worktrees/<name>` convention (confirmed by direct reproduction); a
-  // wrong guess just means this specific write has no effect; it can't ever break the launch below.
+  // Pre-trusts the path the CLI will create (`<repoRoot>/.claude/worktrees/<name>`), so later
+  // `claude` launches there don't stop at the trust dialog. A wrong guess has no effect.
   const repoRoot = await getRepoRoot(cwd);
   if (repoRoot) {
     const worktreeDirName = sanitizeWorktreeDirName(name);
@@ -1096,12 +900,7 @@ export async function createSessionWorktree(id: string, requestedName: string): 
   await launchInTerminal(`claude --worktree ${posixShellQuote(name)}`, cwd);
 }
 
-/**
- * Removes the linked worktree that `id`'s session runs in, and the branch git created for it.
- * Blocked (409, like the other mutating actions in this file) while *any* session rooted at that
- * same directory is still active — not just this one — since deleting the worktree out from
- * under a still-running `claude` process would pull its files out from under it.
- */
+/** Removes the worktree `id` runs in and its branch; refused while any session is active in it. */
 export async function deleteSessionWorktree(id: string): Promise<void> {
   if (!isSafeSessionId(id)) {
     throw invalidSessionIdError(id);
@@ -1124,23 +923,18 @@ export async function deleteSessionWorktree(id: string): Promise<void> {
     );
   }
 
-  // Captured before removal, while the worktree directory still exists to ask git about — needed
-  // for the taskStore.ts `repoBranches` cleanup below, which is keyed by (repoRoot, branch).
+  // Captured before removal, while git can still be asked about the worktree.
   const repoRootForCleanup = await getRepoRoot(cwd);
   const branchForCleanup = sessions.find((s) => s.workingDirectory === cwd)?.gitBranch ?? null;
 
   await removeWorktreeAndBranch(cwd);
-  // Best-effort — the worktree (and thus this branch's `repoBranches` entry) is gone either
-  // way; a failure here would just leave a harmless orphaned entry, same tolerance as elsewhere in
-  // this file when a sidecar write isn't load-bearing for the actual git operation.
+  // Best-effort: a failure only leaves an orphaned `tasks.json` entry.
   if (repoRootForCleanup && branchForCleanup) {
     await forgetRepoBranch(repoRootForCleanup, branchForCleanup).catch(() => undefined);
   }
 }
 
-/** Shared validation for every "worktree → root" function below: resolves the session's worktree
- *  cwd and its repo root, throwing the same errors `deleteSessionWorktree` already uses for an
- *  unknown session / missing directory / non-worktree session. */
+/** Resolves a worktree session's cwd and repo root, or throws. */
 async function resolveWorktreeAndRepoRoot(id: string): Promise<{ cwd: string; repoRoot: string }> {
   if (!isSafeSessionId(id)) {
     throw invalidSessionIdError(id);
@@ -1163,14 +957,8 @@ async function resolveWorktreeAndRepoRoot(id: string): Promise<{ cwd: string; re
   return { cwd, repoRoot };
 }
 
-/**
- * Read-only snapshot for the "worktree → root" modal: both branches, root's dirty-file list (what
- * the shared "reset root" step would discard), and a plain filesystem diff between the two working
- * trees (for "copy" mode's preview). Informational only — `rootHasActiveSession`/
- * `worktreeHasActiveSession` let the modal warn before the user even picks a mode, but the actual
- * blocking check happens fresh again in each mutating function below, since this preview can sit
- * on screen for a while (the user picking a mode, reading the diff, ...) before anything runs.
- */
+/** Read-only preview for the "worktree → root" modal. The mutating steps re-check everything
+ *  themselves rather than trusting it. */
 export async function getWorktreeToRootPreview(id: string): Promise<WorktreeToRootPreview> {
   const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
 
@@ -1198,12 +986,7 @@ export async function getWorktreeToRootPreview(id: string): Promise<WorktreeToRo
   };
 }
 
-/**
- * Read-only, cheap counterpart to `getWorktreeToRootPreview` — just root's branch and dirty-file
- * list, skipping the (comparatively expensive) file diff entirely. Backs the standalone "Reset
- * root" quick action's confirm dialog and the wizard's own final-confirm re-check, neither of
- * which needs anything more than this to show an accurate "here's what's about to be discarded."
- */
+/** Root's branch, dirty files and this app's stashes, without the preview's file diff. */
 export async function getRootStatus(id: string): Promise<RootStatus> {
   const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
   const entries = await listWorktrees(repoRoot);
@@ -1219,17 +1002,8 @@ export async function getRootStatus(id: string): Promise<RootStatus> {
 }
 
 /**
- * First step for both "worktree → root" modes: discards every uncommitted change in the repo's
- * main checkout so the copy/checkout step that follows starts from a clean, known state. Fresh
- * active-session check right here (not trusted from an earlier preview fetch) — same
- * zero-tolerance pattern as deleteSession/continueSession above, since this
- * would otherwise destroy uncommitted work in root. Not actually irreversible, though: returns
- * the stash SHA `discardWorkingTreeChanges` stores it under (null if root had nothing dirty), so
- * the caller can tell the user how to get it back.
- *
- * Excludes nested worktrees (see `nestedWorktreeRelativePaths`) from what gets stashed — root's
- * own `.claude/worktrees/<name>` entries are other sessions' git repositories, not uncommitted user
- * content, and stashing them would risk corrupting whatever is still using them.
+ * Stashes every uncommitted change in the main checkout (nested worktrees excluded), refused while
+ * a session is active there. Returns the stash SHA, or null when root was clean.
  */
 export async function resetRootWorkingTree(id: string): Promise<string | null> {
   const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
@@ -1246,12 +1020,8 @@ export async function resetRootWorkingTree(id: string): Promise<string | null> {
   return discardWorkingTreeChanges(repoRoot, excludePaths);
 }
 
-/**
- * "Copy" mode's second (and last) step: recomputes the file diff fresh against root's *current*
- * state — never trusts whatever diff the client saw in an earlier preview fetch, since that
- * decides what gets deleted/overwritten here — and applies it. The worktree itself is never
- * touched (not deleted, nothing checked out).
- */
+/** Copies the worktree's files onto root, recomputing the diff fresh (never the client's copy).
+ *  The worktree itself is left untouched. */
 export async function applyWorktreeCopyToRoot(id: string): Promise<void> {
   const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
 
@@ -1267,18 +1037,9 @@ export async function applyWorktreeCopyToRoot(id: string): Promise<void> {
 }
 
 /**
- * "Checkout" mode's second (and last) step: removes the linked worktree (unlocked first, its
- * branch kept alive via `removeWorktreeKeepBranch`) and checks that branch out in root, as one
- * operation. Deliberately not split into a separate "remove" call followed by a separate
- * "checkout" call the frontend awaits one after another — the gap between those two git commands
- * would leave the repo in an unrecoverable, hard-to-describe intermediate state (worktree gone,
- * root still on its old branch) if the second call never landed (tab closed, network blip), the
- * exact failure mode `stopSiblingAndResume` below was already written to avoid for a similar
- * reason. The branch itself is never deleted, so if the checkout fails after the worktree is
- * already gone, the error says so explicitly — the branch's commits are safe, the checkout just
- * needs finishing by hand. Returns the branch root was on before the switch (null for a detached
- * HEAD) alongside the one it's on now, so the caller can show a breadcrumb back — root switches
- * silently otherwise, and nothing else records what it used to be on.
+ * Removes the worktree (keeping its branch) and checks that branch out in root, as one server-side
+ * operation so a dropped request can't leave the worktree gone with root on its old branch.
+ * Returns root's previous branch (null for a detached HEAD) and the new one.
  */
 export async function removeWorktreeAndCheckoutRoot(
   id: string,
@@ -1310,8 +1071,7 @@ export async function removeWorktreeAndCheckoutRoot(
       "Could not determine the worktree's branch before removing it.",
     );
   }
-  // Best-effort, right after the worktree directory is actually gone (regardless of whether the
-  // checkout below succeeds) — same tolerance as deleteSessionWorktree's own cleanup.
+  // Best-effort, whether or not the checkout below succeeds.
   await forgetRepoBranch(repoRoot, branch).catch(() => undefined);
 
   try {
@@ -1330,17 +1090,9 @@ export async function removeWorktreeAndCheckoutRoot(
 }
 
 /**
- * The alternative to creating a worktree when `id`'s project directory is already busy: end
- * `siblingSessionId`'s terminal process, check out `branch` in the (now free) shared directory,
- * and resume `id` there. Deliberately not exposed as three separate calls the frontend
- * orchestrates itself — a partial failure between "kill" and "resume" would leave the directory
- * on the wrong branch with nothing running in it, which is easier to reason about as one
- * operation's failure than three.
- *
- * SIGTERM first (a graceful "please exit" a well-behaved CLI can catch and clean up after,
- * releasing its worktree/session-file state); escalates to SIGKILL only if it's still alive after
- * a few seconds. Either way, this can discard unsaved state in whatever that other terminal was
- * doing — the confirmation this is gated behind client-side needs to say so plainly.
+ * Stops `siblingSessionId`'s process (SIGTERM, then SIGKILL after a timeout), checks out `branch`
+ * in the shared directory and resumes `id` there, as one call so a partial failure is one error.
+ * Can discard the other terminal's unsaved work.
  */
 export async function stopSiblingAndResume(
   id: string,

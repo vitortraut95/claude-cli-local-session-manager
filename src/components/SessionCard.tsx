@@ -111,15 +111,8 @@ export function SessionCard({
     session.isWorktree && session.workingDirectory
       ? formatWorktreePath(session.workingDirectory)
       : null;
-  // See resolveSessionBranches' doc comment: `destination` is session.gitBranch unless that's
-  // missing/stale, in which case it falls back to whatever branch the nickname encodes. Feeds
-  // both the Jenkins and the PR links below.
   const { origin: originBranch, destination: taskBranch } = resolveSessionBranches(session);
-  // Shown for any session whose folder still exists and is a git repo (not just `env/*` branches)
-  // — every team's Jenkins follows the same job/<repo>/job/<branch> layout, see getJenkinsLinks.
-  // `gitBranch` is nulled server-side when the folder isn't a live git repo (e.g. a plain
-  // workspace folder holding many repos), where a job/<folder>/ link would be meaningless. Also
-  // hidden in this app's own repo, which has no Jenkins job.
+  // `gitBranch` is null when the folder isn't a git repo, where a job link would be meaningless.
   const teamLinks = useTeamLinks();
   const jenkinsLinks =
     session.directoryMissing || session.gitBranch === null || session.isAppRepo
@@ -131,14 +124,8 @@ export function SessionCard({
           originBranch,
         );
 
-  // Fetched on click rather than eagerly for every card — this is a git call (origin remote →
-  // host + repo slug) on the server, only worth paying for when the user actually wants the link.
-  // When this task's branch was created off something other than the repo's default (its origin
-  // branch — the nickname's, else `baseBranch` from taskStore.ts — is set and isn't
-  // main/master; applies whether the task used a worktree or not), defers to
-  // OpenPrBaseChoiceModal instead of opening straight away — the plain compare link's implicit
-  // default-branch comparison would otherwise show every commit already on that base as part of
-  // the "diff" too.
+  // The URL needs a server-side git call, so it's fetched on click. A non-default base branch
+  // goes through OpenPrBaseChoiceModal, since the plain link diffs against the default branch.
   const handleOpenPr = async () => {
     if (!taskBranch) return;
     if (
@@ -178,11 +165,7 @@ export function SessionCard({
     />
   );
 
-  // Unlike Delete/nickname-edit, Resume stays clickable even while the session is already active
-  // elsewhere: onContinue (useSessions.ts resumeSession) does a fresh live check and, if it's
-  // still active, offers a choice (create a worktree, or stop that terminal and resume here)
-  // instead of just refusing outright. Only a missing directory blocks it outright — there's
-  // nothing to offer an alternative for there.
+  // Resume stays enabled for an active session: onContinue re-checks and offers a conflict choice.
   const continueDisabledReason = session.directoryMissing
     ? t("sessionCard.continueDisabled.directoryMissing")
     : null;
@@ -226,9 +209,6 @@ export function SessionCard({
           : "border-gray-200 dark:border-gray-800"
       }`}
     >
-      {/* The only floating element on the card: active/inactive status stacked directly above
-          the select checkbox, so the top-left corner reads as one cluster instead of scattered
-          badges (copy/preview/etc. all live in the in-flow toolbar row below instead). */}
       <div className="absolute -top-2 -left-1.5 flex items-center gap-1">
         <input
           type="checkbox"
@@ -276,7 +256,6 @@ export function SessionCard({
               <LinkifiedText text={session.nickname} />
             </span>
           )}
-          {/* Same gate as the Jenkins/PR links these branches feed (git repo, folder present). */}
           {session.gitBranch !== null && !session.directoryMissing && !session.isAppRepo && (
             <div className="flex min-w-0 items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
               <GitBranch className="h-3.5 w-3.5 shrink-0" />
@@ -468,14 +447,8 @@ export function SessionCard({
           )}
 
           {session.isWorktree && !session.directoryMissing && (
-            // Unlike Delete/nickname-edit, this stays clickable even while the session is
-            // active: "copy" mode never touches the worktree (only reads it, writes to root) and
-            // only requires root to be free, so it's server-side safe regardless of this
-            // session's own active state (see applyWorktreeCopyToRoot in sessionService.ts).
-            // "checkout" mode does need the worktree closed first, but the modal's own preview
-            // step already blocks continuing in that specific case
-            // (blockedByActiveSession/worktreeHasActiveSession in WorktreeToRootModal.tsx) — no
-            // need to block opening the modal at all just because copy mode would still work.
+            // Enabled even while active: "copy" mode only reads the worktree, and the modal itself
+            // blocks "checkout" mode while the worktree's session is active.
             <Tooltip content={t("sessionCard.worktreeToRoot.tooltip")}>
               <Button
                 variant="outline-danger"
@@ -503,9 +476,7 @@ export function SessionCard({
         )}
       </p>
 
-      {/* Card action toolbar — one standardized-size icon per action, each in its own color
-          (no two actions share one) so they stay easy to tell apart at a glance; pick an unused
-          ToolbarIconButtonColor when adding a new action here. */}
+      {/* Each action uses its own ToolbarIconButtonColor; pick an unused one for a new action. */}
       <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 pt-3 dark:border-gray-800">
         {session.prompts.length > 0 && (
           <ToolbarIconButton
@@ -547,12 +518,10 @@ export function SessionCard({
             ariaLabel={t("sessionCard.openJenkinsAriaLabel")}
             color="neutral"
             onClick={() => setShowJenkinsModal(true)}
-            // Jenkins' own (multi-color) logo instead of a tinted line icon — it carries its own
-            // brand colors, so the button's color only drives the hover background here.
+            // Multi-color logo: the button color only drives the hover background.
             icon={<img src={jenkinsIcon} alt="" className="h-6 w-6" />}
           />
         )}
-        {/* Not offered in this app's own repo either, same as Jenkins above. */}
         {taskBranch && !session.directoryMissing && !session.isAppRepo && (
           <ToolbarIconButton
             tooltip={t("sessionCard.openPrTooltip")}
@@ -593,9 +562,8 @@ export function SessionCard({
 
       <div className="flex gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
         {continueDisabledReason !== null ? (
-          // Native `disabled` buttons don't reliably fire hover events, so the tooltip needs a
-          // separate, non-disabled wrapper — same pattern Radix's own docs recommend for
-          // disabled-button tooltips (the wrapping `<span>` inside continueButton is that layer).
+          // Disabled buttons don't fire hover events; continueButton's wrapping `<span>` carries
+          // the tooltip.
           <Tooltip content={continueDisabledReason}>{continueButton}</Tooltip>
         ) : (
           continueButton
@@ -653,11 +621,8 @@ export function SessionCard({
           session={session}
           onClose={() => setShowWorktreeToRootModal(false)}
           onComplete={() => onWorktreeSyncComplete(session)}
-          // `session` is still the pre-refresh prop here — checkout mode's own success is what
-          // guarantees the worktree is already gone, so isWorktree is corrected by hand rather
-          // than waiting for the parent's list refresh (which only runs once this modal closes)
-          // to catch up. Without this, the delete-confirm dialog offers a stale "clean up
-          // worktree" checkbox for a worktree that no longer exists.
+          // `session` is pre-refresh here; checkout mode already removed the worktree, so
+          // isWorktree is corrected by hand to avoid a stale "clean up worktree" checkbox.
           onOfferDeleteSession={() => onDeleteRequest({ ...session, isWorktree: false })}
         />
       )}

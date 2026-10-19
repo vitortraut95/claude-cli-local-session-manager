@@ -18,10 +18,8 @@ async function safeReaddir(dir: string) {
 }
 
 /**
- * Collects each project's own `*.jsonl` session logs, one directory level below `rootDir`.
- * Deliberately does not recurse further: sessions that spawn subagents get a
- * `<session-id>/subagents/agent-*.jsonl` folder reusing the parent's session id, and
- * treating those as independent sessions would create duplicate/non-resumable entries.
+ * Collects each project's `*.jsonl` session logs, one directory level below `rootDir`. Doesn't
+ * recurse: `<session-id>/subagents/agent-*.jsonl` reuse the parent's id and aren't sessions.
  */
 export async function findJsonlFiles(rootDir: string): Promise<string[]> {
   const projectDirs = await safeReaddir(rootDir);
@@ -76,7 +74,7 @@ type JsonlEntry = {
   };
 };
 
-/** Pulls the first plain-text block out of a message's `content`, which may be a string or an array of content blocks. */
+/** The first text block of a message's `content` (a string or an array of content blocks). */
 function extractText(content: unknown): string | null {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
@@ -95,12 +93,9 @@ function extractText(content: unknown): string | null {
 }
 
 /**
- * `.jsonl` transcripts are append-only (the CLI only ever adds lines to its own session log), so
- * a previous parse stays valid for as long as `mtime`+`size` haven't changed — cheap to check via
- * a single `stat()` and far cheaper than re-scanning a multi-MB transcript on every `GET
- * /sessions`. Keyed by absolute file path; entries for deleted sessions are pruned explicitly via
- * `forgetCachedSession` rather than left to grow forever, since nothing here ever evicts on its
- * own otherwise.
+ * Parse cache keyed by file path: transcripts are append-only, so a parse stays valid while
+ * `mtime`+`size` are unchanged. Nothing evicts on its own; deleted sessions call
+ * `forgetCachedSession`.
  */
 type CacheEntry<T> = { mtimeMs: number; size: number; value: T };
 
@@ -125,8 +120,7 @@ function writeCache<T>(
 const headCache = new Map<string, CacheEntry<SessionHead>>();
 const fullScanCache = new Map<string, CacheEntry<FullScanResult>>();
 
-/** Clears every cached parse for a session file — call once its `.jsonl` is actually deleted, so
- *  a stale entry never lingers keyed by a path that no longer exists. */
+/** Clears every cached parse for a session file; call once its `.jsonl` is deleted. */
 export function forgetCachedSession(filePath: string): void {
   headCache.delete(filePath);
   fullScanCache.delete(filePath);
@@ -134,11 +128,8 @@ export function forgetCachedSession(filePath: string): void {
 
 const MAX_LINES_SCANNED = 80;
 
-/**
- * Reads only the leading lines of a session's `.jsonl` file — title metadata
- * and the first user prompt both appear near the top, so a full read is unnecessary. Cached by
- * `mtime`+`size` (see above) since even this partial read isn't free on a very active session.
- */
+/** Reads only the leading lines of a session's `.jsonl` (title metadata and the first prompt
+ *  appear near the top). Cached by `mtime`+`size`. */
 export async function readSessionHead(filePath: string): Promise<SessionHead> {
   const s = await stat(filePath);
   const cached = readCache(headCache, filePath, s);
@@ -215,8 +206,7 @@ async function scanSessionHead(filePath: string): Promise<SessionHead> {
 
 /** Caps how many prompts are kept, so one unusually long session can't bloat either payload. */
 const MAX_PROMPTS_EXTRACTED = 30;
-/** Caps per-prompt length only in the *list* payload (see readSessionPrompts) — the full-text
- *  preview modal fetches the untruncated version separately via readFullSessionPrompts. */
+/** Caps per-prompt length in the list payload only (readFullSessionPrompts is untruncated). */
 const MAX_PROMPT_PREVIEW_LENGTH = 300;
 
 function truncatePrompt(text: string): string {
@@ -230,20 +220,15 @@ function truncatePrompt(text: string): string {
 const RECAP_HINT_SUFFIX = / \(disable recaps in \/config\)$/;
 
 type FullScanResult = {
-  /** Untruncated, capped at MAX_PROMPTS_EXTRACTED — callers below truncate per-prompt as needed. */
+  /** Untruncated, capped at MAX_PROMPTS_EXTRACTED. */
   prompts: string[];
   activeTimeMs: number;
   recap: string | null;
   latestGitBranch: string | null;
 };
 
-/**
- * Every field here needs a full pass over the transcript with no early exit (prompts stop once
- * `MAX_PROMPTS_EXTRACTED` is hit, but activeTimeMs/recap/latestGitBranch all need the *last*
- * matching entry, which can appear anywhere). Previously each lived in its own function and did
- * its own independent full-file read; folded into one pass since they're always needed together
- * (see `getFullScan`'s callers) and a `.jsonl` transcript is only worth reading through once.
- */
+/** One full pass over the transcript: activeTimeMs/recap/latestGitBranch need the *last*
+ *  matching entries, so there's no early exit. */
 async function scanFullTranscript(filePath: string): Promise<FullScanResult> {
   const prompts: string[] = [];
   let activeTimeMs = 0;
@@ -304,55 +289,28 @@ async function getFullScan(filePath: string): Promise<FullScanResult> {
   return value;
 }
 
-/**
- * Powers full-text search and the (truncated) list payload — every prompt is capped at
- * MAX_PROMPT_PREVIEW_LENGTH so one unusually long prompt can't bloat the `/sessions` response,
- * which embeds this for every session up front.
- */
+/** Prompts for search and the `/sessions` list, each truncated to MAX_PROMPT_PREVIEW_LENGTH. */
 export async function readSessionPrompts(filePath: string): Promise<string[]> {
   const { prompts } = await getFullScan(filePath);
   return prompts.map(truncatePrompt);
 }
 
-/**
- * Powers the prompt-preview modal only — fetched on demand for a single session (see
- * `GET /sessions/:id/prompts`), so returning full, untruncated text here doesn't affect the
- * `/sessions` list payload's size the way including it in `readSessionPrompts` would.
- */
+/** Untruncated prompts, for `GET /sessions/:id/prompts`. */
 export async function readFullSessionPrompts(filePath: string): Promise<string[]> {
   return (await getFullScan(filePath)).prompts;
 }
 
-/**
- * Sums `{"type":"system","subtype":"turn_duration","durationMs":...}` entries — the CLI's own
- * measurement of how long it actually spent processing each turn. A more honest signal of active
- * work than the file's mtime, which only says when the transcript was last written to.
- */
+/** Sum of the CLI's `{"type":"system","subtype":"turn_duration","durationMs":...}` entries. */
 export async function readSessionActiveTimeMs(filePath: string): Promise<number> {
   return (await getFullScan(filePath)).activeTimeMs;
 }
 
-/**
- * Scans the entire transcript for the *last* recorded `gitBranch`, not the first (unlike
- * `readSessionHead`, which stops at the first non-null value within its leading-lines window).
- * The CLI logs the current branch on every entry, and a session that switches branches mid-way
- * (e.g. a manual `git checkout` run outside the "New task" modal's worktree/branch-per-task flow)
- * will have that switch land well past `readSessionHead`'s `MAX_LINES_SCANNED` cutoff — using the
- * first-seen value would then pin the session to a branch it left behind hundreds of lines ago.
- * The last-seen value is what the session's working directory is actually left on.
- */
+/** The *last* `gitBranch` logged in the transcript (a session can switch branches mid-way). */
 export async function readSessionLatestGitBranch(filePath: string): Promise<string | null> {
   return (await getFullScan(filePath)).latestGitBranch;
 }
 
-/**
- * Scans for `{"type":"system","subtype":"away_summary","content":...}` entries — the CLI's own
- * natural-language "what we did / what's next" recap, written each time the user steps away. A
- * session can log several over its lifetime (one per away period); later entries overwrite
- * earlier ones here so the *most recent* recap wins, since it best reflects where the session
- * currently stands.
- */
+/** The most recent `{"type":"system","subtype":"away_summary"}` recap the CLI logged. */
 export async function readSessionRecap(filePath: string): Promise<string | null> {
   return (await getFullScan(filePath)).recap;
 }
-

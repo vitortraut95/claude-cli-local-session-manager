@@ -15,22 +15,14 @@ type OpenPrBaseChoiceModalProps = {
 };
 
 /**
- * Shown instead of opening the PR link directly whenever the session has an origin branch
- * (`resolveSessionBranches` — the nickname's, else `session.baseBranch`) — i.e. this
- * task's branch was created off something other than the repo's own default, whether via a
- * worktree or checked out directly in the repo root (see `Session.baseBranch`/
- * `taskStore.ts`'s `repoBranches`), so the plain compare link's implicit default-branch comparison would show
- * every commit already on that base as part of the "diff" too. Offers the accurate compare link
- * (explicit `<base>...<branch>`, see `getSessionPrUrl`) alongside the option to fall back to the
- * default anyway (e.g. the base branch was since merged or deleted, or the default is genuinely
- * what's wanted) — two real choices, not a confirm/cancel pair.
+ * Shown before opening the PR when the session has a base branch other than the repo default,
+ * since the plain compare link diffs against the default branch. Offers both compare links.
  */
 export function OpenPrBaseChoiceModal({ session, onClose }: OpenPrBaseChoiceModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [loadingChoice, setLoadingChoice] = useState<"base" | "default" | null>(null);
-  // Resolved like the card's own links, so a base branch corrected via the nickname wins over the
-  // recorded `session.baseBranch`. The modal is only opened when this is non-null.
+  // Only opened when `origin` is non-null.
   const { origin, destination: taskBranch } = resolveSessionBranches(session);
   const baseBranch = origin ?? "";
 

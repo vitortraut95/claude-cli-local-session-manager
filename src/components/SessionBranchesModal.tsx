@@ -13,10 +13,8 @@ type SessionBranchesModalProps = {
 };
 
 /**
- * Edits the session's saved origin/destination branches (`tasks.json`). Mounted only
- * while open, same convention as NicknameModal, so the fields start fresh on every open. Prefilled
- * with the branches currently in use; a field left blank falls back to what the nickname/transcript
- * gives (shown as its placeholder) instead of being saved.
+ * Edits the session's saved origin/destination branches. Prefilled with the branches in use; a
+ * blank field isn't saved and falls back to the nickname/transcript value (its placeholder).
  */
 export function SessionBranchesModal({ session, onSave, onCancel }: SessionBranchesModalProps) {
   const { t } = useLanguage();

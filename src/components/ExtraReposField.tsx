@@ -15,19 +15,17 @@ type ExtraReposFieldProps = {
   onChange: (value: ExtraRepo[]) => void;
   /** No ticket key in the link — extras need one to be grouped into the task. */
   disabled: boolean;
-  /** Trying to add a repo while `disabled` — not a native `disabled` select, which would just
-   *  ignore the click and look broken; the caller explains why and points at the link field. */
+  /** Trying to add a repo while `disabled` (the select isn't natively disabled, so the caller can
+   *  explain why). */
   onBlockedAdd: () => void;
-  /** The "Yes / No" toggle — "No" (the default) hides everything below it. */
+  /** The "Yes / No" toggle — "No" hides everything below it. */
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
 };
 
 /**
- * "New task"'s optional "other repos of this task": each gets the same branch name, off its own
- * base (blank = the repo's default), with the server's smart worktree default, and joins the one
- * session opened in the main folder via `--add-dir`. Collapsed behind a "Yes / No" (default No)
- * since it's rarely needed and would otherwise make the modal much taller.
+ * "New task"'s optional other repos: each gets the same branch name off its own base (blank = the
+ * repo's default) and joins the main folder's session via `--add-dir`.
  */
 export function ExtraReposField({
   projects,

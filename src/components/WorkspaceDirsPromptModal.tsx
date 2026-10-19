@@ -13,11 +13,7 @@ type WorkspaceDirsPromptModalProps = {
   onSkip: () => void;
 };
 
-/**
- * Asked on every app start while `workspaceDirs` was never saved (null) — see Header. Mounted only
- * while shown (same convention as NicknameModal), so it always starts from a fresh, preselected
- * list.
- */
+/** Asked on every app start while `workspaceDirs` was never saved (null). */
 export function WorkspaceDirsPromptModal({ onSaved, onSkip }: WorkspaceDirsPromptModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();

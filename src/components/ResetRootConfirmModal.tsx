@@ -14,16 +14,9 @@ type ResetRootConfirmModalProps = {
 };
 
 /**
- * The standalone "Reset root" quick action — discards root's uncommitted changes without going
- * through the full "worktree → root" wizard (choice → preview → confirm → progress) just to reach
- * its shared first step. Meant for the exact repeated loop this app's own worktree → root feature
- * was built for: copy a worktree in to test, look at it, then reset before copying the next one.
- *
- * Mounted only while open (same convention as NicknameModal) — fetches root's live status
- * on open via the lighter `fetchRootStatus` (same endpoint the wizard's own confirm step uses),
- * deferred through a 0ms timer so the fetch's setState calls land in a callback rather than
- * synchronously in the effect body (same pattern CleanupModal/NewTaskModal use for their own
- * on-open fetches).
+ * Standalone "Reset root" quick action: stashes root's uncommitted changes without going through
+ * the full "worktree → root" wizard. Mounted only while open; fetches root's live status on open
+ * (via a 0ms timer so the setState calls don't run synchronously in the effect body).
  */
 export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModalProps) {
   const { t } = useLanguage();
@@ -102,9 +95,8 @@ export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModa
       <div className="flex flex-col gap-3">
         <p className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-400">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          {/* A single child span, not bare text + <code> siblings — this <p> is a flex container,
-              and mixed text/element siblings at that level each become their own flex item
-              (breaking normal text wrapping) instead of flowing as one paragraph. */}
+          {/* One wrapping span: inside this flex <p>, bare text + <code> siblings would each
+              become a flex item and break text wrapping. */}
           <span>
             {t("resetRootConfirmModal.warningIntro")} <code>git stash apply</code>
             {t("resetRootConfirmModal.warningMiddle")} <code>node_modules</code>

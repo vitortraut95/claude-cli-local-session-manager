@@ -5,27 +5,11 @@ import path from "node:path";
 const CLAUDE_JSON_PATH = path.join(os.homedir(), ".claude.json");
 
 /**
- * Marks `worktreePath` as trust-accepted in the Claude CLI's own global config
- * (`~/.claude.json`'s `projects["<path>"].hasTrustDialogAccepted`, confirmed by inspecting the
- * file directly) — the same flag the CLI itself sets once a human answers its first-run "do you
- * trust this folder?" dialog interactively.
- *
- * Every worktree this app creates is a git-managed subdirectory of a repo the user is already
- * trusted in, never an arbitrary folder — pre-accepting trust on the app's behalf here is a
- * narrow, scoped exception, not a blanket "trust everything" change. Two real failure modes
- * both trace back to skipping this: `claude --worktree <name>` (see createSessionWorktree in
- * sessionService.ts) exits in about a second with "Workspace trust not yet accepted" and creates
- * nothing whenever it's run from an as-yet-untrusted directory — with no way for this app to
- * detect that from a detached, fire-and-forget terminal spawn, so the UI shows a plain success
- * toast regardless — and a freshly-created worktree's first interactive `claude` launch
- * otherwise stops at that same one-time dialog, invisibly, in a terminal window this app can't
- * force to the front on some setups (see CLAUDE.md's Wayland focus-stealing note).
- *
- * Best-effort and silent on any failure (missing file, unexpected shape, a concurrent write from
- * the CLI itself racing this one, ...) — this is a convenience, never something worth blocking or
- * failing the actual worktree creation over. Reads and rewrites the whole file rather than a
- * targeted patch since there's no CLI-provided API for this; writes to a temp file and renames
- * over the original so a crash mid-write can't leave `~/.claude.json` truncated.
+ * Marks `worktreePath` as trust-accepted in `~/.claude.json`
+ * (`projects["<path>"].hasTrustDialogAccepted`), the flag the CLI sets after its "do you trust this
+ * folder?" dialog. Without it `claude --worktree <name>` exits with "Workspace trust not yet
+ * accepted", which a detached terminal spawn can't report back. Only used for worktrees of repos
+ * the user already trusts. Best-effort; writes via temp file + rename so a crash can't truncate it.
  */
 export async function markWorktreeTrustAccepted(worktreePath: string): Promise<void> {
   try {

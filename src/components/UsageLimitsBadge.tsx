@@ -14,9 +14,7 @@ type UsageLimitsBadgeProps = {
 
 type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
-/** Short header-badge labels for the limit kinds actually seen in practice — anything else falls
- *  back to a generic transform of its raw `kind` so a new limit type Anthropic adds still shows
- *  up (just less prettily) instead of being silently dropped. */
+/** Short labels for known limit kinds; unknown kinds fall back to a transform of the raw `kind`. */
 const COMPACT_LABEL_KEYS: Record<string, TranslationKey> = {
   session: "usageLimitsBadge.compact.session",
   weekly_all: "usageLimitsBadge.compact.weeklyAll",
@@ -38,8 +36,7 @@ function fullLabel(kind: string, t: Translate): string {
   return key ? t(key) : kind.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** "resets in 3h 12min (30/07 21:29)" — both the relative countdown and an absolute local time,
- *  since "when it expires" was the whole point of adding this. */
+/** "resets in 3h 12min (30/07 21:29)": relative countdown plus absolute local time. */
 function formatResetsAt(resetsAt: string | null, t: Translate): string | null {
   if (!resetsAt) return null;
   const date = new Date(resetsAt);
@@ -89,9 +86,7 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
         ? t("usageLimitsBadge.unavailable")
         : t("usageLimitsBadge.noData");
 
-  // Anthropic's extra-usage-credits add-on: only worth a line when the account actually has a
-  // limit configured — an account that's technically "enabled" but with a 0 monthly limit (the
-  // common case for anyone who hasn't opted in) would otherwise show a confusing "0 / 0" line.
+  // Extra-usage credits: hidden when the monthly limit is 0, which would show a confusing "0 / 0".
   const extraUsage = status?.extraUsage;
   const showExtraUsage = Boolean(extraUsage?.isEnabled && extraUsage.monthlyLimit > 0);
 

@@ -55,8 +55,7 @@ export type ClaudeUsageStatus = {
   extraUsage: ClaudeExtraUsage | null;
 };
 
-/** `forceRefresh` bypasses the server's own short cache — used by the header widget's manual
- *  refresh button, since a plain mount-time fetch is happy with a slightly stale value. */
+/** `forceRefresh` bypasses the server's short cache. */
 export async function fetchUsageLimits(forceRefresh = false): Promise<ClaudeUsageStatus> {
   const { data } = await withServerErrorMessage(() =>
     client.get<ClaudeUsageStatus>("/usage-limits", {

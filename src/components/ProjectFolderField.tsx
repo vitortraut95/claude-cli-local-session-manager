@@ -12,8 +12,7 @@ type ProjectFolderFieldProps = {
   repoError?: string | null;
 };
 
-/** The "Project (folder)" field shared by the "New task" and "New session" modals — see
- *  `useProjectFolders` for the state behind it. */
+/** The "Project (folder)" field shared by the "New task" and "New session" modals. */
 export function ProjectFolderField({
   folders,
   inputName,

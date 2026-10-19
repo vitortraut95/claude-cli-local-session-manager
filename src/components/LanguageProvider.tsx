@@ -3,10 +3,7 @@ import { LanguageContext } from "../hooks/useLanguage";
 import { detectBrowserLanguage, type Language } from "../i18n/translations";
 import * as tasksApi from "../services/tasksApi";
 
-/** Mirrors ToastProvider's shape: state lives here, consumed everywhere via useLanguage(). Fetches
- *  preferences once for the whole app (not per-component) — writes go through
- *  tasksApi.updatePreferences so NewTaskModal's own preference saves (different fields) can't
- *  clobber these, or vice versa. */
+/** Holds the app language, consumed via useLanguage(); fetches preferences once for the whole app. */
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(detectBrowserLanguage());
   const [loaded, setLoaded] = useState(false);

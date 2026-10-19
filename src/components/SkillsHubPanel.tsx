@@ -11,9 +11,7 @@ type SkillsHubPanelProps = {
   onManage: () => void;
 };
 
-/** Every state shares this box (same border, padding and minimum height — room for a small
- *  button), so switching from the loading placeholder to the real content never changes the
- *  modal's height. */
+/** Shared by every state so swapping the loading placeholder never changes the modal's height. */
 function PanelShell({ tone, children }: { tone: "invite" | "neutral"; children: ReactNode }) {
   const toneClasses =
     tone === "invite"
@@ -30,11 +28,8 @@ function PanelShell({ tone, children }: { tone: "invite" | "neutral"; children: 
 }
 
 /**
- * The New Task modal's one-glance view of the team skills hub. Never blocks
- * anything: without the hub it's a "Set up" invite (always shown, not dismissable — a repo URL
- * saved as "" is how someone opts out), with it a single status line plus "Manage". While the
- * status is still loading it holds the same space with a placeholder; it renders nothing only when
- * the hub is opted out or the status can't be loaded.
+ * The New Task modal's view of the team skills hub: a "Set up" invite without the hub, a status
+ * line plus "Manage" with it. Renders nothing when opted out (repo URL "") or the status fails.
  */
 export function SkillsHubPanel({ status, failed, onManage }: SkillsHubPanelProps) {
   const { t } = useLanguage();

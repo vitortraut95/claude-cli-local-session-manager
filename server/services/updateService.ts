@@ -34,17 +34,11 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-/** Works from any cwd inside the repo, so it doesn't assume where this process was launched from. */
 async function getRepoRoot(): Promise<string> {
   return git(["rev-parse", "--show-toplevel"], process.cwd());
 }
 
-/** Hardcoded rather than resolved via the current branch's own `@{u}` upstream: this repo can be
- *  dogfooded on itself (see CLAUDE.md), so this process might be running from a `--no-track`
- *  worktree branch with no upstream configured at all — resolving `@{u}` there throws and used to
- *  silently report "no update available" (disabling the Update button) instead of ever reaching
- *  the real comparison. "Update available" always means "origin/main has commits this checkout
- *  doesn't", regardless of what branch/worktree happened to launch this process. */
+/** Not `@{u}`: this process may run from a `--no-track` worktree branch with no upstream. */
 const UPDATE_TARGET_REF = "origin/main";
 
 export async function getUpdateStatus(): Promise<UpdateStatus> {
@@ -95,16 +89,9 @@ export async function getUpdateJobStatus(): Promise<UpdateJobStatus> {
 }
 
 /**
- * Kicks off a forced update (fetch + hard reset to the remote branch, discarding any local
- * commits/edits — see run-update.mjs) + `yarn install` as a detached process and returns as soon
- * as it's launched — it does not wait for the update/install to finish. The dev server runs
- * under `tsx watch`, which restarts this very process the instant the reset rewrites a watched
- * source file; running the actual work in-process (and awaiting it here) would have this
- * request's response killed mid-flight by that restart. The frontend instead polls
- * getUpdateJobStatus() (backed by a status file, so it survives the restart) to learn the
- * outcome. Deliberately doesn't check for uncommitted local changes first — the whole point of
- * the forced reset is that a machine can always update with zero friction, discarding whatever
- * local state existed rather than asking the user to resolve it first.
+ * Launches the forced update (fetch + hard reset, discarding local changes, + `yarn install`) as
+ * a detached process and returns immediately: `tsx watch` restarts this process as soon as the
+ * reset rewrites a source file. The frontend polls getUpdateJobStatus() (a status file) instead.
  */
 export async function startUpdate(): Promise<void> {
   const repoRoot = await getRepoRoot();

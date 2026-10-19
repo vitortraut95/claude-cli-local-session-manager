@@ -4,10 +4,8 @@ import { Select } from "./Select";
 
 type ProjectFilterProps = {
   projects: string[];
-  /** Display text per project (e.g. "git/my-app" for project "my-app") — the
-   *  option's `value` (and thus the actual filter match) always stays the plain project name;
-   *  this only changes what's shown. Falls back to the bare project name when a project has no
-   *  entry (see `resolveProjectParentSegment` for when that happens). */
+  /** Display text per project (e.g. "git/my-app"); the option value stays the plain project
+   *  name. Falls back to the bare name when a project has no entry. */
   projectLabels: Record<string, string>;
   value: string;
   onChange: (value: string) => void;

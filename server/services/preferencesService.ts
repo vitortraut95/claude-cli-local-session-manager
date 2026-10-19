@@ -1,85 +1,59 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 
 export type Language = "en" | "pt" | "es";
 
-/** The team-skills integration (`skillsHubService.ts`). Added after the file's first release — an
- *  older file lacks it entirely, and every sub-field falls back individually. */
+/** The team-skills integration. Optional: older files lack it; each sub-field falls back. */
 export type SkillsHubPreferences = {
-  /** The team's skills repo (clone URL, e.g. `git@host:owner/skills-repo.git`). Per-machine on
-   *  purpose — this app's own repo is public and must not name any team's private repo. Null =
-   *  never set (the startup prompt asks; until then the `origin` of an existing clone is used,
-   *  see `skillsHubService.ts`'s `detectHubRepoUrl`); "" = explicitly not used. */
+  /** The team's skills repo clone URL. Per-machine: this repo is public. Null = never set (the
+   *  `origin` of an existing clone is used, `detectHubRepoUrl`); "" = explicitly not used. */
   repoUrl: string | null;
   /** Explicit clone location; null = auto-detect among the workspace repos by `origin`. */
   path: string | null;
-  /** Catalogs whose skills are kept linked; null = never chosen (the selection is then inferred
-   *  from whatever is already linked, so nothing set up by hand gets undone). */
+  /** Catalogs whose skills are kept linked; null = never chosen (inferred from what's linked). */
   catalogs: string[] | null;
-  /** Individually picked skills (`<catalog>/<skill>`) on top of the whole `catalogs` — only
-   *  meaningful once `catalogs` is non-null (an explicit choice was made). */
+  /** Individually picked skills (`<catalog>/<skill>`) on top of `catalogs`; only meaningful
+   *  once `catalogs` is non-null. */
   skills: string[];
-  /** "Not now" on the New Task modal's old invite to install the hub — no longer used by the UI,
-   *  kept so older files/bundles round-trip unchanged. */
+  /** Unused by the UI; kept so older files/bundles round-trip unchanged. */
   inviteDismissed: boolean;
-  /** Sync the hub (fetch + fast-forward when clean, refresh links) in the background whenever
-   *  the server starts. Added later: an older file lacks it and gets the default (on). */
+  /** Sync the hub in the background on server start. Optional: older files lack it (default on). */
   autoUpdateOnStart: boolean;
 };
 
 export type UserPreferences = {
   defaultPrompt: string;
-  /** The "New session" modal's own pre-filled prompt — separate from `defaultPrompt` (the "New
-   *  task" one), since a free-form session has no Jira link/branch to frame. Added after the
-   *  file's first release, so an older file simply lacks it (falls back to ""). */
+  /** The "New session" modal's pre-filled prompt. Optional: older files lack it (""). */
   defaultSessionPrompt: string;
   branchTypes: string[];
-  /** Fallback only — used before a project folder is chosen/resolved, or if the "is there already
-   *  an active session in this repo's root?" check (`taskService.ts`'s `getRepoInfo`,
-   *  `RepoInfo.hasActiveSessionInRoot`) fails. Once that check resolves, the modal's "no worktree"
-   *  checkbox follows *it* instead: suggest a worktree only when the root is actually busy,
-   *  default to no worktree otherwise — see NewTaskModal.tsx. Kept as a normal, user-overridable
-   *  preference (via the "Use as default" link) for whichever of those inconclusive cases comes up. */
+  /** Fallback only, before a folder is chosen or if `RepoInfo.hasActiveSessionInRoot` can't be
+   *  resolved; otherwise the worktree checkbox follows that. */
   useWorktreeByDefault: boolean;
-  /** Mirrors the "new task" modal's own "--permission-mode auto" checkbox — remembered
-   *  automatically as whatever it was last left at (no separate "save as default" step, unlike
-   *  defaultPrompt/useWorktreeByDefault), since there's no meaningfully different "draft" value
-   *  to preserve across an accidental close the way a half-written prompt is. */
+  /** The "New task" modal's "--permission-mode auto" checkbox, remembered as last left. */
   useAutoPermissionModeByDefault: boolean;
-  /** Null means "never explicitly chosen" — the frontend falls back to the browser's own
-   *  language in that case rather than this ever defaulting to a fixed language server-side. */
+  /** Null = never chosen; the frontend falls back to the browser's language. */
   language: Language | null;
-  /** Repo roots used via the "new task" modal, most-recently-used first — see
-   *  `taskService.ts`'s `recordUsedProjectPath`. Lets `getKnownProjectFolders()` offer a project
-   *  folder before it has any session/`.jsonl` of its own yet, and (once cached listing lands)
-   *  without needing the full session scan at all. Editable from the header's settings modal. */
+  /** Repo roots used via "New task", most-recent first — lets `getKnownProjectFolders()` offer a
+   *  folder that has no session yet. */
   recentProjectPaths: string[];
-  /** How many of a project's most-recently-updated sessions the "Cleanup" modal's
-   *  `prune-old-sessions` finding always keeps — the rest become deletion candidates (see
-   *  `cleanupService.ts`). Editable from the header's settings modal. */
+  /** How many of a project's most recent sessions Cleanup's `prune-old-sessions` always keeps. */
   keepRecentSessionsPerProject: number;
-  /** Folders holding the user's repos (e.g. `~/git`), each scanned one level deep for git repos
-   *  (see `workspaceService.ts`). Null means "never set" — the frontend asks for it on startup
-   *  until it is (an explicit empty list is a valid, saved answer too, but the prompt treats it
-   *  the same). Added after the file's first release, so an older file simply lacks it. */
+  /** Folders holding the user's repos (e.g. `~/git`), scanned one level deep. Null = never set
+   *  (the frontend asks on startup). Optional: older files lack it. */
   workspaceDirs: string[] | null;
   skillsHub: SkillsHubPreferences;
-  /** Base URL of the team's Jenkins (the session card's Jenkins button). Null = never set — the
-   *  startup prompt asks, prefilled from the legacy `VITE_JENKINS_BASE_URL` in `.env`, which also
-   *  stays the fallback until then; "" = explicitly not used (button hidden). */
+  /** Base URL of the team's Jenkins. Null = never set (the legacy `VITE_JENKINS_BASE_URL` in
+   *  `.env` is the fallback); "" = explicitly not used (button hidden). */
   jenkinsBaseUrl: string | null;
-  /** Static preview sites an `env/*` branch's pipeline deploys, per project folder name — each a
-   *  label plus a URL template where `{env}` becomes the branch slug (`env/PROJ-1` → `env-proj-1`).
-   *  Shown in the Jenkins modal. Per-machine config for the same reason as `jenkinsBaseUrl`. */
+  /** Preview sites an `env/*` branch deploys, per project folder name; `{env}` in a URL becomes
+   *  the branch slug (`env/PROJ-1` → `env-proj-1`). */
   envPreviews: EnvPreviews;
-  /** Name of the installed skill (a folder in `~/.claude/skills`) the header's "Test task" button
-   *  runs as `/<skill> <ticket link>`. "" = not set, button hidden. Per-machine because the skill
-   *  is team-specific and this repo is public. Added later: an older file lacks it. */
+  /** Installed skill the "Test task" button runs as `/<skill> <ticket link>`; "" = button hidden.
+   *  Optional: older files lack it. */
   taskTestSkill: string;
-  /** The "Test task" modal's "--permission-mode auto" checkbox, remembered as last left — separate
-   *  from `useAutoPermissionModeByDefault` (New Task) and on by default, since the test skill only
-   *  reads and its terminal usually sits in the background. Added later: an older file lacks it. */
+  /** The "Test task" modal's "--permission-mode auto" checkbox, remembered as last left (default
+   *  on). Optional: older files lack it. */
   taskTestPermissionModeAuto: boolean;
 };
 
@@ -138,14 +112,12 @@ export function isSkillsHubPreferences(value: unknown): value is SkillsHubPrefer
   if (typeof value !== "object" || value === null) return false;
   const raw = value as Record<string, unknown>;
   return (
-    // Optional: a frontend bundle from before the repo URL moved here doesn't send it.
+    // Optional fields below: older frontend bundles don't send them.
     (raw.repoUrl === undefined || raw.repoUrl === null || typeof raw.repoUrl === "string") &&
     (raw.path === null || typeof raw.path === "string") &&
     (raw.catalogs === null || isStringArray(raw.catalogs)) &&
-    // Optional: a frontend bundle from before per-skill picks existed doesn't send it.
     (raw.skills === undefined || isStringArray(raw.skills)) &&
     typeof raw.inviteDismissed === "boolean" &&
-    // Optional: a frontend bundle from before the startup auto-update existed doesn't send it.
     (raw.autoUpdateOnStart === undefined || typeof raw.autoUpdateOnStart === "boolean")
   );
 }
@@ -169,13 +141,8 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
-/**
- * Everything the "new task" modal remembers between sessions, in one gitignored, per-machine
- * local file. Created lazily on first save (see `saveUserPreferences`); missing/malformed fields
- * fall back individually to `DEFAULT_PREFERENCES` rather than rejecting the whole file, since a
- * user hand-editing the JSON shouldn't lose everything else over one typo — and the file not
- * existing at all (fresh clone, never saved to) falls back the same way.
- */
+/** Reads the per-machine preferences file; a missing file or each missing/malformed field falls
+ *  back individually to `DEFAULT_PREFERENCES`. */
 export async function getUserPreferences(): Promise<UserPreferences> {
   try {
     const raw = await readFile(PREFERENCES_PATH, "utf-8");
@@ -240,6 +207,20 @@ export function getPreferencesPath(): string {
   return PREFERENCES_PATH;
 }
 
-export async function saveUserPreferences(preferences: UserPreferences): Promise<void> {
-  await writeFile(PREFERENCES_PATH, `${JSON.stringify(preferences, null, 2)}\n`, "utf-8");
+let writeQueue: Promise<unknown> = Promise.resolve();
+
+/** The only way to write the file: read → `mutate` → atomic temp-file + rename, serialized on one
+ *  in-process queue so concurrent writers can't drop each other's changes. */
+export function updateUserPreferences(
+  mutate: (current: UserPreferences) => UserPreferences,
+): Promise<void> {
+  const run = writeQueue.then(async () => {
+    const next = mutate(await getUserPreferences());
+    const tmpPath = `${PREFERENCES_PATH}.tmp-${process.pid}-${Date.now()}`;
+    await writeFile(tmpPath, `${JSON.stringify(next, null, 2)}\n`, "utf-8");
+    await rename(tmpPath, PREFERENCES_PATH);
+  });
+  // A failed write must not wedge every later one.
+  writeQueue = run.catch(() => undefined);
+  return run;
 }

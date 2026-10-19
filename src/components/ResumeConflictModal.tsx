@@ -17,10 +17,8 @@ type ResumeConflictModalProps = {
 };
 
 /**
- * Shown instead of resuming directly once `resumeSession` (useSessions.ts) freshly confirms a
- * conflict — either a different session active in the same directory, or (when `sibling.id ===
- * target.id`) this exact session already open in another terminal. Mounted only while open, same
- * re-init-on-open pattern as NicknameModal.
+ * Shown when resuming would conflict: another session is active in the same directory, or (when
+ * `sibling.id === target.id`) this session is already open in another terminal.
  */
 export function ResumeConflictModal({
   target,
@@ -32,12 +30,8 @@ export function ResumeConflictModal({
   onCancel,
 }: ResumeConflictModalProps) {
   const { t } = useLanguage();
-  // The CLI's own `--worktree <name>` flag (see createSessionWorktree in sessionService.ts) uses
-  // `name` to build both a directory name and a `worktree-<name>` branch name — a raw branch name
-  // like "feature/PROJ-123" isn't a valid worktree name (the CLI silently mangles the "/" into a
-  // "+" instead, e.g. producing a confusing "worktree-feature+PROJ-123" branch) — sanitize the
-  // same way server/utils/git.ts's `sanitizeWorktreeDirName` already does server-side (no shared
-  // package between the two workspaces to import it from directly).
+  // A branch name isn't a valid `--worktree` name ("/" gets mangled into "+"); sanitized like
+  // `sanitizeWorktreeDirName` in server/utils/git.ts.
   const [worktreeName, setWorktreeName] = useState(
     (target.gitBranch ?? "").replace(/[^A-Za-z0-9_-]/g, "-"),
   );

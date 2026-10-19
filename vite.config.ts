@@ -23,15 +23,10 @@ export default defineConfig({
       "/tasks": "http://localhost:58231",
       "/cleanup": "http://localhost:58231",
     },
-    // `.claude/` (gitignored, see .gitignore) holds worktrees this app itself creates/removes —
-    // for a project managed by this app that also happens to be itself (dogfooding), a worktree
-    // under here is a full copy of the source tree. Vite's watcher doesn't consult .gitignore on
-    // its own, so without this a bulk file removal there (e.g. the "Limpeza" modal's worktree
-    // cleanup) reads as a burst of source changes and triggers a full page reload, wiping in-app
-    // state like an open modal.
+    // `.claude/` holds worktrees of this repo (full source copies); Vite ignores .gitignore, so
+    // creating/removing one there would trigger a full page reload.
     watch: {
-      // The backend's own sidecar data files at the repo root (tasks.json is written via a temp
-      // file + rename) — without this, every write reloads the page and closes any open modal.
+      // Backend sidecar files at the repo root: without this, every write reloads the page.
       ignored: [
         "**/.claude/**",
         "**/tasks.json",

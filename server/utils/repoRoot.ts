@@ -3,11 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * Walks up from this file's own location looking for the monorepo root's `package.json` (the one
- * with a `workspaces` array — `server/package.json` doesn't have one). Anchoring to the module's
- * own location rather than `process.cwd()` means this resolves correctly whether the server is
- * started via `tsx watch index.ts` (cwd = server/) or a built `dist/utils/repoRoot.js` (nested one
- * directory deeper) — both would break a hardcoded relative `path.resolve(__dirname, "..", "..")`.
+ * Walks up from `startDir` to the monorepo root (the `package.json` with a `workspaces` array).
+ * Starts from the module's location so it works from both `tsx` sources and a deeper `dist/`.
  */
 function findRepoRoot(startDir: string): string {
   let dir = startDir;
@@ -29,6 +26,5 @@ function findRepoRoot(startDir: string): string {
   }
 }
 
-/** Absolute path to the monorepo root — used to locate gitignored, per-machine local files (the
- *  "new task" modal's `userPreferences.json`) regardless of which service module asks. */
+/** Absolute path to the monorepo root, where the gitignored per-machine JSON files live. */
 export const REPO_ROOT = findRepoRoot(path.dirname(fileURLToPath(import.meta.url)));

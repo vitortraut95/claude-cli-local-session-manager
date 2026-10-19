@@ -56,10 +56,8 @@ const STATE_CLASSES: Record<SkillLinkState, string> = {
 };
 
 /**
- * Sets up and manages the team skills from the skills hub repo: set its URL, clone it (or point at an existing
- * clone), choose catalogs, see each skill's link state, update now. Opened from the New Task
- * modal's skills panel and from the settings modal. Everything here is optional — closing it
- * without doing anything changes nothing.
+ * Sets up and manages the team skills hub: repo URL, clone, catalog selection, each skill's link
+ * state, and updating.
  */
 export function SkillsHubModal({ onClose }: SkillsHubModalProps) {
   const { t } = useLanguage();
@@ -383,8 +381,7 @@ function ManageSection({
   const [lastSync, setLastSync] = useState<{ warning: boolean; text: string } | null>(null);
   const [showPath, setShowPath] = useState(false);
 
-  // A server-side change (e.g. a sync or another tab) reseeds the draft only while the user hasn't
-  // started editing it — same "follow until touched" idea as the New Task form.
+  // A server-side change reseeds the draft only while the user hasn't started editing it.
   const [seededFrom, setSeededFrom] = useState(saved);
   if (seededFrom !== saved) {
     setSeededFrom(saved);
@@ -543,8 +540,6 @@ function ManageSection({
           </div>
         </div>
         {showPath && (
-          // Repo URL and clone folder are edited in one place — Settings' "Team skills" row —
-          // so this only points there instead of offering a second editor.
           <p className="mt-3 flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300">
             <Settings className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             {t("skillsHub.manage.changePathHint")}

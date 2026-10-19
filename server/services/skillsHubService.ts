@@ -3,10 +3,11 @@ import { lstat, mkdir, readdir, readFile, readlink, stat, symlink, unlink } from
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { AppError } from "../utils/httpError.js";
+import { cloneRepository, NON_INTERACTIVE_GIT_ENV } from "../utils/git.js";
+import { AppError, BadRequestError } from "../utils/httpError.js";
 import {
   getUserPreferences,
-  saveUserPreferences,
+  updateUserPreferences,
   type SkillsHubPreferences,
 } from "./preferencesService.js";
 import { normalizeRemoteUrl } from "./sessionTransferService.js";
@@ -14,43 +15,28 @@ import { directoryExists } from "./sessionService.js";
 import { expandHome, findReposIn, getWorkspaceRepos } from "./workspaceService.js";
 
 /**
- * Team skills from a shared skills repo ("the hub" — a git repo with a `catalog/<catalog>/` tree of
- * skill folders), made available to every Claude session on this machine by symlinking each skill folder of the
- * user's chosen catalogs into the CLI's user-level skills dir (`~/.claude/skills`, or
- * `$CLAUDE_CONFIG_DIR/skills`) — the same scheme a catalog's own link script would use,
- * reimplemented here so it works for any catalog. Because the links point into the
- * clone, a `git pull` there updates already-linked skills in place; only a brand-new skill needs a
- * new link, which `syncSkillsHub` (run right before every "New task" launch) adds.
+ * Team skills from a shared skills repo ("the hub": a git repo with a `catalog/<catalog>/` tree of
+ * skill folders), symlinked into the CLI's user-level skills dir (`~/.claude/skills`, or
+ * `$CLAUDE_CONFIG_DIR/skills`). A pull in the clone updates linked skills in place; only new skills
+ * need a link, which `syncSkillsHub` adds.
  *
- * Everything here is optional and non-blocking by design: no hub, no catalogs chosen, offline —
- * the "New task" flow still works exactly as before, the UI just invites the user to set it up.
- * Never forces anything on the clone (it's the user's own checkout, they may be developing skills
- * in it): only `fetch` + a fast-forward-only merge of the current branch's upstream when clean.
- * Never touches an entry in the skills dir that isn't a link into the hub's `catalog/`.
+ * Optional and non-blocking: no hub never blocks a task. Never forces the clone (the user may be
+ * developing skills in it): only `fetch` + a fast-forward-only merge when clean. Never touches an
+ * entry in the skills dir that isn't a link into the hub's `catalog/`.
  */
 
-/* The hub's URL is per-machine config (`skillsHub.repoUrl` in userPreferences.json), never
- * hardcoded: this app's repo is public and must not name any team's private repo. */
+/* The hub's URL is per-machine config (`skillsHub.repoUrl`), never hardcoded: this repo is public. */
 
 const FETCH_TIMEOUT_MS = 20_000;
-const CLONE_TIMEOUT_MS = 180_000;
 
 const execFileAsync = promisify(execFile);
 
-/** Non-interactive git: a missing SSH key or unknown host fails fast instead of hanging on a
- *  prompt nobody can see (the backend has no terminal). */
-const NON_INTERACTIVE_GIT_ENV: NodeJS.ProcessEnv = {
-  ...process.env,
-  GIT_TERMINAL_PROMPT: "0",
-  GIT_SSH_COMMAND: process.env.GIT_SSH_COMMAND ?? "ssh -o BatchMode=yes -o ConnectTimeout=10",
-};
-
-async function git(args: string[], cwd: string, timeout = FETCH_TIMEOUT_MS): Promise<string> {
+async function git(args: string[], cwd: string): Promise<string> {
   try {
     const { stdout } = await execFileAsync("git", args, {
       cwd,
       env: NON_INTERACTIVE_GIT_ENV,
-      timeout,
+      timeout: FETCH_TIMEOUT_MS,
       maxBuffer: 8 * 1024 * 1024,
     });
     return stdout.trim();
@@ -123,8 +109,8 @@ async function isHubRepo(dir: string, repoUrl: string): Promise<boolean> {
   });
 }
 
-/** Anything shaped like a hub (a `catalog/` with at least one skill), regardless of origin — only
- *  used to guess the URL for someone who set the hub up before it became a preference. */
+/** Anything shaped like a hub (a `catalog/` with at least one skill), regardless of origin — used
+ *  to guess the URL while none is saved. */
 async function looksLikeHub(dir: string): Promise<boolean> {
   return (await listCatalogs(dir)).length > 0 && (await readOrigin(dir)) !== null;
 }
@@ -155,9 +141,8 @@ async function hubCandidateDirs(): Promise<string[]> {
   ];
 }
 
-/** The `origin` of an already-set-up hub clone — the configured `path` first, then the candidate
- *  folders. Null when none is found. Feeds the startup prompt's prefill and, until the user confirms
- *  it, stands in for an unset `repoUrl` so an existing setup keeps working right after the update. */
+/** The `origin` of an existing hub clone (configured `path` first, then candidates), or null.
+ *  Prefills the startup prompt and stands in for an unset `repoUrl`. */
 export async function detectHubRepoUrl(prefs?: SkillsHubPreferences): Promise<string | null> {
   const hubPrefs = prefs ?? (await getUserPreferences()).skillsHub;
   const candidates = [
@@ -247,9 +232,8 @@ async function readSkillDescription(skillMdPath: string): Promise<string> {
   }
 }
 
-/** Skill folders of one catalog: `skills/<name>/SKILL.md` (the documented layout) and
- *  `<name>/SKILL.md` directly in the catalog (some catalogs, e.g. `engineering`, use that).
- *  Folders marked deprecated are left out. */
+/** Skill folders of one catalog: `skills/<name>/SKILL.md` and `<name>/SKILL.md` (both layouts
+ *  exist). Folders marked deprecated are left out. */
 async function listCatalogSkills(catalogDir: string): Promise<HubSkill[]> {
   const found = new Map<string, HubSkill>();
   for (const base of [path.join(catalogDir, "skills"), catalogDir]) {
@@ -357,9 +341,8 @@ export type SkillsHubStatus = {
   catalogs: HubCatalog[];
   /** Whole catalogs kept linked — including skills added to them later. */
   selectedCatalogs: string[];
-  /** Individually picked skills (`<catalog>/<skill>`), on top of `selectedCatalogs`. Both come from
-   *  the saved choice or — before the user ever chose — are inferred from what's already linked
-   *  (see `inferSelection`). */
+  /** Individually picked skills (`<catalog>/<skill>`), on top of `selectedCatalogs`. Both are
+   *  inferred from what's linked until the user chooses (`inferSelection`). */
   selectedSkills: string[];
   /** True when the selection comes from the user's own explicit choice. */
   catalogsChosen: boolean;
@@ -453,10 +436,8 @@ async function computeSkillStatuses(
   return statuses;
 }
 
-/** The implicit selection used until the user chooses explicitly: a catalog whose every skill is
- *  already linked to this hub counts as whole, otherwise its linked skills count individually — so
- *  someone who already ran the hub's own script (or linked a skill by hand) isn't asked to choose
- *  again, and nothing they linked gets undone. */
+/** The selection until the user chooses: a fully linked catalog counts as whole, otherwise its
+ *  linked skills count individually — so nothing linked by hand gets undone. */
 async function inferSelection(catalogs: HubCatalog[]): Promise<SkillsSelection> {
   const skillsDir = getUserSkillsDir();
   const selection: SkillsSelection = { catalogs: [], skills: [] };
@@ -670,7 +651,7 @@ export type SyncResult = {
 let syncInFlight: Promise<SyncResult> | null = null;
 
 /** Fetch, fast-forward the current branch when that's safe, then refresh links. Concurrent calls
- *  (two tabs creating tasks at once) share one run instead of racing on the same clone. */
+ *  share one run instead of racing on the same clone. */
 export function syncSkillsHub(): Promise<SyncResult> {
   syncInFlight ??= runSync().finally(() => {
     syncInFlight = null;
@@ -727,13 +708,14 @@ async function runSync(): Promise<SyncResult> {
 }
 
 async function updateSkillsHubPreferences(partial: Partial<SkillsHubPreferences>): Promise<void> {
-  const prefs = await getUserPreferences();
-  await saveUserPreferences({ ...prefs, skillsHub: { ...prefs.skillsHub, ...partial } });
+  await updateUserPreferences((prefs) => ({
+    ...prefs,
+    skillsHub: { ...prefs.skillsHub, ...partial },
+  }));
 }
 
-/** Saves an explicit selection (whole catalogs + individual skills) and applies it right away —
- *  including unlinking hub skills that were deselected (only links into the hub, never anything
- *  else). */
+/** Saves an explicit selection and applies it, unlinking deselected hub skills (only links into
+ *  the hub). */
 export async function setSkillsHubSelection(
   requested: SkillsSelection,
 ): Promise<SyncResult["links"]> {
@@ -814,7 +796,7 @@ export async function setSkillsHubPath(rawPath: string | null): Promise<void> {
     throw new AppError("SKILLS_HUB_REPO_URL_MISSING", "The skills hub repo URL isn't set.");
   }
   if (!(await isHubRepo(resolved, repoUrl))) {
-    throw new AppError(
+    throw new BadRequestError(
       "SKILLS_HUB_INVALID_PATH",
       `${resolved} isn't a clone of the skills hub (needs a catalog/ folder and origin ${repoUrl}).`,
     );
@@ -840,9 +822,8 @@ export async function setSkillsHubRepoUrl(repoUrl: string): Promise<void> {
   await updateSkillsHubPreferences({ repoUrl: next, ...(samePath ? {} : { path: null }) });
 }
 
-/** `git clone` into `<parentDir>/<repo name>`, then remembers that path. Needs the user's own
- *  SSH access to the repo's host — failing fast (no prompt) when it's missing, so the UI can fall back
- *  to showing the command to run by hand. */
+/** `git clone` into `<parentDir>/<repo name>`, then remembers that path. Fails fast (no prompt)
+ *  without SSH access, so the UI can show the command to run by hand. */
 export async function cloneSkillsHub(parentDir: string): Promise<string> {
   const parent = expandHome(parentDir);
   if (!(await directoryExists(parent))) {
@@ -861,7 +842,7 @@ export async function cloneSkillsHub(parentDir: string): Promise<string> {
     throw new AppError("SKILLS_HUB_CLONE_TARGET_EXISTS", `${target} already exists.`);
   }
   try {
-    await git(["clone", repoUrl, target], parent, CLONE_TIMEOUT_MS);
+    await cloneRepository(repoUrl, target);
   } catch (err) {
     throw new AppError(
       "SKILLS_HUB_CLONE_FAILED",
@@ -905,10 +886,8 @@ export async function openSkillsFolder(target: SkillsFolderTarget): Promise<stri
   return dir;
 }
 
-/** Background hub sync run once when the server starts — same safe `syncSkillsHub` as "Update
- *  now" (fetch, fast-forward only when clean and not diverged, refresh links; never forces the
- *  clone). Skipped when the hub isn't used/configured/cloned here or `autoUpdateOnStart` is off.
- *  Never throws: it only logs, so a startup without network or SSH access stays quiet. */
+/** Background `syncSkillsHub` on server start; skipped when the hub isn't used/cloned or
+ *  `autoUpdateOnStart` is off. Never throws, only logs. */
 export async function autoUpdateSkillsHubOnStart(): Promise<void> {
   try {
     const prefs = (await getUserPreferences()).skillsHub;

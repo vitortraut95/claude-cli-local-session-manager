@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 
 /**
- * Deliberately tiny markdown renderer — headings, paragraphs, bullet/numbered lists, fenced code,
- * blockquotes, tables (shown as preformatted text) and inline code, bold and links. Enough
- * to read a SKILL.md comfortably without pulling a markdown library into an app that otherwise has
- * none; anything it doesn't understand just renders as plain text.
+ * Tiny markdown renderer — headings, paragraphs, bullet/numbered lists, fenced code, blockquotes,
+ * tables (shown as preformatted text) and inline code, bold and links. Anything else renders as
+ * plain text.
  */
 export function MarkdownView({ source }: { source: string }) {
   const lines = source.split(/\r?\n/);

@@ -6,14 +6,9 @@ import type { ProjectFolderOption } from "../services/tasksApi";
 export const OTHER_FOLDER_VALUE = "__other__";
 
 /**
- * The project-folder picker state shared by the "New task" and "New session" modals: the list of
- * known folders plus the user's choice (a listed folder, or "Other" + a typed path).
- *
- * The list is re-fetched every time `open` turns true (not just once on mount) — a project folder
- * typed by hand into "Other" only becomes a known option once it's been used, so re-running this
- * on open is the only way a just-used repo shows up in the dropdown next time without a full page
- * reload. Deferred via a 0ms timer so its setState calls happen in a callback, not synchronously
- * in the effect body itself.
+ * Project-folder picker state for the "New task" and "New session" modals: known folders plus
+ * the user's choice (a listed folder, or "Other" + a typed path). Re-fetched each time `open`
+ * turns true, so a folder used since the last open shows up.
  */
 export function useProjectFolders(open: boolean) {
   const [projects, setProjects] = useState<ProjectFolderOption[]>([]);
@@ -46,8 +41,7 @@ export function useProjectFolders(open: boolean) {
     };
   }, [open]);
 
-  // Grouped only when the workspace dirs contributed anything beyond the recent list — otherwise
-  // the select looks exactly like it did before workspace dirs existed.
+  // Grouped only when the workspace dirs contributed anything beyond the recent list.
   const { recentProjects, otherProjects } = useMemo(
     () => ({
       recentProjects: projects.filter((p) => p.recent !== false),

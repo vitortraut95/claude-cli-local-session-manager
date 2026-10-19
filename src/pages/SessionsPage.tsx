@@ -16,8 +16,7 @@ import { useSessions } from "../hooks/useSessions";
 import type { Session } from "../types/session";
 import { RefreshCw, Trash2, X } from "lucide-react";
 
-// Never offer to delete these outright, regardless of what's checked out — mirrored server-side
-// in sessionService.ts's deleteSessionBranch for defense-in-depth.
+// Never offer to delete these; also enforced server-side in deleteSessionBranch.
 const PROTECTED_BRANCHES = new Set(["main", "master"]);
 
 export function SessionsPage() {
@@ -62,19 +61,13 @@ export function SessionsPage() {
   } = useSessions();
   const { t } = useLanguage();
   const [sessionPendingDeletion, setSessionPendingDeletion] = useState<Session | null>(null);
-  // Only meaningful while sessionPendingDeletion.isWorktree is true — reset to the recommended
-  // default each time a new deletion is requested (handleDeleteRequest), same as NicknameModal
-  // re-initializing on open, so a previous session's unchecked choice can't leak into the next one.
+  // Worktree sessions only; reset to on by each handleDeleteRequest.
   const [cleanupWorktreeOnDelete, setCleanupWorktreeOnDelete] = useState(true);
-  // Only meaningful for non-worktree sessions with a known gitBranch — unlike the worktree
-  // checkbox above, this defaults to *off*: deleting a branch is more surprising/harder to notice
-  // than deleting a worktree folder, so it should be an explicit opt-in each time.
+  // Non-worktree sessions with a known gitBranch only; reset to off (explicit opt-in) each time.
   const [cleanupBranchOnDelete, setCleanupBranchOnDelete] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
-  // Jumps straight to a session (e.g. one just imported) by searching for its id (unique, so this
-  // always isolates exactly one card) and clearing whatever project filter might otherwise
-  // be hiding it.
+  // Isolates one card by searching for its (unique) id and clearing the project filter.
   const handleJumpToSession = (id: string) => {
     setSearchQuery(id);
     setProjectFilter("");
@@ -111,9 +104,8 @@ export function SessionsPage() {
     await removeSessions([...selectedIds]);
   };
 
-  // Scrolling here (rather than in the pagination click handler) waits for the new
-  // page's shorter/taller content to actually render — otherwise the smooth scroll
-  // animates against the old document height and gets clamped mid-flight.
+  // Scrolls after the new page renders; from the click handler the smooth scroll would run
+  // against the old document height and get clamped.
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [page]);

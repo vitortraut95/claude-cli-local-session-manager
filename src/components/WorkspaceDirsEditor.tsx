@@ -15,10 +15,8 @@ type WorkspaceDirsEditorProps = {
 };
 
 /**
- * Controlled list editor for `workspaceDirs`, shared by the startup prompt
- * (WorkspaceDirsPromptModal) and the settings modal. Every added folder goes through the server's
- * `inspect` first, so what lands in `value` is already normalized (`~` expanded, absolute) and each
- * row can show "N repos" or "doesn't exist" — a typo is visible before anything is saved.
+ * Controlled list editor for `workspaceDirs`. Added folders go through the server's `inspect`
+ * first, so `value` holds normalized absolute paths and each row shows its repo count or "missing".
  */
 export function WorkspaceDirsEditor({
   value,
@@ -54,8 +52,7 @@ export function WorkspaceDirsEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Rows that arrived through `value` (e.g. the saved list) rather than `add` below have no status
-  // yet — inspect just those.
+  // Rows that came in through `value` rather than `add` have no status yet; inspect just those.
   useEffect(() => {
     const unknown = value.filter((dir) => !(dir in statuses));
     if (unknown.length === 0) return;

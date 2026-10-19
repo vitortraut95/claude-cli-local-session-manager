@@ -36,15 +36,11 @@ type ModalProps = {
 };
 
 /**
- * Shared modal shell: standardizes the document.body portal, overlay, Escape handling, and the
- * optional confirm/cancel footer. Portalled to document.body because these modals are triggered
- * from inside SessionCard, whose `hover:-translate-y-0.5` class makes it a CSS containing block
- * for `position: fixed` descendants while hovered — mounting outside its DOM subtree avoids the
- * card clipping the modal to its own bounds.
+ * Shared modal shell: document.body portal, overlay, Escape handling and optional footer. Portalled
+ * because SessionCard's hover transform makes it a containing block for `position: fixed`
+ * descendants, which would clip the modal to the card.
  *
- * Deliberately does NOT close on a backdrop click — only the X button, Escape, or an explicit
- * Cancel action close the modal, so an accidental click just outside it while editing doesn't
- * discard in-progress input.
+ * No close on backdrop click, so an accidental click outside doesn't discard in-progress input.
  */
 export function Modal({
   open,
@@ -67,10 +63,7 @@ export function Modal({
   const resolvedConfirmLabel = confirmLabel ?? t("modal.confirmDefault");
   const resolvedCancelLabel = cancelLabel ?? t("modal.cancelDefault");
 
-  // Escape and the X button both route through this instead of the raw `onClose` prop, so a
-  // request in flight (isConfirmLoading — same signal that already disables the footer's
-  // Cancel/Confirm buttons below) can't be abandoned through one of these two bypasses while its
-  // resolution is still going to fire state updates/toasts against a since-unmounted modal.
+  // Escape and the X button can't close the modal while a request is in flight (isConfirmLoading).
   const handleClose = () => {
     if (!isConfirmLoading) onClose();
   };

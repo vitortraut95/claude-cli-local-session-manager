@@ -42,9 +42,7 @@ export async function fetchCleanupFindings(): Promise<CleanupFinding[]> {
   return data.findings;
 }
 
-/** Sends the exact finding object the list returned — the server re-validates it from scratch
- *  rather than trusting it, so this is just "which one to act on", not a shortcut around safety
- *  checks. */
+/** Sends the finding object as listed; the server re-validates it before acting. */
 export async function executeCleanupFinding(finding: CleanupFinding): Promise<void> {
   await withServerErrorMessage(() => client.post("/findings/execute", finding));
 }

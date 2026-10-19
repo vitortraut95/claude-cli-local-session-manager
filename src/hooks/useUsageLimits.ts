@@ -4,10 +4,7 @@ import type { ClaudeUsageStatus } from "../services/systemApi";
 import { useLanguage } from "./useLanguage";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 
-/**
- * Fetches once on mount only (no polling — same "refetch on mount or explicit refresh" philosophy
- * as useSessions/useUpdate) and exposes a manual `refresh` for the header badge's click-to-refresh.
- */
+/** Fetches once on mount (no polling); `refresh` refetches on demand. */
 export function useUsageLimits() {
   const [status, setStatus] = useState<ClaudeUsageStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,9 +34,7 @@ export function useUsageLimits() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-    // `t` is intentionally omitted: useLanguage() returns a new `t` function identity on every
-    // render, and this callback feeds the mount-only useEffect below — depending on `t` here
-    // would re-fire that effect (and refetch usage limits) on every render instead of just once.
+    // `t` omitted so a language switch doesn't re-run the mount-only fetch below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

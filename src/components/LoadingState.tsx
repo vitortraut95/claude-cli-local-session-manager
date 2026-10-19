@@ -2,8 +2,7 @@ import { Loader2 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 
 type LoadingStateProps = {
-  /** Only set once the mount-time scan has run long enough to be worth explaining — see
-   *  useSessions.ts's scan-progress polling for why this never fires on a warm cache. */
+  /** Only set once the mount-time scan has run long enough to be worth explaining. */
   scanProgress?: { done: number; total: number } | null;
 };
 
