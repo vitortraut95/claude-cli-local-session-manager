@@ -16,7 +16,6 @@ import {
   getSkillDetails,
   getSkillsHubStatus,
   openSkillsFolder,
-  setSkillsHubFlags,
   setSkillsHubPath,
   setSkillsHubRepoUrl,
   setSkillsHubSelection,
@@ -126,7 +125,7 @@ tasksRouter.put("/preferences", async (req, res) => {
           'language: "en"|"pt"|"es"|null, ' +
           "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
           "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
-          "inviteDismissed }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
+          "autoUpdateOnStart? }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
           "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean }.",
       );
     }
@@ -482,20 +481,6 @@ tasksRouter.post("/skills-hub/open-folder", async (req, res) => {
   } catch (err) {
     res
       .status(500)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
-});
-
-tasksRouter.put("/skills-hub/flags", async (req, res) => {
-  try {
-    const body = (req.body ?? {}) as Record<string, unknown>;
-    await setSkillsHubFlags(
-      typeof body.inviteDismissed === "boolean" ? { inviteDismissed: body.inviteDismissed } : {},
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res
-      .status(400)
       .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
   }
 });

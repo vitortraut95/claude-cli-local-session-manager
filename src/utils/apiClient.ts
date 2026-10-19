@@ -61,7 +61,6 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   USAGE_ENDPOINT_UNREACHABLE: "apiError.usageEndpointUnreachable",
   USAGE_TOKEN_EXPIRED: "apiError.usageTokenExpired",
   USAGE_FETCH_FAILED: "apiError.usageFetchFailed",
-  UPDATE_BLOCKED: "apiError.updateBlocked",
   UPDATE_ALREADY_RUNNING: "apiError.updateAlreadyRunning",
   UPDATE_FETCH_FAILED: "apiError.updateFetchFailed",
   UPDATE_UNEXPECTED_GIT_OUTPUT: "apiError.updateUnexpectedGitOutput",

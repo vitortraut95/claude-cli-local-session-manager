@@ -348,7 +348,6 @@ export type SkillsHubStatus = {
   catalogsChosen: boolean;
   skills: SkillStatus[];
   userSkillsDir: string;
-  inviteDismissed: boolean;
   /** The hub repo in use — `skillsHub.repoUrl`, or the detected one while that was never set.
    *  Null = not configured: the UI asks for it before offering anything else. */
   cloneUrl: string | null;
@@ -534,7 +533,6 @@ export async function getSkillsHubStatus(): Promise<SkillsHubStatus> {
   const hubPath = await locateHub(prefs, repoUrl);
   const common = {
     userSkillsDir: getUserSkillsDir(),
-    inviteDismissed: prefs.inviteDismissed,
     cloneUrl: repoUrl,
     repoUrlDetected: prefs.repoUrl === null && repoUrl !== null,
     notUsed: prefs.repoUrl === "",
@@ -802,12 +800,6 @@ export async function setSkillsHubPath(rawPath: string | null): Promise<void> {
     );
   }
   await updateSkillsHubPreferences({ path: resolved });
-}
-
-export async function setSkillsHubFlags(
-  flags: Partial<Pick<SkillsHubPreferences, "inviteDismissed">>,
-): Promise<void> {
-  await updateSkillsHubPreferences(flags);
 }
 
 /** Saves the hub repo URL ("" = not used). Clearing or changing it also forgets the clone path,

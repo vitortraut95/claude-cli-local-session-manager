@@ -200,11 +200,6 @@ export const translations = {
     "Não foi possível buscar os dados de uso.",
     "No se pudieron obtener los datos de uso.",
   ),
-  "apiError.updateBlocked": dict(
-    "The project has uncommitted changes — commit or stash them before updating.",
-    "O projeto tem alterações não commitadas — commite ou dê stash nelas antes de atualizar.",
-    "El proyecto tiene cambios sin confirmar — haz commit o stash antes de actualizar.",
-  ),
   "apiError.updateAlreadyRunning": dict(
     "An update is already in progress.",
     "Uma atualização já está em andamento.",
