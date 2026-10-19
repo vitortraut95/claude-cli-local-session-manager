@@ -98,10 +98,7 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   IMPORT_CHECKOUT_BLOCKED_ACTIVE: "apiError.importCheckoutBlockedActive",
   IMPORT_SESSION_EXISTS: "apiError.importSessionExists",
   IMPORT_OVERWRITE_ACTIVE: "apiError.importOverwriteActive",
-  IMPORT_CLONE_URL_REQUIRED: "apiError.importCloneUrlRequired",
-  IMPORT_CLONE_NO_WORKSPACE: "apiError.importCloneNoWorkspace",
-  IMPORT_CLONE_TARGET_EXISTS: "apiError.importCloneTargetExists",
-  // IMPORT_CLONE_FAILED / IMPORT_CHECKOUT_FAILED unmapped: their messages carry git's reason.
+  // IMPORT_CHECKOUT_FAILED unmapped: their messages carry git's reason.
 };
 
 /**

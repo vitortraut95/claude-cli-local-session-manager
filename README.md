@@ -102,7 +102,6 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | GET    | `/sessions/:id/task`                  | The session's task (key, inferred or saved) and that task's repos              |
 | PUT    | `/sessions/:id/task`                  | Save `{ taskKey, link? }` on the session (`""` = back to detecting it)         |
 | POST   | `/sessions/import/inspect`            | Read an exported file (raw body) and list local target clones                  |
-| POST   | `/sessions/import/clone`              | Clone `{ url }` into the first workspace folder (import without a local clone) |
 | POST   | `/sessions/import`                    | Import an exported file into `?targetDir=` (optional `&checkoutBranch=true`)   |
 | GET    | `/tasks/by-key/:key`                  | A task's link, repos (branch, base, folder) and sessions                       |
 | PUT    | `/tasks/by-key/:key`                  | Save the task's `{ link }`                                                     |

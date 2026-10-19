@@ -367,21 +367,6 @@ export const translations = {
     "Essa pasta não existe nesta máquina.",
     "Esa carpeta no existe en esta máquina.",
   ),
-  "apiError.importCloneUrlRequired": dict(
-    "Enter the repository URL to clone.",
-    "Informe a URL do repositório para clonar.",
-    "Indica la URL del repositorio para clonar.",
-  ),
-  "apiError.importCloneNoWorkspace": dict(
-    "No workspace folder is set up to clone into — add one in Settings.",
-    "Nenhuma pasta de trabalho configurada para clonar — adicione uma nas Configurações.",
-    "No hay carpeta de trabajo configurada para clonar — agrega una en Configuración.",
-  ),
-  "apiError.importCloneTargetExists": dict(
-    "A folder with that name already exists there and isn't a clone of this repository.",
-    "Já existe uma pasta com esse nome lá e ela não é um clone deste repositório.",
-    "Ya existe una carpeta con ese nombre allí y no es un clon de este repositorio.",
-  ),
   "apiError.importSessionExists": dict(
     "This session already exists here — choose whether to overwrite it or import a copy.",
     "Esta sessão já existe aqui — escolha entre sobrescrever ou importar uma cópia.",
@@ -846,36 +831,6 @@ export const translations = {
     "This folder's origin doesn't match the exported session's repository — Claude may refer to files that don't exist here.",
     "O origin desta pasta não bate com o repositório da sessão exportada — o Claude pode citar arquivos que não existem aqui.",
     "El origin de esta carpeta no coincide con el repositorio de la sesión exportada — Claude puede mencionar archivos que no existen aquí.",
-  ),
-  "importSessionModal.noClone": dict(
-    "No local clone of this repository was found.",
-    "Nenhum clone local deste repositório foi encontrado.",
-    "No se encontró ningún clon local de este repositorio.",
-  ),
-  "importSessionModal.cloneHint": dict(
-    "Clone it into {dir} and import there. The URL came from the exported session — adjust it if the sender used an SSH host alias.",
-    "Clone em {dir} e importe lá. A URL veio da sessão exportada — ajuste se quem enviou usava um alias de host SSH.",
-    "Clónalo en {dir} e importa allí. La URL vino de la sesión exportada — ajústala si quien la envió usaba un alias de host SSH.",
-  ),
-  "importSessionModal.cloneNoWorkspace": dict(
-    "To clone it from here, add a workspace folder in Settings.",
-    "Para clonar daqui, adicione uma pasta de trabalho nas Configurações.",
-    "Para clonarlo desde aquí, agrega una carpeta de trabajo en Configuración.",
-  ),
-  "importSessionModal.cloneButton": dict(
-    "Clone repository",
-    "Clonar repositório",
-    "Clonar repositorio",
-  ),
-  "importSessionModal.cloneSuccess": dict(
-    "Repository cloned — selected as the destination.",
-    "Repositório clonado — selecionado como destino.",
-    "Repositorio clonado — seleccionado como destino.",
-  ),
-  "importSessionModal.cloneError": dict(
-    "Couldn't clone the repository.",
-    "Não foi possível clonar o repositório.",
-    "No se pudo clonar el repositorio.",
   ),
   "importSessionModal.commitMissing": dict(
     "Commit {commit} (where the session left off) isn't in this clone yet — run git fetch, or the branch may not have been pushed.",

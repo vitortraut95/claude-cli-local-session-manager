@@ -10,7 +10,7 @@ import type {
   SessionImportResult,
 } from "../types/session.js";
 import { forgetCachedSession, getClaudeProjectsDir } from "../utils/claudeProjects.js";
-import { branchExists, cloneRepository, runGit } from "../utils/git.js";
+import { branchExists, runGit } from "../utils/git.js";
 import { AppError, BadRequestError } from "../utils/httpError.js";
 import { getNicknames, setNickname } from "../utils/taskStore.js";
 import {
@@ -22,8 +22,7 @@ import {
   SessionNotFoundError,
 } from "./sessionService.js";
 import { getKnownProjectFolders } from "./taskService.js";
-import { getUserPreferences } from "./preferencesService.js";
-import { expandHome, withWorkspaceRepos } from "./workspaceService.js";
+import { withWorkspaceRepos } from "./workspaceService.js";
 
 /**
  * Session export/import. A bundle is one gzipped JSON file (plain JSON so `zcat` can review it)
@@ -293,62 +292,9 @@ async function getActiveWorkingDirectories(): Promise<Set<string>> {
   return activeWorkingDirectoriesOf(await listSessions());
 }
 
-/** First of the user's `workspaceDirs` that exists — where "Clone repository" clones into. */
-async function getCloneParentDir(): Promise<string | null> {
-  const { workspaceDirs } = await getUserPreferences();
-  for (const dir of workspaceDirs ?? []) {
-    const expanded = expandHome(dir);
-    if (await directoryExists(expanded)) return expanded;
-  }
-  return null;
-}
-
-/**
- * Import's "Clone repository": `git clone <url>` into `<first workspace dir>/<repo name>`. An
- * existing folder of that name is reused when it's a clone of the same repo, refused otherwise.
- */
-export async function cloneRepositoryForImport(url: string): Promise<{ repoRoot: string }> {
-  const trimmed = url.trim();
-  // From the raw URL, not normalizeRemoteUrl's lowercased slug, so the folder keeps the repo's case.
-  const repoName = trimmed
-    .replace(/\/+$/, "")
-    .replace(/\.git$/, "")
-    .split(/[/:]/)
-    .pop();
-  if (!trimmed || !repoName || !/^[\w.-]+$/.test(repoName) || /^\.+$/.test(repoName)) {
-    throw new BadRequestError("IMPORT_CLONE_URL_REQUIRED", "A repository URL is required.");
-  }
-  const parent = await getCloneParentDir();
-  if (!parent) {
-    throw new AppError("IMPORT_CLONE_NO_WORKSPACE", "No workspace folder is set up to clone into.");
-  }
-  const target = path.join(parent, repoName);
-  if (await directoryExists(target)) {
-    const remote = await tryGit(["remote", "get-url", "origin"], target);
-    if (remote && normalizeRemoteUrl(remote) === normalizeRemoteUrl(trimmed)) {
-      return { repoRoot: target };
-    }
-    throw new AppError("IMPORT_CLONE_TARGET_EXISTS", `${target} already exists.`);
-  }
-  try {
-    await cloneRepository(trimmed, target);
-  } catch (err) {
-    throw new AppError(
-      "IMPORT_CLONE_FAILED",
-      `git clone failed: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
-    );
-  }
-  return { repoRoot: target };
-}
-
 export async function inspectSessionBundle(raw: Buffer): Promise<SessionImportPreview> {
   const bundle = parseBundle(raw);
-  const [sessions, knownFolders, cloneParentDir] = await Promise.all([
-    listSessions(),
-    getKnownProjectFolders(),
-    getCloneParentDir(),
-  ]);
+  const [sessions, knownFolders] = await Promise.all([listSessions(), getKnownProjectFolders()]);
   // Workspace repos too — finds the matching clone even when it was never used with Claude here.
   const folders = await withWorkspaceRepos(knownFolders, (repoPath) => ({
     path: repoPath,
@@ -388,7 +334,6 @@ export async function inspectSessionBundle(raw: Buffer): Promise<SessionImportPr
       isActive: existing.isActive,
     },
     candidates,
-    cloneParentDir,
   };
 }
 
