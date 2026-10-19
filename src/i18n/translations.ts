@@ -613,65 +613,87 @@ export const translations = {
     "La carpeta no existe",
   ),
 
-  "workspaceDirsPrompt.title": dict(
+  "setup.title": dict("Initial setup", "Configuração inicial", "Configuración inicial"),
+  "setup.intro": dict(
+    "A few per-machine settings. Got a config file from your team? Import it — it fills everything it has.",
+    "Algumas configurações desta máquina. Recebeu um arquivo de configuração do time? Importe — ele preenche tudo o que tiver.",
+    "Algunas configuraciones de esta máquina. ¿Recibiste un archivo de configuración del equipo? Impórtalo — completa todo lo que tenga.",
+  ),
+  "setup.workspaceDirs.label": dict(
     "Where are your repos?",
     "Onde ficam seus repositórios?",
     "¿Dónde están tus repositorios?",
   ),
-  "workspaceDirsPrompt.intro": dict(
-    "Pick the folder(s) where you keep your repos. The app uses them to know every project you work on — not only the ones you already used with Claude.",
-    "Escolha a(s) pasta(s) onde você guarda seus repos. O app usa isso para conhecer todos os projetos em que você trabalha — não só os que você já usou com o Claude.",
-    "Elige la(s) carpeta(s) donde guardas tus repos. La app las usa para conocer todos los proyectos en los que trabajas — no solo los que ya usaste con Claude.",
+  "setup.workspaceDirs.hint": dict(
+    "The folder(s) where you keep your repos — the app uses them to know every project you work on.",
+    "A(s) pasta(s) onde você guarda seus repos — o app usa isso para conhecer todos os seus projetos.",
+    "La(s) carpeta(s) donde guardas tus repos — la app las usa para conocer todos tus proyectos.",
   ),
-  "workspaceDirsPrompt.laterHint": dict(
-    "You can change this any time in Settings (gear icon in the header).",
-    "Dá para mudar quando quiser em Configurações (ícone de engrenagem no header).",
-    "Puedes cambiarlo cuando quieras en Configuración (ícono de engranaje en el encabezado).",
-  ),
-  "teamPrompt.title": dict("Team integrations", "Integrações do time", "Integraciones del equipo"),
-  "teamPrompt.intro": dict(
-    "Optional, per-machine settings for your team's tools. They live only in your local userPreferences.json — never in this app's public repo.",
-    "Configurações opcionais e locais das ferramentas do seu time. Ficam só no seu userPreferences.json local — nunca no repo público deste app.",
-    "Configuraciones opcionales y locales de las herramientas de tu equipo. Quedan solo en tu userPreferences.json local — nunca en el repo público de esta app.",
-  ),
-  "teamPrompt.prefilled": dict(
-    "Pre-filled from your current setup — just confirm.",
-    "Pré-preenchido com a sua configuração atual — é só confirmar.",
-    "Prellenado con tu configuración actual — solo confirma.",
-  ),
-  "teamPrompt.jenkins.label": dict(
-    "Jenkins base URL",
-    "URL base do Jenkins",
-    "URL base de Jenkins",
-  ),
-  "teamPrompt.jenkins.hint": dict(
+  "setup.jenkins.label": dict("Jenkins base URL", "URL base do Jenkins", "URL base de Jenkins"),
+  "setup.jenkins.hint": dict(
     "Enables the Jenkins button on session cards. Leave empty if your team doesn't use Jenkins.",
     "Habilita o botão do Jenkins nos cards de sessão. Deixe vazio se o seu time não usa Jenkins.",
     "Habilita el botón de Jenkins en las tarjetas de sesión. Déjalo vacío si tu equipo no usa Jenkins.",
   ),
-  "teamPrompt.skillsHub.label": dict(
+  "setup.skillsHub.label": dict(
     "Team skills repo (clone URL)",
     "Repo de skills do time (URL de clone)",
     "Repo de skills del equipo (URL de clonado)",
   ),
-  "teamPrompt.skillsHub.hint": dict(
-    "A git repo with a catalog/ folder of Claude skills, e.g. git@host:team/skills-repo.git. Ask your team. Leave empty if there's none.",
-    "Um repo git com uma pasta catalog/ de skills do Claude, ex.: git@host:time/repo-de-skills.git. Pergunte ao seu time. Deixe vazio se não houver.",
-    "Un repo git con una carpeta catalog/ de skills de Claude, p. ej. git@host:equipo/repo-de-skills.git. Pregunta a tu equipo. Déjalo vacío si no hay.",
+  "setup.skillsHub.hint": dict(
+    "A git repo with a catalog/ folder of Claude skills, e.g. git@host:team/skills-repo.git. Leave empty if there's none.",
+    "Um repo git com uma pasta catalog/ de skills do Claude, ex.: git@host:time/repo-de-skills.git. Deixe vazio se não houver.",
+    "Un repo git con una carpeta catalog/ de skills de Claude, p. ej. git@host:equipo/repo-de-skills.git. Déjalo vacío si no hay.",
   ),
-  "teamPrompt.save": dict("Save", "Salvar", "Guardar"),
-  "teamPrompt.skip": dict("Not now", "Agora não", "Ahora no"),
-  "teamPrompt.saved": dict(
-    "Team integrations saved.",
-    "Integrações do time salvas.",
-    "Integraciones del equipo guardadas.",
+  "setup.laterHint": dict(
+    "You can change all of this later in Settings (gear icon in the header).",
+    "Dá para mudar tudo isso depois em Configurações (ícone de engrenagem no header).",
+    "Puedes cambiar todo esto después en Configuración (ícono de engranaje en el encabezado).",
   ),
-  "workspaceDirsPrompt.save": dict("Save", "Salvar", "Guardar"),
-  "workspaceDirsPrompt.skip": dict("Not now", "Agora não", "Ahora no"),
-  "workspaceDirsPrompt.saved": dict(
-    "Repository folders saved.",
-    "Pastas de repositórios salvas.",
-    "Carpetas de repositorios guardadas.",
+  "setup.save": dict("Save", "Salvar", "Guardar"),
+  "setup.skip": dict("Not now", "Agora não", "Ahora no"),
+  "setup.saved": dict("Settings saved.", "Configurações salvas.", "Configuración guardada."),
+  "preferencesFile.import": dict(
+    "Import settings",
+    "Importar configurações",
+    "Importar configuración",
+  ),
+  "preferencesFile.export": dict(
+    "Export settings",
+    "Exportar configurações",
+    "Exportar configuración",
+  ),
+  "preferencesFile.confirmTitle": dict(
+    "Replace all settings?",
+    "Substituir todas as configurações?",
+    "¿Reemplazar toda la configuración?",
+  ),
+  "preferencesFile.confirmMessage": dict(
+    "Every setting is replaced by the file's. Anything the file doesn't have goes back to its default.",
+    "Todas as configurações são substituídas pelas do arquivo. O que o arquivo não tiver volta ao padrão.",
+    "Toda la configuración se reemplaza por la del archivo. Lo que el archivo no tenga vuelve al valor predeterminado.",
+  ),
+  "preferencesFile.confirm": dict("Replace", "Substituir", "Reemplazar"),
+  "preferencesFile.cancel": dict("Cancel", "Cancelar", "Cancelar"),
+  "preferencesFile.imported": dict(
+    "Settings imported.",
+    "Configurações importadas.",
+    "Configuración importada.",
+  ),
+  "preferencesFile.importError": dict(
+    "Couldn't import the settings.",
+    "Não foi possível importar as configurações.",
+    "No se pudo importar la configuración.",
+  ),
+  "preferencesFile.invalid": dict(
+    "That file isn't valid JSON.",
+    "Esse arquivo não é um JSON válido.",
+    "Ese archivo no es un JSON válido.",
+  ),
+  "apiError.malformedPreferencesFile": dict(
+    "That file isn't a settings file.",
+    "Esse arquivo não é um arquivo de configurações.",
+    "Ese archivo no es un archivo de configuración.",
   ),
 
   "exportSessionModal.title": dict("Export session", "Exportar sessão", "Exportar sesión"),
