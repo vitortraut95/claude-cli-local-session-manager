@@ -14,10 +14,8 @@ import { SessionCard } from "../components/SessionCard";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSessions } from "../hooks/useSessions";
 import type { Session } from "../types/session";
+import { DEFAULT_BRANCHES } from "../utils/branches";
 import { RefreshCw, Trash2, X } from "lucide-react";
-
-// Never offer to delete these; also enforced server-side in deleteSessionBranch.
-const PROTECTED_BRANCHES = new Set(["main", "master"]);
 
 export function SessionsPage() {
   const {
@@ -93,7 +91,7 @@ export function SessionsPage() {
     const cleanupBranch =
       !sessionPendingDeletion.isWorktree &&
       cleanupBranchOnDelete &&
-      !PROTECTED_BRANCHES.has(sessionPendingDeletion.gitBranch ?? "");
+      !DEFAULT_BRANCHES.has(sessionPendingDeletion.gitBranch ?? "");
     const branchName = sessionPendingDeletion.gitBranch ?? undefined;
     setSessionPendingDeletion(null);
     await removeSession(id, cleanupWorktree, cleanupBranch, branchName);
@@ -249,7 +247,7 @@ export function SessionsPage() {
         )}
         {!sessionPendingDeletion?.isWorktree &&
           sessionPendingDeletion?.gitBranch &&
-          !PROTECTED_BRANCHES.has(sessionPendingDeletion.gitBranch) && (
+          !DEFAULT_BRANCHES.has(sessionPendingDeletion.gitBranch) && (
             <label className="mt-3 flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
               <input
                 type="checkbox"

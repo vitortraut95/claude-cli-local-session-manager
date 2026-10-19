@@ -1,14 +1,8 @@
 import type { EnvPreviews } from "../services/tasksApi";
+import { DEFAULT_BRANCHES } from "./branches";
 
 // Jenkins multibranch pipeline links. The job name is the repo folder name (`session.project`);
 // the base URL is per-machine config (`jenkinsBaseUrl` in userPreferences.json).
-
-/** Branch prefixes offered as variations of the session's ticket — the branch with a pipeline
- *  isn't always the one checked out (e.g. `feature/PROJ-1` locally, `env/PROJ-1` in Jenkins). */
-const BRANCH_PREFIXES = ["env", "feature", "feat", "fix", "hotfix", "poc"];
-
-/** Default branches — a "ticket" variation of these makes no sense (no `env/main`). */
-export const DEFAULT_BRANCHES = new Set(["main", "master"]);
 
 export type JenkinsLink =
   | { kind: "project"; url: string }
@@ -27,13 +21,16 @@ function branchJobUrl(projectUrl: string, branch: string): string {
 
 /**
  * Candidate Jenkins links for a session, built from naming conventions only (none checked for
- * existence). `originBranch` is the task's base branch. Null when no base URL is configured.
+ * existence). `originBranch` is the task's base branch. `branchTypes` (the user's branch types)
+ * are offered as `<type>/<ticket>` variations, since the branch with a pipeline isn't always the
+ * one checked out. Null when no base URL is configured.
  */
 export function getJenkinsLinks(
   jenkinsBaseUrl: string | null,
   project: string,
   branch: string | null,
-  originBranch: string | null = null,
+  originBranch: string | null,
+  branchTypes: string[],
 ): JenkinsLink[] | null {
   if (!jenkinsBaseUrl) return null;
   const projectUrl = `${jenkinsBaseUrl.replace(/\/+$/, "")}/job/${encodeURIComponent(project)}/`;
@@ -46,7 +43,7 @@ export function getJenkinsLinks(
       const slash = branch.indexOf("/");
       const ticket = slash === -1 ? branch : branch.slice(slash + 1);
       // Bare ticket first — the most common pipeline branch name across teams.
-      const variants = [ticket, ...BRANCH_PREFIXES.map((prefix) => `${prefix}/${ticket}`)];
+      const variants = [ticket, ...branchTypes.map((type) => `${type}/${ticket}`)];
       for (const variant of variants) {
         // The origin branch gets its own section below — don't list it twice.
         if (variant === branch || variant === originBranch) continue;

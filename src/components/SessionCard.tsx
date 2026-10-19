@@ -41,7 +41,8 @@ import { Tooltip } from "./Tooltip";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
-import { DEFAULT_BRANCHES, getEnvPreviewGroups, getJenkinsLinks } from "../utils/jenkins";
+import { DEFAULT_BRANCHES } from "../utils/branches";
+import { getEnvPreviewGroups, getJenkinsLinks } from "../utils/jenkins";
 import { useTeamLinks } from "../hooks/useTeamLinks";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import { resolveApiErrorMessage } from "../utils/apiClient";
@@ -122,6 +123,7 @@ export function SessionCard({
           session.project,
           taskBranch ?? null,
           originBranch,
+          teamLinks.branchTypes,
         );
 
   // The URL needs a server-side git call, so it's fetched on click. A non-default base branch
