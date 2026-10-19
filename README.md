@@ -32,6 +32,8 @@ and clean them up. Everything runs on your machine — no external server involv
 - One-click "Open in VS Code", Jenkins links (project, branch and ticket variants, PRs, tags,
   optional per-project `env/*` preview links), and "Open PR" buttons — the Jenkins URL and preview
   templates are per-machine settings (asked on first start / Settings), never part of this repo
+- Initial setup on first start (repo folders, Jenkins URL, team skills repo) and full settings
+  export/import in Settings — share a `userPreferences.json` with your team to set everything up
 - Self-update button from the header
 - pt/en/es language switcher
 
@@ -103,6 +105,7 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | PUT    | `/sessions/:id/task`                  | Save `{ taskKey, link? }` on the session (`""` = back to detecting it)         |
 | POST   | `/sessions/import/inspect`            | Read an exported file (raw body) and list local target clones                  |
 | POST   | `/sessions/import`                    | Import an exported file into `?targetDir=` (optional `&checkoutBranch=true`)   |
+| POST   | `/tasks/preferences/import`           | Replace every setting with an imported `userPreferences.json`                  |
 | GET    | `/tasks/by-key/:key`                  | A task's link, repos (branch, base, folder) and sessions                       |
 | PUT    | `/tasks/by-key/:key`                  | Save the task's `{ link }`                                                     |
 | POST   | `/tasks/by-key/:key/repos`            | Create the task's branch in another repo `{ folderPath, branchName?, ... }`    |
