@@ -131,9 +131,6 @@ export type SessionImportPreview = {
     isActive: boolean;
   } | null;
   candidates: SessionImportCandidate[];
-  /** Where "Clone repository" would clone `remoteUrl` (first existing workspace dir), or null.
-   *  Optional: an older server omits it. */
-  cloneParentDir?: string | null;
 };
 
 export type SessionImportResult = {

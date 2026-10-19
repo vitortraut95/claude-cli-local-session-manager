@@ -231,14 +231,6 @@ export async function inspectSessionImport(file: Blob): Promise<SessionImportPre
   return data.preview;
 }
 
-/** Clones `url` into the first workspace dir. */
-export async function cloneRepositoryForImport(url: string): Promise<string> {
-  const { data } = await withServerErrorMessage(() =>
-    client.post<{ repoRoot: string }>("/import/clone", { url }),
-  );
-  return data.repoRoot;
-}
-
 export type ImportConflictResolution = "overwrite" | "copy";
 
 /** `onConflict` is required by the server only when the session id already exists locally

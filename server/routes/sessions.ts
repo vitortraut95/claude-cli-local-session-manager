@@ -26,7 +26,6 @@ import {
   stopSiblingAndResume,
 } from "../services/sessionService.js";
 import {
-  cloneRepositoryForImport,
   exportSession,
   importSessionBundle,
   inspectSessionBundle,
@@ -95,20 +94,6 @@ sessionsRouter.post("/import/inspect", rawBundleBody, async (req, res) => {
     res.json({ preview });
   } catch (err) {
     sendErrorResponse(res, err, importStatusFor);
-  }
-});
-
-sessionsRouter.post("/import/clone", async (req, res) => {
-  try {
-    res.json(await cloneRepositoryForImport(extractStringField(req.body, "url")));
-  } catch (err) {
-    sendErrorResponse(res, err, (e) =>
-      e.code === "IMPORT_CLONE_TARGET_EXISTS"
-        ? 409
-        : e.code === "IMPORT_CLONE_NO_WORKSPACE"
-          ? 400
-          : null,
-    );
   }
 });
 
