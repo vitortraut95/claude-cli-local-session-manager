@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runGit } from "../utils/git.js";
-import { AppError, errorMessage } from "../utils/httpError.js";
+import { AppError, ConflictError, errorMessage } from "../utils/httpError.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 
 export type UpdateStatus = {
@@ -80,7 +80,7 @@ export async function startUpdate(): Promise<void> {
 
   const existingJob = await getUpdateJobStatus();
   if (existingJob.state === "running") {
-    throw new AppError("UPDATE_ALREADY_RUNNING", "An update is already in progress.");
+    throw new ConflictError("UPDATE_ALREADY_RUNNING", "An update is already in progress.");
   }
 
   const statusFile = jobStatusFile(repoRoot);

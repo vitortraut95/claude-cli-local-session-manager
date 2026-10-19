@@ -1,4 +1,4 @@
-import { Router, type Response } from "express";
+import { Router } from "express";
 import {
   getPreferencesPath,
   getUserPreferences,
@@ -30,7 +30,7 @@ import {
   resolveBaseBranch,
 } from "../services/taskService.js";
 import { extractBooleanField, extractStringField } from "../utils/httpBody.js";
-import { BadRequestError, errorCode } from "../utils/httpError.js";
+import { BadRequestError } from "../utils/httpError.js";
 import { normalizeTaskKey } from "../utils/taskKeys.js";
 import {
   addRepoToTask,
@@ -38,7 +38,6 @@ import {
   getTaskRepoPrUrl,
   parseTaskKeyParam,
   setTaskLink,
-  TaskStepError,
   unlinkRepoFromTask,
 } from "../services/taskGroupService.js";
 
@@ -99,177 +98,105 @@ function isValidPreferences(
 }
 
 tasksRouter.get("/projects", async (_req, res) => {
-  try {
-    const projects = await getRecentProjectFolders();
-    res.json({ projects });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  const projects = await getRecentProjectFolders();
+  res.json({ projects });
 });
 
 tasksRouter.get("/preferences", async (_req, res) => {
-  try {
-    const preferences = await getUserPreferences();
-    res.json(preferences);
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  const preferences = await getUserPreferences();
+  res.json(preferences);
 });
 
 tasksRouter.put("/preferences", async (req, res) => {
-  try {
-    if (!isValidPreferences(req.body)) {
-      throw new BadRequestError(
-        "MALFORMED_PREFERENCES",
-        "Malformed preferences payload — expected { defaultPrompt: string, " +
-          "defaultSessionPrompt?: string, branchTypes: string[], " +
-          "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
-          'language: "en"|"pt"|null, ' +
-          "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
-          "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
-          "autoUpdateOnStart? }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
-          "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean, " +
-          'theme?: "light"|"dark"|null }.',
-      );
-    }
-    const body = req.body;
-    // Merged one level deep: an older bundle's skillsHub lacks `repoUrl`, which must survive.
-    await updateUserPreferences((stored) => ({
-      ...stored,
-      ...body,
-      skillsHub: { ...stored.skillsHub, ...body.skillsHub },
-    }));
-    res.json({ success: true });
-  } catch (err) {
-    res.status(400).json({
-      success: false,
-      error: err instanceof Error ? err.message : String(err),
-      code: errorCode(err),
-    });
+  if (!isValidPreferences(req.body)) {
+    throw new BadRequestError(
+      "MALFORMED_PREFERENCES",
+      "Malformed preferences payload — expected { defaultPrompt: string, " +
+        "defaultSessionPrompt?: string, branchTypes: string[], " +
+        "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
+        'language: "en"|"pt"|null, ' +
+        "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
+        "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
+        "autoUpdateOnStart? }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
+        "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean, " +
+        'theme?: "light"|"dark"|null }.',
+    );
   }
+  const body = req.body;
+  // Merged one level deep: an older bundle's skillsHub lacks `repoUrl`, which must survive.
+  await updateUserPreferences((stored) => ({
+    ...stored,
+    ...body,
+    skillsHub: { ...stored.skillsHub, ...body.skillsHub },
+  }));
+  res.json({ success: true });
 });
 
 /** Replaces the whole file (Settings → Import), then links the imported hub selection if the hub
  *  is already cloned here (best-effort). */
 tasksRouter.post("/preferences/import", async (req, res) => {
-  try {
-    await replaceUserPreferences(req.body);
-    await syncSkillsHub().catch(() => undefined);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(400).json({
-      success: false,
-      error: err instanceof Error ? err.message : String(err),
-      code: errorCode(err),
-    });
-  }
+  await replaceUserPreferences(req.body);
+  await syncSkillsHub().catch(() => undefined);
+  res.json({ success: true });
 });
 
 /** Opens the raw file, writing the defaults out first if it was never saved. */
 tasksRouter.post("/preferences/open-in-editor", async (_req, res) => {
-  try {
-    await updateUserPreferences((stored) => stored);
-    await openFileInVSCode(getPreferencesPath());
-    res.json({ success: true });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  await updateUserPreferences((stored) => stored);
+  await openFileInVSCode(getPreferencesPath());
+  res.json({ success: true });
 });
 
 tasksRouter.get("/workspace-dirs/suggestions", async (_req, res) => {
-  try {
-    res.json({ suggestions: await suggestWorkspaceDirs() });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  res.json({ suggestions: await suggestWorkspaceDirs() });
 });
 
 tasksRouter.post("/workspace-dirs/inspect", async (req, res) => {
-  try {
-    const raw: unknown = (req.body as { dirs?: unknown } | null)?.dirs;
-    const dirs = Array.isArray(raw) ? raw.filter((d): d is string => typeof d === "string") : [];
-    res.json({ dirs: await inspectWorkspaceDirs(dirs) });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  const raw: unknown = (req.body as { dirs?: unknown } | null)?.dirs;
+  const dirs = Array.isArray(raw) ? raw.filter((d): d is string => typeof d === "string") : [];
+  res.json({ dirs: await inspectWorkspaceDirs(dirs) });
 });
 
 tasksRouter.get("/repo-info", async (req, res) => {
-  try {
-    const folderPath = typeof req.query.folderPath === "string" ? req.query.folderPath : "";
-    const info = await getRepoInfo(folderPath);
-    res.json(info);
-  } catch (err) {
-    res
-      .status(400)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  const folderPath = typeof req.query.folderPath === "string" ? req.query.folderPath : "";
+  const info = await getRepoInfo(folderPath);
+  res.json(info);
 });
 
 tasksRouter.post("/resolve-base-branch", async (req, res) => {
-  try {
-    const result = await resolveBaseBranch(
-      extractStringField(req.body, "folderPath"),
-      extractStringField(req.body, "baseBranch"),
-      extractBooleanField(req.body, "useLocalBranch", false),
-    );
-    res.json(result);
-  } catch (err) {
-    res
-      .status(400)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  const result = await resolveBaseBranch(
+    extractStringField(req.body, "folderPath"),
+    extractStringField(req.body, "baseBranch"),
+    extractBooleanField(req.body, "useLocalBranch", false),
+  );
+  res.json(result);
 });
 
 tasksRouter.post("/worktree", async (req, res) => {
-  try {
-    const result = await createTaskWorktree(
-      extractStringField(req.body, "folderPath"),
-      extractStringField(req.body, "branchName"),
-      extractStringField(req.body, "baseBranchRef"),
-      extractStringField(req.body, "baseBranch"),
-      extractBooleanField(req.body, "useWorktree", true),
-      normalizeTaskKey(extractStringField(req.body, "taskKey")),
-      extractStringField(req.body, "taskLink") || null,
-    );
-    res.json(result);
-  } catch (err) {
-    res
-      .status(400)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  const result = await createTaskWorktree(
+    extractStringField(req.body, "folderPath"),
+    extractStringField(req.body, "branchName"),
+    extractStringField(req.body, "baseBranchRef"),
+    extractStringField(req.body, "baseBranch"),
+    extractBooleanField(req.body, "useWorktree", true),
+    normalizeTaskKey(extractStringField(req.body, "taskKey")),
+    extractStringField(req.body, "taskLink") || null,
+  );
+  res.json(result);
 });
 
 tasksRouter.post("/launch", async (req, res) => {
-  try {
-    const { sessionId } = await launchTaskTerminal({
-      worktreePath: extractStringField(req.body, "worktreePath"),
-      prompt: extractStringField(req.body, "prompt"),
-      permissionModeAuto: extractBooleanField(req.body, "permissionModeAuto", false),
-      repoRoot: extractStringField(req.body, "repoRoot"),
-      nickname: extractStringField(req.body, "nickname"),
-      originBranch: extractStringField(req.body, "originBranch"),
-      destinationBranch: extractStringField(req.body, "destinationBranch"),
-      addDirs: extractStringArray(req.body, "addDirs"),
-    });
-    res.json({ success: true, sessionId });
-  } catch (err) {
-    res.status(400).json({
-      success: false,
-      error: err instanceof Error ? err.message : String(err),
-      code: errorCode(err),
-    });
-  }
+  const { sessionId } = await launchTaskTerminal({
+    worktreePath: extractStringField(req.body, "worktreePath"),
+    prompt: extractStringField(req.body, "prompt"),
+    permissionModeAuto: extractBooleanField(req.body, "permissionModeAuto", false),
+    repoRoot: extractStringField(req.body, "repoRoot"),
+    nickname: extractStringField(req.body, "nickname"),
+    originBranch: extractStringField(req.body, "originBranch"),
+    destinationBranch: extractStringField(req.body, "destinationBranch"),
+    addDirs: extractStringArray(req.body, "addDirs"),
+  });
+  res.json({ success: true, sessionId });
 });
 
 function extractStringArray(body: unknown, key: string): string[] {
@@ -281,212 +208,117 @@ function extractStringArray(body: unknown, key: string): string[] {
 
 // Tasks spanning several repos. `:key` may also be a ticket URL.
 
-function sendTaskError(res: Response, err: unknown): void {
-  res.status(400).json({
-    success: false,
-    error: err instanceof Error ? err.message : String(err),
-    code: errorCode(err),
-    ...(err instanceof TaskStepError
-      ? { failedStep: err.step, completedSteps: err.completedSteps }
-      : {}),
-  });
-}
-
 tasksRouter.get("/by-key/:key", async (req, res) => {
-  try {
-    res.json(await getTaskDetails(parseTaskKeyParam(req.params.key)));
-  } catch (err) {
-    sendTaskError(res, err);
-  }
+  res.json(await getTaskDetails(parseTaskKeyParam(req.params.key)));
 });
 
 tasksRouter.get("/by-key/:key/pr-url", async (req, res) => {
-  try {
-    const query = (name: string) => (typeof req.query[name] === "string" ? req.query[name] : "");
-    const url = await getTaskRepoPrUrl(
-      parseTaskKeyParam(req.params.key),
-      query("repoRoot"),
-      query("branch"),
-      query("base"),
-    );
-    if (!url) {
-      res
-        .status(404)
-        .json({ error: "No PR link could be built for this repo.", code: "NO_PR_LINK" });
-      return;
-    }
-    res.json({ url });
-  } catch (err) {
-    sendTaskError(res, err);
+  const query = (name: string) => (typeof req.query[name] === "string" ? req.query[name] : "");
+  const url = await getTaskRepoPrUrl(
+    parseTaskKeyParam(req.params.key),
+    query("repoRoot"),
+    query("branch"),
+    query("base"),
+  );
+  if (!url) {
+    res.status(404).json({ error: "No PR link could be built for this repo.", code: "NO_PR_LINK" });
+    return;
   }
+  res.json({ url });
 });
 
 tasksRouter.put("/by-key/:key", async (req, res) => {
-  try {
-    await setTaskLink(parseTaskKeyParam(req.params.key), extractStringField(req.body, "link"));
-    res.json({ success: true });
-  } catch (err) {
-    sendTaskError(res, err);
-  }
+  await setTaskLink(parseTaskKeyParam(req.params.key), extractStringField(req.body, "link"));
+  res.json({ success: true });
 });
 
 tasksRouter.post("/by-key/:key/repos", async (req, res) => {
-  try {
-    const body: unknown = req.body;
-    const useWorktree: unknown = (body as { useWorktree?: unknown } | undefined)?.useWorktree;
-    const result = await addRepoToTask(parseTaskKeyParam(req.params.key), {
-      folderPath: extractStringField(body, "folderPath"),
-      branchName: extractStringField(body, "branchName"),
-      baseBranch: extractStringField(body, "baseBranch"),
-      useLocalBranch: extractBooleanField(body, "useLocalBranch", false),
-      useWorktree: typeof useWorktree === "boolean" ? useWorktree : null,
-      taskLink: extractStringField(body, "taskLink") || null,
-    });
-    res.json({ success: true, ...result });
-  } catch (err) {
-    sendTaskError(res, err);
-  }
+  const body: unknown = req.body;
+  const useWorktree: unknown = (body as { useWorktree?: unknown } | undefined)?.useWorktree;
+  const result = await addRepoToTask(parseTaskKeyParam(req.params.key), {
+    folderPath: extractStringField(body, "folderPath"),
+    branchName: extractStringField(body, "branchName"),
+    baseBranch: extractStringField(body, "baseBranch"),
+    useLocalBranch: extractBooleanField(body, "useLocalBranch", false),
+    useWorktree: typeof useWorktree === "boolean" ? useWorktree : null,
+    taskLink: extractStringField(body, "taskLink") || null,
+  });
+  res.json({ success: true, ...result });
 });
 
 tasksRouter.delete("/by-key/:key/repos", async (req, res) => {
-  try {
-    await unlinkRepoFromTask(
-      parseTaskKeyParam(req.params.key),
-      extractStringField(req.body, "repoRoot"),
-      extractStringField(req.body, "branch"),
-    );
-    res.json({ success: true });
-  } catch (err) {
-    sendTaskError(res, err);
-  }
+  await unlinkRepoFromTask(
+    parseTaskKeyParam(req.params.key),
+    extractStringField(req.body, "repoRoot"),
+    extractStringField(req.body, "branch"),
+  );
+  res.json({ success: true });
 });
 
 tasksRouter.post("/test-task", async (req, res) => {
-  try {
-    await launchTaskTest(
-      extractStringField(req.body, "ticketLink"),
-      extractBooleanField(req.body, "permissionModeAuto", true),
-      extractStringField(req.body, "nickname"),
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(400).json({
-      success: false,
-      error: err instanceof Error ? err.message : String(err),
-      code: errorCode(err),
-    });
-  }
+  await launchTaskTest(
+    extractStringField(req.body, "ticketLink"),
+    extractBooleanField(req.body, "permissionModeAuto", true),
+    extractStringField(req.body, "nickname"),
+  );
+  res.json({ success: true });
 });
 
 // Team skills hub.
 
 tasksRouter.get("/skills-hub/status", async (_req, res) => {
-  try {
-    res.json(await getSkillsHubStatus());
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  res.json(await getSkillsHubStatus());
 });
 
 tasksRouter.get("/skills-hub/skill", async (req, res) => {
-  try {
-    const catalog = typeof req.query.catalog === "string" ? req.query.catalog : "";
-    const name = typeof req.query.name === "string" ? req.query.name : "";
-    res.json(await getSkillDetails(catalog, name));
-  } catch (err) {
-    res
-      .status(404)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  const catalog = typeof req.query.catalog === "string" ? req.query.catalog : "";
+  const name = typeof req.query.name === "string" ? req.query.name : "";
+  res.json(await getSkillDetails(catalog, name));
 });
 
 tasksRouter.post("/skills-hub/sync", async (_req, res) => {
-  try {
-    res.json(await syncSkillsHub());
-  } catch (err) {
-    res
-      .status(400)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  res.json(await syncSkillsHub());
 });
 
 tasksRouter.post("/skills-hub/clone", async (req, res) => {
-  try {
-    const hubPath = await cloneSkillsHub(extractStringField(req.body, "parentDir"));
-    res.json({ path: hubPath });
-  } catch (err) {
-    res
-      .status(400)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  const hubPath = await cloneSkillsHub(extractStringField(req.body, "parentDir"));
+  res.json({ path: hubPath });
 });
 
 tasksRouter.put("/skills-hub/selection", async (req, res) => {
-  try {
-    const body = (req.body ?? {}) as { catalogs?: unknown; skills?: unknown };
-    const strings = (raw: unknown) =>
-      Array.isArray(raw) ? raw.filter((c): c is string => typeof c === "string") : [];
-    res.json(
-      await setSkillsHubSelection({
-        catalogs: strings(body.catalogs),
-        skills: strings(body.skills),
-      }),
-    );
-  } catch (err) {
-    res
-      .status(400)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  const body = (req.body ?? {}) as { catalogs?: unknown; skills?: unknown };
+  const strings = (raw: unknown) =>
+    Array.isArray(raw) ? raw.filter((c): c is string => typeof c === "string") : [];
+  res.json(
+    await setSkillsHubSelection({
+      catalogs: strings(body.catalogs),
+      skills: strings(body.skills),
+    }),
+  );
 });
 
 /** The startup prompt's prefill: the `origin` of an existing hub clone, while no URL is saved. */
 tasksRouter.get("/skills-hub/detected-repo-url", async (_req, res) => {
-  try {
-    res.json({ repoUrl: await detectHubRepoUrl() });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  res.json({ repoUrl: await detectHubRepoUrl() });
 });
 
 tasksRouter.put("/skills-hub/repo-url", async (req, res) => {
-  try {
-    const raw: unknown = (req.body as { repoUrl?: unknown } | null)?.repoUrl;
-    await setSkillsHubRepoUrl(typeof raw === "string" ? raw : "");
-    res.json({ success: true });
-  } catch (err) {
-    res
-      .status(400)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  const raw: unknown = (req.body as { repoUrl?: unknown } | null)?.repoUrl;
+  await setSkillsHubRepoUrl(typeof raw === "string" ? raw : "");
+  res.json({ success: true });
 });
 
 tasksRouter.put("/skills-hub/path", async (req, res) => {
-  try {
-    const raw: unknown = (req.body as { path?: unknown } | null)?.path;
-    await setSkillsHubPath(typeof raw === "string" ? raw : null);
-    res.json({ success: true });
-  } catch (err) {
-    res
-      .status(400)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
-  }
+  const raw: unknown = (req.body as { path?: unknown } | null)?.path;
+  await setSkillsHubPath(typeof raw === "string" ? raw : null);
+  res.json({ success: true });
 });
 
 tasksRouter.post("/skills-hub/open-folder", async (req, res) => {
-  try {
-    const target: unknown = (req.body as { target?: unknown } | null)?.target;
-    if (target !== "hub" && target !== "userSkills") {
-      res.status(400).json({ error: 'target must be "hub" or "userSkills".' });
-      return;
-    }
-    res.json({ path: await openSkillsFolder(target) });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: err instanceof Error ? err.message : String(err), code: errorCode(err) });
+  const target: unknown = (req.body as { target?: unknown } | null)?.target;
+  if (target !== "hub" && target !== "userSkills") {
+    res.status(400).json({ error: 'target must be "hub" or "userSkills".' });
+    return;
   }
+  res.json({ path: await openSkillsFolder(target) });
 });

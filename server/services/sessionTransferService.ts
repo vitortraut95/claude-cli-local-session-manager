@@ -11,7 +11,7 @@ import type {
 } from "../types/session.js";
 import { forgetCachedSession, getClaudeProjectsDir } from "../utils/claudeProjects.js";
 import { branchExists, runGit, tryGit } from "../utils/git.js";
-import { AppError, BadRequestError, errorMessage } from "../utils/httpError.js";
+import { AppError, BadRequestError, ConflictError, errorMessage } from "../utils/httpError.js";
 import { getNicknames, setNickname } from "../utils/taskStore.js";
 import {
   directoryExists,
@@ -212,7 +212,7 @@ function parseBundle(raw: Buffer): SessionBundle {
     throw invalidBundleError();
   }
   if (typeof bundle.version !== "number" || bundle.version > BUNDLE_VERSION) {
-    throw new AppError(
+    throw new BadRequestError(
       "IMPORT_UNSUPPORTED_VERSION",
       "This session was exported by a newer version of Claude Session Manager — update the app first.",
     );
@@ -399,7 +399,7 @@ async function checkoutImportedBranch(cwd: string, branch: string): Promise<void
   const active = await getActiveWorkingDirectories();
   const repoTop = (await tryGit(["rev-parse", "--show-toplevel"], cwd)) ?? cwd;
   if (active.has(cwd) || active.has(repoTop)) {
-    throw new AppError(
+    throw new ConflictError(
       "IMPORT_CHECKOUT_BLOCKED_ACTIVE",
       "Another Claude session is active in that folder — close it before switching branches.",
     );
@@ -419,7 +419,7 @@ async function checkoutImportedBranch(cwd: string, branch: string): Promise<void
   } catch (err) {
     // git's own reason is the useful part, so the frontend shows this message as-is (the code
     // must stay out of SERVER_ERROR_CODE_KEYS).
-    throw new AppError(
+    throw new ConflictError(
       "IMPORT_CHECKOUT_FAILED",
       `Couldn't check out "${branch}": ${errorMessage(err)}`,
       { cause: err },
@@ -441,7 +441,7 @@ export async function importSessionBundle(
   }
   const resolvedTarget = path.resolve(trimmedTarget.replace(/^~(?=$|\/)/, os.homedir()));
   if (!(await directoryExists(resolvedTarget))) {
-    throw new AppError(
+    throw new BadRequestError(
       "IMPORT_TARGET_MISSING",
       `The folder "${resolvedTarget}" doesn't exist on this machine.`,
     );
@@ -454,14 +454,14 @@ export async function importSessionBundle(
   // the target folder switched to another branch with nothing imported.
   const existingPath = await findSessionFilePath(session.id);
   if (existingPath && onConflict === null) {
-    throw new AppError(
+    throw new ConflictError(
       "IMPORT_SESSION_EXISTS",
       "A session with this id already exists here — choose whether to overwrite it or import a copy.",
     );
   }
   const overwrite = existingPath !== null && onConflict === "overwrite";
   if (overwrite && (await getActiveResumeSessionIds()).has(session.id)) {
-    throw new AppError(
+    throw new ConflictError(
       "IMPORT_OVERWRITE_ACTIVE",
       "The existing session is active in a terminal — close it before overwriting, or import a copy.",
     );
@@ -530,7 +530,7 @@ export async function importSessionBundle(
   } else if ((await directoryExists(sidecarRoot)) || (await findSessionFilePath(newId))) {
     // Never merge into / clobber something that appeared since the check above.
     await discardStaging();
-    throw new AppError("IMPORT_SESSION_EXISTS", `Session "${newId}" already exists here.`);
+    throw new ConflictError("IMPORT_SESSION_EXISTS", `Session "${newId}" already exists here.`);
   }
   await rename(stagingTranscript, transcriptPath);
   if (bundle.sidecarFiles.length > 0) await rename(stagingSidecar, sidecarRoot);

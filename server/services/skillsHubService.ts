@@ -3,7 +3,7 @@ import { lstat, mkdir, readdir, readFile, readlink, stat, symlink, unlink } from
 import os from "node:os";
 import path from "node:path";
 import { cloneRepository, runGit, tryGit, type GitOptions } from "../utils/git.js";
-import { AppError, BadRequestError, errorMessage } from "../utils/httpError.js";
+import { AppError, BadRequestError, errorMessage, NotFoundError } from "../utils/httpError.js";
 import {
   getUserPreferences,
   updateUserPreferences,
@@ -744,7 +744,7 @@ export async function getSkillDetails(
   const catalog = (await listCatalogs(hubPath)).find((c) => c.name === catalogName);
   const skill = catalog?.skills.find((k) => k.name === skillName);
   if (!skill) {
-    throw new AppError(
+    throw new NotFoundError(
       "SKILL_NOT_FOUND",
       `Skill ${catalogName}/${skillName} not found in the hub.`,
     );

@@ -164,6 +164,14 @@ export class TaskStepError extends AppError {
     );
     this.name = "TaskStepError";
   }
+
+  override get status(): number {
+    return this.cause instanceof AppError ? this.cause.status : 500;
+  }
+
+  override body(): Record<string, unknown> {
+    return { failedStep: this.step, completedSteps: this.completedSteps };
+  }
 }
 
 export type AddRepoInput = {

@@ -22,7 +22,7 @@ import {
   resolveBaseBranchRef,
   sanitizeWorktreeDirName,
 } from "../utils/git.js";
-import { AppError, BadRequestError } from "../utils/httpError.js";
+import { AppError, BadRequestError, ConflictError } from "../utils/httpError.js";
 import {
   linkRepoBranchToTask,
   recordTaskBaseBranch,
@@ -254,7 +254,7 @@ export async function createTaskWorktree(
   if (!repoRoot) throw notGitRepoError(trimmedFolder);
 
   if (await branchExists(repoRoot, trimmedBranch)) {
-    throw new AppError("TASK_BRANCH_EXISTS", `Branch "${trimmedBranch}" already exists.`);
+    throw new ConflictError("TASK_BRANCH_EXISTS", `Branch "${trimmedBranch}" already exists.`);
   }
 
   if (!useWorktree) {
@@ -278,7 +278,7 @@ export async function createTaskWorktree(
           `("${occupyingBranch}") — its name sanitizes to the same folder name. Rename this ` +
           `branch, or remove that worktree first.`
         : `A worktree named "${worktreeDirName}" already exists.`;
-    throw new AppError("TASK_WORKTREE_EXISTS", message);
+    throw new ConflictError("TASK_WORKTREE_EXISTS", message);
   }
 
   await createWorktreeWithBranch(repoRoot, worktreePath, trimmedBranch, trimmedRef);
