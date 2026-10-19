@@ -5,6 +5,7 @@ import { sessionsRouter } from "./routes/sessions.js";
 import { systemRouter } from "./routes/system.js";
 import { tasksRouter } from "./routes/tasks.js";
 import { autoUpdateSkillsHubOnStart } from "./services/skillsHubService.js";
+import { errorHandler } from "./utils/httpError.js";
 import { migrateLegacySidecars } from "./utils/taskStore.js";
 
 const PORT = Number(process.env.PORT ?? 58231);
@@ -17,6 +18,7 @@ app.use("/sessions", sessionsRouter);
 app.use("/system", systemRouter);
 app.use("/tasks", tasksRouter);
 app.use("/cleanup", cleanupRouter);
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Claude Session Manager API listening on http://localhost:${PORT}`);

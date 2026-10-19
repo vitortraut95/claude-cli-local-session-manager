@@ -1,8 +1,9 @@
-import type { Response } from "express";
+import type { ErrorRequestHandler, Response } from "express";
 
 /**
  * Server error with a stable `code` alongside the English `message`; the code is sent in the JSON
- * error body so the frontend can show a translated message (`resolveApiErrorMessage`).
+ * error body so the frontend can show a translated message (`resolveApiErrorMessage`). `status`
+ * is the HTTP status it's answered with (500 unless a subclass says otherwise).
  */
 export class AppError extends Error {
   constructor(
@@ -13,14 +14,36 @@ export class AppError extends Error {
     super(message, options);
     this.name = "AppError";
   }
+
+  // A getter, not a field: a field set in this constructor would hide a subclass's getter.
+  // eslint-disable-next-line @typescript-eslint/class-literal-property-style
+  get status(): number {
+    return 500;
+  }
+
+  /** Extra fields for the JSON error body. */
+  body(): Record<string, unknown> {
+    return {};
+  }
 }
 
-/** An `AppError` the caller caused (a missing or malformed field); answered with 400 unless the
- *  route maps it otherwise. */
+/** The caller's fault: a missing or malformed field. */
 export class BadRequestError extends AppError {
-  constructor(code: string, message: string, options?: ErrorOptions) {
-    super(code, message, options);
-    this.name = "BadRequestError";
+  override get status(): number {
+    return 400;
+  }
+}
+
+export class NotFoundError extends AppError {
+  override get status(): number {
+    return 404;
+  }
+}
+
+/** The current state doesn't allow it (already exists, busy, active elsewhere). */
+export class ConflictError extends AppError {
+  override get status(): number {
+    return 409;
   }
 }
 
@@ -29,28 +52,18 @@ export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-/** The error's `code` when it's an `AppError`, for routes that build their own error body. */
-export function errorCode(err: unknown): string | undefined {
-  return err instanceof AppError ? err.code : undefined;
-}
-
-/**
- * Maps a caught error to an HTTP response. Any `AppError` gets its `code` included in the body;
- * `statusFor` lets each route decide which of its own `AppError` subclasses map to which status
- * (404/409/...); `null` falls back to 400 for a `BadRequestError` and 500 otherwise.
- */
-export function sendErrorResponse(
-  res: Response,
-  err: unknown,
-  statusFor: (err: AppError) => number | null = () => null,
-): void {
+/** `{ success: false, error, code? }` with the error's own status. */
+export function sendErrorResponse(res: Response, err: unknown): void {
   if (err instanceof AppError) {
-    const status = statusFor(err) ?? (err instanceof BadRequestError ? 400 : 500);
-    res.status(status).json({ success: false, error: err.message, code: err.code });
+    res
+      .status(err.status)
+      .json({ success: false, error: err.message, code: err.code, ...err.body() });
     return;
   }
-  res.status(500).json({
-    success: false,
-    error: err instanceof Error ? err.message : String(err),
-  });
+  res.status(500).json({ success: false, error: errorMessage(err) });
 }
+
+/** Express error middleware: every route's thrown/rejected error ends up here. */
+export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  sendErrorResponse(res, err);
+};

@@ -27,7 +27,13 @@ import {
   setSessionBranchOverride,
 } from "../utils/taskStore.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
-import { AppError, BadRequestError, errorMessage } from "../utils/httpError.js";
+import {
+  AppError,
+  BadRequestError,
+  ConflictError,
+  errorMessage,
+  NotFoundError,
+} from "../utils/httpError.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import {
   applyFileDiff,
@@ -344,14 +350,14 @@ async function findSessionCwd(id: string): Promise<string | null> {
   return head.cwd;
 }
 
-export class SessionNotFoundError extends AppError {
+export class SessionNotFoundError extends NotFoundError {
   constructor(id: string) {
     super("SESSION_NOT_FOUND", `Session "${id}" not found`);
     this.name = "SessionNotFoundError";
   }
 }
 
-export class SessionActiveError extends AppError {
+export class SessionActiveError extends ConflictError {
   constructor(message: string) {
     super("SESSION_ACTIVE", message);
     this.name = "SessionActiveError";
