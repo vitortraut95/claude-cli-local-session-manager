@@ -15,7 +15,7 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / MB).toFixed(1)} MB`;
 }
 
-export type SessionSizeStatus = "healthy" | "caution" | "critical";
+type SessionSizeStatus = "healthy" | "caution" | "critical";
 
 export function sessionSizeStatus(bytes: number): SessionSizeStatus {
   if (bytes < HEALTHY_MAX_BYTES) return "healthy";

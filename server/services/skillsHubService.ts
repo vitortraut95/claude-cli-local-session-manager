@@ -348,7 +348,7 @@ export type InstalledSkill = { name: string; description: string };
  *  each as `<catalog>/<skill>`. */
 export type SkillsSelection = { catalogs: string[]; skills: string[] };
 
-export function skillId(catalog: string, skill: string): string {
+function skillId(catalog: string, skill: string): string {
   return `${catalog}/${skill}`;
 }
 
@@ -481,7 +481,7 @@ async function getCloneParentDirs(): Promise<string[]> {
 
 /** Skills in `~/.claude/skills`: real folders or links (broken ones skipped, via `stat`) holding a
  *  SKILL.md. */
-export async function listInstalledSkills(): Promise<InstalledSkill[]> {
+async function listInstalledSkills(): Promise<InstalledSkill[]> {
   const dir = getUserSkillsDir();
   let names: string[];
   try {
@@ -555,7 +555,7 @@ export async function getSkillsHubStatus(): Promise<SkillsHubStatus> {
   };
 }
 
-export type LinkResult = { linked: string[]; unlinked: string[]; conflicts: string[] };
+type LinkResult = { linked: string[]; unlinked: string[]; conflicts: string[] };
 
 /**
  * Brings `~/.claude/skills` in line with the selection: links `missing` skills, re-points
@@ -614,7 +614,7 @@ async function applyLinks(
   return result;
 }
 
-export type SyncResult = {
+type SyncResult = {
   status: SkillsHubStatus;
   /** False when `git fetch` failed (offline, no SSH access) — links are still refreshed. */
   fetched: boolean;
@@ -826,7 +826,7 @@ export async function cloneSkillsHub(parentDir: string): Promise<string> {
   return target;
 }
 
-export type SkillsFolderTarget = "hub" | "userSkills";
+type SkillsFolderTarget = "hub" | "userSkills";
 
 /** Opens the hub clone or the CLI's user-level skills dir in the desktop's file manager
  *  (`xdg-open`). The folder is resolved here, never taken from the caller. */

@@ -15,7 +15,7 @@ import { createTaskWorktree, getRepoInfo, resolveBaseBranch } from "./taskServic
 
 export type TaskRepo = TaskRepoRef & { defaultBranch: string | null };
 
-export type TaskSessionSummary = Pick<
+type TaskSessionSummary = Pick<
   Session,
   | "id"
   | "title"
@@ -100,7 +100,7 @@ export async function getTaskRepoPrUrl(
   return buildPrUrl(repo.worktreePath ?? repo.repoRoot, repo.branch, base.trim());
 }
 
-export type SessionTask = {
+type SessionTask = {
   sessionId: string;
   taskKey: string | null;
   taskKeyInferred: boolean;

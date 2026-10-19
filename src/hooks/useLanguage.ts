@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext } from "react";
 import { t as translateKey, type Language, type TranslationKey } from "../i18n/translations";
 
-export type LanguageContextValue = {
+type LanguageContextValue = {
   language: Language;
   setLanguage: (next: Language) => void;
   loaded: boolean;

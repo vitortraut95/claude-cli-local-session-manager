@@ -106,7 +106,7 @@ export async function getRepoRoot(cwd: string): Promise<string | null> {
   return dirs ? path.dirname(dirs.commonGitDir) : null;
 }
 
-export type GitHostInfo = { host: "github" | "bitbucket"; slug: string };
+type GitHostInfo = { host: "github" | "bitbucket"; slug: string };
 
 /** `origin` URLs (SSH or HTTPS) on github.com/bitbucket.org; captures the `owner/repo` slug. */
 const REMOTE_URL_PATTERNS: { host: GitHostInfo["host"]; pattern: RegExp }[] = [
@@ -414,7 +414,7 @@ export async function getStatusFiles(cwd: string, excludePaths: string[] = []): 
 
 /** Tracked plus untracked-but-not-ignored files (`ls-files -co --exclude-standard`); `-z` as in
  *  `getStatusFiles`. */
-export async function listWorkingTreeFiles(cwd: string): Promise<string[]> {
+async function listWorkingTreeFiles(cwd: string): Promise<string[]> {
   const list = await runGit(["ls-files", "-co", "--exclude-standard", "-z"], cwd);
   return list ? list.split("\0").filter(Boolean) : [];
 }
@@ -461,7 +461,7 @@ export async function discardWorkingTreeChanges(
   return await runGit(["rev-parse", "refs/stash"], cwd);
 }
 
-export type AppStash = { sha: string; message: string };
+type AppStash = { sha: string; message: string };
 
 /**
  * Every stash `discardWorkingTreeChanges` created in `cwd`, newest first. Uses the SHA (`%H`), not
@@ -486,7 +486,7 @@ export async function checkoutExistingBranch(cwd: string, branch: string): Promi
   await runGit(["checkout", branch], cwd);
 }
 
-export type FileDiff = { added: string[]; modified: string[]; removed: string[] };
+type FileDiff = { added: string[]; modified: string[]; removed: string[] };
 
 /** Files content-compared per batch, bounding open file descriptors (EMFILE). */
 const DIFF_COMPARE_BATCH_SIZE = 50;
@@ -509,7 +509,7 @@ async function filesDiffer(pathA: string, pathB: string): Promise<boolean> {
 }
 
 /** Merge-base of two refs; null when either is missing or they share no resolvable history. */
-export async function getMergeBase(
+async function getMergeBase(
   cwd: string,
   refA: string | null,
   refB: string | null,
@@ -524,7 +524,7 @@ export async function getMergeBase(
 
 /** Paths changed between `baseRef` and `worktreeDir`'s working tree (commits and uncommitted
  *  changes). Renames/copies contribute both paths. */
-export async function getTouchedPathsSinceMergeBase(
+async function getTouchedPathsSinceMergeBase(
   worktreeDir: string,
   baseRef: string,
 ): Promise<string[]> {

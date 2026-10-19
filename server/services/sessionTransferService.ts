@@ -388,7 +388,7 @@ function rewriteJsonl(text: string, rewrite: Rewriter): string {
 
 export type ImportConflictResolution = "overwrite" | "copy";
 
-export type ImportSessionOptions = {
+type ImportSessionOptions = {
   targetDir: string;
   checkoutBranch: boolean;
   /** Required only when the bundle's session id already exists locally. */

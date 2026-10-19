@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import * as tasksApi from "../services/tasksApi";
 import type { EnvPreviews } from "../services/tasksApi";
 
-export type TeamLinks = {
+type TeamLinks = {
   /** Null = no Jenkins configured (button hidden). */
   jenkinsBaseUrl: string | null;
   envPreviews: EnvPreviews;

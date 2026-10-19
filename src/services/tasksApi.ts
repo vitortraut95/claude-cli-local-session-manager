@@ -73,7 +73,7 @@ export async function importPreferences(file: unknown): Promise<void> {
 }
 
 /** Replaces the whole preferences file — send the full object. Prefer `updatePreferences`. */
-export async function savePreferences(preferences: UserPreferences): Promise<void> {
+async function savePreferences(preferences: UserPreferences): Promise<void> {
   await withServerErrorMessage(() => client.put("/preferences", preferences));
 }
 
@@ -377,7 +377,7 @@ export type SkillsHubStatus = {
 
 export type InstalledSkill = { name: string; description: string };
 
-export type SkillsLinkResult = { linked: string[]; unlinked: string[]; conflicts: string[] };
+type SkillsLinkResult = { linked: string[]; unlinked: string[]; conflicts: string[] };
 
 export type SkillsHubSyncResult = {
   status: SkillsHubStatus;
