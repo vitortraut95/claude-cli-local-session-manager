@@ -53,6 +53,8 @@ export type UserPreferences = {
   /** The "Test task" modal's "--permission-mode auto" checkbox, remembered as last left (default
    *  on). Optional: older files lack it. */
   taskTestPermissionModeAuto: boolean;
+  /** UI theme; null = follow the system. Optional: older files lack it. */
+  theme: "light" | "dark" | null;
 };
 
 export type EnvPreviewTemplate = { label: string; url: string };
@@ -81,6 +83,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   envPreviews: {},
   taskTestSkill: "",
   taskTestPermissionModeAuto: true,
+  theme: null,
 };
 
 function isLanguage(value: unknown): value is Language {
@@ -201,6 +204,10 @@ function normalizePreferences(value: unknown): UserPreferences {
       typeof parsed.taskTestPermissionModeAuto === "boolean"
         ? parsed.taskTestPermissionModeAuto
         : DEFAULT_PREFERENCES.taskTestPermissionModeAuto,
+    theme:
+      parsed.theme === "light" || parsed.theme === "dark"
+        ? parsed.theme
+        : DEFAULT_PREFERENCES.theme,
   };
 }
 

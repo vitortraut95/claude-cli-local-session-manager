@@ -593,14 +593,14 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
   );
 }
 
-/** Theme is per-browser (localStorage), not a `userPreferences.json` key, so no key name shown. */
 function ThemeRow({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
   const { t } = useLanguage();
   return (
     <li className="flex items-center gap-4 px-4 py-3">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+        <p className="flex flex-wrap items-baseline gap-x-2 text-sm font-medium text-gray-900 dark:text-gray-100">
           {t("settings.theme.title")}
+          <code className="text-[10px] font-normal text-gray-400 dark:text-gray-500">theme</code>
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {t("settings.theme.description")}

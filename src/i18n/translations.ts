@@ -422,8 +422,8 @@ export const translations = {
   ),
   "settings.theme.title": dict("Theme", "Tema"),
   "settings.theme.description": dict(
-    "Light or dark — saved in this browser, not in userPreferences.json.",
-    "Claro ou escuro — salvo neste navegador, não no userPreferences.json.",
+    "Light or dark. Starts following the system until you pick one.",
+    "Claro ou escuro. Segue o sistema até você escolher um.",
   ),
 
   "workspaceDirs.add": dict("Add", "Adicionar"),

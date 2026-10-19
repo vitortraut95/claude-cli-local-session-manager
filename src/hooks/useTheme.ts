@@ -1,29 +1,70 @@
 import { useCallback, useEffect, useState } from "react";
+import * as tasksApi from "../services/tasksApi";
 
 export type Theme = "light" | "dark";
 
+/** First-paint cache of `UserPreferences.theme`, so the page doesn't flash before prefs load. */
 const STORAGE_KEY = "theme";
 
 function getSystemTheme(): Theme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-function getInitialTheme(): Theme {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored === "light" || stored === "dark" ? stored : getSystemTheme();
+function readCachedTheme(): Theme | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored === "light" || stored === "dark" ? stored : null;
+  } catch {
+    return null;
+  }
 }
 
+/** Theme stored in `userPreferences.json` (so it's exported/imported with everything else). */
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const [theme, setTheme] = useState<Theme>(() => readCachedTheme() ?? getSystemTheme());
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem(STORAGE_KEY, theme);
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch {
+      // Cache only.
+    }
   }, [theme]);
 
-  const toggleTheme = useCallback(() => {
-    setTheme((current) => (current === "dark" ? "light" : "dark"));
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      tasksApi
+        .fetchPreferences()
+        .then((prefs) => {
+          if (cancelled) return;
+          if (prefs.theme === "light" || prefs.theme === "dark") {
+            setTheme(prefs.theme);
+            return;
+          }
+          // Not saved yet (older file, or a backend without the field): keep the browser's choice
+          // from before the theme moved into the preferences.
+          const cached = readCachedTheme();
+          if (cached && prefs.theme === null) {
+            void tasksApi.updatePreferences({ theme: cached }).catch(() => undefined);
+          }
+        })
+        .catch(() => undefined);
+    };
+    load();
+    window.addEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, load);
+    };
   }, []);
+
+  const toggleTheme = useCallback(() => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    void tasksApi.updatePreferences({ theme: next }).catch(() => undefined);
+  }, [theme]);
 
   return { theme, toggleTheme };
 }

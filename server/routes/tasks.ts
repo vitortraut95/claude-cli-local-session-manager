@@ -51,7 +51,8 @@ type LateFields =
   | "jenkinsBaseUrl"
   | "envPreviews"
   | "taskTestSkill"
-  | "taskTestPermissionModeAuto";
+  | "taskTestPermissionModeAuto"
+  | "theme";
 
 /** Optional fields: an older frontend bundle sends the object without them, and the PUT handler
  *  keeps the stored value instead of rejecting or wiping it. */
@@ -89,7 +90,11 @@ function isValidPreferences(
     (candidate.envPreviews === undefined || isEnvPreviews(candidate.envPreviews)) &&
     (candidate.taskTestSkill === undefined || typeof candidate.taskTestSkill === "string") &&
     (candidate.taskTestPermissionModeAuto === undefined ||
-      typeof candidate.taskTestPermissionModeAuto === "boolean")
+      typeof candidate.taskTestPermissionModeAuto === "boolean") &&
+    (candidate.theme === undefined ||
+      candidate.theme === null ||
+      candidate.theme === "light" ||
+      candidate.theme === "dark")
   );
 }
 
@@ -127,7 +132,8 @@ tasksRouter.put("/preferences", async (req, res) => {
           "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
           "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
           "autoUpdateOnStart? }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
-          "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean }.",
+          "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean, " +
+          'theme?: "light"|"dark"|null }.',
       );
     }
     const body = req.body;
