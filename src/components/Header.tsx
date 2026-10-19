@@ -31,7 +31,7 @@ import { Tooltip } from "./Tooltip";
 import { UpdateButton } from "./UpdateButton";
 import { UpdateOverlay } from "./UpdateOverlay";
 import { UsageLimitsBadge } from "./UsageLimitsBadge";
-import * as tasksApi from "../services/tasksApi";
+import * as preferencesApi from "../services/preferencesApi";
 
 type HeaderProps = {
   /** Fired after a new task/session is created, so the session list can refresh. */
@@ -76,13 +76,13 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(true);
   // Initial setup: asked on every load while any of its fields was never saved (null); "not now"
   // only skips it for this page load. Re-checked whenever preferences change.
-  const [setupPrefs, setSetupPrefs] = useState<tasksApi.UserPreferences | null>(null);
+  const [setupPrefs, setSetupPrefs] = useState<preferencesApi.UserPreferences | null>(null);
   const [setupSkipped, setSetupSkipped] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const check = () => {
-      tasksApi
+      preferencesApi
         .fetchPreferences()
         .then((prefs) => {
           if (cancelled) return;
@@ -99,10 +99,10 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         .catch(() => undefined);
     };
     check();
-    window.addEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, check);
+    window.addEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, check);
     return () => {
       cancelled = true;
-      window.removeEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, check);
+      window.removeEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, check);
     };
   }, []);
 

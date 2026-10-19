@@ -1,6 +1,6 @@
 import { AlertTriangle, Loader2, Wand2 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
-import type { SkillsHubStatus } from "../services/tasksApi";
+import type { SkillsHubStatus } from "../services/skillsHubApi";
 import { Button } from "./Button";
 import { Tooltip } from "./Tooltip";
 

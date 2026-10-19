@@ -1,4 +1,4 @@
-import type { EnvPreviews } from "../services/tasksApi";
+import type { EnvPreviews } from "../services/preferencesApi";
 import { DEFAULT_BRANCHES } from "./branches";
 
 // Jenkins multibranch pipeline links. The job name is the repo folder name (`session.project`);

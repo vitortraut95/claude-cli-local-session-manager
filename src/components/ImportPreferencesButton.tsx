@@ -2,7 +2,8 @@ import { FileUp, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
-import * as tasksApi from "../services/tasksApi";
+import * as preferencesApi from "../services/preferencesApi";
+import * as skillsHubApi from "../services/skillsHubApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { readJsonFile } from "../utils/preferencesFile";
 import { Button } from "./Button";
@@ -32,9 +33,9 @@ export function ImportPreferencesButton({ onImported }: ImportPreferencesButtonP
   const handleConfirm = async () => {
     setImporting(true);
     try {
-      await tasksApi.importPreferences(pending);
-      tasksApi.notifyPreferencesChanged();
-      tasksApi.notifySkillsHubChanged();
+      await preferencesApi.importPreferences(pending);
+      preferencesApi.notifyPreferencesChanged();
+      skillsHubApi.notifySkillsHubChanged();
       showToast(t("preferencesFile.imported"), "success");
       setPending(null);
       onImported();

@@ -1,4 +1,4 @@
-import type { UserPreferences } from "../services/tasksApi";
+import type { UserPreferences } from "../services/preferencesApi";
 
 /** Downloads the preferences as `userPreferences.json` (Settings → Export). */
 export function downloadPreferences(prefs: UserPreferences): void {

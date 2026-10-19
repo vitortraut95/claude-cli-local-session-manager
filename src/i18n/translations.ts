@@ -1,4 +1,4 @@
-import type { Language } from "../services/tasksApi";
+import type { Language } from "../services/preferencesApi";
 
 export type { Language };
 

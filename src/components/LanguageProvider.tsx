@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { LanguageContext } from "../hooks/useLanguage";
 import { detectBrowserLanguage, type Language } from "../i18n/translations";
-import * as tasksApi from "../services/tasksApi";
+import * as preferencesApi from "../services/preferencesApi";
 
 /** Holds the app language, consumed via useLanguage(); fetches preferences once for the whole app. */
 export function LanguageProvider({ children }: { children: ReactNode }) {
@@ -10,7 +10,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    tasksApi
+    preferencesApi
       .fetchPreferences()
       .then((prefs) => {
         if (cancelled) return;
@@ -29,7 +29,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = useCallback((next: Language) => {
     setLanguageState(next);
-    void tasksApi.updatePreferences({ language: next });
+    void preferencesApi.updatePreferences({ language: next });
   }, []);
 
   return (

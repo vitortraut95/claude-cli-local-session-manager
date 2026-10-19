@@ -20,13 +20,14 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
-import * as tasksApi from "../services/tasksApi";
+import * as preferencesApi from "../services/preferencesApi";
+import * as skillsHubApi from "../services/skillsHubApi";
 import type {
   HubCatalog,
   SkillLinkState,
   SkillsHubStatus,
   SkillsSelection,
-} from "../services/tasksApi";
+} from "../services/skillsHubApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { describeSync } from "../utils/skillsHub";
 import { Button } from "./Button";
@@ -151,9 +152,9 @@ function RepoUrlSection({
   const save = async () => {
     setSaving(true);
     try {
-      await tasksApi.setSkillsHubRepoUrl(value);
-      tasksApi.notifySkillsHubChanged();
-      tasksApi.notifyPreferencesChanged();
+      await skillsHubApi.setSkillsHubRepoUrl(value);
+      skillsHubApi.notifySkillsHubChanged();
+      preferencesApi.notifyPreferencesChanged();
       await onDone();
       showToast(t("skillsHub.repoUrl.saved"), "success");
     } catch (err) {
@@ -201,8 +202,8 @@ function PathOverride({ onDone, initial }: { onDone: () => Promise<void>; initia
   const save = async (path: string | null) => {
     setSaving(true);
     try {
-      await tasksApi.setSkillsHubPath(path);
-      tasksApi.notifySkillsHubChanged();
+      await skillsHubApi.setSkillsHubPath(path);
+      skillsHubApi.notifySkillsHubChanged();
       await onDone();
       showToast(t("skillsHub.pathSaved"), "success");
     } catch (err) {
@@ -257,8 +258,8 @@ function InstallSection({
     setCloning(true);
     setCloneError(null);
     try {
-      await tasksApi.cloneSkillsHub(parentDir);
-      tasksApi.notifySkillsHubChanged();
+      await skillsHubApi.cloneSkillsHub(parentDir);
+      skillsHubApi.notifySkillsHubChanged();
       showToast(t("skillsHub.cloned"), "success");
       await onDone();
     } catch (err) {
@@ -451,8 +452,8 @@ function ManageSection({
   const apply = async () => {
     setApplying(true);
     try {
-      const result = await tasksApi.setSkillsHubSelection(draft);
-      tasksApi.notifySkillsHubChanged();
+      const result = await skillsHubApi.setSkillsHubSelection(draft);
+      skillsHubApi.notifySkillsHubChanged();
       await onChanged();
       showToast(
         t("skillsHub.catalogsApplied", {
@@ -471,9 +472,9 @@ function ManageSection({
   const syncNow = async () => {
     setSyncing(true);
     try {
-      const result = await tasksApi.syncSkillsHub();
+      const result = await skillsHubApi.syncSkillsHub();
       setLastSync(describeSync(result, t));
-      tasksApi.notifySkillsHubChanged();
+      skillsHubApi.notifySkillsHubChanged();
       await onChanged();
     } catch (err) {
       setLastSync({ warning: true, text: resolveApiErrorMessage(err, t, "skillsHub.syncError") });
@@ -702,7 +703,7 @@ function OpenFolderMenu({ hubPath, userSkillsDir }: { hubPath: string; userSkill
     setOpen(false);
     setBusy(true);
     try {
-      await tasksApi.openSkillsFolder(target);
+      await skillsHubApi.openSkillsFolder(target);
     } catch (err) {
       showToast(resolveApiErrorMessage(err, t, "skillsHub.manage.openFolderError"), "error");
     } finally {

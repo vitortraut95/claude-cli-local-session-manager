@@ -2,8 +2,8 @@ import { FlaskConical, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
-import * as tasksApi from "../services/tasksApi";
-import type { InstalledSkill } from "../services/tasksApi";
+import * as preferencesApi from "../services/preferencesApi";
+import type { InstalledSkill } from "../services/skillsHubApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Select } from "./Select";
 
@@ -30,7 +30,7 @@ export function TaskTestSkillSelect({
   useEffect(() => {
     let cancelled = false;
     const load = () => {
-      tasksApi
+      preferencesApi
         .fetchPreferences()
         .then((prefs) => {
           if (!cancelled) setValue(prefs.taskTestSkill ?? "");
@@ -40,10 +40,10 @@ export function TaskTestSkillSelect({
         });
     };
     load();
-    window.addEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, load);
+    window.addEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
-      window.removeEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, load);
+      window.removeEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, load);
     };
   }, []);
 
@@ -52,8 +52,8 @@ export function TaskTestSkillSelect({
     setValue(next);
     setSaving(true);
     try {
-      await tasksApi.updatePreferences({ taskTestSkill: next });
-      tasksApi.notifyPreferencesChanged();
+      await preferencesApi.updatePreferences({ taskTestSkill: next });
+      preferencesApi.notifyPreferencesChanged();
       showToast(t("settings.saved"), "success");
     } catch (err) {
       setValue(previous);

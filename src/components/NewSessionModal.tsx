@@ -3,6 +3,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useProjectFolders } from "../hooks/useProjectFolders";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import { useToast } from "../hooks/useToast";
+import * as preferencesApi from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Button } from "./Button";
@@ -56,7 +57,7 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
   // edit across an accidental close.
   useEffect(() => {
     let cancelled = false;
-    tasksApi
+    preferencesApi
       .fetchPreferences()
       .then((prefs) => {
         if (cancelled) return;
@@ -83,7 +84,7 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
   }, [defaultPromptLoaded]);
   useEffect(() => {
     const onChanged = () => {
-      tasksApi
+      preferencesApi
         .fetchPreferences()
         .then((prefs) => {
           const previous = defaultPromptRef.current ?? "";
@@ -93,8 +94,8 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
         })
         .catch(() => undefined);
     };
-    window.addEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, onChanged);
-    return () => window.removeEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, onChanged);
+    window.addEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, onChanged);
   }, []);
 
   const resetForm = useCallback(() => {
@@ -107,7 +108,7 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
   const handleSaveDefaultPrompt = async () => {
     setSavingDefaultPrompt(true);
     try {
-      await tasksApi.updatePreferences({ defaultSessionPrompt: promptText });
+      await preferencesApi.updatePreferences({ defaultSessionPrompt: promptText });
       setDefaultPromptLoaded(promptText);
       showToast(t("newTaskModal.promptSaved"), "success");
     } catch (err) {

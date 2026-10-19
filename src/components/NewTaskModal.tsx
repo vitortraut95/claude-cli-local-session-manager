@@ -14,6 +14,7 @@ import { useProjectFolders } from "../hooks/useProjectFolders";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
+import * as preferencesApi from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import { Button } from "./Button";
 import { Input } from "./Input";
@@ -145,7 +146,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   // across an accidental close.
   useEffect(() => {
     let cancelled = false;
-    tasksApi
+    preferencesApi
       .fetchPreferences()
       .then((prefs) => {
         if (cancelled) return;
@@ -178,7 +179,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   }, [defaultPromptLoaded, useWorktreeTouched]);
   useEffect(() => {
     const onChanged = () => {
-      tasksApi
+      preferencesApi
         .fetchPreferences()
         .then((prefs) => {
           const previous = latestRef.current;
@@ -200,8 +201,8 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         })
         .catch(() => undefined);
     };
-    window.addEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, onChanged);
-    return () => window.removeEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, onChanged);
+    window.addEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, onChanged);
   }, []);
 
   const effectivePrefix = prefixChoice === OTHER_PREFIX_VALUE ? customPrefix.trim() : prefixChoice;
@@ -285,7 +286,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
   const handleSaveDefaultPrompt = async () => {
     setSavingDefaultPrompt(true);
     try {
-      await tasksApi.updatePreferences({ defaultPrompt: promptText });
+      await preferencesApi.updatePreferences({ defaultPrompt: promptText });
       setDefaultPromptLoaded(promptText);
       showToast(t("newTaskModal.promptSaved"), "success");
     } catch (err) {
@@ -302,7 +303,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     setSavingWorktreeDefault(true);
     try {
       const nextUseWorktreeDefault = useWorktree;
-      await tasksApi.updatePreferences({ useWorktreeByDefault: nextUseWorktreeDefault });
+      await preferencesApi.updatePreferences({ useWorktreeByDefault: nextUseWorktreeDefault });
       setUseWorktreeDefault(nextUseWorktreeDefault);
       showToast(t("newTaskModal.worktreePrefSaved"), "success");
     } catch (err) {
@@ -426,7 +427,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
 
       // Both auto-remembered fields go in one `updatePreferences` call — each call does its own
       // fetch-merge-PUT, so two concurrent calls would race and one would overwrite the other.
-      const preferencesUpdate: Partial<tasksApi.UserPreferences> = {
+      const preferencesUpdate: Partial<preferencesApi.UserPreferences> = {
         useAutoPermissionModeByDefault: permissionModeAuto,
       };
 
@@ -443,7 +444,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       }
 
       // Best-effort — a failure here doesn't undo the created task.
-      tasksApi.updatePreferences(preferencesUpdate).catch(() => {
+      preferencesApi.updatePreferences(preferencesUpdate).catch(() => {
         // Still usable for the rest of this session even if persisting it failed.
       });
 

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
-import * as tasksApi from "../services/tasksApi";
-import type { EnvPreviews } from "../services/tasksApi";
+import * as preferencesApi from "../services/preferencesApi";
+import type { EnvPreviews } from "../services/preferencesApi";
 
 type TeamLinks = {
   /** Null = no Jenkins configured (button hidden). */
@@ -17,7 +17,7 @@ const listeners = new Set<() => void>();
 let started = false;
 
 function load() {
-  tasksApi
+  preferencesApi
     .fetchPreferences()
     .then((prefs) => {
       const base = prefs.jenkinsBaseUrl?.trim() ?? "";
@@ -35,7 +35,7 @@ function subscribe(listener: () => void) {
   if (!started) {
     started = true;
     load();
-    window.addEventListener(tasksApi.PREFERENCES_CHANGED_EVENT, load);
+    window.addEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, load);
   }
   listeners.add(listener);
   return () => listeners.delete(listener);

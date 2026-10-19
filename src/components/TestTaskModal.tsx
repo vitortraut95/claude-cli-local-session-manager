@@ -6,6 +6,7 @@ import * as tasksApi from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
+import * as preferencesApi from "../services/preferencesApi";
 
 type TestTaskModalProps = {
   /** `taskTestSkill` — only mounted while one is set. */
@@ -36,7 +37,7 @@ export function TestTaskModal({
 
   useEffect(() => {
     let cancelled = false;
-    tasksApi
+    preferencesApi
       .fetchPreferences()
       .then((prefs) => {
         if (cancelled) return;
@@ -64,7 +65,7 @@ export function TestTaskModal({
       );
       showToast(t("newTaskModal.terminalOpened"), "success");
       if (permissionModeAuto !== storedPermissionModeAuto) {
-        void tasksApi
+        void preferencesApi
           .updatePreferences({ taskTestPermissionModeAuto: permissionModeAuto })
           .catch(() => undefined);
       }

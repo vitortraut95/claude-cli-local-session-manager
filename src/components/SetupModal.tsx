@@ -2,8 +2,9 @@ import { Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
-import * as tasksApi from "../services/tasksApi";
-import type { UserPreferences } from "../services/tasksApi";
+import * as preferencesApi from "../services/preferencesApi";
+import * as skillsHubApi from "../services/skillsHubApi";
+import type { UserPreferences } from "../services/preferencesApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { ImportPreferencesButton } from "./ImportPreferencesButton";
 import { Input } from "./Input";
@@ -31,7 +32,7 @@ export function SetupModal({ prefs, onSaved, onSkip }: SetupModalProps) {
   useEffect(() => {
     if (prefs.skillsHub?.repoUrl != null) return;
     let cancelled = false;
-    tasksApi
+    skillsHubApi
       .fetchDetectedHubRepoUrl()
       .then((detected) => {
         if (cancelled || !detected) return;
@@ -45,7 +46,7 @@ export function SetupModal({ prefs, onSaved, onSkip }: SetupModalProps) {
   }, [prefs.skillsHub?.repoUrl]);
 
   const handleImported = async () => {
-    const imported = await tasksApi.fetchPreferences().catch(() => null);
+    const imported = await preferencesApi.fetchPreferences().catch(() => null);
     if (!imported) return;
     if (imported.workspaceDirs) setDirs(imported.workspaceDirs);
     setJenkinsBaseUrl(imported.jenkinsBaseUrl ?? "");
@@ -55,13 +56,13 @@ export function SetupModal({ prefs, onSaved, onSkip }: SetupModalProps) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await tasksApi.updatePreferences({
+      await preferencesApi.updatePreferences({
         workspaceDirs: dirs,
         jenkinsBaseUrl: jenkinsBaseUrl.trim(),
       });
-      await tasksApi.setSkillsHubRepoUrl(hubRepoUrl.trim());
-      tasksApi.notifyPreferencesChanged();
-      tasksApi.notifySkillsHubChanged();
+      await skillsHubApi.setSkillsHubRepoUrl(hubRepoUrl.trim());
+      preferencesApi.notifyPreferencesChanged();
+      skillsHubApi.notifySkillsHubChanged();
       showToast(t("setup.saved"), "success");
       onSaved();
     } catch (err) {

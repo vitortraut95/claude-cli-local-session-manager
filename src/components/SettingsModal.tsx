@@ -14,8 +14,9 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import type { Theme } from "../hooks/useTheme";
 import { useToast } from "../hooks/useToast";
-import * as tasksApi from "../services/tasksApi";
-import type { EnvPreviews, UserPreferences } from "../services/tasksApi";
+import * as preferencesApi from "../services/preferencesApi";
+import * as skillsHubApi from "../services/skillsHubApi";
+import type { EnvPreviews, UserPreferences } from "../services/preferencesApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { downloadPreferences } from "../utils/preferencesFile";
 import { Button } from "./Button";
@@ -81,7 +82,7 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
 
   const reload = useCallback(async () => {
     try {
-      setPrefs(await tasksApi.fetchPreferences());
+      setPrefs(await preferencesApi.fetchPreferences());
       setLoadError(null);
     } catch (err) {
       setLoadError(resolveApiErrorMessage(err, t, "settings.loadError"));
@@ -98,8 +99,8 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
     const key = Object.keys(partial)[0] as keyof UserPreferences;
     setSavingKey(key);
     try {
-      await tasksApi.updatePreferences(partial);
-      tasksApi.notifyPreferencesChanged();
+      await preferencesApi.updatePreferences(partial);
+      preferencesApi.notifyPreferencesChanged();
       await reload();
       showToast(t("settings.saved"), "success");
       return true;
@@ -118,10 +119,10 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
     const repoUrl = value.repoUrl.trim();
     const path = value.path.trim();
     try {
-      await tasksApi.setSkillsHubRepoUrl(repoUrl);
-      const savedPath = (await tasksApi.fetchPreferences()).skillsHub?.path ?? "";
+      await skillsHubApi.setSkillsHubRepoUrl(repoUrl);
+      const savedPath = (await preferencesApi.fetchPreferences()).skillsHub?.path ?? "";
       if (repoUrl !== "" && path !== savedPath) {
-        await tasksApi.setSkillsHubPath(path === "" ? null : path);
+        await skillsHubApi.setSkillsHubPath(path === "" ? null : path);
       }
       showToast(t("settings.saved"), "success");
       return true;
@@ -129,8 +130,8 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
       showToast(resolveApiErrorMessage(err, t, "settings.saveError"), "error");
       return false;
     } finally {
-      tasksApi.notifyPreferencesChanged();
-      tasksApi.notifySkillsHubChanged();
+      preferencesApi.notifyPreferencesChanged();
+      skillsHubApi.notifySkillsHubChanged();
       await reload();
     }
   };
@@ -138,7 +139,7 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
   const openFile = async () => {
     setOpeningFile(true);
     try {
-      await tasksApi.openPreferencesInEditor();
+      await preferencesApi.openPreferencesInEditor();
     } catch (err) {
       showToast(resolveApiErrorMessage(err, t, "settings.openFileError"), "error");
     } finally {

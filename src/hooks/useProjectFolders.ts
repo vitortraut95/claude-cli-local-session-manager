@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import * as tasksApi from "../services/tasksApi";
 import type { ProjectFolderOption } from "../services/tasksApi";
+import * as tasksApi from "../services/tasksApi";
 
 /** The project select's "type a path by hand" option. */
 export const OTHER_FOLDER_VALUE = "__other__";
