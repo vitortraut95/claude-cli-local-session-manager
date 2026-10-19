@@ -24,6 +24,11 @@ export class BadRequestError extends AppError {
   }
 }
 
+/** The message of anything thrown. */
+export function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /** The error's `code` when it's an `AppError`, for routes that build their own error body. */
 export function errorCode(err: unknown): string | undefined {
   return err instanceof AppError ? err.code : undefined;

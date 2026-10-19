@@ -1,10 +1,9 @@
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { lstat, mkdir, readdir, readFile, readlink, stat, symlink, unlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
-import { cloneRepository, NON_INTERACTIVE_GIT_ENV } from "../utils/git.js";
-import { AppError, BadRequestError } from "../utils/httpError.js";
+import { cloneRepository, runGit, tryGit, type GitOptions } from "../utils/git.js";
+import { AppError, BadRequestError, errorMessage } from "../utils/httpError.js";
 import {
   getUserPreferences,
   updateUserPreferences,
@@ -29,31 +28,8 @@ import { expandHome, findReposIn, getWorkspaceRepos } from "./workspaceService.j
 
 const FETCH_TIMEOUT_MS = 20_000;
 
-const execFileAsync = promisify(execFile);
-
-async function git(args: string[], cwd: string): Promise<string> {
-  try {
-    const { stdout } = await execFileAsync("git", args, {
-      cwd,
-      env: NON_INTERACTIVE_GIT_ENV,
-      timeout: FETCH_TIMEOUT_MS,
-      maxBuffer: 8 * 1024 * 1024,
-    });
-    return stdout.trim();
-  } catch (err) {
-    const stderr = (err as { stderr?: string } | null)?.stderr?.trim();
-    const fallback = err instanceof Error ? err.message : String(err);
-    throw new Error(stderr && stderr.length > 0 ? stderr : fallback, { cause: err });
-  }
-}
-
-async function tryGit(args: string[], cwd: string): Promise<string | null> {
-  try {
-    return await git(args, cwd);
-  } catch {
-    return null;
-  }
-}
+/** Every hub git call may reach the remote. */
+const HUB_GIT: GitOptions = { timeoutMs: FETCH_TIMEOUT_MS, nonInteractive: true };
 
 export function getUserSkillsDir(): string {
   const fromEnv = process.env.CLAUDE_CONFIG_DIR?.trim();
@@ -75,13 +51,13 @@ function hubWebUrl(repoUrl: string): string {
 }
 
 async function readOrigin(dir: string): Promise<string | null> {
-  return tryGit(["remote", "get-url", "origin"], dir);
+  return tryGit(["remote", "get-url", "origin"], dir, HUB_GIT);
 }
 
 /** Every remote's fetch URL — a clone whose remote isn't called `origin` (or a fork with the team
  *  repo as `upstream`) still counts as the hub. */
 async function readRemoteUrls(dir: string): Promise<string[]> {
-  const out = await tryGit(["config", "--get-regexp", "^remote\\..*\\.url$"], dir);
+  const out = await tryGit(["config", "--get-regexp", "^remote\\..*\\.url$"], dir, HUB_GIT);
   if (!out) return [];
   return out
     .split("\n")
@@ -468,15 +444,19 @@ async function resolveSelection(
 
 async function readGitState(hubPath: string) {
   const [branch, originHead, upstream, porcelain] = await Promise.all([
-    tryGit(["symbolic-ref", "--short", "-q", "HEAD"], hubPath),
-    tryGit(["symbolic-ref", "--short", "-q", "refs/remotes/origin/HEAD"], hubPath),
-    tryGit(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], hubPath),
-    tryGit(["status", "--porcelain", "--untracked-files=no"], hubPath),
+    tryGit(["symbolic-ref", "--short", "-q", "HEAD"], hubPath, HUB_GIT),
+    tryGit(["symbolic-ref", "--short", "-q", "refs/remotes/origin/HEAD"], hubPath, HUB_GIT),
+    tryGit(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], hubPath, HUB_GIT),
+    tryGit(["status", "--porcelain", "--untracked-files=no"], hubPath, HUB_GIT),
   ]);
   let behind: number | null = null;
   let ahead: number | null = null;
   if (upstream) {
-    const counts = await tryGit(["rev-list", "--left-right", "--count", "HEAD...@{u}"], hubPath);
+    const counts = await tryGit(
+      ["rev-list", "--left-right", "--count", "HEAD...@{u}"],
+      hubPath,
+      HUB_GIT,
+    );
     const [aheadRaw, behindRaw] = counts?.split(/\s+/) ?? [];
     ahead = aheadRaw !== undefined ? Number(aheadRaw) : null;
     behind = behindRaw !== undefined ? Number(behindRaw) : null;
@@ -667,10 +647,10 @@ async function runSync(): Promise<SyncResult> {
   let fetched = true;
   let fetchError: string | null = null;
   try {
-    await git(["fetch", "--prune", "origin"], hubPath);
+    await runGit(["fetch", "--prune", "origin"], hubPath, HUB_GIT);
   } catch (err) {
     fetched = false;
-    fetchError = err instanceof Error ? err.message : String(err);
+    fetchError = errorMessage(err);
   }
 
   let pulledCommits = 0;
@@ -683,7 +663,7 @@ async function runSync(): Promise<SyncResult> {
       pullSkippedReason = "diverged";
     } else {
       try {
-        await git(["merge", "--ff-only", "@{u}"], hubPath);
+        await runGit(["merge", "--ff-only", "@{u}"], hubPath, HUB_GIT);
         pulledCommits = state.behind ?? 0;
       } catch {
         pullSkippedReason = "failed";
@@ -836,11 +816,9 @@ export async function cloneSkillsHub(parentDir: string): Promise<string> {
   try {
     await cloneRepository(repoUrl, target);
   } catch (err) {
-    throw new AppError(
-      "SKILLS_HUB_CLONE_FAILED",
-      `git clone failed: ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
-    );
+    throw new AppError("SKILLS_HUB_CLONE_FAILED", `git clone failed: ${errorMessage(err)}`, {
+      cause: err,
+    });
   }
   await updateSkillsHubPreferences({ path: target });
   // Links an already-saved selection (e.g. from an imported config file).
@@ -899,8 +877,6 @@ export async function autoUpdateSkillsHubOnStart(): Promise<void> {
       `[skills] startup auto-update: ${parts.length > 0 ? parts.join(", ") : "up to date"}`,
     );
   } catch (err) {
-    console.warn(
-      `[skills] startup auto-update failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    console.warn(`[skills] startup auto-update failed: ${errorMessage(err)}`);
   }
 }

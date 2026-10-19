@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { copyFile, lstat, mkdir, readFile, readlink, rm, symlink } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { AppError } from "./httpError.js";
+import { AppError, errorMessage } from "./httpError.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -15,47 +15,65 @@ function extractGitErrorLine(stderr: string): string {
   return match ?? stderr;
 }
 
-/**
- * Runs `git <args>` in `cwd` and returns stdout with trailing whitespace stripped; throws with
- * git's stderr. Trailing-only: a `git status --porcelain` line can start with a space (`" M x"`).
- */
-export async function runGit(args: string[], cwd: string): Promise<string> {
-  try {
-    const { stdout } = await execFileAsync("git", args, { cwd, maxBuffer: GIT_MAX_BUFFER_BYTES });
-    return stdout.replace(/\s+$/, "");
-  } catch (err) {
-    const stderr = (err as { stderr?: string } | null)?.stderr?.trim();
-    const fallback = err instanceof Error ? err.message : String(err);
-    const message = stderr && stderr.length > 0 ? extractGitErrorLine(stderr) : fallback;
-    // No `code`: git's own stderr text has no fixed set of messages to translate.
-    throw new Error(message, { cause: err });
-  }
-}
-
 /** Non-interactive: a missing SSH key or unknown host fails fast instead of hanging on a prompt
  *  nobody can see (the backend has no terminal). */
-export const NON_INTERACTIVE_GIT_ENV: NodeJS.ProcessEnv = {
+const NON_INTERACTIVE_GIT_ENV: NodeJS.ProcessEnv = {
   ...process.env,
   GIT_TERMINAL_PROMPT: "0",
   GIT_SSH_COMMAND: process.env.GIT_SSH_COMMAND ?? "ssh -o BatchMode=yes -o ConnectTimeout=10",
 };
 
-const CLONE_TIMEOUT_MS = 180_000;
+export type GitOptions = {
+  timeoutMs?: number;
+  /** For commands that may reach a remote (fetch, clone, pull). */
+  nonInteractive?: boolean;
+};
 
-/** `git clone <url> <target>`, non-interactive; throws with git's own stderr. */
-export async function cloneRepository(url: string, target: string): Promise<void> {
+/**
+ * The one way this app runs git: `git <args>` in `cwd`, stdout with trailing whitespace stripped;
+ * throws with git's stderr. Trailing-only: a `git status --porcelain` line can start with a space.
+ */
+export async function runGit(
+  args: string[],
+  cwd: string,
+  { timeoutMs, nonInteractive = false }: GitOptions = {},
+): Promise<string> {
   try {
-    await execFileAsync("git", ["clone", url, target], {
-      cwd: path.dirname(target),
-      env: NON_INTERACTIVE_GIT_ENV,
-      timeout: CLONE_TIMEOUT_MS,
+    const { stdout } = await execFileAsync("git", args, {
+      cwd,
       maxBuffer: GIT_MAX_BUFFER_BYTES,
+      ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
+      ...(nonInteractive ? { env: NON_INTERACTIVE_GIT_ENV } : {}),
     });
+    return stdout.replace(/\s+$/, "");
   } catch (err) {
     const stderr = (err as { stderr?: string } | null)?.stderr?.trim();
-    const fallback = err instanceof Error ? err.message : String(err);
-    throw new Error(stderr && stderr.length > 0 ? stderr : fallback, { cause: err });
+    const message = stderr && stderr.length > 0 ? extractGitErrorLine(stderr) : errorMessage(err);
+    // No `code`: git's own stderr text has no fixed set of messages to translate.
+    throw new Error(message, { cause: err });
   }
+}
+
+/** `runGit`, but null instead of throwing. */
+export async function tryGit(
+  args: string[],
+  cwd: string,
+  options?: GitOptions,
+): Promise<string | null> {
+  try {
+    return await runGit(args, cwd, options);
+  } catch {
+    return null;
+  }
+}
+
+const CLONE_TIMEOUT_MS = 180_000;
+
+export async function cloneRepository(url: string, target: string): Promise<void> {
+  await runGit(["clone", url, target], path.dirname(target), {
+    timeoutMs: CLONE_TIMEOUT_MS,
+    nonInteractive: true,
+  });
 }
 
 /**
@@ -155,6 +173,7 @@ async function fetchOriginBranch(cwd: string, baseBranch: string): Promise<void>
   await runGit(
     ["fetch", "origin", `refs/heads/${baseBranch}:refs/remotes/origin/${baseBranch}`],
     cwd,
+    { nonInteractive: true, timeoutMs: 30_000 },
   );
 }
 
@@ -324,7 +343,7 @@ async function unlockAndRemoveWorktree(
   try {
     await runGit(["worktree", "remove", worktreePath], mainRoot);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
     if (message.includes("contains modified or untracked files")) {
       throw new AppError(
         "WORKTREE_UNCOMMITTED_CHANGES",
@@ -436,7 +455,7 @@ export async function discardWorkingTreeChanges(
   try {
     await runGit(["stash", "push", "--include-untracked", "-m", message, ...pathspecArgs], cwd);
   } catch (err) {
-    const errMessage = err instanceof Error ? err.message : String(err);
+    const errMessage = errorMessage(err);
     if (!errMessage.includes("ignored by one of your .gitignore files")) throw err;
   }
   return await runGit(["rev-parse", "refs/stash"], cwd);

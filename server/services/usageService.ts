@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { AppError } from "../utils/httpError.js";
+import { AppError, errorMessage } from "../utils/httpError.js";
 
 type RawLimit = {
   kind?: string;
@@ -112,7 +112,7 @@ export async function getClaudeUsageStatus(forceRefresh = false): Promise<Claude
   } catch (err) {
     throw new AppError(
       "USAGE_ENDPOINT_UNREACHABLE",
-      `Could not reach Anthropic's usage endpoint: ${err instanceof Error ? err.message : String(err)}`,
+      `Could not reach Anthropic's usage endpoint: ${errorMessage(err)}`,
       { cause: err },
     );
   }

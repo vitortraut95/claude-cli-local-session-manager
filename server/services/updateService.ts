@@ -1,11 +1,10 @@
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
-import { AppError } from "../utils/httpError.js";
-
-const execFileAsync = promisify(execFile);
+import { runGit } from "../utils/git.js";
+import { AppError, errorMessage } from "../utils/httpError.js";
+import { REPO_ROOT } from "../utils/repoRoot.js";
 
 export type UpdateStatus = {
   branch: string;
@@ -21,32 +20,15 @@ export type UpdateJobStatus =
   | { state: "success"; branch: string; pullSummary: string; finishedAt: string }
   | { state: "error"; message: string; code?: string; finishedAt: string };
 
-async function git(args: string[], cwd: string): Promise<string> {
-  const { stdout } = await execFileAsync("git", args, { cwd });
-  return stdout.trim();
-}
-
-function errorMessage(err: unknown): string {
-  if (err && typeof err === "object" && "stderr" in err) {
-    const stderr = (err as { stderr?: unknown }).stderr;
-    if (typeof stderr === "string" && stderr.trim()) return stderr.trim();
-  }
-  return err instanceof Error ? err.message : String(err);
-}
-
-async function getRepoRoot(): Promise<string> {
-  return git(["rev-parse", "--show-toplevel"], process.cwd());
-}
-
 /** Not `@{u}`: this process may run from a `--no-track` worktree branch with no upstream. */
 const UPDATE_TARGET_REF = "origin/main";
 
 export async function getUpdateStatus(): Promise<UpdateStatus> {
-  const repoRoot = await getRepoRoot();
-  const branch = await git(["rev-parse", "--abbrev-ref", "HEAD"], repoRoot);
+  const repoRoot = REPO_ROOT;
+  const branch = await runGit(["rev-parse", "--abbrev-ref", "HEAD"], repoRoot);
 
   try {
-    await git(["fetch", "--quiet", "origin", "main"], repoRoot);
+    await runGit(["fetch", "--quiet", "origin", "main"], repoRoot, { nonInteractive: true });
   } catch (err) {
     throw new AppError(
       "UPDATE_FETCH_FAILED",
@@ -55,7 +37,7 @@ export async function getUpdateStatus(): Promise<UpdateStatus> {
     );
   }
 
-  const counts = await git(
+  const counts = await runGit(
     ["rev-list", "--left-right", "--count", `HEAD...${UPDATE_TARGET_REF}`],
     repoRoot,
   );
@@ -79,7 +61,7 @@ function jobStatusFile(repoRoot: string): string {
 }
 
 export async function getUpdateJobStatus(): Promise<UpdateJobStatus> {
-  const repoRoot = await getRepoRoot();
+  const repoRoot = REPO_ROOT;
   try {
     const raw = await readFile(jobStatusFile(repoRoot), "utf8");
     return JSON.parse(raw) as UpdateJobStatus;
@@ -94,7 +76,7 @@ export async function getUpdateJobStatus(): Promise<UpdateJobStatus> {
  * reset rewrites a source file. The frontend polls getUpdateJobStatus() (a status file) instead.
  */
 export async function startUpdate(): Promise<void> {
-  const repoRoot = await getRepoRoot();
+  const repoRoot = REPO_ROOT;
 
   const existingJob = await getUpdateJobStatus();
   if (existingJob.state === "running") {
