@@ -1,6 +1,6 @@
 import type { Session } from "../types/session";
 
-export type WorktreePathParts = {
+type WorktreePathParts = {
   /** `<repo>/.claude/worktrees` (or the parent dir for a non-standard path). */
   prefix: string;
   /** The worktree's own name (last path segment(s) under `worktrees`). */

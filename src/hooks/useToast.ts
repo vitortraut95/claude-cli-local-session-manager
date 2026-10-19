@@ -8,7 +8,7 @@ export type ToastItem = {
   variant: ToastVariant;
 };
 
-export type ToastContextValue = {
+type ToastContextValue = {
   showToast: (message: string, variant?: ToastVariant) => void;
 };
 

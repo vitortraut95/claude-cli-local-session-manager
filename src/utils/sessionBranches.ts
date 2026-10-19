@@ -28,7 +28,7 @@ function parseNicknameBranches(nickname: string | null): NicknameBranches {
   };
 }
 
-export type SessionBranches = { origin: string | null; destination: string | null };
+type SessionBranches = { origin: string | null; destination: string | null };
 
 /**
  * The session's base (origin) and task (destination) branches, for the card line, Jenkins and

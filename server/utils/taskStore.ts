@@ -21,19 +21,19 @@ import { REPO_ROOT } from "./repoRoot.js";
  * start. All writes go through one in-process queue with an atomic temp-file + rename.
  */
 
-export type TaskEntry = {
+type TaskEntry = {
   link: string | null;
   createdAt: string;
 };
 
-export type SessionEntry = {
+type SessionEntry = {
   nickname: string | null;
   origin: string | null;
   destination: string | null;
   taskKey: string | null;
 };
 
-export type RepoBranchEntry = {
+type RepoBranchEntry = {
   baseBranch: string | null;
   createdAt: string;
   taskKey: string | null;

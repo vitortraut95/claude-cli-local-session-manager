@@ -1,10 +1,10 @@
 import { forwardRef } from "react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-export type ButtonVariant =
+type ButtonVariant =
   "primary" | "danger" | "outline" | "outline-danger" | "ghost" | "link" | "unstyled";
 
-export type ButtonSize = "sm" | "md" | "icon" | "none";
+type ButtonSize = "sm" | "md" | "icon" | "none";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;

@@ -70,7 +70,7 @@ export function getJenkinsLinks(
   return links;
 }
 
-export type EnvPreview = { label: string; url: string };
+type EnvPreview = { label: string; url: string };
 export type EnvPreviewGroup = { branch: string; previews: EnvPreview[] };
 
 /**

@@ -314,7 +314,7 @@ async function linkBranchToTaskBestEffort(
  * pre-generated and they're recorded in `tasks.json` before the terminal opens — there's no other
  * way to learn the new session's id. Returns that id, or null when none was needed.
  */
-export type LaunchTaskOptions = {
+type LaunchTaskOptions = {
   worktreePath: string;
   prompt: string;
   permissionModeAuto: boolean;
