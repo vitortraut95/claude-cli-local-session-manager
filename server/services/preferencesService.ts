@@ -96,7 +96,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   useAutoPermissionModeByDefault: false,
   language: null,
   recentProjectPaths: [],
-  keepRecentSessionsPerProject: 5,
+  keepRecentSessionsPerProject: 10,
   workspaceDirs: null,
   skillsHub: {
     repoUrl: null,

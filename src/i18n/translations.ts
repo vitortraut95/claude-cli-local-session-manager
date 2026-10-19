@@ -1457,15 +1457,15 @@ export const translations = {
     "Sesiones locales antiguas",
   ),
   "cleanupModal.finding.oldSessions.body": dict(
-    "once a project has more sessions than the configured limit (5 by default — edit " +
+    "once a project has more sessions than the configured limit (10 by default — edit " +
       '"keepRecentSessionsPerProject" in userPreferences.json to change it), the oldest ones ' +
       "can be deleted to free disk space and speed up the session list. The active session is never " +
       "suggested.",
-    "quando um projeto tem mais sessões do que o limite configurado (5 por padrão — edite " +
+    "quando um projeto tem mais sessões do que o limite configurado (10 por padrão — edite " +
       '"keepRecentSessionsPerProject" no userPreferences.json para mudar isso), as mais antigas ' +
       "podem ser excluídas para liberar espaço em disco e acelerar a listagem de sessões. A " +
       "sessão ativa nunca é sugerida.",
-    "cuando un proyecto tiene más sesiones que el límite configurado (5 por defecto — edita " +
+    "cuando un proyecto tiene más sesiones que el límite configurado (10 por defecto — edita " +
       '"keepRecentSessionsPerProject" en userPreferences.json para cambiarlo), las más antiguas ' +
       "se pueden eliminar para liberar espacio en disco y acelerar el listado de sesiones. La " +
       "sesión activa nunca se sugiere.",
