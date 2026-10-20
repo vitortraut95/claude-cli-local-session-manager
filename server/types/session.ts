@@ -44,6 +44,8 @@ export type Session = {
   taskRepos?: TaskRepoRef[];
   /** Hand-set work status: the task's when the session has a key, else the session's own. */
   status?: "todo" | "in_progress" | "waiting_user" | "done" | null;
+  /** `history.jsonl` has events tied to this session or its task (the card's "info"). */
+  hasHistory?: boolean;
 };
 
 /** One repo/branch of a multi-repo task — mirrors `server/utils/taskRepos.ts`. */

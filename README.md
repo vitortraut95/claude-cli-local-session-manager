@@ -18,7 +18,10 @@ and clean them up. Everything runs on your machine — no external server involv
   (one JSON event per line: queue added/updated/removed/retried, scheduler blocked/unblocked and
   why, launch started/launched/failed with durations, status changes and who made them, root
   locked/released/refused, cleanup, sessions started/resumed, heavy-run waits/durations/exit codes
-  and hook blocks), to measure where time goes and track errors
+  and hook blocks), to measure where time goes and track errors. A card with events tied to its
+  session or task shows an "info" button next to its status tag: a summary (time in line and what
+  held it, time per status, until done, heavy runs and their waits, root held/refused) plus the
+  task's timeline and problems
 - **Resume open tasks** — one header button brings back the latest session of every task "in
   progress" or "waiting user" with nothing running (up to the session limit), e.g. the next
   morning; with the grid layout it's "Open grid", which also brings Limux up (starting it if
@@ -144,6 +147,7 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | POST   | `/sessions/:id/continue`              | Open a terminal running `claude --resume <id>`                                 |
 | POST   | `/sessions/:id/vscode`                | Open the session's working directory in VS Code                                |
 | POST   | `/sessions/resume-open`               | Resume the latest session of every in-progress / waiting task not running      |
+| GET    | `/sessions/:id/history`               | The session's (and its task's) history events and their summary                |
 | POST   | `/sessions/:id/grid-focus`            | Focus the Limux grid pane already running the session (`{ focused }`)          |
 | GET    | `/sessions/:id/export`                | Download the session as a `.claude-session.json.gz` file                       |
 | GET    | `/sessions/:id/task`                  | The session's task (key, inferred or saved) and that task's repos              |

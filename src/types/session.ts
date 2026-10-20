@@ -47,6 +47,9 @@ export type Session = {
   /** The task's status when `taskKey` is set, else the session's own; null = never set.
    *  Optional: older backend. */
   status?: WorkStatus | null;
+  /** `history.jsonl` has events tied to this session or its task (the card's "info"). Optional:
+   *  older backend. */
+  hasHistory?: boolean;
 };
 
 /** One repo/branch of a multi-repo task — mirrors `server/utils/taskRepos.ts`. */

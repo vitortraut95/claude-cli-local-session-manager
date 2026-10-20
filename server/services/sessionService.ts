@@ -46,6 +46,14 @@ import {
   NotFoundError,
 } from "../utils/httpError.js";
 import { recordEvent } from "../utils/history.js";
+import {
+  belongsTo,
+  readHistory,
+  summarize,
+  type HistoryEvent,
+  type HistorySummary,
+  type HistoryTarget,
+} from "./historyService.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import {
   applyFileDiff,
@@ -339,9 +347,35 @@ async function listSessionsUncached(): Promise<Session[]> {
 
   // Second pass: a task's repos depend on every session carrying its key.
   const reposByTask = collectTaskRepos(store, decorated);
-  return decorated.map((session) =>
-    session.taskKey ? { ...session, taskRepos: reposByTask.get(session.taskKey) ?? [] } : session,
-  );
+  const history = await readHistory();
+  return decorated.map((session) => {
+    const withRepos = session.taskKey
+      ? { ...session, taskRepos: reposByTask.get(session.taskKey) ?? [] }
+      : session;
+    const target = historyTargetOf(withRepos);
+    return { ...withRepos, hasHistory: history.some((event) => belongsTo(event, target)) };
+  });
+}
+
+function historyTargetOf(session: Session): HistoryTarget {
+  return {
+    sessionId: session.id,
+    taskKey: session.taskKey ?? null,
+    worktreePath: session.isWorktree ? session.workingDirectory : null,
+  };
+}
+
+/** The card's "info": this session's (and its task's) history events and their summary. */
+export async function getSessionHistory(
+  id: string,
+): Promise<{ events: HistoryEvent[]; summary: HistorySummary }> {
+  if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
+  const [sessions, history] = await Promise.all([listSessions(), readHistory()]);
+  const session = sessions.find((s) => s.id === id);
+  if (!session) throw new SessionNotFoundError(id);
+  const target = historyTargetOf(session);
+  const events = history.filter((event) => belongsTo(event, target));
+  return { events, summary: summarize(events, history) };
 }
 
 /** Session ids are UUID-shaped; reject anything that looks like a path segment. */

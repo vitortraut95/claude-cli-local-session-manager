@@ -15,6 +15,7 @@ import {
   Share,
   Trash2,
   TriangleAlert,
+  Info,
 } from "lucide-react";
 import { useState } from "react";
 import jenkinsIcon from "../assets/jenkins.svg";
@@ -39,6 +40,7 @@ import { ResetRootConfirmModal } from "./ResetRootConfirmModal";
 import { SessionSizeMeter } from "./SessionSizeMeter";
 import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
+import { TaskHistoryModal } from "./TaskHistoryModal";
 import { WorkStatusSelect } from "./WorkStatusSelect";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
@@ -117,6 +119,7 @@ export function SessionCard({
     null,
   );
   const [removingDoneWorktree, setRemovingDoneWorktree] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [showWorktreeToRootModal, setShowWorktreeToRootModal] = useState(false);
   const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
   const [showOpenPrBaseChoice, setShowOpenPrBaseChoice] = useState(false);
@@ -298,6 +301,18 @@ export function SessionCard({
           saving={pendingAction === "status"}
           onChange={(status) => void handleStatusChange(status)}
         />
+        {session.hasHistory && (
+          <Tooltip content={t("history.open")}>
+            <button
+              type="button"
+              onClick={() => setShowHistory(true)}
+              aria-label={t("history.open")}
+              className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-500 shadow-sm hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+            >
+              <Info className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
+        )}
       </div>
 
       <div className="mt-2 flex items-start justify-between gap-2">
@@ -706,6 +721,7 @@ export function SessionCard({
       {showOpenPrBaseChoice && (
         <OpenPrBaseChoiceModal session={session} onClose={() => setShowOpenPrBaseChoice(false)} />
       )}
+      {showHistory && <TaskHistoryModal session={session} onClose={() => setShowHistory(false)} />}
       <ConfirmDialog
         open={doneWorktreeFinding !== null}
         title={t("sessionCard.doneWorktree.title")}
