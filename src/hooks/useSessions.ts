@@ -1,18 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as sessionsApi from "../services/sessionsApi";
-import type { Session } from "../types/session";
+import * as tasksApi from "../services/tasksApi";
+import type { Session, WorkStatus } from "../types/session";
 import { resolveProjectParentSegment } from "../utils/formatPath";
 import { useLanguage } from "./useLanguage";
 import { useUrlParam } from "./useUrlState";
 import { useToast } from "./useToast";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import type { TranslationKey } from "../i18n/translations";
+import {
+  matchesWorkStatusFilter,
+  parseWorkStatusFilter,
+  type WorkStatusFilter,
+} from "../utils/workStatus";
 
 export type PendingAction =
   | "delete"
   | "continue"
   | "nickname"
   | "branches"
+  | "status"
   | "vscode"
   | "cursor"
   | "worktree-create"
@@ -38,6 +45,7 @@ export function useSessions() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQueryRaw] = useUrlParam("q", "");
   const [projectFilter, setProjectFilterRaw] = useUrlParam("project", "");
+  const [statusFilterRaw, setStatusFilterRaw] = useUrlParam("status", "");
   const [pageRaw, setPageRaw] = useUrlParam("page", "1");
   const [perPageRaw, setPerPageRaw] = useUrlParam("per_page", String(DEFAULT_PER_PAGE));
   const [pendingActions, setPendingActions] = useState<Record<string, PendingAction>>({});
@@ -45,6 +53,7 @@ export function useSessions() {
   const { showToast } = useToast();
   const { t } = useLanguage();
 
+  const statusFilter = parseWorkStatusFilter(statusFilterRaw);
   const perPage = parsePerPage(perPageRaw);
   const page = parsePage(pageRaw);
 
@@ -63,6 +72,14 @@ export function useSessions() {
       setPageRaw("1");
     },
     [setProjectFilterRaw, setPageRaw],
+  );
+
+  const setStatusFilter = useCallback(
+    (value: WorkStatusFilter) => {
+      setStatusFilterRaw(value);
+      setPageRaw("1");
+    },
+    [setStatusFilterRaw, setPageRaw],
   );
 
   const setPerPage = useCallback(
@@ -189,11 +206,13 @@ export function useSessions() {
           ...session.prompts,
         ].some((field) => field.toLowerCase().includes(query));
       const matchesProject = !projectFilter || session.project === projectFilter;
-      return matchesQuery && matchesProject;
+      return (
+        matchesQuery && matchesProject && matchesWorkStatusFilter(session.status, statusFilter)
+      );
     });
 
     return [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [sessions, searchQuery, projectFilter]);
+  }, [sessions, searchQuery, projectFilter, statusFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filteredSessions.length / perPage));
   // Clamp for display without writing back to the URL — a stale `page` param renders the
@@ -381,6 +400,29 @@ export function useSessions() {
     [runAction, loadSessions],
   );
 
+  /** A task's status is shared, so every card of that task is patched (no full reload). */
+  const setStatus = useCallback(
+    async (session: Session, status: WorkStatus | null) => {
+      const taskKey = session.taskKey ?? null;
+      await runAction(
+        session.id,
+        "status",
+        async () => {
+          if (taskKey) await tasksApi.setTaskStatus(taskKey, status);
+          else await sessionsApi.setStatus(session.id, status);
+          setSessions((current) =>
+            current.map((s) =>
+              (taskKey ? s.taskKey === taskKey : s.id === session.id) ? { ...s, status } : s,
+            ),
+          );
+        },
+        "workStatus.saved",
+        "workStatus.saveError",
+      );
+    },
+    [runAction],
+  );
+
   const [resumeConflict, setResumeConflict] = useState<{
     target: Session;
     sibling: Session;
@@ -543,6 +585,8 @@ export function useSessions() {
     projectLabels,
     projectFilter,
     setProjectFilter,
+    statusFilter,
+    setStatusFilter,
     pendingActions,
     selectedIds,
     toggleSelect,
@@ -555,6 +599,7 @@ export function useSessions() {
     resumeSession,
     setNickname,
     setBranches,
+    setStatus,
     openInVSCode,
     openInCursor,
     openMissingWorktreeRootInVSCode,

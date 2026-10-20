@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { TaskRepoRef } from "../types/session";
+import type { TaskRepoRef, WorkStatus } from "../types/session";
 import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
 
 const client = axios.create({
@@ -163,6 +163,13 @@ export async function addRepoToTask(taskKey: string, input: AddRepoInput): Promi
   }
 }
 
+/** Shared by every session of the task; null clears it. */
+export async function setTaskStatus(taskKey: string, status: WorkStatus | null): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.put(`/by-key/${encodeURIComponent(taskKey)}/status`, { status }),
+  );
+}
+
 /** Only drops the link — the branch, worktree and sessions stay. */
 export async function unlinkTaskRepo(
   taskKey: string,
@@ -203,3 +210,65 @@ export async function launchTaskTest(
 }
 
 // ---------------------------------------------------------------------------------------------
+// Task queue: tickets waiting to be worked on, each with its repos (first = main repo).
+
+export type QueueEntry = {
+  key: string;
+  link: string | null;
+  /** Repo roots; empty = still to be chosen. */
+  repos: string[];
+  addedAt: string;
+  /** Set by the scheduler once it opened the task's session. Optional: older backend. */
+  launchedAt?: string | null;
+  sessionId?: string | null;
+  /** Why the launch failed (skipped until cleared), or — once launched — which extra repo
+   *  couldn't be added. Optional: older backend. */
+  error?: string | null;
+};
+
+/** What the modal saves; the launch fields are the scheduler's. */
+export type QueueEntryInput = Pick<QueueEntry, "key" | "link" | "repos" | "error">;
+
+export async function fetchTaskQueue(): Promise<QueueEntry[]> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ entries: QueueEntry[] }>("/queue"),
+  );
+  return data.entries;
+}
+
+/** Replaces the whole queue; returns it as stored (repos resolved to their roots, launched entries
+ *  kept as the scheduler left them). */
+export async function saveTaskQueue(entries: QueueEntryInput[]): Promise<QueueEntry[]> {
+  const { data } = await withServerErrorMessage(() =>
+    client.put<{ entries: QueueEntry[] }>("/queue", { entries }),
+  );
+  return data.entries;
+}
+
+export type SchedulerBlock =
+  "paused" | "max_sessions" | "low_memory" | "memory_pressure" | "usage_limit";
+
+export type SchedulerStatus = {
+  enabled: boolean;
+  activeSessions: number;
+  maxSessions: number;
+  freeMemoryPercent: number | null;
+  minFreeMemoryPercent: number;
+  memoryPressure: number | null;
+  usagePercent: number | null;
+  maxUsagePercent: number;
+  waiting: number;
+  blockedBy: SchedulerBlock | null;
+  launching: string | null;
+};
+
+export async function fetchSchedulerStatus(): Promise<SchedulerStatus> {
+  const { data } = await withServerErrorMessage(() => client.get<SchedulerStatus>("/queue/status"));
+  return data;
+}
+
+/** Runs a scheduler check right away instead of waiting for its next tick. */
+export async function runSchedulerNow(): Promise<SchedulerStatus> {
+  const { data } = await withServerErrorMessage(() => client.post<SchedulerStatus>("/queue/run"));
+  return data;
+}

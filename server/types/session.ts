@@ -42,6 +42,8 @@ export type Session = {
   taskKeyInferred?: boolean;
   /** Every repo/branch of that task, this session's included. Only set when `taskKey` is. */
   taskRepos?: TaskRepoRef[];
+  /** Hand-set work status: the task's when the session has a key, else the session's own. */
+  status?: "todo" | "in_progress" | "waiting_user" | "done" | null;
 };
 
 /** One repo/branch of a multi-repo task — mirrors `server/utils/taskRepos.ts`. */
@@ -76,6 +78,15 @@ export type WorktreeToRootPreview = {
   fileDiff: WorktreeToRootFileDiff;
   rootHasActiveSession: boolean;
   worktreeHasActiveSession: boolean;
+  /** Another task already holding the root (files copied or branch moved there); bringing this
+   *  worktree is refused until it's released. */
+  rootLock: {
+    mode: "copy" | "checkout";
+    branch: string;
+    taskKey: string | null;
+    worktreePath: string | null;
+    since: string;
+  } | null;
 };
 
 /** Returned by `GET /sessions/:id/worktree-to-root/root-status`: root's branch and dirty files,

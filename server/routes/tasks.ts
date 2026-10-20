@@ -3,6 +3,7 @@ import {
   getPreferencesPath,
   getUserPreferences,
   isEnvPreviews,
+  isOrchestratorPreferences,
   isSkillsHubPreferences,
   replaceUserPreferences,
   updateUserPreferences,
@@ -29,9 +30,12 @@ import {
   launchTaskTest,
   resolveBaseBranch,
 } from "../services/taskService.js";
-import { extractBooleanField, extractStringField } from "../utils/httpBody.js";
+import { getTaskQueue, saveTaskQueue } from "../services/taskQueueService.js";
+import { getSchedulerStatus, runSchedulerNow } from "../services/taskSchedulerService.js";
+import { extractBooleanField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
 import { BadRequestError } from "../utils/httpError.js";
 import { normalizeTaskKey } from "../utils/taskKeys.js";
+import { setTaskStatus } from "../utils/taskStore.js";
 import {
   addRepoToTask,
   getTaskDetails,
@@ -51,7 +55,8 @@ type LateFields =
   | "envPreviews"
   | "taskTestSkill"
   | "taskTestPermissionModeAuto"
-  | "theme";
+  | "theme"
+  | "orchestrator";
 
 /** Optional fields: an older frontend bundle sends the object without them, and the PUT handler
  *  keeps the stored value instead of rejecting or wiping it. */
@@ -93,7 +98,8 @@ function isValidPreferences(
     (candidate.theme === undefined ||
       candidate.theme === null ||
       candidate.theme === "light" ||
-      candidate.theme === "dark")
+      candidate.theme === "dark") &&
+    (candidate.orchestrator === undefined || isOrchestratorPreferences(candidate.orchestrator))
   );
 }
 
@@ -119,7 +125,8 @@ tasksRouter.put("/preferences", async (req, res) => {
         "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
         "autoUpdateOnStart? }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
         "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean, " +
-        'theme?: "light"|"dark"|null }.',
+        'theme?: "light"|"dark"|null, orchestrator?: { enabled, maxSessions, ' +
+        "minFreeMemoryPercent, maxUsagePercent } }.",
     );
   }
   const body = req.body;
@@ -206,6 +213,25 @@ function extractStringArray(body: unknown, key: string): string[] {
     : [];
 }
 
+// Task queue: tickets waiting to be worked on, each with its repos.
+
+tasksRouter.get("/queue", async (_req, res) => {
+  res.json({ entries: await getTaskQueue() });
+});
+
+tasksRouter.put("/queue", async (req, res) => {
+  res.json({ entries: await saveTaskQueue(req.body) });
+});
+
+/** Room left for the scheduler (sessions, RAM, plan usage) and why it's waiting, if it is. */
+tasksRouter.get("/queue/status", async (_req, res) => {
+  res.json(await getSchedulerStatus());
+});
+
+tasksRouter.post("/queue/run", async (_req, res) => {
+  res.json(await runSchedulerNow());
+});
+
 // Tasks spanning several repos. `:key` may also be a ticket URL.
 
 tasksRouter.get("/by-key/:key", async (req, res) => {
@@ -229,6 +255,11 @@ tasksRouter.get("/by-key/:key/pr-url", async (req, res) => {
 
 tasksRouter.put("/by-key/:key", async (req, res) => {
   await setTaskLink(parseTaskKeyParam(req.params.key), extractStringField(req.body, "link"));
+  res.json({ success: true });
+});
+
+tasksRouter.put("/by-key/:key/status", async (req, res) => {
+  await setTaskStatus(parseTaskKeyParam(req.params.key), parseWorkStatus(req.body));
   res.json({ success: true });
 });
 

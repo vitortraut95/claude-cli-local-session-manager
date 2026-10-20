@@ -19,12 +19,21 @@ import {
 import { inferTaskKey } from "../utils/taskKeys.js";
 import { collectTaskRepos } from "../utils/taskRepos.js";
 import {
+  assertRootFreeFor,
+  getRootLock,
+  lockRootForCheckout,
+  lockRootForCopy,
+  taskKeyForBranch,
+} from "./rootLockService.js";
+import {
   forgetRepoBranch,
   forgetSession,
   getTaskStore,
   moveSessionTaskKeyToBranch,
   setNickname,
   setSessionBranchOverride,
+  setSessionStatus,
+  type WorkStatus,
 } from "../utils/taskStore.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import {
@@ -48,6 +57,7 @@ import {
   getStatusFiles,
   isLinkedWorktree,
   listAppStashes,
+  getWorktreeBranch,
   listWorktrees,
   nestedWorktreeRelativePaths,
   removeWorktreeAndBranch,
@@ -318,6 +328,8 @@ async function listSessionsUncached(): Promise<Session[]> {
         repoRoot,
         taskKey: recordedTaskKey ?? inferredTaskKey,
         taskKeyInferred: inferredTaskKey !== null,
+        status:
+          store.tasks[recordedTaskKey ?? inferredTaskKey ?? ""]?.status ?? saved?.status ?? null,
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -484,6 +496,12 @@ export async function deleteSessionBranch(id: string, branch: string): Promise<v
 /** Local only (`tasks.json`), never touches the `.jsonl`, so no active-session gate. */
 export async function setSessionNickname(id: string, nickname: string): Promise<void> {
   await setNickname(id, nickname);
+}
+
+/** For a session with no task — a task's status is set on the task (`PUT /tasks/by-key/:key/status`). */
+export async function setSessionWorkStatus(id: string, status: WorkStatus | null): Promise<void> {
+  if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
+  await setSessionStatus(id, status);
 }
 
 /** Local only (`tasks.json`), so no active-session gate. */
@@ -939,10 +957,11 @@ export async function getWorktreeToRootPreview(id: string): Promise<WorktreeToRo
 
   const entries = await listWorktrees(repoRoot);
   const excludePaths = nestedWorktreeRelativePaths(repoRoot, entries);
-  const [rootDirtyFiles, fileDiff, sessions] = await Promise.all([
+  const [rootDirtyFiles, fileDiff, sessions, rootLock] = await Promise.all([
     getStatusFiles(repoRoot, excludePaths),
     computeFileDiff(cwd, repoRoot),
     listSessions(),
+    getRootLock(repoRoot),
   ]);
 
   const resolvedRepoRoot = path.resolve(repoRoot);
@@ -958,6 +977,9 @@ export async function getWorktreeToRootPreview(id: string): Promise<WorktreeToRo
     fileDiff,
     rootHasActiveSession: sessions.some((s) => s.workingDirectory === repoRoot && s.isActive),
     worktreeHasActiveSession: sessions.some((s) => s.workingDirectory === cwd && s.isActive),
+    // Another task holding the root; this worktree's own copy doesn't count.
+    rootLock:
+      rootLock && !(rootLock.mode === "copy" && rootLock.worktreePath === cwd) ? rootLock : null,
   };
 }
 
@@ -979,9 +1001,14 @@ export async function getRootStatus(id: string): Promise<RootStatus> {
 /**
  * Stashes every uncommitted change in the main checkout (nested worktrees excluded), refused while
  * a session is active there. Returns the stash SHA, or null when root was clean.
+ *
+ * As the first step of "worktree → root" it's also refused while another task holds the root
+ * (`rootLockService`), so it can't stash that task's copy away; `force` (the standalone "Reset
+ * root") is the user deliberately freeing it.
  */
-export async function resetRootWorkingTree(id: string): Promise<string | null> {
-  const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
+export async function resetRootWorkingTree(id: string, force = false): Promise<string | null> {
+  const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
+  if (!force) await assertRootFreeFor(repoRoot, cwd);
 
   const sessions = await listSessions();
   if (sessions.some((s) => s.workingDirectory === repoRoot && s.isActive)) {
@@ -992,7 +1019,10 @@ export async function resetRootWorkingTree(id: string): Promise<string | null> {
 
   const entries = await listWorktrees(repoRoot);
   const excludePaths = nestedWorktreeRelativePaths(repoRoot, entries);
-  return discardWorkingTreeChanges(repoRoot, excludePaths);
+  const stashRef = await discardWorkingTreeChanges(repoRoot, excludePaths);
+  // A copy lock goes with the files; a moved branch keeps it until root leaves that branch.
+  await getRootLock(repoRoot);
+  return stashRef;
 }
 
 /** Copies the worktree's files onto root, recomputing the diff fresh (never the client's copy).
@@ -1007,8 +1037,11 @@ export async function applyWorktreeCopyToRoot(id: string): Promise<void> {
     );
   }
 
+  await assertRootFreeFor(repoRoot, cwd);
   const diff = await computeFileDiff(cwd, repoRoot);
   await applyFileDiff(cwd, repoRoot, diff);
+  const branch = await getWorktreeBranch(cwd, repoRoot);
+  if (branch) await lockRootForCopy(repoRoot, cwd, branch);
 }
 
 /**
@@ -1034,10 +1067,14 @@ export async function removeWorktreeAndCheckoutRoot(
     );
   }
 
+  await assertRootFreeFor(repoRoot, cwd);
   const resolvedRepoRoot = path.resolve(repoRoot);
   const entriesBefore = await listWorktrees(repoRoot);
   const previousRootBranch =
     entriesBefore.find((e) => path.resolve(e.path) === resolvedRepoRoot)?.branch ?? null;
+  const worktreeBranch = await getWorktreeBranch(cwd, repoRoot);
+  // Read before the worktree goes: removing it forgets the branch's task link.
+  const taskKey = worktreeBranch ? await taskKeyForBranch(repoRoot, worktreeBranch) : null;
 
   const branch = await removeWorktreeKeepBranch(cwd);
   if (!branch) {
@@ -1061,6 +1098,7 @@ export async function removeWorktreeAndCheckoutRoot(
     );
   }
 
+  await lockRootForCheckout(repoRoot, branch, taskKey);
   return { previousRootBranch, newBranch: branch };
 }
 

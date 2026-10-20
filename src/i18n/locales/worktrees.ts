@@ -169,6 +169,14 @@ export const worktrees = {
     "The worktree's folder will be deleted (its branch and commits are kept). This session's transcript is tied to that exact folder, so it won't be resumable from this app afterward — the code itself isn't lost, it's just in the root folder now.",
     "A pasta do worktree será excluída (a branch e os commits dele são mantidos). A transcrição desta sessão está vinculada exatamente a essa pasta, então ela não poderá ser retomada a partir deste app depois — o código em si não é perdido, só que fica na pasta raiz agora.",
   ),
+  "worktreeToRootModal.preview.rootLockedCopy": dict(
+    'The root is in use by {owner} (files copied from {branch}) — finish testing it and use "Reset root" before bringing another task there.',
+    'A raiz está em uso pela {owner} (arquivos copiados de {branch}) — termine o teste dela e use "Resetar raiz" antes de trazer outra tarefa.',
+  ),
+  "worktreeToRootModal.preview.rootLockedCheckout": dict(
+    "The root is in use by {owner} (branch {branch} checked out there) — switch the root back to another branch before bringing another task there.",
+    "A raiz está em uso pela {owner} (branch {branch} em checkout lá) — volte a raiz pra outra branch antes de trazer outra tarefa.",
+  ),
   "worktreeToRootModal.preview.rootActiveWarning": dict(
     "A session is currently active in the root folder — close its terminal before continuing.",
     "Uma sessão está ativa agora na pasta raiz — encerre o terminal dela antes de continuar.",
