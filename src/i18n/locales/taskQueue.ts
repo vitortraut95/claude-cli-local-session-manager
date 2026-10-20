@@ -35,10 +35,19 @@ export const taskQueue = {
   "taskQueueModal.loading": dict("Loading the queue…", "Carregando a fila…"),
   "taskQueueModal.loadError": dict("Couldn't load the queue.", "Não foi possível carregar a fila."),
   "taskQueueModal.missingRepo": dict("Choose a repo", "Escolha um repo"),
-  "taskQueueModal.missingRepoCount": dict(
-    "{count} task(s) still without a repo.",
-    "{count} tarefa(s) ainda sem repo.",
+  "taskQueueModal.missingSetupCount": dict(
+    "{count} task(s) still without a repo or branch prefix — they won't launch.",
+    "{count} tarefa(s) ainda sem repo ou prefixo de branch — não serão lançadas.",
   ),
+  "taskQueueModal.pastePrefix": dict(
+    "Branch prefix for the pasted tasks",
+    "Prefixo da branch das tarefas coladas",
+  ),
+  "taskQueueModal.prefixAriaLabel": dict("Branch prefix", "Prefixo da branch"),
+  "taskQueueModal.prefixUnset": dict("Choose a prefix…", "Escolha o prefixo…"),
+  "taskQueueModal.prefixNone": dict("No prefix (just the key)", "Sem prefixo (só a chave)"),
+  "taskQueueModal.branchLabel": dict("Branch:", "Branch:"),
+  "taskQueueModal.missingPrefix": dict("Choose the prefix", "Escolha o prefixo"),
   "taskQueueModal.mainRepo": dict("main", "principal"),
   "taskQueueModal.addRepo": dict("+ repo", "+ repo"),
   "taskQueueModal.removeRepo": dict("Remove repo", "Remover repo"),

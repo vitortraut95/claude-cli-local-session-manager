@@ -61,6 +61,9 @@ export type QueueEntry = {
   key: string;
   link: string | null;
   repos: string[];
+  /** The task branch is `<prefix>/<key>`; "" = just `<key>`; null = not chosen yet (not
+   *  launched until it is). */
+  branchPrefix: string | null;
   addedAt: string;
   launchedAt: string | null;
   sessionId: string | null;
@@ -68,7 +71,7 @@ export type QueueEntry = {
 };
 
 /** What the queue modal saves; the launch fields are only ever set by the scheduler. */
-export type QueueEntryInput = Pick<QueueEntry, "key" | "link" | "repos" | "error">;
+export type QueueEntryInput = Pick<QueueEntry, "key" | "link" | "repos" | "branchPrefix" | "error">;
 
 export type RootLock = {
   mode: "copy" | "checkout";
@@ -169,6 +172,7 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
         repos: Array.isArray(raw.repos)
           ? [...new Set(raw.repos.filter((r): r is string => typeof r === "string" && !!r.trim()))]
           : [],
+        branchPrefix: typeof raw.branchPrefix === "string" ? raw.branchPrefix.trim() : null,
         addedAt: typeof raw.addedAt === "string" ? raw.addedAt : "",
         launchedAt: asTextOrNull(raw.launchedAt),
         sessionId: asTextOrNull(raw.sessionId),
