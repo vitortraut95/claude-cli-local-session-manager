@@ -8,6 +8,10 @@ export const apiErrors = {
     "Esta sessão (ou a pasta dela) já está aberta em outro terminal.",
   ),
   "apiError.invalidSessionId": dict("Invalid session id.", "Id de sessão inválido."),
+  "apiError.gridNotRunning": dict(
+    "The grid has no session yet — it opens by itself when the first session starts.",
+    "A grade ainda não tem nenhuma sessão — ela abre sozinha quando a primeira sessão começa.",
+  ),
   "apiError.rootInUse": dict(
     "The root of this repo is in use by another task — reset the root before bringing a new one there.",
     "A raiz deste repo está em uso por outra tarefa — resete a raiz antes de trazer uma nova.",

@@ -64,3 +64,18 @@ export async function fetchUsageLimits(forceRefresh = false): Promise<ClaudeUsag
   );
   return data;
 }
+
+/** The tmux grid Claude sessions open in when `terminalLayout` is "tmux-grid". */
+export type TerminalGridStatus = { tmuxAvailable: boolean; running: boolean; panes: number };
+
+export async function fetchTerminalGridStatus(): Promise<TerminalGridStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<TerminalGridStatus>("/terminal-grid"),
+  );
+  return data;
+}
+
+/** Opens a terminal attached to the grid; fails with `GRID_NOT_RUNNING` while it has no pane. */
+export async function openTerminalGrid(): Promise<void> {
+  await withServerErrorMessage(() => client.post("/terminal-grid/open"));
+}

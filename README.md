@@ -9,6 +9,11 @@ and clean them up. Everything runs on your machine — no external server involv
 - **Session list** — title, project, branch, last-updated/active time, and a session-size meter
   (green → amber → red)
 - **Resume** any session in a new terminal (`claude --resume`), Warp preferred if installed
+- **Grid layout** — optional (Settings → "Where sessions open"): every session the app opens (New
+  task, the queue, New session, Resume) becomes a tile of one live tmux grid (`claude-tarefas`)
+  instead of a tab of its own; it re-tiles as sessions start and close, keeps a failed run's pane
+  open to read the error, and opens itself in a terminal when nothing is showing it ("Open grid"
+  in the header reopens it). Needs tmux
 - **New task** — paste a Jira link + instructions, pick a project, and it opens a terminal
   already running Claude with that prompt — optionally in an isolated git worktree
 - **New session** — the lightweight version: pick a project, the team skills and a prompt (its own
@@ -145,6 +150,8 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | POST   | `/tasks/queue/run`                    | Run a scheduler check now (launches the next ready task if there's room)       |
 | GET    | `/tasks/heavy-run/hook`               | Whether the heavy-tests hook is in `~/.claude/settings.json`                   |
 | PUT    | `/tasks/heavy-run/hook`               | Install/remove it `{ installed }` (only that hook's entry is touched)          |
+| GET    | `/system/terminal-grid`               | The tmux grid: tmux installed, running, pane count                             |
+| POST   | `/system/terminal-grid/open`          | Open a terminal attached to the grid                                           |
 | GET    | `/cleanup/worktree-for-session/:id`   | What removing a session's worktree would mean now (finding, or why not)        |
 | POST   | `/tasks/test-task`                    | Open a terminal running `/<taskTestSkill> <ticketLink>` ("Test task" button)   |
 | GET    | `/tasks/skills-hub/status`            | Team skills: hub location/branch, catalogs, link state per skill               |
