@@ -37,7 +37,7 @@ import {
 } from "../utils/taskStore.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import { getUserPreferences } from "./preferencesService.js";
-import { isTmuxAvailable, launchInTmuxGrid } from "./tmuxGridService.js";
+import { focusGridSession, isTmuxAvailable, launchInTmuxGrid } from "./tmuxGridService.js";
 import {
   AppError,
   BadRequestError,
@@ -871,6 +871,16 @@ export async function openTerminalWindow(command: string, cwd?: string): Promise
   );
 }
 
+/** "Resume" on a session already running in the tmux grid: shows its pane instead of a second
+ *  terminal. False when the grid isn't the layout or no pane runs it (the caller handles the
+ *  active-session conflict as usual). */
+export async function focusSessionInGrid(id: string): Promise<boolean> {
+  if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
+  const { terminalLayout } = await getUserPreferences();
+  if (terminalLayout !== "tmux-grid" || !(await isTmuxAvailable())) return false;
+  return focusGridSession(id, (attach) => openTerminalWindow(attach));
+}
+
 /** Refuses an active session: a second `claude --resume` would race the first one's writes. */
 export async function continueSession(id: string): Promise<void> {
   const activeIds = await getActiveResumeSessionIds();
@@ -1119,6 +1129,57 @@ export async function removeWorktreeAndCheckoutRoot(
 
   await lockRootForCheckout(repoRoot, branch, taskKey);
   return { previousRootBranch, newBranch: branch };
+}
+
+/** Statuses "Resume open tasks" brings back: work left mid-way (not "to do": never started). */
+const RESUMABLE_STATUSES = new Set(["in_progress", "waiting_user"]);
+
+export type ResumeOpenResult = {
+  resumed: { id: string; taskKey: string | null }[];
+  /** Left out because the session limit (`orchestrator.maxSessions`) was reached. */
+  skippedForLimit: number;
+  failed: { id: string; message: string }[];
+};
+
+/**
+ * "Resume open tasks": for each task (or task-less session) in progress or waiting on the user
+ * with nothing of it running, resumes its most recently updated session — in the grid when that's
+ * the terminal layout — up to the session limit, so a day's work comes back in one click.
+ */
+export async function resumeOpenTasks(): Promise<ResumeOpenResult> {
+  const [sessions, prefs] = await Promise.all([listSessions(), getUserPreferences()]);
+  const groupOf = (s: Session) => s.taskKey ?? `session:${s.id}`;
+  const activeGroups = new Set(sessions.filter((s) => s.isActive).map(groupOf));
+
+  const seen = new Set<string>();
+  const candidates: Session[] = [];
+  // Newest first, so the first one per group is its latest session.
+  for (const session of sessions) {
+    const group = groupOf(session);
+    if (seen.has(group)) continue;
+    seen.add(group);
+    if (activeGroups.has(group) || session.directoryMissing) continue;
+    if (session.status && RESUMABLE_STATUSES.has(session.status)) candidates.push(session);
+  }
+
+  const room = Math.max(
+    0,
+    prefs.orchestrator.maxSessions - (await getActiveResumeSessionIds()).size,
+  );
+  const result: ResumeOpenResult = {
+    resumed: [],
+    skippedForLimit: Math.max(0, candidates.length - room),
+    failed: [],
+  };
+  for (const session of candidates.slice(0, room)) {
+    try {
+      await continueSession(session.id);
+      result.resumed.push({ id: session.id, taskKey: session.taskKey ?? null });
+    } catch (err) {
+      result.failed.push({ id: session.id, message: errorMessage(err) });
+    }
+  }
+  return result;
 }
 
 /**

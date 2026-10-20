@@ -15,7 +15,7 @@ export const GRID_SESSION = "claude-tarefas";
 export const GRID_ATTACH_COMMAND = `tmux attach -t ${GRID_SESSION}`;
 
 /** A terminal takes a few seconds to attach: launches right after one opened don't open another. */
-const VIEWER_REOPEN_GAP_MS = 30_000;
+const VIEWER_REOPEN_GAP_MS = 10_000;
 let viewerOpenedAt = 0;
 
 async function tmux(args: string[]): Promise<string> {
@@ -127,12 +127,48 @@ export async function launchInTmuxGrid(
     ? await addPane(command, cwd)
     : await createGridSession(command, cwd);
   await tmux(["set-option", "-p", "-t", paneId, "@label", cwd ? path.basename(cwd) : "claude"]);
+  await showPane(paneId, openViewer);
+}
 
+/** Brings `paneId` to the front of the grid (its window, then the pane) for whoever is watching,
+ *  and opens a terminal on the grid when nothing is showing it. */
+async function showPane(
+  paneId: string,
+  openViewer: (attachCommand: string) => Promise<void>,
+): Promise<void> {
+  await tmux(["select-window", "-t", paneId]);
+  await tmux(["select-pane", "-t", paneId]);
   const clients = await tmux(["list-clients", "-t", GRID_SESSION]).catch(() => "");
   if (!clients && Date.now() - viewerOpenedAt > VIEWER_REOPEN_GAP_MS) {
     viewerOpenedAt = Date.now();
     await openViewer(GRID_ATTACH_COMMAND);
   }
+}
+
+/**
+ * Shows the grid pane already running `sessionId` (started as `claude --resume <id>` or
+ * `--session-id <id>`, so the id is in its start command); false when no pane has it.
+ */
+export async function focusGridSession(
+  sessionId: string,
+  openViewer: (attachCommand: string) => Promise<void>,
+): Promise<boolean> {
+  if (!(await gridSessionExists())) return false;
+  const panes = await tmux([
+    "list-panes",
+    "-s",
+    "-t",
+    GRID_SESSION,
+    "-F",
+    "#{pane_id}\t#{pane_dead}\t#{pane_start_command}",
+  ]).catch(() => "");
+  const match = panes
+    .split("\n")
+    .map((line) => line.split("\t"))
+    .find(([, dead, command]) => dead === "0" && command?.includes(sessionId));
+  if (!match?.[0]) return false;
+  await showPane(match[0], openViewer);
+  return true;
 }
 
 export type GridStatus = { tmuxAvailable: boolean; running: boolean; panes: number };

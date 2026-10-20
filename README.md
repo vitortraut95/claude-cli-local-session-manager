@@ -13,7 +13,10 @@ and clean them up. Everything runs on your machine — no external server involv
   task, the queue, New session, Resume) becomes a tile of one live tmux grid (`claude-tarefas`)
   instead of a tab of its own; it re-tiles as sessions start and close, keeps a failed run's pane
   open to read the error, and opens itself in a terminal when nothing is showing it ("Open grid"
-  in the header reopens it). Needs tmux
+  in the header reopens it). "Resume" on a session already running there shows its tile. Needs
+  tmux
+- **Resume open tasks** — one click brings back the latest session of every task "in progress" or
+  "waiting user" with nothing running (up to the session limit), e.g. the next morning
 - **New task** — paste a Jira link + instructions, pick a project, and it opens a terminal
   already running Claude with that prompt — optionally in an isolated git worktree
 - **New session** — the lightweight version: pick a project, the team skills and a prompt (its own
@@ -31,11 +34,13 @@ and clean them up. Everything runs on your machine — no external server involv
   (default 6, every session counts), enough free RAM, no memory pressure (PSI) and Claude plan
   usage under a limit. Pause/resume and the limits live in the queue window; a launched task gets
   the "in progress" status. Kept in the local `tasks.json`
-- **Heavy tests** — optional (Task queue window → "Turn on"): a PreToolUse hook in
-  `~/.claude/settings.json` blocks test commands (jest, vitest, `yarn/npm/pnpm test`…) run
-  directly and has Claude rerun them through `scripts/heavy-run`, which waits for a free slot
-  across every session (default 1 at a time) and runs each one in its own cgroup with a RAM/CPU
-  cap (`systemd-run --user --scope`), so going over the cap kills only that run (exit 137)
+- **Heavy commands** — optional (Task queue window → "Turn on"): a PreToolUse hook in
+  `~/.claude/settings.json` blocks tests, typecheck, lint, builds and `git commit` (its pre-commit
+  hooks) run directly and has Claude rerun them through `scripts/heavy-run`, which waits for a
+  free slot across every session (default 1 at a time) and for that much free RAM, runs each one
+  in its own cgroup with a RAM/CPU cap (`systemd-run --user --scope`) at low CPU/IO priority, and
+  caps Node's heap at ~85% of the RAM cap — so a runaway run fails alone (137 = RAM cap, 134 =
+  heap cap) instead of freezing the machine
 - **Task worktree setup** — per repo (Settings → "Task worktree setup"), a new task worktree gets
   a symlink to each of the main checkout's `node_modules` (root and workspaces) and a copy of its
   gitignored `.env*` files, since git only checks out tracked files. The link is added to the repo's
@@ -132,6 +137,8 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | DELETE | `/sessions/:id`                       | Delete the session's `.jsonl` file                                             |
 | POST   | `/sessions/:id/continue`              | Open a terminal running `claude --resume <id>`                                 |
 | POST   | `/sessions/:id/vscode`                | Open the session's working directory in VS Code                                |
+| POST   | `/sessions/resume-open`               | Resume the latest session of every in-progress / waiting task not running      |
+| POST   | `/sessions/:id/grid-focus`            | Show the tmux grid pane already running the session (`{ focused }`)            |
 | GET    | `/sessions/:id/export`                | Download the session as a `.claude-session.json.gz` file                       |
 | GET    | `/sessions/:id/task`                  | The session's task (key, inferred or saved) and that task's repos              |
 | PUT    | `/sessions/:id/task`                  | Save `{ taskKey, link? }` on the session (`""` = back to detecting it)         |

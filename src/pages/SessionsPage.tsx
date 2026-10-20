@@ -8,6 +8,7 @@ import { LoadingState } from "../components/LoadingState";
 import { Pagination } from "../components/Pagination";
 import { PerPageSelect } from "../components/PerPageSelect";
 import { ProjectFilter } from "../components/ProjectFilter";
+import { Tooltip } from "../components/Tooltip";
 import { WorkStatusFilter } from "../components/WorkStatusFilter";
 import { ResumeConflictModal } from "../components/ResumeConflictModal";
 import { SearchBar } from "../components/SearchBar";
@@ -16,7 +17,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useSessions } from "../hooks/useSessions";
 import type { Session } from "../types/session";
 import { DEFAULT_BRANCHES } from "../utils/branches";
-import { RefreshCw, Trash2, X } from "lucide-react";
+import { History, RefreshCw, Trash2, X } from "lucide-react";
 
 export function SessionsPage() {
   const {
@@ -48,6 +49,9 @@ export function SessionsPage() {
     removeSession,
     removeSessions,
     resumeSession,
+    resumableCount,
+    resumeOpenTasks,
+    resumingOpen,
     setNickname,
     setBranches,
     setStatus,
@@ -219,6 +223,17 @@ export function SessionsPage() {
             onChange={setProjectFilter}
           />
           <WorkStatusFilter value={statusFilter} onChange={setStatusFilter} />
+          <Tooltip content={t("sessionsPage.resumeOpen.tooltip")}>
+            <Button
+              variant="outline"
+              onClick={() => void resumeOpenTasks()}
+              disabled={resumingOpen || resumableCount === 0}
+              className="shadow-sm"
+              icon={<History className={`h-4 w-4 ${resumingOpen ? "animate-pulse" : ""}`} />}
+            >
+              {t("sessionsPage.resumeOpen", { count: resumableCount })}
+            </Button>
+          </Tooltip>
 
           <Button
             variant="outline"
