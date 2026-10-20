@@ -177,7 +177,7 @@ export function SessionsPage() {
               onDeleteRequest={handleDeleteRequest}
               onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
               onSetBranches={(s, origin, destination) => setBranches(s.id, origin, destination)}
-              onSetStatus={(s, status) => void setStatus(s, status)}
+              onSetStatus={setStatus}
               onOpenInVSCode={(s) => openInVSCode(s.id)}
               onOpenInCursor={(s) => openInCursor(s.id)}
               onOpenMissingWorktreeRootInVSCode={(s) => openMissingWorktreeRootInVSCode(s.id)}

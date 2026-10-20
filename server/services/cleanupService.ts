@@ -7,14 +7,21 @@ import type { Session } from "../types/session.js";
 import {
   branchHasUniqueCommits,
   getDefaultBaseBranch,
+  getRepoRoot,
+  getWorktreeBranch,
   hasUncommittedChanges,
   isBranchMerged,
+  isBranchPushed,
+  isLinkedWorktree,
   listWorktrees,
   pruneWorktrees,
   removeWorktreeAndBranch,
+  removeWorktreeKeepBranch,
   type WorktreeEntry,
 } from "../utils/git.js";
 import { AppError } from "../utils/httpError.js";
+import { inferTaskKey } from "../utils/taskKeys.js";
+import { getTaskStore, linkRepoBranchToTask, type TaskStore } from "../utils/taskStore.js";
 
 export type StaleSession = {
   id: string;
@@ -29,6 +36,7 @@ export type CleanupFinding = {
     | "prune-worktrees"
     | "remove-merged-worktree"
     | "remove-abandoned-worktree"
+    | "remove-done-task-worktree"
     | "prune-old-sessions";
   /** Structured data the client renders its own translated title/description from. */
   command: string;
@@ -57,7 +65,10 @@ export type CleanupFinding = {
  * 3. `remove-abandoned-worktree` — a worktree under `<repo>/.claude/worktrees/` no session ever ran
  *    in, with no uncommitted changes and no commit only its branch holds. Limited to
  *    `.claude/worktrees/`: a worktree created by hand elsewhere may be in use without a session.
- * 4. `prune-old-sessions` — see `scanForOldSessionFindings`.
+ * 4. `remove-done-task-worktree` — a worktree whose task (or, with no task, whose session) is
+ *    marked "done", not merged yet, with no uncommitted changes, no active session and every
+ *    commit already on `origin/<branch>`. Only the worktree goes: the branch stays until merged.
+ * 5. `prune-old-sessions` — see `scanForOldSessionFindings`.
  *
  * Every finding is re-validated in `executeCleanupFinding` before acting.
  */
@@ -73,7 +84,11 @@ export function scanForCleanupFindings(): Promise<CleanupFinding[]> {
 let inFlightScan: Promise<CleanupFinding[]> | null = null;
 
 async function runCleanupScan(): Promise<CleanupFinding[]> {
-  const [knownFolders, sessions] = await Promise.all([getKnownProjectFolders(), listSessions()]);
+  const [knownFolders, sessions, store] = await Promise.all([
+    getKnownProjectFolders(),
+    listSessions(),
+    getTaskStore(),
+  ]);
   const projectFolders = await withWorkspaceRepos(knownFolders, (repoPath) => ({
     path: repoPath,
     label: path.basename(repoPath),
@@ -122,53 +137,130 @@ async function runCleanupScan(): Promise<CleanupFinding[]> {
       if (activeWorktreePaths.has(path.resolve(entry.path))) continue;
 
       defaultBranch ??= await getDefaultBaseBranch(repoRoot).catch(() => null);
-      if (!defaultBranch || entry.branch === defaultBranch) continue;
-
-      const [merged, dirty] = await Promise.all([
-        isBranchMerged(repoRoot, entry.branch, defaultBranch),
-        hasUncommittedChanges(entry.path).catch(() => true),
-      ]);
-      if (dirty) continue;
-      if (!merged) {
-        if (
-          isAppWorktree(repoRoot, entry.path) &&
-          !hasAnySession(sessions, entry.path) &&
-          !(await branchHasUniqueCommits(repoRoot, entry.branch))
-        ) {
-          findings.push({
-            id: `abandoned:${entry.path}`,
-            kind: "remove-abandoned-worktree",
-            command: `git worktree remove ${entry.path} && git branch -D ${entry.branch}`,
-            repoRoot,
-            staleBranches: [],
-            worktreePath: entry.path,
-            branch: entry.branch,
-            defaultBranch: null,
-            staleSessions: [],
-            keepCount: 0,
-          });
-        }
-        continue;
-      }
-
-      findings.push({
-        id: `remove:${entry.path}`,
-        kind: "remove-merged-worktree",
-        command: `git worktree remove ${entry.path} && git branch -D ${entry.branch}`,
-        repoRoot,
-        staleBranches: [],
-        worktreePath: entry.path,
-        branch: entry.branch,
-        defaultBranch,
-        staleSessions: [],
-        keepCount: 0,
+      if (!defaultBranch) continue;
+      const result = await classifyWorktree(repoRoot, entry.path, entry.branch, defaultBranch, {
+        sessions,
+        store,
       });
+      if (typeof result !== "string") findings.push(result);
     }
   }
 
   findings.push(...(await scanForOldSessionFindings(projectFolders, sessions)));
 
   return findings;
+}
+
+/** Why a linked worktree has nothing to offer (the card's "remove worktree" shortcut says so). */
+export type WorktreeSkipReason =
+  "default-branch" | "uncommitted-changes" | "active-session" | "not-done" | "not-pushed";
+
+const FINDING_ID_PREFIX = {
+  "remove-merged-worktree": "remove",
+  "remove-abandoned-worktree": "abandoned",
+  "remove-done-task-worktree": "done",
+};
+
+function worktreeFinding(
+  kind: "remove-merged-worktree" | "remove-abandoned-worktree" | "remove-done-task-worktree",
+  repoRoot: string,
+  worktreePath: string,
+  branch: string,
+  defaultBranch: string | null,
+): CleanupFinding {
+  return {
+    id: `${FINDING_ID_PREFIX[kind]}:${worktreePath}`,
+    kind,
+    command:
+      kind === "remove-done-task-worktree"
+        ? `git worktree remove ${worktreePath}`
+        : `git worktree remove ${worktreePath} && git branch -D ${branch}`,
+    repoRoot,
+    staleBranches: [],
+    worktreePath,
+    branch,
+    defaultBranch,
+    staleSessions: [],
+    keepCount: 0,
+  };
+}
+
+/** Status "done" on the branch's task (recorded, else read from the name), or — for a worktree
+ *  with no task — on a session that ran in it. */
+function isMarkedDone(
+  store: TaskStore,
+  sessions: Session[],
+  repoRoot: string,
+  worktreePath: string,
+  branch: string,
+): boolean {
+  const taskKey = store.repoBranches[repoRoot]?.[branch]?.taskKey ?? inferTaskKey(branch);
+  if (taskKey) return store.tasks[taskKey]?.status === "done";
+  const target = path.resolve(worktreePath);
+  return sessions.some(
+    (s) => s.workingDirectory && path.resolve(s.workingDirectory) === target && s.status === "done",
+  );
+}
+
+/** The finding one linked worktree (existing, with a branch) qualifies for, if any. */
+async function classifyWorktree(
+  repoRoot: string,
+  worktreePath: string,
+  branch: string,
+  defaultBranch: string,
+  { sessions, store }: { sessions: Session[]; store: TaskStore },
+): Promise<CleanupFinding | WorktreeSkipReason> {
+  if (branch === defaultBranch) return "default-branch";
+  const target = path.resolve(worktreePath);
+  if (
+    sessions.some(
+      (s) => s.isActive && s.workingDirectory && path.resolve(s.workingDirectory) === target,
+    )
+  ) {
+    return "active-session";
+  }
+
+  const [merged, dirty] = await Promise.all([
+    isBranchMerged(repoRoot, branch, defaultBranch),
+    hasUncommittedChanges(worktreePath).catch(() => true),
+  ]);
+  if (dirty) return "uncommitted-changes";
+  if (merged) {
+    return worktreeFinding("remove-merged-worktree", repoRoot, worktreePath, branch, defaultBranch);
+  }
+  if (isMarkedDone(store, sessions, repoRoot, worktreePath, branch)) {
+    return (await isBranchPushed(repoRoot, branch))
+      ? worktreeFinding("remove-done-task-worktree", repoRoot, worktreePath, branch, null)
+      : "not-pushed";
+  }
+  if (
+    isAppWorktree(repoRoot, worktreePath) &&
+    !hasAnySession(sessions, worktreePath) &&
+    !(await branchHasUniqueCommits(repoRoot, branch))
+  ) {
+    return worktreeFinding("remove-abandoned-worktree", repoRoot, worktreePath, branch, null);
+  }
+  return "not-done";
+}
+
+/**
+ * For a session card: what removing its worktree would mean right now — the finding to confirm
+ * and execute, or why there's none. Null when the session isn't in a linked worktree.
+ */
+export async function getWorktreeCleanupForSession(
+  sessionId: string,
+): Promise<{ finding: CleanupFinding | null; reason: WorktreeSkipReason | null } | null> {
+  const [sessions, store] = await Promise.all([listSessions(), getTaskStore()]);
+  const cwd = sessions.find((s) => s.id === sessionId)?.workingDirectory;
+  if (!cwd || !(await directoryExists(cwd)) || !(await isLinkedWorktree(cwd))) return null;
+  const repoRoot = await getRepoRoot(cwd);
+  const branch = repoRoot ? await getWorktreeBranch(cwd, repoRoot) : null;
+  if (!repoRoot || !branch) return null;
+  const defaultBranch = await getDefaultBaseBranch(repoRoot);
+  const result = await classifyWorktree(repoRoot, cwd, branch, defaultBranch, { sessions, store });
+  return typeof result === "string"
+    ? { finding: null, reason: result }
+    : { finding: result, reason: null };
 }
 
 /** Under `<repoRoot>/.claude/worktrees/`, where `--worktree` and "New task" create them. */
@@ -326,6 +418,44 @@ export async function executeCleanupFinding(finding: CleanupFinding): Promise<vo
       );
     }
     await removeWorktreeAndBranch(worktreePath);
+    return;
+  }
+
+  if (finding.kind === "remove-done-task-worktree") {
+    const [sessions, store] = await Promise.all([listSessions(), getTaskStore()]);
+    if (!isMarkedDone(store, sessions, repoRoot, worktreePath, branch)) {
+      throw new AppError(
+        "CLEANUP_TASK_NOT_DONE",
+        `The task of "${branch}" is no longer marked done — cancelled for safety.`,
+      );
+    }
+    if (!(await isBranchPushed(repoRoot, branch))) {
+      throw new AppError(
+        "CLEANUP_BRANCH_NOT_PUSHED",
+        `Branch "${branch}" has commits that aren't on origin — push them first.`,
+      );
+    }
+    if (await hasUncommittedChanges(worktreePath)) {
+      throw new AppError(
+        "CLEANUP_UNCOMMITTED_CHANGES",
+        `"${worktreePath}" now has uncommitted changes — cancelled for safety.`,
+      );
+    }
+    const target = path.resolve(worktreePath);
+    if (
+      sessions.some(
+        (s) => s.isActive && s.workingDirectory && path.resolve(s.workingDirectory) === target,
+      )
+    ) {
+      throw new AppError(
+        "SESSION_ACTIVE",
+        `A session is active in "${worktreePath}" right now — cancelled for safety.`,
+      );
+    }
+    await removeWorktreeKeepBranch(worktreePath);
+    // The branch stays linked to its task, now with no worktree of its own.
+    const taskKey = store.repoBranches[repoRoot]?.[branch]?.taskKey;
+    if (taskKey) await linkRepoBranchToTask(repoRoot, branch, taskKey, null).catch(() => undefined);
     return;
   }
 

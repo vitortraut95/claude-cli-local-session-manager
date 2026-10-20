@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   executeCleanupFinding,
+  getWorktreeCleanupForSession,
   scanForCleanupFindings,
   type CleanupFinding,
 } from "../services/cleanupService.js";
@@ -13,6 +14,11 @@ cleanupRouter.get("/findings", async (_req, res) => {
   res.json({ findings });
 });
 
+/** A session card's "remove worktree": the finding its worktree qualifies for, or why none. */
+cleanupRouter.get("/worktree-for-session/:id", async (req, res) => {
+  res.json({ result: await getWorktreeCleanupForSession(req.params.id) });
+});
+
 /** The body is a finding from `GET /findings`; `executeCleanupFinding` re-validates it, so a
  *  stale/tampered body fails safely. */
 cleanupRouter.post("/findings/execute", async (req, res) => {
@@ -23,6 +29,7 @@ cleanupRouter.post("/findings/execute", async (req, res) => {
     (finding.kind !== "prune-worktrees" &&
       finding.kind !== "remove-merged-worktree" &&
       finding.kind !== "remove-abandoned-worktree" &&
+      finding.kind !== "remove-done-task-worktree" &&
       finding.kind !== "prune-old-sessions") ||
     typeof finding.repoRoot !== "string"
   ) {

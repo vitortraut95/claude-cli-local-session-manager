@@ -43,6 +43,9 @@ and clean them up. Everything runs on your machine — no external server involv
 - **Work status** — an editable tag on each card (to do, in progress, waiting user, done) to pick
   sessions back up another day; a task's status is shared by all its sessions (a session with no
   task keeps its own), and the list can be filtered by it ("not done" = what's left to resume)
+  — marking a worktree's card "done" offers to remove that worktree once it's safe (no pending
+  changes, session closed, every commit on origin); only the folder goes, the branch stays until
+  merged. Cleanup lists the same for every done task (extra repos of a task included)
 - Full-text search across every prompt (also matches a session's task key), plus a project filter
 - Local nicknames, bulk delete, active-session protection (won't let two terminals fight over
   the same session)
@@ -137,6 +140,7 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | POST   | `/tasks/queue/run`                    | Run a scheduler check now (launches the next ready task if there's room)       |
 | GET    | `/tasks/heavy-run/hook`               | Whether the heavy-tests hook is in `~/.claude/settings.json`                   |
 | PUT    | `/tasks/heavy-run/hook`               | Install/remove it `{ installed }` (only that hook's entry is touched)          |
+| GET    | `/cleanup/worktree-for-session/:id`   | What removing a session's worktree would mean now (finding, or why not)        |
 | POST   | `/tasks/test-task`                    | Open a terminal running `/<taskTestSkill> <ticketLink>` ("Test task" button)   |
 | GET    | `/tasks/skills-hub/status`            | Team skills: hub location/branch, catalogs, link state per skill               |
 | GET    | `/tasks/skills-hub/skill`             | One hub skill's SKILL.md content (`?catalog=&name=`)                           |
