@@ -73,7 +73,19 @@ export type UserPreferences = {
   /** UI theme; null = follow the system. Optional: older files lack it. */
   theme: "light" | "dark" | null;
   orchestrator: OrchestratorPreferences;
+  /** Optional: older files lack it. */
+  worktreeSetup: WorktreeSetup;
 };
+
+/** What a new task worktree gets from the repo's main checkout (things git doesn't check out). */
+export type WorktreeSetupOptions = {
+  /** Symlink each `node_modules` (root and workspaces) instead of installing per worktree. */
+  linkNodeModules: boolean;
+  /** Copy the gitignored `.env*` files, so each task can change its own. */
+  copyEnvFiles: boolean;
+};
+/** Per repo folder name, like `envPreviews`; a repo not listed gets nothing. */
+export type WorktreeSetup = Record<string, WorktreeSetupOptions>;
 
 export type EnvPreviewTemplate = { label: string; url: string };
 export type EnvPreviews = Record<string, EnvPreviewTemplate[]>;
@@ -111,6 +123,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     testMemoryMaxGb: 6,
     testCpuPercent: 400,
   },
+  worktreeSetup: {},
 };
 
 function isLanguage(value: unknown): value is Language {
@@ -204,6 +217,15 @@ export function isOrchestratorPreferences(value: unknown): value is Orchestrator
   );
 }
 
+export function isWorktreeSetup(value: unknown): value is WorktreeSetup {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  return Object.values(value as Record<string, unknown>).every((options) => {
+    if (typeof options !== "object" || options === null) return false;
+    const raw = options as Record<string, unknown>;
+    return typeof raw.linkNodeModules === "boolean" && typeof raw.copyEnvFiles === "boolean";
+  });
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
@@ -279,6 +301,9 @@ function normalizePreferences(value: unknown): UserPreferences {
         ? parsed.theme
         : DEFAULT_PREFERENCES.theme,
     orchestrator: parseOrchestrator(parsed.orchestrator),
+    worktreeSetup: isWorktreeSetup(parsed.worktreeSetup)
+      ? parsed.worktreeSetup
+      : DEFAULT_PREFERENCES.worktreeSetup,
   };
 }
 

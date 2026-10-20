@@ -60,9 +60,9 @@ export async function createTaskWorktree(
   useWorktree: boolean,
   taskKey = "",
   taskLink = "",
-): Promise<{ worktreePath: string }> {
+): Promise<{ worktreePath: string; setup?: WorktreeSetupResult }> {
   const { data } = await withServerErrorMessage(() =>
-    client.post<{ worktreePath: string }>("/worktree", {
+    client.post<{ worktreePath: string; setup?: WorktreeSetupResult }>("/worktree", {
       folderPath,
       branchName,
       baseBranchRef,
@@ -74,6 +74,10 @@ export async function createTaskWorktree(
   );
   return data;
 }
+
+/** What a new worktree got from its repo's `worktreeSetup` preference (worktree-relative paths).
+ *  Absent from an older backend. */
+export type WorktreeSetupResult = { linked: string[]; copied: string[] };
 
 /** Opens a terminal in `worktreePath` running `claude <prompt>`. `repoRoot` ("" if unknown) is
  *  remembered for the folder dropdown. A non-blank `nickname` and `originBranch`/`destinationBranch`
@@ -137,6 +141,7 @@ export type AddRepoResult = {
   baseBranch: string;
   /** Where the branch is checked out — what to `/add-dir`. */
   workingDirectory: string;
+  setup?: WorktreeSetupResult;
   completedSteps: AddRepoStep[];
 };
 

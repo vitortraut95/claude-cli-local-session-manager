@@ -1,3 +1,4 @@
+import path from "node:path";
 import { addRepoToTask } from "./taskGroupService.js";
 import { getUserPreferences, type UserPreferences } from "./preferencesService.js";
 import { directoryExists, getActiveResumeSessionIds } from "./sessionService.js";
@@ -120,24 +121,41 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** Mirrors the "New task" modal's `newTaskModal.taskPrefix`, `extraRepos.promptNote` and
+ *  `sharedNodeModulesNote` strings. */
 const PROMPT_TEXT = {
   en: {
     task: "Task",
     extraDirs: "This task also spans these folders (already added with --add-dir): {dirs}",
+    sharedNodeModules:
+      "node_modules here is a symlink to the main checkout's, shared with other tasks: {dirs}. " +
+      "Don't run yarn/npm/pnpm install or add in this worktree. If the task changes dependencies, " +
+      "delete just the link (rm node_modules, no -r) and install inside the worktree.",
   },
   pt: {
     task: "Tarefa",
     extraDirs: "Esta tarefa também envolve estas pastas (já adicionadas com --add-dir): {dirs}",
+    sharedNodeModules:
+      "O node_modules aqui é um link para o da raiz do repo, compartilhado com outras tarefas: " +
+      "{dirs}. Não rode yarn/npm/pnpm install nem add neste worktree. Se a tarefa mudar " +
+      "dependências, apague só o link (rm node_modules, sem -r) e instale dentro do worktree.",
   },
 };
 
-/** Same message "New task" composes: `Task: <link>`, the default prompt, the extra-dirs note. */
-function composePrompt(prefs: UserPreferences, entry: QueueEntry, addDirs: string[]): string {
+/** Same message "New task" composes: `Task: <link>`, the default prompt, the extra-dirs note and
+ *  the shared node_modules warning. `linked` = absolute paths of the linked node_modules. */
+function composePrompt(
+  prefs: UserPreferences,
+  entry: QueueEntry,
+  addDirs: string[],
+  linked: string[],
+): string {
   const text = PROMPT_TEXT[prefs.language ?? "en"];
   return [
     `${text.task}: ${entry.link ?? entry.key}`,
     prefs.defaultPrompt.trim(),
     addDirs.length > 0 ? text.extraDirs.replace("{dirs}", addDirs.join(", ")) : "",
+    linked.length > 0 ? text.sharedNodeModules.replace("{dirs}", linked.join(", ")) : "",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -162,10 +180,11 @@ async function launchEntry(entry: QueueEntry, prefs: UserPreferences): Promise<v
 
   const repo = await getRepoInfo(mainFolder);
   const base = repo.defaultBaseBranch;
+  const linked: string[] = [];
   let worktreePath = await findExistingTaskWorktree(repo.repoRoot, branch, entry.key);
   if (!worktreePath) {
     const { baseBranchRef } = await resolveBaseBranch(repo.repoRoot, base);
-    ({ worktreePath } = await createTaskWorktree(
+    const created = await createTaskWorktree(
       repo.repoRoot,
       branch,
       baseBranchRef,
@@ -173,7 +192,9 @@ async function launchEntry(entry: QueueEntry, prefs: UserPreferences): Promise<v
       true,
       entry.key,
       entry.link,
-    ));
+    );
+    worktreePath = created.worktreePath;
+    linked.push(...created.setup.linked.map((rel) => path.join(created.worktreePath, rel)));
   }
 
   // Like "New task": an extra repo that fails doesn't stop the others or the main session.
@@ -195,6 +216,7 @@ async function launchEntry(entry: QueueEntry, prefs: UserPreferences): Promise<v
         taskLink: entry.link,
       });
       addDirs.push(result.workingDirectory);
+      linked.push(...result.setup.linked.map((rel) => path.join(result.workingDirectory, rel)));
     } catch (err) {
       extraErrors.push(`${folder}: ${errorMessage(err)}`);
     }
@@ -202,7 +224,7 @@ async function launchEntry(entry: QueueEntry, prefs: UserPreferences): Promise<v
 
   const { sessionId } = await launchTaskTerminal({
     worktreePath,
-    prompt: composePrompt(prefs, entry, addDirs),
+    prompt: composePrompt(prefs, entry, addDirs, linked),
     permissionModeAuto: prefs.useAutoPermissionModeByDefault,
     repoRoot: repo.repoRoot,
     nickname: entry.link ?? entry.key,
