@@ -1,13 +1,4 @@
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Circle,
-  GitBranch,
-  Info,
-  Link as LinkIcon,
-  Loader2,
-  XCircle,
-} from "lucide-react";
+import { Link as LinkIcon, AlertTriangle, GitBranch, Info, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useProjectFolders } from "../hooks/useProjectFolders";
@@ -25,6 +16,13 @@ import { Select } from "./Select";
 import { SkillsHubModal } from "./SkillsHubModal";
 import { SkillsHubPanel } from "./SkillsHubPanel";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import { StepList } from "./StepList";
+import {
+  withDoingStepFailed,
+  withStepStatus,
+  type Step as StepOf,
+  type StepStatus,
+} from "../utils/steps";
 
 type NewTaskModalProps = {
   open: boolean;
@@ -52,10 +50,9 @@ const TEXTAREA_CLASSNAME =
   "dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-gray-600 " +
   "dark:focus:ring-gray-100/10";
 
-type StepStatus = "pending" | "doing" | "done" | "error";
 type StepKey = "repo" | "base" | "worktree" | "launch";
 /** `key` is a StepKey, or `extra:<path>` for one of the task's extra repos. */
-type Step = { key: string; label: string; status: StepStatus; error?: string };
+type Step = StepOf<string>;
 
 const STEP_LABEL_KEYS: Record<StepKey, TranslationKey> = {
   repo: "newTaskModal.step.repo",
@@ -324,9 +321,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
     jiraLink.trim().length > 0 && !creating && (extraRepos.length === 0 || jiraId !== null);
 
   const updateStep = (key: string, status: StepStatus, error?: string) => {
-    setSteps((current) =>
-      current.map((step) => (step.key === key ? { ...step, status, error } : step)),
-    );
+    setSteps((current) => withStepStatus(current, key, status, error));
   };
 
   /**
@@ -464,11 +459,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       onTaskCreated?.();
     } catch (err) {
       const message = resolveApiErrorMessage(err, t, "newTaskModal.unexpectedFailure");
-      setSteps((current) =>
-        current.map((step) =>
-          step.status === "doing" ? { ...step, status: "error", error: message } : step,
-        ),
-      );
+      setSteps((current) => withDoingStepFailed(current, message));
       showToast(t("newTaskModal.createFailed", { message }), "error");
     } finally {
       setCreating(false);
@@ -726,38 +717,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
             <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               {t("newTaskModal.progressLabel")}
             </p>
-            <ol className="space-y-2">
-              {steps.map((step) => (
-                <li key={step.key} className="flex items-start gap-2">
-                  {step.status === "pending" && (
-                    <Circle className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
-                  )}
-                  {step.status === "doing" && (
-                    <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-gray-500 dark:text-gray-400" />
-                  )}
-                  {step.status === "done" && (
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-500" />
-                  )}
-                  {step.status === "error" && (
-                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-500" />
-                  )}
-                  <div>
-                    <p
-                      className={`text-sm ${
-                        step.status === "pending"
-                          ? "text-gray-400 dark:text-gray-500"
-                          : "text-gray-700 dark:text-gray-300"
-                      }`}
-                    >
-                      {step.label}
-                    </p>
-                    {step.status === "error" && step.error && (
-                      <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">{step.error}</p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <StepList steps={steps} />
           </div>
         ) : (
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
