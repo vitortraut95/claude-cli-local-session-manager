@@ -413,7 +413,10 @@ export function useSessions() {
           else await sessionsApi.setStatus(session.id, status);
           setSessions((current) =>
             current.map((s) =>
-              (taskKey ? s.taskKey === taskKey : s.id === session.id) ? { ...s, status } : s,
+              // The change itself is now in the history, so the card's "info" shows right away.
+              (taskKey ? s.taskKey === taskKey : s.id === session.id)
+                ? { ...s, status, hasHistory: true }
+                : s,
             ),
           );
         },
