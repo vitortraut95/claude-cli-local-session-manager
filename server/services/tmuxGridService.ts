@@ -72,6 +72,9 @@ async function createGridSession(command: string, cwd: string | undefined): Prom
     ...shellArgs(command),
   ]);
   await tmux(["set-option", "-t", GRID_SESSION, "mouse", "on"]);
+  // The viewer window's title, whatever terminal shows it.
+  await tmux(["set-option", "-t", GRID_SESSION, "set-titles", "on"]);
+  await tmux(["set-option", "-t", GRID_SESSION, "set-titles-string", "Claude — tarefas"]);
   // A closed pane leaves a hole otherwise.
   await tmux(["set-hook", "-t", GRID_SESSION, "pane-exited", "select-layout tiled"]);
   await styleWindow(paneId);

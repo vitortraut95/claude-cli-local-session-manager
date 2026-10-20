@@ -166,6 +166,13 @@ export const settings = {
   ),
   "settings.terminalLayout.tabs": dict("A tab per session", "Uma aba por sessão"),
   "settings.terminalLayout.grid": dict("tmux grid", "Grade no tmux"),
+  "settings.gridTerminal.title": dict("Grid terminal", "Terminal da grade"),
+  "settings.gridTerminal.description": dict(
+    'Where the tmux grid opens: a window of its own (maximized in GNOME Terminal, titled "Claude — tarefas"), or a Warp tab like any other session. Automatic = GNOME Terminal, else WezTerm, else a tab.',
+    'Onde a grade tmux abre: numa janela própria (maximizada no GNOME Terminal, com o título "Claude — tarefas"), ou numa aba do Warp como qualquer sessão. Automático = GNOME Terminal, senão WezTerm, senão uma aba.',
+  ),
+  "settings.gridTerminal.auto": dict("Automatic", "Automático"),
+  "settings.gridTerminal.warp": dict("Warp tab", "Aba do Warp"),
   "settings.worktreeSetup.title": dict("Task worktree setup", "Preparação dos worktrees de tarefa"),
   "settings.worktreeSetup.description": dict(
     "What a new task worktree (New task, Task queue) gets from the repo's main checkout, since git only checks out tracked files. node_modules (root and workspaces) is symlinked — shared, so the session is told not to install there — and the gitignored .env* files are copied, so each task can change its own. Per repo folder name.",

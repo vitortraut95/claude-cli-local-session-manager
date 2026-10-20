@@ -13,8 +13,9 @@ and clean them up. Everything runs on your machine — no external server involv
   task, the queue, New session, Resume) becomes a tile of one live tmux grid (`claude-tarefas`)
   instead of a tab of its own; it re-tiles as sessions start and close, keeps a failed run's pane
   open to read the error, and opens itself in a terminal when nothing is showing it ("Open grid"
-  in the header reopens it). "Resume" on a session already running there shows its tile. Needs
-  tmux
+  in the header reopens it). "Resume" on a session already running there shows its tile. The grid
+  opens in a window of its own (GNOME Terminal maximized, else WezTerm; Settings → "Grid
+  terminal" can pick a Warp tab instead). Needs tmux
 - **Resume open tasks** — one click brings back the latest session of every task "in progress" or
   "waiting user" with nothing running (up to the session limit), e.g. the next morning
 - **New task** — paste a Jira link + instructions, pick a project, and it opens a terminal

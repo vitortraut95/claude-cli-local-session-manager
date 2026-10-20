@@ -842,12 +842,37 @@ export async function launchInTerminal(command: string, cwd?: string): Promise<v
   const { terminalLayout } = await getUserPreferences();
   if (terminalLayout === "tmux-grid") {
     if (await isTmuxAvailable()) {
-      await launchInTmuxGrid(command, cwd, (attach) => openTerminalWindow(attach));
+      await launchInTmuxGrid(command, cwd, openGridViewer);
       return;
     }
     console.warn("[terminal] terminalLayout is tmux-grid but tmux isn't installed — using a tab.");
   }
   await openTerminalWindow(command, cwd);
+}
+
+/** Standalone terminals the grid can open in: its own window, so it isn't one more Warp tab. */
+const GRID_TERMINALS: Record<"gnome-terminal" | "wezterm", (attach: string[]) => string[]> = {
+  "gnome-terminal": (attach) => ["--maximize", "--", ...attach],
+  wezterm: (attach) => ["start", "--", ...attach],
+};
+
+/**
+ * Opens a terminal showing the tmux grid, per the `gridTerminal` preference: "auto" = the first of
+ * GNOME Terminal / WezTerm installed, else (or for "warp") a regular terminal tab.
+ */
+export async function openGridViewer(attachCommand: string): Promise<void> {
+  const { gridTerminal } = await getUserPreferences();
+  const attach = attachCommand.split(" ");
+  const candidates =
+    gridTerminal === "auto"
+      ? (["gnome-terminal", "wezterm"] as const)
+      : gridTerminal === "warp"
+        ? []
+        : [gridTerminal];
+  for (const bin of candidates) {
+    if (commandExists(bin) && (await trySpawnDetached(bin, GRID_TERMINALS[bin](attach)))) return;
+  }
+  await openTerminalWindow(attachCommand);
 }
 
 /** Runs `command` in a new terminal: Warp when installed, else the first `TERMINAL_LAUNCHERS`
@@ -878,7 +903,7 @@ export async function focusSessionInGrid(id: string): Promise<boolean> {
   if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
   const { terminalLayout } = await getUserPreferences();
   if (terminalLayout !== "tmux-grid" || !(await isTmuxAvailable())) return false;
-  return focusGridSession(id, (attach) => openTerminalWindow(attach));
+  return focusGridSession(id, openGridViewer);
 }
 
 /** Refuses an active session: a second `claude --resume` would race the first one's writes. */
