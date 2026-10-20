@@ -292,16 +292,16 @@ export function SessionCard({
             }`}
           />
         </Tooltip>
+        <WorkStatusSelect
+          value={session.status ?? null}
+          taskKey={session.taskKey ?? null}
+          saving={pendingAction === "status"}
+          onChange={(status) => void handleStatusChange(status)}
+        />
       </div>
 
-      <div className="flex items-start justify-between gap-2">
+      <div className="mt-2 flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <WorkStatusSelect
-            value={session.status ?? null}
-            taskKey={session.taskKey ?? null}
-            saving={pendingAction === "status"}
-            onChange={(status) => void handleStatusChange(status)}
-          />
           <h2
             className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
             title={session.title}
