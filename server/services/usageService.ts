@@ -46,15 +46,36 @@ export type ClaudeExtraUsage = {
 export type ClaudeUsageStatus = {
   limits: ClaudeUsageLimit[];
   extraUsage: ClaudeExtraUsage | null;
+  /** When this reading was fetched. */
+  fetchedAt: string;
+  /** The endpoint is rate-limiting us: this is the last good reading, kept meanwhile. */
+  stale: boolean;
 };
 
 const ANTHROPIC_BETA_HEADER = "oauth-2025-04-20";
 const USAGE_ENDPOINT = "https://api.anthropic.com/api/oauth/usage";
 /** Undocumented account-usage endpoint used by Claude Code's status line; reading it doesn't
  *  consume usage. */
-const CACHE_TTL_MS = 30_000;
+/** Usage moves slowly, and the scheduler and queue window read it all day: one fetch per window.
+ *  The badge's refresh button bypasses it (not the rate-limit backoff). */
+const CACHE_TTL_MS = 5 * 60_000;
+/** After a 429 (whose Retry-After is 0, i.e. no hint), no request for this long, doubling while it
+ *  keeps happening. Retrying every tick is what keeps the limit from ever lifting. */
+const BACKOFF_MIN_MS = 5 * 60_000;
+const BACKOFF_MAX_MS = 30 * 60_000;
 
 let cache: { status: ClaudeUsageStatus; fetchedAt: number } | null = null;
+let backoff: { until: number; ms: number } | null = null;
+
+/** The last good reading while rate-limited, or the error when there's none yet. */
+function rateLimited(): ClaudeUsageStatus {
+  if (cache) return { ...cache.status, stale: true };
+  const minutes = Math.ceil(((backoff?.until ?? Date.now()) - Date.now()) / 60_000);
+  throw new AppError(
+    "USAGE_RATE_LIMITED",
+    `Anthropic's usage endpoint is rate-limiting requests — trying again in ~${minutes} min.`,
+  );
+}
 
 function getCredentialsPath(): string {
   return path.join(os.homedir(), ".claude", ".credentials.json");
@@ -90,12 +111,13 @@ async function readAccessToken(): Promise<string> {
   return token;
 }
 
-/** Current usage-limit status (percentages, reset times, extra-usage credits), cached for 30s
+/** Current usage-limit status (percentages, reset times, extra-usage credits), cached for 5 min
  *  unless `forceRefresh`. */
 export async function getClaudeUsageStatus(forceRefresh = false): Promise<ClaudeUsageStatus> {
   if (!forceRefresh && cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
     return cache.status;
   }
+  if (backoff && Date.now() < backoff.until) return rateLimited();
 
   const token = await readAccessToken();
 
@@ -124,8 +146,15 @@ export async function getClaudeUsageStatus(forceRefresh = false): Promise<Claude
         `Claude's login token has expired — run "claude" once to refresh it.`,
       );
     }
+    if (response.status === 429) {
+      const ms = Math.min(BACKOFF_MAX_MS, Math.max(BACKOFF_MIN_MS, (backoff?.ms ?? 0) * 2));
+      backoff = { until: Date.now() + ms, ms };
+      console.warn(`[usage] Rate-limited (429) — no request for ${ms / 60_000} min.`);
+      return rateLimited();
+    }
     throw new AppError("USAGE_FETCH_FAILED", `Could not fetch usage (HTTP ${response.status}).`);
   }
+  backoff = null;
 
   // Accounts with nothing to report yet can get a 200 with an empty body: treat as no limits.
   const rawBody = await response.text();
@@ -166,7 +195,12 @@ export async function getClaudeUsageStatus(forceRefresh = false): Promise<Claude
       }
     : null;
 
-  const status: ClaudeUsageStatus = { limits, extraUsage };
+  const status: ClaudeUsageStatus = {
+    limits,
+    extraUsage,
+    fetchedAt: new Date().toISOString(),
+    stale: false,
+  };
   cache = { status, fetchedAt: Date.now() };
   return status;
 }
