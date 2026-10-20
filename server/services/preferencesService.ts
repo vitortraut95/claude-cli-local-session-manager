@@ -78,9 +78,18 @@ export type UserPreferences = {
   /** Where Claude sessions open: a terminal tab each, or panes of one tmux grid. Optional: older
    *  files lack it. */
   terminalLayout: TerminalLayout;
+  /** The terminal the tmux grid opens in. Optional: older files lack it. */
+  gridTerminal: GridTerminal;
 };
 
 export type TerminalLayout = "tabs" | "tmux-grid";
+export type GridTerminal = "auto" | "gnome-terminal" | "wezterm" | "warp";
+
+const GRID_TERMINAL_VALUES: GridTerminal[] = ["auto", "gnome-terminal", "wezterm", "warp"];
+
+export function isGridTerminal(value: unknown): value is GridTerminal {
+  return GRID_TERMINAL_VALUES.includes(value as GridTerminal);
+}
 
 /** What a new task worktree gets from the repo's main checkout (things git doesn't check out). */
 export type WorktreeSetupOptions = {
@@ -130,6 +139,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   },
   worktreeSetup: {},
   terminalLayout: "tabs",
+  gridTerminal: "auto",
 };
 
 function isLanguage(value: unknown): value is Language {
@@ -314,6 +324,9 @@ function normalizePreferences(value: unknown): UserPreferences {
       parsed.terminalLayout === "tabs" || parsed.terminalLayout === "tmux-grid"
         ? parsed.terminalLayout
         : DEFAULT_PREFERENCES.terminalLayout,
+    gridTerminal: isGridTerminal(parsed.gridTerminal)
+      ? parsed.gridTerminal
+      : DEFAULT_PREFERENCES.gridTerminal,
   };
 }
 

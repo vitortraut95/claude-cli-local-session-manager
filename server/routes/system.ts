@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getUpdateJobStatus, getUpdateStatus, startUpdate } from "../services/updateService.js";
 import { getClaudeUsageStatus } from "../services/usageService.js";
-import { openTerminalWindow } from "../services/sessionService.js";
+import { openGridViewer } from "../services/sessionService.js";
 import {
   GRID_ATTACH_COMMAND,
   getGridStatus,
@@ -26,7 +26,7 @@ systemRouter.post("/terminal-grid/open", async (_req, res) => {
   if (!(await gridSessionExists())) {
     throw new NotFoundError("GRID_NOT_RUNNING", "No session is in the grid yet.");
   }
-  await openTerminalWindow(GRID_ATTACH_COMMAND);
+  await openGridViewer(GRID_ATTACH_COMMAND);
   res.json({ success: true });
 });
 

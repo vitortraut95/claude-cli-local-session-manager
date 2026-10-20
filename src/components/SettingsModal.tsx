@@ -290,6 +290,32 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
               }
             />
           )}
+          {prefs.terminalLayout === "tmux-grid" && prefs.gridTerminal !== undefined && (
+            <SettingRow
+              title={t("settings.gridTerminal.title")}
+              description={t("settings.gridTerminal.description")}
+              keyName="gridTerminal"
+              control={
+                <Select
+                  value={prefs.gridTerminal}
+                  disabled={savingKey === "gridTerminal"}
+                  onChange={(event) =>
+                    void save({
+                      gridTerminal: event.target.value as NonNullable<
+                        UserPreferences["gridTerminal"]
+                      >,
+                    })
+                  }
+                  className="w-48"
+                >
+                  <option value="auto">{t("settings.gridTerminal.auto")}</option>
+                  <option value="gnome-terminal">GNOME Terminal</option>
+                  <option value="wezterm">WezTerm</option>
+                  <option value="warp">{t("settings.gridTerminal.warp")}</option>
+                </Select>
+              }
+            />
+          )}
           {skillsHub?.installedSkills && (
             <SettingRow
               title={t("taskTestSkill.title")}

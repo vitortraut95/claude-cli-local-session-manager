@@ -60,6 +60,8 @@ export type UserPreferences = {
   /** Where Claude sessions open: a terminal tab each, or panes of one tmux grid. Optional: older
    *  backend. */
   terminalLayout?: "tabs" | "tmux-grid";
+  /** Terminal the grid opens in. Optional: older backend. */
+  gridTerminal?: "auto" | "gnome-terminal" | "wezterm" | "warp";
 };
 
 /** Per repo folder name: what a new task worktree gets from the main checkout. */
