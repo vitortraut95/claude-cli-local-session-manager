@@ -110,6 +110,33 @@ export const taskQueue = {
     "Every live claude session counts, including ones you opened by hand. Tasks always run in their own worktree; bringing one to the root to test locally is done from its card, one task per repo at a time.",
     "Toda sessão claude ativa conta, inclusive as que você abriu à mão. As tarefas sempre rodam em worktree próprio; levar uma pra raiz pra testar localmente é feito pelo card dela, uma tarefa por repo de cada vez.",
   ),
+  "scheduler.tests.title": dict("Heavy tests", "Testes pesados"),
+  "scheduler.tests.on": dict(
+    "On — every session's test commands go through heavy-run.",
+    "Ligado — os comandos de teste de toda sessão passam pelo heavy-run.",
+  ),
+  "scheduler.tests.off": dict(
+    "Off — sessions run tests directly, with no queue or memory cap.",
+    "Desligado — as sessões rodam testes direto, sem fila nem limite de memória.",
+  ),
+  "scheduler.tests.install": dict("Turn on (install hook)", "Ligar (instalar hook)"),
+  "scheduler.tests.remove": dict("Turn off (remove hook)", "Desligar (remover hook)"),
+  "scheduler.tests.hookInstalled": dict(
+    "Hook installed — sessions started from now on use it.",
+    "Hook instalado — vale para as sessões abertas a partir de agora.",
+  ),
+  "scheduler.tests.hookRemoved": dict("Hook removed.", "Hook removido."),
+  "scheduler.tests.hookError": dict(
+    "Couldn't change the Claude settings file.",
+    "Não foi possível alterar o arquivo de configurações do Claude.",
+  ),
+  "scheduler.setting.testSlots": dict("Test runs at once", "Testes simultâneos"),
+  "scheduler.setting.testMemory": dict("RAM cap per run (GB)", "Limite de RAM por teste (GB)"),
+  "scheduler.setting.testCpu": dict("CPU cap per run (%)", "Limite de CPU por teste (%)"),
+  "scheduler.tests.explanation": dict(
+    "A PreToolUse hook in {settings} blocks a test command (jest, vitest, yarn/npm test…) run directly and has Claude rerun it as {path} <command>: it waits for a free slot across every session and runs inside its own cgroup — going over the RAM cap kills just that run (exit 137). 100% CPU = one core.",
+    "Um hook PreToolUse em {settings} bloqueia um comando de teste (jest, vitest, yarn/npm test…) rodado direto e faz o Claude rodar de novo como {path} <comando>: ele espera uma vaga livre entre todas as sessões e roda num cgroup próprio — passar do limite de RAM encerra só aquele teste (saída 137). 100% de CPU = um núcleo.",
+  ),
   "scheduler.saveError": dict(
     "Couldn't save the scheduler settings.",
     "Não foi possível salvar as configurações do agendador.",

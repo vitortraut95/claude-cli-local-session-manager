@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Usage: heavy-run <command> [args...]
+#
+# Runs a heavy command (unit tests, mostly) so parallel Claude sessions can't freeze the machine:
+#   - at most N of them at once across every session (`flock` slots — released by the kernel when
+#     the process ends, so a killed run never leaves a slot taken);
+#   - inside its own cgroup (`systemd-run --user --scope`) with a RAM and CPU cap: a run that goes
+#     over is killed on its own (exit 137) instead of dragging the whole machine into swap.
+# Limits come from `orchestrator` in this app's userPreferences.json (Task queue window).
+# Required by the PreToolUse hook `heavy-run-hook.mjs` for test commands.
+set -u
+
+if [ "$#" -eq 0 ]; then
+  echo "usage: heavy-run <command> [args...]" >&2
+  exit 64
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PREFS_FILE="$SCRIPT_DIR/../userPreferences.json"
+
+# slots memoryMaxGb cpuPercent, with the app's defaults when the file or a field is missing.
+read -r SLOTS MEMORY_GB CPU_PERCENT < <(
+  node -e '
+    let o = {};
+    try { o = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).orchestrator ?? {}; } catch {}
+    const n = (v, d) => (Number.isInteger(v) && v > 0 ? v : d);
+    console.log(n(o.testSlots, 1), n(o.testMemoryMaxGb, 6), n(o.testCpuPercent, 400));
+  ' "$PREFS_FILE" 2>/dev/null || echo "1 6 400"
+)
+
+LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/claude-heavy-run"
+mkdir -p "$LOCK_DIR"
+
+waited=false
+while :; do
+  for i in $(seq 1 "$SLOTS"); do
+    exec {slot_fd}>"$LOCK_DIR/slot$i"
+    if flock -n "$slot_fd"; then
+      break 2
+    fi
+    exec {slot_fd}>&-
+  done
+  if ! $waited; then
+    echo "heavy-run: all $SLOTS test slot(s) are busy in other sessions — waiting for one..." >&2
+    waited=true
+  fi
+  sleep 5
+done
+$waited && echo "heavy-run: got a slot, starting." >&2
+
+if command -v systemd-run >/dev/null 2>&1 &&
+  systemd-run --user --scope --quiet true >/dev/null 2>&1; then
+  systemd-run --user --scope --quiet \
+    -p "MemoryMax=${MEMORY_GB}G" -p MemorySwapMax=0 -p "CPUQuota=${CPU_PERCENT}%" \
+    -- "$@"
+  status=$?
+else
+  echo "heavy-run: systemd-run unavailable — running without a memory/CPU cap." >&2
+  "$@"
+  status=$?
+fi
+
+if [ "$status" -eq 137 ]; then
+  echo "heavy-run: killed for going over the ${MEMORY_GB} GB memory cap. Run fewer workers" \
+    "(e.g. jest/vitest --maxWorkers=2, or a single test file) — this is not a test failure." >&2
+fi
+exit "$status"
