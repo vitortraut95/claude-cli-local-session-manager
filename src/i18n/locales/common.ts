@@ -163,6 +163,10 @@ export const common = {
     "resets in {relative} ({absolute})",
     "reinicia em {relative} ({absolute})",
   ),
+  "usageLimitsBadge.stale": dict(
+    "Anthropic is rate-limiting usage checks — showing the reading from {time}; it refreshes by itself in a few minutes.",
+    "A Anthropic está limitando as consultas de uso — mostrando a leitura das {time}; atualiza sozinho em alguns minutos.",
+  ),
   "usageLimitsBadge.unavailable": dict("Usage unavailable", "Uso indisponível"),
   "usageLimitsBadge.noData": dict("Usage —", "Uso —"),
   "usageLimitsBadge.title": dict("Claude usage limits", "Limites de uso do Claude"),

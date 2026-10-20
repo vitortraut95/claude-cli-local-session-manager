@@ -93,6 +93,10 @@ export const apiErrors = {
     'Claude\'s login token has expired — run "claude" once to refresh it.',
     'O token de login do Claude expirou — rode "claude" uma vez para renová-lo.',
   ),
+  "apiError.usageRateLimited": dict(
+    "Anthropic is rate-limiting usage checks (HTTP 429) — the app pauses them and tries again by itself in a few minutes.",
+    "A Anthropic está limitando as consultas de uso (HTTP 429) — o app pausa as consultas e tenta de novo sozinho em alguns minutos.",
+  ),
   "apiError.usageFetchFailed": dict(
     "Could not fetch usage data.",
     "Não foi possível buscar os dados de uso.",

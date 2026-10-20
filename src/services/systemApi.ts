@@ -54,6 +54,10 @@ export type ClaudeExtraUsage = {
 export type ClaudeUsageStatus = {
   limits: ClaudeUsageLimit[];
   extraUsage: ClaudeExtraUsage | null;
+  /** When this reading was fetched. Optional: older backend. */
+  fetchedAt?: string;
+  /** Anthropic is rate-limiting the usage endpoint: the last good reading, kept meanwhile. */
+  stale?: boolean;
 };
 
 /** `forceRefresh` bypasses the server's short cache. */

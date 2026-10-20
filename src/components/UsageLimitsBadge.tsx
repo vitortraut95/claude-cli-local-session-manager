@@ -95,6 +95,16 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
       <p className="font-semibold">{t("usageLimitsBadge.title")}</p>
       {limits.length === 0 && !loading && <p>{t("usageLimitsBadge.noLimits")}</p>}
       {error && <p className="text-xs text-red-300">{error}</p>}
+      {status?.stale && status.fetchedAt && (
+        <p className="text-xs text-amber-300">
+          {t("usageLimitsBadge.stale", {
+            time: new Date(status.fetchedAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          })}
+        </p>
+      )}
       {limits.map((limit) => {
         const resetText = formatResetsAt(limit.resetsAt, t);
         return (
