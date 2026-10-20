@@ -59,7 +59,8 @@ type LateFields =
   | "taskTestPermissionModeAuto"
   | "theme"
   | "orchestrator"
-  | "worktreeSetup";
+  | "worktreeSetup"
+  | "terminalLayout";
 
 /** Optional fields: an older frontend bundle sends the object without them, and the PUT handler
  *  keeps the stored value instead of rejecting or wiping it. */
@@ -103,7 +104,10 @@ function isValidPreferences(
       candidate.theme === "light" ||
       candidate.theme === "dark") &&
     (candidate.orchestrator === undefined || isOrchestratorPreferences(candidate.orchestrator)) &&
-    (candidate.worktreeSetup === undefined || isWorktreeSetup(candidate.worktreeSetup))
+    (candidate.worktreeSetup === undefined || isWorktreeSetup(candidate.worktreeSetup)) &&
+    (candidate.terminalLayout === undefined ||
+      candidate.terminalLayout === "tabs" ||
+      candidate.terminalLayout === "tmux-grid")
   );
 }
 
@@ -131,7 +135,7 @@ tasksRouter.put("/preferences", async (req, res) => {
         "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean, " +
         'theme?: "light"|"dark"|null, orchestrator?: { enabled, maxSessions, ' +
         "minFreeMemoryPercent, maxUsagePercent }, worktreeSetup?: { [project]: " +
-        "{ linkNodeModules, copyEnvFiles } } }.",
+        '{ linkNodeModules, copyEnvFiles } }, terminalLayout?: "tabs"|"tmux-grid" }.',
     );
   }
   const body = req.body;

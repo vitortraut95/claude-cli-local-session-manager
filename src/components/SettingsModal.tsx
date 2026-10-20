@@ -23,6 +23,7 @@ import { Button } from "./Button";
 import { ImportPreferencesButton } from "./ImportPreferencesButton";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
+import { Select } from "./Select";
 import { TaskTestSkillSelect } from "./TaskTestSkillSelect";
 import { ThemeToggle } from "./ThemeToggle";
 import { WorkspaceDirsEditor } from "./WorkspaceDirsEditor";
@@ -266,6 +267,26 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
                     void save({ skillsHub: { ...prefs.skillsHub, autoUpdateOnStart: checked } })
                   }
                 />
+              }
+            />
+          )}
+          {prefs.terminalLayout !== undefined && (
+            <SettingRow
+              title={t("settings.terminalLayout.title")}
+              description={t("settings.terminalLayout.description")}
+              keyName="terminalLayout"
+              control={
+                <Select
+                  value={prefs.terminalLayout}
+                  disabled={savingKey === "terminalLayout"}
+                  onChange={(event) =>
+                    void save({ terminalLayout: event.target.value as "tabs" | "tmux-grid" })
+                  }
+                  className="w-48"
+                >
+                  <option value="tabs">{t("settings.terminalLayout.tabs")}</option>
+                  <option value="tmux-grid">{t("settings.terminalLayout.grid")}</option>
+                </Select>
               }
             />
           )}

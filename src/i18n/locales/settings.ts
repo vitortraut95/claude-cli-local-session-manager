@@ -159,6 +159,13 @@ export const settings = {
     "Your team's Jenkins, used by the Jenkins button on session cards. Empty = button hidden.",
     "O Jenkins do seu time, usado pelo botão do Jenkins nos cards de sessão. Vazio = botão escondido.",
   ),
+  "settings.terminalLayout.title": dict("Where sessions open", "Onde as sessões abrem"),
+  "settings.terminalLayout.description": dict(
+    'A terminal tab per session (Warp when installed), or all of them as tiles of one live tmux grid ("claude-tarefas") — each new session joins it and the tiles rearrange as sessions close. Applies to New task, the queue, New session and Resume. Needs tmux; without it, tabs are used.',
+    'Uma aba de terminal por sessão (Warp quando instalado), ou todas como quadrados de uma grade tmux ao vivo ("claude-tarefas") — cada sessão nova entra nela e os quadrados se reorganizam quando uma fecha. Vale pra Nova tarefa, fila, Nova sessão e Retomar. Precisa do tmux; sem ele, usa abas.',
+  ),
+  "settings.terminalLayout.tabs": dict("A tab per session", "Uma aba por sessão"),
+  "settings.terminalLayout.grid": dict("tmux grid", "Grade no tmux"),
   "settings.worktreeSetup.title": dict("Task worktree setup", "Preparação dos worktrees de tarefa"),
   "settings.worktreeSetup.description": dict(
     "What a new task worktree (New task, Task queue) gets from the repo's main checkout, since git only checks out tracked files. node_modules (root and workspaces) is symlinked — shared, so the session is told not to install there — and the gitignored .env* files are copied, so each task can change its own. Per repo folder name.",

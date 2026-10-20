@@ -4,6 +4,7 @@ import {
   FlaskConical,
   Globe,
   Import,
+  LayoutGrid,
   ListTodo,
   MessageSquarePlus,
   Plus,
@@ -14,6 +15,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import { useTheme } from "../hooks/useTheme";
+import { useToast } from "../hooks/useToast";
 import { useUpdate } from "../hooks/useUpdate";
 import { useUsageLimits } from "../hooks/useUsageLimits";
 import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
@@ -34,6 +36,8 @@ import { UpdateButton } from "./UpdateButton";
 import { UpdateOverlay } from "./UpdateOverlay";
 import { UsageLimitsBadge } from "./UsageLimitsBadge";
 import * as preferencesApi from "../services/preferencesApi";
+import * as systemApi from "../services/systemApi";
+import { resolveApiErrorMessage } from "../utils/apiClient";
 
 type HeaderProps = {
   /** Fired after a new task/session is created, so the session list can refresh. */
@@ -75,6 +79,10 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   // the server picks the first workspace dir that exists, else the home dir).
   const [taskTestSkill, setTaskTestSkill] = useState("");
   const [testTaskFolderHint, setTestTaskFolderHint] = useState("~");
+  // "Open grid" only shows while sessions open in the tmux grid.
+  const [gridLayout, setGridLayout] = useState(false);
+  const [openingGrid, setOpeningGrid] = useState(false);
+  const { showToast } = useToast();
   // Also keeps the shared cached status warm for the New Task / New Session skills panels.
   const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(true);
   // Initial setup: asked on every load while any of its fields was never saved (null); "not now"
@@ -91,6 +99,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           if (cancelled) return;
           setTaskTestSkill(prefs.taskTestSkill?.trim() ?? "");
           setTestTaskFolderHint(prefs.workspaceDirs?.[0] ?? "~");
+          setGridLayout(prefs.terminalLayout === "tmux-grid");
           setSetupPrefs(
             prefs.workspaceDirs == null ||
               prefs.jenkinsBaseUrl === null ||
@@ -108,6 +117,17 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
       window.removeEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, check);
     };
   }, []);
+
+  const handleOpenGrid = async () => {
+    setOpeningGrid(true);
+    try {
+      await systemApi.openTerminalGrid();
+    } catch (err) {
+      showToast(resolveApiErrorMessage(err, t, "header.grid.error"), "error");
+    } finally {
+      setOpeningGrid(false);
+    }
+  };
 
   // Never on top of another header modal.
   const showSetup =
@@ -158,6 +178,18 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           >
             {t("header.taskQueue")}
           </Button>
+          {gridLayout && (
+            <Tooltip content={t("header.grid.tooltip")}>
+              <Button
+                variant="outline"
+                onClick={() => void handleOpenGrid()}
+                disabled={openingGrid}
+                icon={<LayoutGrid className="h-4 w-4" />}
+              >
+                {t("header.grid")}
+              </Button>
+            </Tooltip>
+          )}
           <Button
             variant="outline"
             onClick={() => setShowNewSessionModal(true)}

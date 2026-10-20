@@ -75,7 +75,12 @@ export type UserPreferences = {
   orchestrator: OrchestratorPreferences;
   /** Optional: older files lack it. */
   worktreeSetup: WorktreeSetup;
+  /** Where Claude sessions open: a terminal tab each, or panes of one tmux grid. Optional: older
+   *  files lack it. */
+  terminalLayout: TerminalLayout;
 };
+
+export type TerminalLayout = "tabs" | "tmux-grid";
 
 /** What a new task worktree gets from the repo's main checkout (things git doesn't check out). */
 export type WorktreeSetupOptions = {
@@ -124,6 +129,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     testCpuPercent: 400,
   },
   worktreeSetup: {},
+  terminalLayout: "tabs",
 };
 
 function isLanguage(value: unknown): value is Language {
@@ -304,6 +310,10 @@ function normalizePreferences(value: unknown): UserPreferences {
     worktreeSetup: isWorktreeSetup(parsed.worktreeSetup)
       ? parsed.worktreeSetup
       : DEFAULT_PREFERENCES.worktreeSetup,
+    terminalLayout:
+      parsed.terminalLayout === "tabs" || parsed.terminalLayout === "tmux-grid"
+        ? parsed.terminalLayout
+        : DEFAULT_PREFERENCES.terminalLayout,
   };
 }
 

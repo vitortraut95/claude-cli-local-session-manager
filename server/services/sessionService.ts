@@ -36,6 +36,8 @@ import {
   type WorkStatus,
 } from "../utils/taskStore.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
+import { getUserPreferences } from "./preferencesService.js";
+import { isTmuxAvailable, launchInTmuxGrid } from "./tmuxGridService.js";
 import {
   AppError,
   BadRequestError,
@@ -831,9 +833,26 @@ export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promis
   await launchInTerminal(`claude ${posixShellQuote(prompt)}`, repoRoot);
 }
 
+/**
+ * Runs a Claude session's `command` where the `terminalLayout` preference says: a pane of the
+ * shared tmux grid (`tmuxGridService`), or a terminal of its own. Without tmux the grid falls
+ * back to a terminal.
+ */
+export async function launchInTerminal(command: string, cwd?: string): Promise<void> {
+  const { terminalLayout } = await getUserPreferences();
+  if (terminalLayout === "tmux-grid") {
+    if (await isTmuxAvailable()) {
+      await launchInTmuxGrid(command, cwd, (attach) => openTerminalWindow(attach));
+      return;
+    }
+    console.warn("[terminal] terminalLayout is tmux-grid but tmux isn't installed — using a tab.");
+  }
+  await openTerminalWindow(command, cwd);
+}
+
 /** Runs `command` in a new terminal: Warp when installed, else the first `TERMINAL_LAUNCHERS`
  *  entry that starts. */
-export async function launchInTerminal(command: string, cwd?: string): Promise<void> {
+export async function openTerminalWindow(command: string, cwd?: string): Promise<void> {
   if (await launchWarp(command, cwd)) {
     return;
   }

@@ -2,6 +2,12 @@ import { dict } from "../dict";
 
 export const taskQueue = {
   "header.taskQueue": dict("Task queue", "Fila de tarefas"),
+  "header.grid": dict("Open grid", "Abrir grade"),
+  "header.grid.tooltip": dict(
+    "Opens a terminal showing every session of the tmux grid side by side (it opens by itself with the first session)",
+    "Abre um terminal com todas as sessões da grade tmux lado a lado (ela abre sozinha com a primeira sessão)",
+  ),
+  "header.grid.error": dict("Couldn't open the grid.", "Não foi possível abrir a grade."),
   "taskQueueModal.title": dict("Task queue", "Fila de tarefas"),
   "taskQueueModal.intro": dict(
     'Paste the tasks that are ready to be worked on and pick the repo of each one (the first is the main one; any other joins the same session). Once saved, each task is launched like "New task" — its own worktree, the default prompt, a new terminal — one at a time while there\'s room.',
