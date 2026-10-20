@@ -130,6 +130,21 @@ export async function branchHasUniqueCommits(repoRoot: string, branch: string): 
   }
 }
 
+/** True when `origin/<branch>` exists (as last fetched — no fetch here) and holds every commit of
+ *  the local branch, so dropping the local checkout loses nothing that isn't on the remote. */
+export async function isBranchPushed(repoRoot: string, branch: string): Promise<boolean> {
+  try {
+    const count = await runGit(
+      ["rev-list", "--count", `refs/remotes/origin/${branch}..refs/heads/${branch}`],
+      repoRoot,
+    );
+    return Number(count.trim()) === 0;
+  } catch {
+    // No such remote branch (never pushed), or can't tell.
+    return false;
+  }
+}
+
 export async function checkoutExistingBranch(cwd: string, branch: string): Promise<void> {
   await runGit(["checkout", branch], cwd);
 }

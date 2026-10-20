@@ -21,6 +21,7 @@ import jenkinsIcon from "../assets/jenkins.svg";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
+import * as cleanupApi from "../services/cleanupApi";
 import * as sessionsApi from "../services/sessionsApi";
 import type { Session, WorkStatus } from "../types/session";
 import { Button } from "./Button";
@@ -48,6 +49,12 @@ import { useTeamLinks } from "../hooks/useTeamLinks";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 
+const DONE_WORKTREE_KEPT_KEYS = {
+  "not-pushed": "sessionCard.doneWorktree.keptNotPushed",
+  "uncommitted-changes": "sessionCard.doneWorktree.keptDirty",
+  "active-session": "sessionCard.doneWorktree.keptActive",
+} as const;
+
 type SessionCardProps = {
   session: Session;
   pendingAction?: PendingAction;
@@ -57,7 +64,8 @@ type SessionCardProps = {
   onDeleteRequest: (session: Session) => void;
   onSetNickname: (session: Session, nickname: string) => void;
   onSetBranches: (session: Session, origin: string, destination: string) => void;
-  onSetStatus: (session: Session, status: WorkStatus | null) => void;
+  /** Resolves true once saved. */
+  onSetStatus: (session: Session, status: WorkStatus | null) => Promise<boolean>;
   onOpenInVSCode: (session: Session) => void;
   onOpenInCursor: (session: Session) => void;
   onOpenMissingWorktreeRootInVSCode: (session: Session) => void;
@@ -104,6 +112,11 @@ export function SessionCard({
   // null = closed; otherwise whether it opens straight on the "add repo" form.
   const [taskModal, setTaskModal] = useState<{ addRepo: boolean } | null>(null);
   const [showDeleteWorktreeConfirm, setShowDeleteWorktreeConfirm] = useState(false);
+  // Offered right after the card is marked done: the cleanup that removing its worktree means.
+  const [doneWorktreeFinding, setDoneWorktreeFinding] = useState<cleanupApi.CleanupFinding | null>(
+    null,
+  );
+  const [removingDoneWorktree, setRemovingDoneWorktree] = useState(false);
   const [showWorktreeToRootModal, setShowWorktreeToRootModal] = useState(false);
   const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
   const [showOpenPrBaseChoice, setShowOpenPrBaseChoice] = useState(false);
@@ -128,6 +141,42 @@ export function SessionCard({
           originBranch,
           teamLinks.branchTypes,
         );
+
+  /** Marking a worktree session done offers to remove its worktree when that's safe now (merged,
+   *  or every commit on origin); otherwise says why it stays. */
+  const handleStatusChange = async (status: WorkStatus | null) => {
+    const saved = await onSetStatus(session, status);
+    if (!saved || status !== "done" || !session.isWorktree || session.directoryMissing) return;
+    try {
+      const result = await cleanupApi.fetchWorktreeCleanupForSession(session.id);
+      if (result?.finding) {
+        setDoneWorktreeFinding(result.finding);
+      } else if (
+        result?.reason === "not-pushed" ||
+        result?.reason === "uncommitted-changes" ||
+        result?.reason === "active-session"
+      ) {
+        showToast(t(DONE_WORKTREE_KEPT_KEYS[result.reason]), "error");
+      }
+    } catch {
+      // Only an offer: the Cleanup window still lists it later.
+    }
+  };
+
+  const handleRemoveDoneWorktree = async () => {
+    if (!doneWorktreeFinding) return;
+    setRemovingDoneWorktree(true);
+    try {
+      await cleanupApi.executeCleanupFinding(doneWorktreeFinding);
+      showToast(t("sessionCard.doneWorktree.removed"), "success");
+      setDoneWorktreeFinding(null);
+      onWorktreeSyncComplete(session);
+    } catch (err) {
+      showToast(resolveApiErrorMessage(err, t, "cleanupModal.runError"), "error");
+    } finally {
+      setRemovingDoneWorktree(false);
+    }
+  };
 
   // The URL needs a server-side git call, so it's fetched on click. A non-default base branch
   // goes through OpenPrBaseChoiceModal, since the plain link diffs against the default branch.
@@ -251,7 +300,7 @@ export function SessionCard({
             value={session.status ?? null}
             taskKey={session.taskKey ?? null}
             saving={pendingAction === "status"}
-            onChange={(status) => onSetStatus(session, status)}
+            onChange={(status) => void handleStatusChange(status)}
           />
           <h2
             className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
@@ -657,6 +706,21 @@ export function SessionCard({
       {showOpenPrBaseChoice && (
         <OpenPrBaseChoiceModal session={session} onClose={() => setShowOpenPrBaseChoice(false)} />
       )}
+      <ConfirmDialog
+        open={doneWorktreeFinding !== null}
+        title={t("sessionCard.doneWorktree.title")}
+        message={t(
+          doneWorktreeFinding?.kind === "remove-merged-worktree"
+            ? "sessionCard.doneWorktree.mergedMessage"
+            : "sessionCard.doneWorktree.message",
+          { branch: doneWorktreeFinding?.branch ?? "?" },
+        )}
+        confirmLabel={t("sessionCard.doneWorktree.confirm")}
+        cancelLabel={t("sessionCard.doneWorktree.keep")}
+        isLoading={removingDoneWorktree}
+        onConfirm={() => void handleRemoveDoneWorktree()}
+        onCancel={() => setDoneWorktreeFinding(null)}
+      />
       <ConfirmDialog
         open={showDeleteWorktreeConfirm}
         title={t("sessionCard.deleteWorktreeConfirm.title")}

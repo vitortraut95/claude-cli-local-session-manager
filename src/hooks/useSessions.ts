@@ -400,11 +400,12 @@ export function useSessions() {
     [runAction, loadSessions],
   );
 
-  /** A task's status is shared, so every card of that task is patched (no full reload). */
+  /** A task's status is shared, so every card of that task is patched (no full reload). True on
+   *  success. */
   const setStatus = useCallback(
-    async (session: Session, status: WorkStatus | null) => {
+    async (session: Session, status: WorkStatus | null): Promise<boolean> => {
       const taskKey = session.taskKey ?? null;
-      await runAction(
+      return runAction(
         session.id,
         "status",
         async () => {

@@ -17,6 +17,33 @@ export const workStatus = {
   ),
   "workStatus.saved": dict("Status saved.", "Status salvo."),
   "workStatus.saveError": dict("Couldn't save the status.", "Não foi possível salvar o status."),
+  "sessionCard.doneWorktree.title": dict(
+    "Task done — remove its worktree?",
+    "Tarefa concluída — remover o worktree?",
+  ),
+  "sessionCard.doneWorktree.message": dict(
+    'Every commit of "{branch}" is on origin and the worktree has no pending changes. Only the worktree folder is removed — the branch stays, locally and on origin, until it\'s merged.',
+    'Todos os commits de "{branch}" estão no origin e o worktree não tem alterações pendentes. Só a pasta do worktree é removida — a branch fica, local e no origin, até ser mergeada.',
+  ),
+  "sessionCard.doneWorktree.mergedMessage": dict(
+    '"{branch}" is already merged into the default branch: the worktree and the local branch are removed (the remote branch isn\'t touched).',
+    '"{branch}" já está mergeada na branch padrão: o worktree e a branch local são removidos (a branch remota não é mexida).',
+  ),
+  "sessionCard.doneWorktree.confirm": dict("Remove worktree", "Remover worktree"),
+  "sessionCard.doneWorktree.keep": dict("Keep it", "Manter"),
+  "sessionCard.doneWorktree.removed": dict("Worktree removed.", "Worktree removido."),
+  "sessionCard.doneWorktree.keptNotPushed": dict(
+    "Worktree kept: the branch has commits that aren't on origin yet — push them, then use Cleanup.",
+    "Worktree mantido: a branch tem commits que ainda não estão no origin — dê push e depois use a Limpeza.",
+  ),
+  "sessionCard.doneWorktree.keptDirty": dict(
+    "Worktree kept: it has uncommitted changes.",
+    "Worktree mantido: ele tem alterações não commitadas.",
+  ),
+  "sessionCard.doneWorktree.keptActive": dict(
+    "Worktree kept: its session is still open — close it, then use Cleanup to remove the worktree.",
+    "Worktree mantido: a sessão dele ainda está aberta — feche e use a Limpeza pra remover o worktree.",
+  ),
   "workStatusFilter.ariaLabel": dict("Filter by status", "Filtrar por status"),
   "workStatusFilter.all": dict("All statuses", "Todos os status"),
   "workStatusFilter.open": dict("Not done (to resume)", "Não concluídas (pra retomar)"),
