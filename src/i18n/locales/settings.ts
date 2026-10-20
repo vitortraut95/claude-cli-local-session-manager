@@ -159,6 +159,14 @@ export const settings = {
     "Your team's Jenkins, used by the Jenkins button on session cards. Empty = button hidden.",
     "O Jenkins do seu time, usado pelo botão do Jenkins nos cards de sessão. Vazio = botão escondido.",
   ),
+  "settings.worktreeSetup.title": dict("Task worktree setup", "Preparação dos worktrees de tarefa"),
+  "settings.worktreeSetup.description": dict(
+    "What a new task worktree (New task, Task queue) gets from the repo's main checkout, since git only checks out tracked files. node_modules (root and workspaces) is symlinked — shared, so the session is told not to install there — and the gitignored .env* files are copied, so each task can change its own. Per repo folder name.",
+    "O que um worktree novo de tarefa (Nova tarefa, Fila de tarefas) recebe da raiz do repo, já que o git só traz os arquivos versionados. O node_modules (raiz e workspaces) vira um link — compartilhado, então a sessão é avisada pra não instalar ali — e os .env* ignorados pelo git são copiados, pra cada tarefa poder mudar o seu. Por nome da pasta do repo.",
+  ),
+  "settings.worktreeSetup.repo": dict("Repo", "Repo"),
+  "settings.worktreeSetup.linkNodeModules": dict("Link node_modules", "Linkar node_modules"),
+  "settings.worktreeSetup.copyEnvFiles": dict("Copy .env*", "Copiar .env*"),
   "settings.envPreviews.title": dict("env/* preview links", "Links de preview de env/*"),
   "settings.envPreviews.description": dict(
     'Preview sites an env/* branch deploys, per project folder name, shown in the Jenkins modal. JSON: { "<project>": [{ "label": "BR", "url": "http://{env}.example.com/" }] } — {env} becomes the branch slug (env/PROJ-1 → env-proj-1).',

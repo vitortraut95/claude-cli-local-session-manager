@@ -4,6 +4,7 @@ import {
   getUserPreferences,
   isEnvPreviews,
   isOrchestratorPreferences,
+  isWorktreeSetup,
   isSkillsHubPreferences,
   replaceUserPreferences,
   updateUserPreferences,
@@ -57,7 +58,8 @@ type LateFields =
   | "taskTestSkill"
   | "taskTestPermissionModeAuto"
   | "theme"
-  | "orchestrator";
+  | "orchestrator"
+  | "worktreeSetup";
 
 /** Optional fields: an older frontend bundle sends the object without them, and the PUT handler
  *  keeps the stored value instead of rejecting or wiping it. */
@@ -100,7 +102,8 @@ function isValidPreferences(
       candidate.theme === null ||
       candidate.theme === "light" ||
       candidate.theme === "dark") &&
-    (candidate.orchestrator === undefined || isOrchestratorPreferences(candidate.orchestrator))
+    (candidate.orchestrator === undefined || isOrchestratorPreferences(candidate.orchestrator)) &&
+    (candidate.worktreeSetup === undefined || isWorktreeSetup(candidate.worktreeSetup))
   );
 }
 
@@ -127,7 +130,8 @@ tasksRouter.put("/preferences", async (req, res) => {
         "autoUpdateOnStart? }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
         "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean, " +
         'theme?: "light"|"dark"|null, orchestrator?: { enabled, maxSessions, ' +
-        "minFreeMemoryPercent, maxUsagePercent } }.",
+        "minFreeMemoryPercent, maxUsagePercent }, worktreeSetup?: { [project]: " +
+        "{ linkNodeModules, copyEnvFiles } } }.",
     );
   }
   const body = req.body;

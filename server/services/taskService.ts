@@ -11,6 +11,7 @@ import {
 import { getUserPreferences, updateUserPreferences } from "./preferencesService.js";
 import { getUserSkillsDir } from "./skillsHubService.js";
 import { expandHome, findReposIn } from "./workspaceService.js";
+import { prepareWorktreeBestEffort, type WorktreeSetupResult } from "./worktreeSetupService.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import {
   branchExists,
@@ -216,7 +217,8 @@ async function recordTaskBaseBranchIfNonDefault(
  * `<repoRoot>/.claude/worktrees/<branchName>`, or — when `useWorktree` is false — checks it out
  * directly in the repo root (then `worktreePath` is `repoRoot`). `baseBranch` is the raw typed
  * name, used only for recording. `taskKey` (normalized) links the branch to that task,
- * best-effort.
+ * best-effort. A new worktree also gets the repo's `worktreeSetup` (linked `node_modules`, copied
+ * `.env*`), reported in `setup`.
  */
 export async function createTaskWorktree(
   folderPath: string,
@@ -226,7 +228,7 @@ export async function createTaskWorktree(
   useWorktree: boolean,
   taskKey: string | null = null,
   taskLink: string | null = null,
-): Promise<{ worktreePath: string; repoRoot: string }> {
+): Promise<{ worktreePath: string; repoRoot: string; setup: WorktreeSetupResult }> {
   const trimmedFolder = folderPath.trim();
   const trimmedBranch = branchName.trim();
   const trimmedRef = baseBranchRef.trim();
@@ -261,7 +263,7 @@ export async function createTaskWorktree(
     await checkoutNewBranch(repoRoot, trimmedBranch, trimmedRef);
     await recordTaskBaseBranchIfNonDefault(repoRoot, trimmedBranch, baseBranch);
     await linkBranchToTaskBestEffort(repoRoot, trimmedBranch, null, taskKey, taskLink);
-    return { worktreePath: repoRoot, repoRoot };
+    return { worktreePath: repoRoot, repoRoot, setup: { linked: [], copied: [] } };
   }
 
   const worktreeDirName = sanitizeWorktreeDirName(trimmedBranch);
@@ -284,9 +286,10 @@ export async function createTaskWorktree(
   await createWorktreeWithBranch(repoRoot, worktreePath, trimmedBranch, trimmedRef);
   // Without pre-accepted trust, `claude` in this new directory fails with no way to detect it.
   await markWorktreeTrustAccepted(worktreePath);
+  const setup = await prepareWorktreeBestEffort(repoRoot, worktreePath);
   await recordTaskBaseBranchIfNonDefault(repoRoot, trimmedBranch, baseBranch);
   await linkBranchToTaskBestEffort(repoRoot, trimmedBranch, worktreePath, taskKey, taskLink);
-  return { worktreePath, repoRoot };
+  return { worktreePath, repoRoot, setup };
 }
 
 async function linkBranchToTaskBestEffort(

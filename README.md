@@ -31,6 +31,11 @@ and clean them up. Everything runs on your machine — no external server involv
   directly and has Claude rerun them through `scripts/heavy-run`, which waits for a free slot
   across every session (default 1 at a time) and runs each one in its own cgroup with a RAM/CPU
   cap (`systemd-run --user --scope`), so going over the cap kills only that run (exit 137)
+- **Task worktree setup** — per repo (Settings → "Task worktree setup"), a new task worktree gets
+  a symlink to each of the main checkout's `node_modules` (root and workspaces) and a copy of its
+  gitignored `.env*` files, since git only checks out tracked files. The link is added to the repo's
+  `info/exclude` (a `node_modules/` ignore line doesn't match a symlink) and the session is told not
+  to install there
 - **Worktree → root** — copy a worktree's files into the project root to test locally, or move
   the branch there for real once it's ready to push. One task per repo at a time: bringing another
   task's worktree to a root still holding one

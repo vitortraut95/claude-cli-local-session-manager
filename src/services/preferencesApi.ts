@@ -55,7 +55,12 @@ export type UserPreferences = {
   theme?: "light" | "dark" | null;
   /** Task queue scheduler. Optional: older backend. */
   orchestrator?: OrchestratorPreferences;
+  /** Optional: older backend. */
+  worktreeSetup?: WorktreeSetup;
 };
+
+/** Per repo folder name: what a new task worktree gets from the main checkout. */
+export type WorktreeSetup = Record<string, { linkNodeModules: boolean; copyEnvFiles: boolean }>;
 
 export type EnvPreviewTemplate = { label: string; url: string };
 export type EnvPreviews = Record<string, EnvPreviewTemplate[]>;
