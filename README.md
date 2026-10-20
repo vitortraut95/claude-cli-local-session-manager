@@ -14,6 +14,11 @@ and clean them up. Everything runs on your machine — no external server involv
   workspace, "Claude — tarefas", in its own window, instead of a tab of its own; a pane closes when
   Claude quits, and "Resume" on a session already there focuses its pane. Needs Limux 0.1.33+;
   closing the Limux window ends the sessions in it (they stay resumable)
+- **History** — every step of the task flow is appended to the local, gitignored `history.jsonl`
+  (one JSON event per line: queue added/updated/removed/retried, scheduler blocked/unblocked and
+  why, launch started/launched/failed with durations, status changes and who made them, root
+  locked/released/refused, cleanup, sessions started/resumed, heavy-run waits/durations/exit codes
+  and hook blocks), to measure where time goes and track errors
 - **Resume open tasks** — one header button brings back the latest session of every task "in
   progress" or "waiting user" with nothing running (up to the session limit), e.g. the next
   morning; with the grid layout it's "Open grid", which also brings Limux up (starting it if

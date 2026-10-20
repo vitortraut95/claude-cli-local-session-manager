@@ -23,6 +23,7 @@ import {
   resolveBaseBranchRef,
   sanitizeWorktreeDirName,
 } from "../utils/git.js";
+import { recordEvent } from "../utils/history.js";
 import { AppError, BadRequestError, ConflictError } from "../utils/httpError.js";
 import {
   linkRepoBranchToTask,
@@ -369,6 +370,12 @@ export async function launchTaskTerminal({
     trimmedWorktreePath,
   );
 
+  recordEvent("session.started", {
+    sessionId: newSessionId,
+    cwd: trimmedWorktreePath,
+    addDirs: dirs,
+    nickname: trimmedNickname || null,
+  });
   const trimmedRepoRoot = repoRoot.trim();
   if (trimmedRepoRoot) {
     await recordUsedProjectPath(trimmedRepoRoot);

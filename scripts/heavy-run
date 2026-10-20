@@ -35,6 +35,10 @@ read -r SLOTS MEMORY_GB CPU_PERCENT < <(
 LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/claude-heavy-run"
 mkdir -p "$LOCK_DIR"
 
+# For the app's history (server/utils/history.ts): how long this run waited and took.
+HISTORY_FILE="$SCRIPT_DIR/../history.jsonl"
+requested_at=$(date +%s)
+
 waited=false
 while :; do
   for i in $(seq 1 "$SLOTS"); do
@@ -51,6 +55,7 @@ while :; do
   sleep 5
 done
 $waited && echo "heavy-run: got a slot." >&2
+slot_at=$(date +%s)
 
 # Holding the slot, wait until the cap's worth of RAM is free and nothing is stalling on memory
 # (PSI some avg10 under 10%) — another app (browser, dev server) may be using it.
@@ -70,6 +75,7 @@ while :; do
   sleep 5
 done
 $mem_waited && echo "heavy-run: memory is free, starting." >&2
+started_at=$(date +%s)
 
 # Node's heap at ~85% of the cap; a larger --max-old-space-size the caller set is lowered to it.
 heap_mb=$((MEMORY_GB * 1024 * 85 / 100))
@@ -98,6 +104,25 @@ else
   "${low_priority[@]}" "$@"
   status=$?
 fi
+
+HR_COMMAND="$*" HR_CWD="$PWD" HR_STATUS="$status" HR_SLOT_WAIT=$((slot_at - requested_at)) \
+  HR_MEMORY_WAIT=$((started_at - slot_at)) HR_DURATION=$(($(date +%s) - started_at)) \
+  HR_MEMORY_GB="$MEMORY_GB" HR_SLOTS="$SLOTS" node -e '
+    const e = process.env;
+    const line = JSON.stringify({
+      ts: new Date().toISOString(),
+      type: "heavy.run",
+      command: e.HR_COMMAND.slice(0, 300),
+      cwd: e.HR_CWD,
+      status: Number(e.HR_STATUS),
+      slotWaitS: Number(e.HR_SLOT_WAIT),
+      memoryWaitS: Number(e.HR_MEMORY_WAIT),
+      durationS: Number(e.HR_DURATION),
+      memoryCapGb: Number(e.HR_MEMORY_GB),
+      slots: Number(e.HR_SLOTS),
+    });
+    require("fs").appendFileSync(process.argv[1], line + "\n");
+  ' "$HISTORY_FILE" 2>/dev/null || true
 
 if [ "$status" -eq 137 ]; then
   echo "heavy-run: killed for going over the ${MEMORY_GB} GB memory cap. Run fewer workers" \

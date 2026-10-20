@@ -1,6 +1,7 @@
 import { getRepoRoot } from "../utils/git.js";
 import { AppError, BadRequestError } from "../utils/httpError.js";
 import { isTaskKey, normalizeTaskKey } from "../utils/taskKeys.js";
+import { recordEvent } from "../utils/history.js";
 import { getQueue, setQueue, type QueueEntry, type QueueEntryInput } from "../utils/taskStore.js";
 
 /**
@@ -65,6 +66,43 @@ export async function saveTaskQueue(body: unknown): Promise<QueueEntry[]> {
     const entry = await parseEntry(raw);
     if (!entries.some((e) => e.key === entry.key)) entries.push(entry);
   }
+  const previous = new Map((await getQueue()).map((entry) => [entry.key, entry]));
   await setQueue(entries);
-  return getQueue();
+  const stored = await getQueue();
+  recordQueueChanges(previous, stored);
+  return stored;
+}
+
+/** Added / removed / re-targeted entries and retries (a cleared error), for the history. */
+function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntry[]): void {
+  const keys = new Set(stored.map((entry) => entry.key));
+  for (const entry of stored) {
+    const before = previous.get(entry.key);
+    if (!before) {
+      recordEvent("queue.added", {
+        key: entry.key,
+        link: entry.link,
+        repos: entry.repos,
+        branchPrefix: entry.branchPrefix,
+      });
+      continue;
+    }
+    if (entry.launchedAt) continue;
+    if (
+      before.branchPrefix !== entry.branchPrefix ||
+      before.repos.join("\n") !== entry.repos.join("\n")
+    ) {
+      recordEvent("queue.updated", {
+        key: entry.key,
+        repos: entry.repos,
+        branchPrefix: entry.branchPrefix,
+      });
+    }
+    if (before.error && !entry.error) {
+      recordEvent("queue.retry", { key: entry.key, previousError: before.error });
+    }
+  }
+  for (const [key, before] of previous) {
+    if (!keys.has(key)) recordEvent("queue.removed", { key, launched: Boolean(before.launchedAt) });
+  }
 }

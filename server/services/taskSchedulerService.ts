@@ -9,6 +9,7 @@ import {
   resolveBaseBranch,
 } from "./taskService.js";
 import { getClaudeUsageStatus } from "./usageService.js";
+import { recordEvent } from "../utils/history.js";
 import { getFreeMemoryPercent, getMemoryPressure } from "../utils/systemResources.js";
 import {
   getQueue,
@@ -173,9 +174,21 @@ async function findExistingTaskWorktree(
   return (await directoryExists(entry.worktreePath)) ? entry.worktreePath : null;
 }
 
-async function launchEntry(entry: QueueEntry, prefs: UserPreferences): Promise<void> {
+type LaunchOutcome = {
+  sessionId: string | null;
+  branch: string;
+  worktreePath: string;
+  addDirs: string[];
+  extraErrors: string[];
+  linkedNodeModules: number;
+};
+
+async function launchEntry(
+  entry: QueueEntry,
+  prefs: UserPreferences,
+): Promise<LaunchOutcome | null> {
   const [mainFolder, ...extraFolders] = entry.repos;
-  if (!mainFolder) return;
+  if (!mainFolder) return null;
   const branch = entry.branchPrefix ? `${entry.branchPrefix}/${entry.key}` : entry.key;
 
   const repo = await getRepoInfo(mainFolder);
@@ -240,7 +253,42 @@ async function launchEntry(entry: QueueEntry, prefs: UserPreferences): Promise<v
     // Launched anyway; kept so the modal can say which extra repo is missing.
     error: extraErrors.length > 0 ? extraErrors.join("\n") : null,
   });
-  await setTaskStatus(entry.key, "in_progress");
+  await setTaskStatus(entry.key, "in_progress", "scheduler");
+  return {
+    sessionId,
+    branch,
+    worktreePath,
+    addDirs,
+    extraErrors,
+    linkedNodeModules: linked.length,
+  };
+}
+
+/** The block the scheduler is in while tasks wait (null = not blocked, or nothing waiting), so the
+ *  history gets one `scheduler.blocked` / `scheduler.unblocked` pair per period, not one per tick. */
+let currentBlock: { reason: SchedulerBlock; since: number } | null = null;
+
+function trackBlock(status: SchedulerStatus): void {
+  const reason = status.waiting > 0 ? status.blockedBy : null;
+  if (currentBlock?.reason === reason) return;
+  if (currentBlock) {
+    recordEvent("scheduler.unblocked", {
+      reason: currentBlock.reason,
+      durationMs: Date.now() - currentBlock.since,
+    });
+  }
+  currentBlock = reason ? { reason, since: Date.now() } : null;
+  if (reason) {
+    recordEvent("scheduler.blocked", {
+      reason,
+      waiting: status.waiting,
+      activeSessions: status.activeSessions,
+      maxSessions: status.maxSessions,
+      freeMemoryPercent: status.freeMemoryPercent,
+      memoryPressure: status.memoryPressure,
+      usagePercent: status.usagePercent,
+    });
+  }
 }
 
 async function tick(): Promise<void> {
@@ -248,21 +296,37 @@ async function tick(): Promise<void> {
   ticking = true;
   try {
     const status = await getSchedulerStatus();
+    trackBlock(status);
     if (status.blockedBy || status.waiting === 0) return;
     const [prefs, queue] = await Promise.all([getUserPreferences(), getQueue()]);
     const next = queue.find(isReady);
     if (!next) return;
     launchingKey = next.key;
+    const startedAt = Date.now();
+    recordEvent("queue.launch.started", { key: next.key, repos: next.repos });
     try {
-      await launchEntry(next, prefs);
+      const outcome = await launchEntry(next, prefs);
+      recordEvent("queue.launched", {
+        key: next.key,
+        durationMs: Date.now() - startedAt,
+        // From entering the queue to its session opening.
+        queuedMs: next.addedAt ? Date.now() - Date.parse(next.addedAt) : null,
+        ...outcome,
+      });
       console.log(`[scheduler] Launched ${next.key}.`);
     } catch (err) {
       const message = errorMessage(err);
       console.warn(`[scheduler] ${next.key} failed: ${message}`);
+      recordEvent("queue.launch.failed", {
+        key: next.key,
+        durationMs: Date.now() - startedAt,
+        error: message,
+      });
       await updateQueueEntry(next.key, { error: message });
     }
   } catch (err) {
     console.warn("[scheduler] Tick failed:", err);
+    recordEvent("scheduler.error", { error: errorMessage(err) });
   } finally {
     launchingKey = null;
     ticking = false;

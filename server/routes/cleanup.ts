@@ -5,7 +5,8 @@ import {
   scanForCleanupFindings,
   type CleanupFinding,
 } from "../services/cleanupService.js";
-import { BadRequestError } from "../utils/httpError.js";
+import { recordEvent } from "../utils/history.js";
+import { BadRequestError, errorMessage } from "../utils/httpError.js";
 
 export const cleanupRouter = Router();
 
@@ -35,6 +36,18 @@ cleanupRouter.post("/findings/execute", async (req, res) => {
   ) {
     throw new BadRequestError("MALFORMED_CLEANUP_FINDING", "Malformed cleanup finding.");
   }
-  await executeCleanupFinding(finding);
+  const target = {
+    kind: finding.kind,
+    repoRoot: finding.repoRoot,
+    worktreePath: finding.worktreePath,
+    branch: finding.branch,
+  };
+  try {
+    await executeCleanupFinding(finding);
+  } catch (err) {
+    recordEvent("cleanup.failed", { ...target, error: errorMessage(err) });
+    throw err;
+  }
+  recordEvent("cleanup.executed", target);
   res.json({ success: true });
 });

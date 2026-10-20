@@ -1,5 +1,6 @@
 import path from "node:path";
 import { getStatusFiles, listWorktrees, nestedWorktreeRelativePaths } from "../utils/git.js";
+import { recordEvent } from "../utils/history.js";
 import { ConflictError } from "../utils/httpError.js";
 import { inferTaskKey } from "../utils/taskKeys.js";
 import { getTaskStore, setRootLock, type RootLock } from "../utils/taskStore.js";
@@ -29,6 +30,13 @@ export async function getRootLock(repoRoot: string): Promise<RootLock | null> {
   const stale = lock.mode === "copy" ? dirtyFiles.length === 0 : branch !== lock.branch;
   if (stale) {
     await setRootLock(repoRoot, null);
+    recordEvent("root.released", {
+      repoRoot,
+      key: lock.taskKey,
+      branch: lock.branch,
+      mode: lock.mode,
+      heldMs: lock.since ? Date.now() - Date.parse(lock.since) : null,
+    });
     return null;
   }
   return lock;
@@ -53,6 +61,12 @@ export async function assertRootFreeFor(repoRoot: string, worktreePath: string):
   const lock = await getRootLock(repoRoot);
   if (!lock) return;
   if (lock.mode === "copy" && lock.worktreePath === worktreePath) return;
+  recordEvent("root.refused", {
+    repoRoot,
+    worktreePath,
+    heldBy: lock.taskKey ?? lock.branch,
+    heldMode: lock.mode,
+  });
   throw new ConflictError(
     "ROOT_IN_USE",
     `The root of this repo is in use by ${describeLock(lock)}. Reset the root (or finish that ` +
@@ -65,13 +79,20 @@ export async function lockRootForCopy(
   worktreePath: string,
   branch: string,
 ): Promise<void> {
+  const taskKey = await taskKeyForBranch(repoRoot, branch);
+  const previous = (await getTaskStore()).rootLocks[repoRoot];
   await setRootLock(repoRoot, {
     mode: "copy",
     branch,
-    taskKey: await taskKeyForBranch(repoRoot, branch),
+    taskKey,
     worktreePath,
-    since: new Date().toISOString(),
+    // Copying the same worktree again only refreshes the files: the root was held all along.
+    since:
+      previous?.mode === "copy" && previous.worktreePath === worktreePath
+        ? previous.since
+        : new Date().toISOString(),
   });
+  recordEvent("root.locked", { repoRoot, key: taskKey, branch, mode: "copy", worktreePath });
 }
 
 /** `taskKey` is passed in: the branch's own record is dropped when its worktree is removed. */
@@ -87,4 +108,5 @@ export async function lockRootForCheckout(
     worktreePath: null,
     since: new Date().toISOString(),
   });
+  recordEvent("root.locked", { repoRoot, key: taskKey, branch, mode: "checkout" });
 }

@@ -1,5 +1,6 @@
 import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { recordEvent } from "./history.js";
 import { REPO_ROOT } from "./repoRoot.js";
 
 /**
@@ -472,23 +473,41 @@ export function upsertTask(key: string, link: string | null): Promise<void> {
   });
 }
 
+/** Who changed a status, for the history: the user on a card, or the scheduler on launch. */
+export type StatusSource = "user" | "scheduler";
+
 /** `null` clears it. */
-export function setSessionStatus(id: string, status: WorkStatus | null): Promise<void> {
-  return updateSession(id, { status });
+export async function setSessionStatus(
+  id: string,
+  status: WorkStatus | null,
+  source: StatusSource = "user",
+): Promise<void> {
+  const from = (await readStore()).sessions[id]?.status ?? null;
+  await updateSession(id, { status });
+  if (from !== status) recordEvent("status.changed", { sessionId: id, from, to: status, source });
 }
 
 /** Creates the task entry if missing (a key only inferred from a branch has none yet). */
-export function setTaskStatus(key: string, status: WorkStatus | null): Promise<void> {
-  return mutateStore((store) => {
+export async function setTaskStatus(
+  key: string,
+  status: WorkStatus | null,
+  source: StatusSource = "user",
+): Promise<void> {
+  let from: WorkStatus | null = null;
+  let changed = false;
+  await mutateStore((store) => {
     const current = store.tasks[key];
+    from = current?.status ?? null;
     if (current?.status === status) return false;
     store.tasks[key] = {
       link: current?.link ?? null,
       status,
       createdAt: current?.createdAt ?? new Date().toISOString(),
     };
+    changed = true;
     return true;
   });
+  if (changed) recordEvent("status.changed", { key, from, to: status, source });
 }
 
 export async function getQueue(): Promise<QueueEntry[]> {
