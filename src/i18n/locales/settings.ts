@@ -161,18 +161,11 @@ export const settings = {
   ),
   "settings.terminalLayout.title": dict("Where sessions open", "Onde as sessões abrem"),
   "settings.terminalLayout.description": dict(
-    'A terminal tab per session (Warp when installed), or all of them as tiles of one live tmux grid ("claude-tarefas") — each new session joins it and the tiles rearrange as sessions close. Applies to New task, the queue, New session and Resume. Needs tmux; without it, tabs are used.',
-    'Uma aba de terminal por sessão (Warp quando instalado), ou todas como quadrados de uma grade tmux ao vivo ("claude-tarefas") — cada sessão nova entra nela e os quadrados se reorganizam quando uma fecha. Vale pra Nova tarefa, fila, Nova sessão e Retomar. Precisa do tmux; sem ele, usa abas.',
+    'A terminal tab per session (Warp when installed), or all of them as panes of one Limux workspace ("Claude — tarefas") in its own window — each new session joins it, and its pane closes when Claude quits. Applies to New task, the queue, New session and Resume. Needs Limux (github.com/am-will/limux); without it, tabs are used. Closing the Limux window ends the sessions in it (they stay resumable).',
+    'Uma aba de terminal por sessão (Warp quando instalado), ou todas como painéis de um workspace do Limux ("Claude — tarefas") numa janela própria — cada sessão nova entra nele, e o painel fecha quando o Claude sai. Vale pra Nova tarefa, fila, Nova sessão e Retomar. Precisa do Limux (github.com/am-will/limux); sem ele, usa abas. Fechar a janela do Limux encerra as sessões dele (elas continuam retomáveis).',
   ),
   "settings.terminalLayout.tabs": dict("A tab per session", "Uma aba por sessão"),
-  "settings.terminalLayout.grid": dict("tmux grid", "Grade no tmux"),
-  "settings.gridTerminal.title": dict("Grid terminal", "Terminal da grade"),
-  "settings.gridTerminal.description": dict(
-    'Where the tmux grid opens: a window of its own (maximized in GNOME Terminal, titled "Claude — tarefas"), or a Warp tab like any other session. Automatic = GNOME Terminal, else WezTerm, else a tab.',
-    'Onde a grade tmux abre: numa janela própria (maximizada no GNOME Terminal, com o título "Claude — tarefas"), ou numa aba do Warp como qualquer sessão. Automático = GNOME Terminal, senão WezTerm, senão uma aba.',
-  ),
-  "settings.gridTerminal.auto": dict("Automatic", "Automático"),
-  "settings.gridTerminal.warp": dict("Warp tab", "Aba do Warp"),
+  "settings.terminalLayout.grid": dict("Limux grid", "Grade no Limux"),
   "settings.worktreeSetup.title": dict("Task worktree setup", "Preparação dos worktrees de tarefa"),
   "settings.worktreeSetup.description": dict(
     "What a new task worktree (New task, Task queue) gets from the repo's main checkout, since git only checks out tracked files. node_modules (root and workspaces) is symlinked — shared, so the session is told not to install there — and the gitignored .env* files are copied, so each task can change its own. Per repo folder name.",

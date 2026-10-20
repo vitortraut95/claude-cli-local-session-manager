@@ -3,6 +3,7 @@ import {
   Bot,
   FlaskConical,
   Globe,
+  History,
   Import,
   LayoutGrid,
   ListTodo,
@@ -36,6 +37,7 @@ import { UpdateButton } from "./UpdateButton";
 import { UpdateOverlay } from "./UpdateOverlay";
 import { UsageLimitsBadge } from "./UsageLimitsBadge";
 import * as preferencesApi from "../services/preferencesApi";
+import * as sessionsApi from "../services/sessionsApi";
 import * as systemApi from "../services/systemApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 
@@ -79,9 +81,10 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   // the server picks the first workspace dir that exists, else the home dir).
   const [taskTestSkill, setTaskTestSkill] = useState("");
   const [testTaskFolderHint, setTestTaskFolderHint] = useState("~");
-  // "Open grid" only shows while sessions open in the tmux grid.
+  // The one "bring my open tasks back" button: "Open grid" with the Limux grid layout (brings
+  // Limux up too), "Resume open tasks" with tabs.
   const [gridLayout, setGridLayout] = useState(false);
-  const [openingGrid, setOpeningGrid] = useState(false);
+  const [resumingOpen, setResumingOpen] = useState(false);
   const { showToast } = useToast();
   // Also keeps the shared cached status warm for the New Task / New Session skills panels.
   const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(true);
@@ -99,7 +102,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           if (cancelled) return;
           setTaskTestSkill(prefs.taskTestSkill?.trim() ?? "");
           setTestTaskFolderHint(prefs.workspaceDirs?.[0] ?? "~");
-          setGridLayout(prefs.terminalLayout === "tmux-grid");
+          setGridLayout(prefs.terminalLayout === "limux-grid");
           setSetupPrefs(
             prefs.workspaceDirs == null ||
               prefs.jenkinsBaseUrl === null ||
@@ -118,14 +121,33 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     };
   }, []);
 
-  const handleOpenGrid = async () => {
-    setOpeningGrid(true);
+  const handleResumeOpen = async () => {
+    setResumingOpen(true);
     try {
-      await systemApi.openTerminalGrid();
+      const { resumed, skippedForLimit, failed } = gridLayout
+        ? await systemApi.openTerminalGrid()
+        : await sessionsApi.resumeOpenTasks();
+      if (resumed.length > 0) {
+        showToast(t("useSessions.resumeOpen.done", { count: resumed.length }), "success");
+        onSessionCreated?.();
+      }
+      if (skippedForLimit > 0) {
+        showToast(t("useSessions.resumeOpen.limit", { count: skippedForLimit }), "error");
+      }
+      if (failed.length > 0) {
+        const message = failed[0]?.message ?? "";
+        showToast(t("useSessions.resumeOpen.failed", { count: failed.length, message }), "error");
+      }
+      if (resumed.length === 0 && skippedForLimit === 0 && failed.length === 0) {
+        showToast(
+          t(gridLayout ? "header.grid.nothingToResume" : "useSessions.resumeOpen.none"),
+          "success",
+        );
+      }
     } catch (err) {
       showToast(resolveApiErrorMessage(err, t, "header.grid.error"), "error");
     } finally {
-      setOpeningGrid(false);
+      setResumingOpen(false);
     }
   };
 
@@ -178,18 +200,20 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           >
             {t("header.taskQueue")}
           </Button>
-          {gridLayout && (
-            <Tooltip content={t("header.grid.tooltip")}>
-              <Button
-                variant="outline"
-                onClick={() => void handleOpenGrid()}
-                disabled={openingGrid}
-                icon={<LayoutGrid className="h-4 w-4" />}
-              >
-                {t("header.grid")}
-              </Button>
-            </Tooltip>
-          )}
+          <Tooltip
+            content={t(gridLayout ? "header.grid.tooltip" : "sessionsPage.resumeOpen.tooltip")}
+          >
+            <Button
+              variant="outline"
+              onClick={() => void handleResumeOpen()}
+              disabled={resumingOpen}
+              icon={
+                gridLayout ? <LayoutGrid className="h-4 w-4" /> : <History className="h-4 w-4" />
+              }
+            >
+              {t(gridLayout ? "header.grid" : "header.resumeOpen")}
+            </Button>
+          </Tooltip>
           <Button
             variant="outline"
             onClick={() => setShowNewSessionModal(true)}
