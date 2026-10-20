@@ -21,6 +21,7 @@ import {
   removeWorktreeAndCheckoutRoot,
   resetRootWorkingTree,
   resumeOpenTasks,
+  getSessionHistory,
   focusSessionInGrid,
   setSessionNickname,
   setSessionWorkStatus,
@@ -137,6 +138,10 @@ sessionsRouter.put("/:id/task", async (req, res) => {
     extractStringField(req.body, "link") || null,
   );
   res.json({ success: true });
+});
+
+sessionsRouter.get("/:id/history", async (req, res) => {
+  res.json(await getSessionHistory(req.params.id));
 });
 
 sessionsRouter.get("/:id/prompts", async (req, res) => {

@@ -286,3 +286,36 @@ export async function importSession(
   );
   return data;
 }
+
+/** One `history.jsonl` line: `{ ts, type, ...data }` (see server/utils/history.ts). */
+export type HistoryEvent = { ts: string; type: string } & Record<string, unknown>;
+
+export type HistorySummary = {
+  queuedMs: number | null;
+  queueBlocks: { reason: string; durationMs: number }[];
+  statusMs: Record<string, number>;
+  currentStatus: string | null;
+  totalMs: number | null;
+  heavyRuns: number;
+  heavyFailed: number;
+  heavyOverCap: number;
+  heavySlotWaitS: number;
+  heavyMemoryWaitS: number;
+  heavyDurationS: number;
+  heavyBlocked: number;
+  rootHeldMs: number;
+  rootRefused: number;
+  errors: { ts: string; type: string; message: string }[];
+};
+
+/** The card's "info": this session's (and its task's) history events and their summary. */
+export async function fetchSessionHistory(
+  id: string,
+): Promise<{ events: HistoryEvent[]; summary: HistorySummary }> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ events: HistoryEvent[]; summary: HistorySummary }>(
+      `/${encodeURIComponent(id)}/history`,
+    ),
+  );
+  return data;
+}
