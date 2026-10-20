@@ -2,13 +2,11 @@ import {
   AlertTriangle,
   Check,
   CheckCircle2,
-  Circle,
   Code2,
   Copy,
   GitBranch,
   GitMerge,
   Loader2,
-  XCircle,
 } from "lucide-react";
 import { useCallback, useState, type ReactNode } from "react";
 import { useCopyFeedback } from "../hooks/useCopyFeedback";
@@ -21,6 +19,13 @@ import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { Tooltip } from "./Tooltip";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import { StepList } from "./StepList";
+import {
+  withDoingStepFailed,
+  withStepStatus,
+  type Step as StepOf,
+  type StepStatus,
+} from "../utils/steps";
 
 type WorktreeToRootModalProps = {
   session: Session;
@@ -35,8 +40,7 @@ type WorktreeToRootModalProps = {
 type Mode = "copy" | "checkout";
 type Stage = "choice" | "preview" | "confirm" | "progress" | "done";
 type StepKey = "reset-root" | "copy" | "remove-and-checkout";
-type StepStatus = "pending" | "doing" | "done" | "error";
-type Step = { key: StepKey; label: string; status: StepStatus; error?: string };
+type Step = StepOf<StepKey>;
 
 type TFn = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
@@ -257,9 +261,7 @@ export function WorktreeToRootModal({
     setStage("progress");
 
     const updateStep = (key: StepKey, status: StepStatus, error?: string) => {
-      setSteps((current) =>
-        current.map((step) => (step.key === key ? { ...step, status, error } : step)),
-      );
+      setSteps((current) => withStepStatus(current, key, status, error));
     };
 
     const stashNote = (stashRef: string | null) =>
@@ -300,11 +302,7 @@ export function WorktreeToRootModal({
       }
     } catch (err) {
       const message = resolveApiErrorMessage(err, t, "worktreeToRootModal.toast.unexpectedFailure");
-      setSteps((current) =>
-        current.map((step) =>
-          step.status === "doing" ? { ...step, status: "error", error: message } : step,
-        ),
-      );
+      setSteps((current) => withDoingStepFailed(current, message));
       showToast(t("worktreeToRootModal.toast.failedPrefix", { message }), "error");
     } finally {
       setExecuting(false);
@@ -554,40 +552,7 @@ export function WorktreeToRootModal({
         </div>
       )}
 
-      {stage === "progress" && (
-        <ol className="space-y-2">
-          {steps.map((step) => (
-            <li key={step.key} className="flex items-start gap-2">
-              {step.status === "pending" && (
-                <Circle className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
-              )}
-              {step.status === "doing" && (
-                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-gray-500 dark:text-gray-400" />
-              )}
-              {step.status === "done" && (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-500" />
-              )}
-              {step.status === "error" && (
-                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-500" />
-              )}
-              <div>
-                <p
-                  className={`text-sm ${
-                    step.status === "pending"
-                      ? "text-gray-400 dark:text-gray-500"
-                      : "text-gray-700 dark:text-gray-300"
-                  }`}
-                >
-                  {step.label}
-                </p>
-                {step.status === "error" && step.error && (
-                  <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">{step.error}</p>
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
-      )}
+      {stage === "progress" && <StepList steps={steps} />}
     </Modal>
   );
 }
