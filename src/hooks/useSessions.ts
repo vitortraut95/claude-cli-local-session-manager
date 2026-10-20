@@ -6,6 +6,7 @@ import { useLanguage } from "./useLanguage";
 import { useUrlParam } from "./useUrlState";
 import { useToast } from "./useToast";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import type { TranslationKey } from "../i18n/translations";
 
 export type PendingAction =
   | "delete"
@@ -241,6 +242,30 @@ export function useSessions() {
     });
   }, []);
 
+  /** Marks `id` as busy with `action`, runs `run`, toasts success/failure. True on success. */
+  const runAction = useCallback(
+    async (
+      id: string,
+      action: PendingAction,
+      run: () => Promise<unknown>,
+      successKey: TranslationKey,
+      errorKey: TranslationKey,
+    ): Promise<boolean> => {
+      setPending(id, action);
+      try {
+        await run();
+        showToast(t(successKey), "success");
+        return true;
+      } catch (err) {
+        showToast(resolveApiErrorMessage(err, t, errorKey), "error");
+        return false;
+      } finally {
+        setPending(id, null);
+      }
+    },
+    [setPending, showToast, t],
+  );
+
   /**
    * `cleanupWorktree`/`cleanupBranch` run first, each with its own toast; their failure doesn't
    * stop the session deletion. Mutually exclusive (worktree cleanup already deletes the branch).
@@ -342,18 +367,18 @@ export function useSessions() {
 
   const setBranches = useCallback(
     async (id: string, origin: string, destination: string) => {
-      setPending(id, "branches");
-      try {
-        await sessionsApi.setBranches(id, origin, destination);
-        await loadSessions();
-        showToast(t("useSessions.branchesSaved"), "success");
-      } catch (err) {
-        showToast(resolveApiErrorMessage(err, t, "useSessions.saveBranchesError"), "error");
-      } finally {
-        setPending(id, null);
-      }
+      await runAction(
+        id,
+        "branches",
+        async () => {
+          await sessionsApi.setBranches(id, origin, destination);
+          await loadSessions();
+        },
+        "useSessions.branchesSaved",
+        "useSessions.saveBranchesError",
+      );
     },
-    [showToast, setPending, loadSessions, t],
+    [runAction, loadSessions],
   );
 
   const [resumeConflict, setResumeConflict] = useState<{
@@ -402,65 +427,58 @@ export function useSessions() {
 
   const stopAndCheckoutResume = useCallback(
     async (targetId: string, siblingId: string, branch: string) => {
-      setPending(targetId, "continue");
-      try {
-        await sessionsApi.stopAndCheckoutResume(targetId, siblingId, branch);
-        showToast(t("useSessions.stoppedAndResumed"), "success");
-        setResumeConflict(null);
-        // Both the resumed and the stopped session's status are about to change.
-        refreshSoon();
-      } catch (err) {
-        showToast(resolveApiErrorMessage(err, t, "useSessions.switchSessionsError"), "error");
-      } finally {
-        setPending(targetId, null);
-      }
+      const ok = await runAction(
+        targetId,
+        "continue",
+        () => sessionsApi.stopAndCheckoutResume(targetId, siblingId, branch),
+        "useSessions.stoppedAndResumed",
+        "useSessions.switchSessionsError",
+      );
+      if (!ok) return;
+      setResumeConflict(null);
+      // Both the resumed and the stopped session's status are about to change.
+      refreshSoon();
     },
-    [showToast, setPending, t, refreshSoon],
+    [runAction, refreshSoon],
   );
 
   const openInVSCode = useCallback(
     async (id: string) => {
-      setPending(id, "vscode");
-      try {
-        await sessionsApi.openInVSCode(id);
-        showToast(t("useSessions.openingVSCode"), "success");
-      } catch (err) {
-        showToast(resolveApiErrorMessage(err, t, "useSessions.openVSCodeError"), "error");
-      } finally {
-        setPending(id, null);
-      }
+      await runAction(
+        id,
+        "vscode",
+        () => sessionsApi.openInVSCode(id),
+        "useSessions.openingVSCode",
+        "useSessions.openVSCodeError",
+      );
     },
-    [showToast, setPending, t],
+    [runAction],
   );
 
   const openInCursor = useCallback(
     async (id: string) => {
-      setPending(id, "cursor");
-      try {
-        await sessionsApi.openInCursor(id);
-        showToast(t("useSessions.openingCursor"), "success");
-      } catch (err) {
-        showToast(resolveApiErrorMessage(err, t, "useSessions.openCursorError"), "error");
-      } finally {
-        setPending(id, null);
-      }
+      await runAction(
+        id,
+        "cursor",
+        () => sessionsApi.openInCursor(id),
+        "useSessions.openingCursor",
+        "useSessions.openCursorError",
+      );
     },
-    [showToast, setPending, t],
+    [runAction],
   );
 
   const openMissingWorktreeRootInVSCode = useCallback(
     async (id: string) => {
-      setPending(id, "vscode");
-      try {
-        await sessionsApi.openMissingWorktreeRootInVSCode(id);
-        showToast(t("useSessions.openingRootVSCode"), "success");
-      } catch (err) {
-        showToast(resolveApiErrorMessage(err, t, "useSessions.openVSCodeError"), "error");
-      } finally {
-        setPending(id, null);
-      }
+      await runAction(
+        id,
+        "vscode",
+        () => sessionsApi.openMissingWorktreeRootInVSCode(id),
+        "useSessions.openingRootVSCode",
+        "useSessions.openVSCodeError",
+      );
     },
-    [showToast, setPending, t],
+    [runAction],
   );
 
   /**
@@ -470,47 +488,41 @@ export function useSessions() {
    */
   const startNewSessionAtMissingWorktreeRoot = useCallback(
     async (session: Session) => {
-      setPending(session.id, "missing-root-resume");
-      try {
-        await sessionsApi.startFreshSessionAtMissingWorktreeRoot(session.id);
-        showToast(t("useSessions.newTerminalAtRoot"), "success");
-      } catch (err) {
-        showToast(resolveApiErrorMessage(err, t, "useSessions.startSessionError"), "error");
-      } finally {
-        setPending(session.id, null);
-      }
+      await runAction(
+        session.id,
+        "missing-root-resume",
+        () => sessionsApi.startFreshSessionAtMissingWorktreeRoot(session.id),
+        "useSessions.newTerminalAtRoot",
+        "useSessions.startSessionError",
+      );
     },
-    [showToast, setPending, t],
+    [runAction],
   );
 
   const createWorktree = useCallback(
     async (id: string, name: string) => {
-      setPending(id, "worktree-create");
-      try {
-        await sessionsApi.createWorktree(id, name);
-        showToast(t("useSessions.worktreeCreated"), "success");
-      } catch (err) {
-        showToast(resolveApiErrorMessage(err, t, "useSessions.createWorktreeError"), "error");
-      } finally {
-        setPending(id, null);
-      }
+      await runAction(
+        id,
+        "worktree-create",
+        () => sessionsApi.createWorktree(id, name),
+        "useSessions.worktreeCreated",
+        "useSessions.createWorktreeError",
+      );
     },
-    [showToast, setPending, t],
+    [runAction],
   );
 
   const deleteWorktree = useCallback(
     async (id: string) => {
-      setPending(id, "worktree-delete");
-      try {
-        await sessionsApi.deleteWorktree(id);
-        showToast(t("useSessions.worktreeDeleted"), "success");
-      } catch (err) {
-        showToast(resolveApiErrorMessage(err, t, "useSessions.deleteWorktreeError"), "error");
-      } finally {
-        setPending(id, null);
-      }
+      await runAction(
+        id,
+        "worktree-delete",
+        () => sessionsApi.deleteWorktree(id),
+        "useSessions.worktreeDeleted",
+        "useSessions.deleteWorktreeError",
+      );
     },
-    [showToast, setPending, t],
+    [runAction],
   );
 
   return {
