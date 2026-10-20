@@ -266,7 +266,7 @@ export function SessionCard({
           : "border-gray-200 dark:border-gray-800"
       }`}
     >
-      <div className="absolute -top-2 -left-1.5 flex items-center gap-1">
+      <div className="absolute -left-1.5 top-0 flex -translate-y-1/2 items-center gap-1">
         <input
           type="checkbox"
           checked={selected}
