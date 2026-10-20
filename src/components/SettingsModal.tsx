@@ -280,38 +280,12 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
                   value={prefs.terminalLayout}
                   disabled={savingKey === "terminalLayout"}
                   onChange={(event) =>
-                    void save({ terminalLayout: event.target.value as "tabs" | "tmux-grid" })
+                    void save({ terminalLayout: event.target.value as "tabs" | "limux-grid" })
                   }
                   className="w-48"
                 >
                   <option value="tabs">{t("settings.terminalLayout.tabs")}</option>
-                  <option value="tmux-grid">{t("settings.terminalLayout.grid")}</option>
-                </Select>
-              }
-            />
-          )}
-          {prefs.terminalLayout === "tmux-grid" && prefs.gridTerminal !== undefined && (
-            <SettingRow
-              title={t("settings.gridTerminal.title")}
-              description={t("settings.gridTerminal.description")}
-              keyName="gridTerminal"
-              control={
-                <Select
-                  value={prefs.gridTerminal}
-                  disabled={savingKey === "gridTerminal"}
-                  onChange={(event) =>
-                    void save({
-                      gridTerminal: event.target.value as NonNullable<
-                        UserPreferences["gridTerminal"]
-                      >,
-                    })
-                  }
-                  className="w-48"
-                >
-                  <option value="auto">{t("settings.gridTerminal.auto")}</option>
-                  <option value="gnome-terminal">GNOME Terminal</option>
-                  <option value="wezterm">WezTerm</option>
-                  <option value="warp">{t("settings.gridTerminal.warp")}</option>
+                  <option value="limux-grid">{t("settings.terminalLayout.grid")}</option>
                 </Select>
               }
             />

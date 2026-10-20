@@ -4,7 +4,6 @@ import {
   getUserPreferences,
   isEnvPreviews,
   isOrchestratorPreferences,
-  isGridTerminal,
   isWorktreeSetup,
   isSkillsHubPreferences,
   replaceUserPreferences,
@@ -61,8 +60,7 @@ type LateFields =
   | "theme"
   | "orchestrator"
   | "worktreeSetup"
-  | "terminalLayout"
-  | "gridTerminal";
+  | "terminalLayout";
 
 /** Optional fields: an older frontend bundle sends the object without them, and the PUT handler
  *  keeps the stored value instead of rejecting or wiping it. */
@@ -109,8 +107,7 @@ function isValidPreferences(
     (candidate.worktreeSetup === undefined || isWorktreeSetup(candidate.worktreeSetup)) &&
     (candidate.terminalLayout === undefined ||
       candidate.terminalLayout === "tabs" ||
-      candidate.terminalLayout === "tmux-grid") &&
-    (candidate.gridTerminal === undefined || isGridTerminal(candidate.gridTerminal))
+      candidate.terminalLayout === "limux-grid")
   );
 }
 
@@ -138,8 +135,7 @@ tasksRouter.put("/preferences", async (req, res) => {
         "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean, " +
         'theme?: "light"|"dark"|null, orchestrator?: { enabled, maxSessions, ' +
         "minFreeMemoryPercent, maxUsagePercent }, worktreeSetup?: { [project]: " +
-        '{ linkNodeModules, copyEnvFiles } }, terminalLayout?: "tabs"|"tmux-grid", ' +
-        'gridTerminal?: "auto"|"gnome-terminal"|"wezterm"|"warp" }.',
+        '{ linkNodeModules, copyEnvFiles } }, terminalLayout?: "tabs"|"limux-grid" }.',
     );
   }
   const body = req.body;

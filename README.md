@@ -10,14 +10,14 @@ and clean them up. Everything runs on your machine — no external server involv
   (green → amber → red)
 - **Resume** any session in a new terminal (`claude --resume`), Warp preferred if installed
 - **Grid layout** — optional (Settings → "Where sessions open"): every session the app opens (New
-  task, the queue, New session, Resume) becomes a tile of one live tmux grid (`claude-tarefas`)
-  instead of a tab of its own; it re-tiles as sessions start and close, keeps a failed run's pane
-  open to read the error, and opens itself in a terminal when nothing is showing it ("Open grid"
-  in the header reopens it). "Resume" on a session already running there shows its tile. The grid
-  opens in a window of its own (GNOME Terminal maximized, else WezTerm; Settings → "Grid
-  terminal" can pick a Warp tab instead). Needs tmux
-- **Resume open tasks** — one click brings back the latest session of every task "in progress" or
-  "waiting user" with nothing running (up to the session limit), e.g. the next morning
+  task, the queue, New session, Resume) becomes a pane of one [Limux](https://github.com/am-will/limux)
+  workspace, "Claude — tarefas", in its own window, instead of a tab of its own; a pane closes when
+  Claude quits, and "Resume" on a session already there focuses its pane. Needs Limux 0.1.33+;
+  closing the Limux window ends the sessions in it (they stay resumable)
+- **Resume open tasks** — one header button brings back the latest session of every task "in
+  progress" or "waiting user" with nothing running (up to the session limit), e.g. the next
+  morning; with the grid layout it's "Open grid", which also brings Limux up (starting it if
+  needed)
 - **New task** — paste a Jira link + instructions, pick a project, and it opens a terminal
   already running Claude with that prompt — optionally in an isolated git worktree
 - **New session** — the lightweight version: pick a project, the team skills and a prompt (its own
@@ -139,7 +139,7 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | POST   | `/sessions/:id/continue`              | Open a terminal running `claude --resume <id>`                                 |
 | POST   | `/sessions/:id/vscode`                | Open the session's working directory in VS Code                                |
 | POST   | `/sessions/resume-open`               | Resume the latest session of every in-progress / waiting task not running      |
-| POST   | `/sessions/:id/grid-focus`            | Show the tmux grid pane already running the session (`{ focused }`)            |
+| POST   | `/sessions/:id/grid-focus`            | Focus the Limux grid pane already running the session (`{ focused }`)          |
 | GET    | `/sessions/:id/export`                | Download the session as a `.claude-session.json.gz` file                       |
 | GET    | `/sessions/:id/task`                  | The session's task (key, inferred or saved) and that task's repos              |
 | PUT    | `/sessions/:id/task`                  | Save `{ taskKey, link? }` on the session (`""` = back to detecting it)         |
@@ -158,8 +158,8 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | POST   | `/tasks/queue/run`                    | Run a scheduler check now (launches the next ready task if there's room)       |
 | GET    | `/tasks/heavy-run/hook`               | Whether the heavy-tests hook is in `~/.claude/settings.json`                   |
 | PUT    | `/tasks/heavy-run/hook`               | Install/remove it `{ installed }` (only that hook's entry is touched)          |
-| GET    | `/system/terminal-grid`               | The tmux grid: tmux installed, running, pane count                             |
-| POST   | `/system/terminal-grid/open`          | Open a terminal attached to the grid                                           |
+| GET    | `/system/terminal-grid`               | The Limux grid: Limux installed, running, pane count                           |
+| POST   | `/system/terminal-grid/open`          | Bring Limux up and resume every open task into the grid                        |
 | GET    | `/cleanup/worktree-for-session/:id`   | What removing a session's worktree would mean now (finding, or why not)        |
 | POST   | `/tasks/test-task`                    | Open a terminal running `/<taskTestSkill> <ticketLink>` ("Test task" button)   |
 | GET    | `/tasks/skills-hub/status`            | Team skills: hub location/branch, catalogs, link state per skill               |

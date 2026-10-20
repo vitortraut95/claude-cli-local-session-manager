@@ -43,7 +43,7 @@ export async function continueSession(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/continue`));
 }
 
-/** Shows the tmux grid pane already running this session; false when the grid isn't the layout
+/** Shows the Limux grid pane already running this session; false when the grid isn't the layout
  *  or no pane runs it. */
 export async function focusSessionInGrid(id: string): Promise<boolean> {
   const { data } = await withServerErrorMessage(() =>

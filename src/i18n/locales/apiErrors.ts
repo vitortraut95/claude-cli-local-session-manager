@@ -8,9 +8,9 @@ export const apiErrors = {
     "Esta sessão (ou a pasta dela) já está aberta em outro terminal.",
   ),
   "apiError.invalidSessionId": dict("Invalid session id.", "Id de sessão inválido."),
-  "apiError.gridNotRunning": dict(
-    "The grid has no session yet — it opens by itself when the first session starts.",
-    "A grade ainda não tem nenhuma sessão — ela abre sozinha quando a primeira sessão começa.",
+  "apiError.limuxNotInstalled": dict(
+    "Limux isn't installed (github.com/am-will/limux) — install it, or set sessions to open in tabs in Settings.",
+    "O Limux não está instalado (github.com/am-will/limux) — instale, ou volte as sessões pra abas nas Configurações.",
   ),
   "apiError.rootInUse": dict(
     "The root of this repo is in use by another task — reset the root before bringing a new one there.",

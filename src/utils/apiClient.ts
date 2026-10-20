@@ -42,7 +42,7 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   TASK_WORKTREE_PATH_REQUIRED: "apiError.taskWorktreePathRequired",
   TASK_INVALID_KEY: "apiError.taskInvalidKey",
   ROOT_IN_USE: "apiError.rootInUse",
-  GRID_NOT_RUNNING: "apiError.gridNotRunning",
+  LIMUX_NOT_INSTALLED: "apiError.limuxNotInstalled",
   TASK_REPO_NOT_FOUND: "apiError.taskRepoNotFound",
   TASK_TEST_LINK_REQUIRED: "apiError.taskTestLinkRequired",
   TASK_TEST_SKILL_NOT_CONFIGURED: "apiError.taskTestSkillNotConfigured",

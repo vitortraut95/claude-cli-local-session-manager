@@ -37,7 +37,7 @@ import {
 } from "../utils/taskStore.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
 import { getUserPreferences } from "./preferencesService.js";
-import { focusGridSession, isTmuxAvailable, launchInTmuxGrid } from "./tmuxGridService.js";
+import { focusLimuxSession, isLimuxAvailable, launchInLimuxGrid } from "./limuxGridService.js";
 import {
   AppError,
   BadRequestError,
@@ -835,44 +835,21 @@ export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promis
 
 /**
  * Runs a Claude session's `command` where the `terminalLayout` preference says: a pane of the
- * shared tmux grid (`tmuxGridService`), or a terminal of its own. Without tmux the grid falls
- * back to a terminal.
+ * Limux grid (`limuxGridService`), or a terminal of its own. Without Limux the grid falls back to
+ * a terminal.
  */
 export async function launchInTerminal(command: string, cwd?: string): Promise<void> {
   const { terminalLayout } = await getUserPreferences();
-  if (terminalLayout === "tmux-grid") {
-    if (await isTmuxAvailable()) {
-      await launchInTmuxGrid(command, cwd, openGridViewer);
+  if (terminalLayout === "limux-grid") {
+    if (await isLimuxAvailable()) {
+      await launchInLimuxGrid(command, cwd);
       return;
     }
-    console.warn("[terminal] terminalLayout is tmux-grid but tmux isn't installed — using a tab.");
+    console.warn(
+      "[terminal] terminalLayout is limux-grid but limux isn't installed — using a tab.",
+    );
   }
   await openTerminalWindow(command, cwd);
-}
-
-/** Standalone terminals the grid can open in: its own window, so it isn't one more Warp tab. */
-const GRID_TERMINALS: Record<"gnome-terminal" | "wezterm", (attach: string[]) => string[]> = {
-  "gnome-terminal": (attach) => ["--maximize", "--", ...attach],
-  wezterm: (attach) => ["start", "--", ...attach],
-};
-
-/**
- * Opens a terminal showing the tmux grid, per the `gridTerminal` preference: "auto" = the first of
- * GNOME Terminal / WezTerm installed, else (or for "warp") a regular terminal tab.
- */
-export async function openGridViewer(attachCommand: string): Promise<void> {
-  const { gridTerminal } = await getUserPreferences();
-  const attach = attachCommand.split(" ");
-  const candidates =
-    gridTerminal === "auto"
-      ? (["gnome-terminal", "wezterm"] as const)
-      : gridTerminal === "warp"
-        ? []
-        : [gridTerminal];
-  for (const bin of candidates) {
-    if (commandExists(bin) && (await trySpawnDetached(bin, GRID_TERMINALS[bin](attach)))) return;
-  }
-  await openTerminalWindow(attachCommand);
 }
 
 /** Runs `command` in a new terminal: Warp when installed, else the first `TERMINAL_LAUNCHERS`
@@ -896,14 +873,14 @@ export async function openTerminalWindow(command: string, cwd?: string): Promise
   );
 }
 
-/** "Resume" on a session already running in the tmux grid: shows its pane instead of a second
+/** "Resume" on a session already running in the Limux grid: shows its pane instead of a second
  *  terminal. False when the grid isn't the layout or no pane runs it (the caller handles the
  *  active-session conflict as usual). */
 export async function focusSessionInGrid(id: string): Promise<boolean> {
   if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
   const { terminalLayout } = await getUserPreferences();
-  if (terminalLayout !== "tmux-grid" || !(await isTmuxAvailable())) return false;
-  return focusGridSession(id, openGridViewer);
+  if (terminalLayout !== "limux-grid" || !(await isLimuxAvailable())) return false;
+  return focusLimuxSession(id);
 }
 
 /** Refuses an active session: a second `claude --resume` would race the first one's writes. */

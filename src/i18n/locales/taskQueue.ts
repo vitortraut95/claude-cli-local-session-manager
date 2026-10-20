@@ -4,9 +4,14 @@ export const taskQueue = {
   "header.taskQueue": dict("Task queue", "Fila de tarefas"),
   "header.grid": dict("Open grid", "Abrir grade"),
   "header.grid.tooltip": dict(
-    "Opens a terminal showing every session of the tmux grid side by side (it opens by itself with the first session)",
-    "Abre um terminal com todas as sessões da grade tmux lado a lado (ela abre sozinha com a primeira sessão)",
+    'Brings up the Limux window (starting it if needed) on the "Claude — tarefas" workspace and resumes into it, one pane each, every task "In progress" or "Waiting user" that has nothing running — up to the session limit',
+    'Traz a janela do Limux pra frente (abrindo se preciso) no workspace "Claude — tarefas" e retoma nele, um painel cada, toda tarefa "Em andamento" ou "Aguardando usuário" que não tem nada rodando — até o limite de sessões',
   ),
+  "header.grid.nothingToResume": dict(
+    "Grid open — nothing left to resume.",
+    "Grade aberta — nada pendente pra retomar.",
+  ),
+  "header.resumeOpen": dict("Resume open tasks", "Retomar não concluídas"),
   "header.grid.error": dict("Couldn't open the grid.", "Não foi possível abrir a grade."),
   "taskQueueModal.title": dict("Task queue", "Fila de tarefas"),
   "taskQueueModal.intro": dict(
