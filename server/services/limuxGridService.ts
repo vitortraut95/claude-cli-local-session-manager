@@ -14,6 +14,11 @@ import { promisify } from "node:util";
  * into its shell with `send` + `send-key Enter`; a trailing `; exit` closes the pane when Claude
  * quits. There's no "tile" command: panes alternate right/down into two columns. Closing the
  * Limux window ends the sessions in it (they stay resumable).
+ *
+ * Reopened, Limux restores its workspaces and panes (folder, last title) but not what ran in
+ * them: they come back as bare shells. So a session goes, in order, into an idle pane of a tab
+ * named after its task (one the user dragged out of the grid), an idle pane of the grid, or a new
+ * split — and "Open grid" closes the grid's leftover idle panes.
  */
 
 const execFileAsync = promisify(execFile);
@@ -101,6 +106,71 @@ async function listPanels(workspace: string): Promise<Panel[]> {
 const SEND_RETRY_MS = 500;
 const SEND_TIMEOUT_MS = 8_000;
 
+/** A bare shell waiting at its prompt (what a restored pane is): the screen ends in `$`/`#`. */
+async function isIdle(workspace: string, surface: string): Promise<boolean> {
+  try {
+    const screen = await limux([
+      "read-screen",
+      "--workspace",
+      workspace,
+      "--surface",
+      surface,
+      "--lines",
+      "5",
+    ]);
+    const last = screen
+      .split("\n")
+      .map((line) => line.trimEnd())
+      .filter(Boolean)
+      .pop();
+    return last !== undefined && /[$#]$/.test(last);
+  } catch {
+    return false;
+  }
+}
+
+async function firstIdle(workspace: string): Promise<Panel | null> {
+  for (const panel of await listPanels(workspace)) {
+    if (await isIdle(workspace, panel.surface_ref)) return panel;
+  }
+  return null;
+}
+
+/** An idle pane already meant for this session: a tab titled with its task key (dragged out of
+ *  the grid, then restored empty), else one of the grid's own. */
+async function reusableSurface(
+  taskKey: string | null,
+): Promise<{ workspace: string; surface: string } | null> {
+  const { workspaces } = await limuxJson<{ workspaces: Workspace[] }>(["list-workspaces"]);
+  const grid = workspaces.find((w) => w.title === GRID_WORKSPACE_TITLE);
+  if (taskKey) {
+    const keyPattern = new RegExp(`(^|[^A-Z0-9])${taskKey}(?![0-9])`);
+    for (const workspace of workspaces) {
+      if (workspace === grid || !keyPattern.test(workspace.title)) continue;
+      const idle = await firstIdle(workspace.ref);
+      if (idle) return { workspace: workspace.ref, surface: idle.surface_ref };
+    }
+  }
+  if (grid) {
+    const idle = await firstIdle(grid.ref);
+    if (idle) return { workspace: grid.ref, surface: idle.surface_ref };
+  }
+  return null;
+}
+
+/** "Open grid", after resuming: drops the grid's leftover idle panes (restored empty). */
+export async function closeIdleGridPanes(): Promise<number> {
+  const workspace = await findGridWorkspace();
+  if (!workspace) return 0;
+  let closed = 0;
+  for (const panel of await listPanels(workspace)) {
+    if (!(await isIdle(workspace, panel.surface_ref))) continue;
+    await limux(["close-surface", "--workspace", workspace, "--surface", panel.surface_ref]);
+    closed += 1;
+  }
+  return closed;
+}
+
 /** Types `command` into the surface's shell and runs it. */
 async function runIn(workspace: string, surface: string, command: string): Promise<void> {
   const deadline = Date.now() + SEND_TIMEOUT_MS;
@@ -160,10 +230,15 @@ function sessionIdOf(command: string): string | null {
   return /--(?:resume|session-id)\s+([A-Za-z0-9_-]+)/.exec(command)?.[1] ?? null;
 }
 
-/** Runs `command` (a Claude session) in a new pane of the grid workspace and brings it up. */
-export async function launchInLimuxGrid(command: string, cwd: string | undefined): Promise<void> {
+/** Runs `command` (a Claude session) in the grid and brings its pane up: an idle pane meant for it
+ *  when there is one (see the top comment), else a new one. `taskKey` finds a tab named after it. */
+export async function launchInLimuxGrid(
+  command: string,
+  cwd: string | undefined,
+  taskKey: string | null = null,
+): Promise<void> {
   await ensureRunning();
-  const { workspace, surface } = await newSurface(cwd);
+  const { workspace, surface } = (await reusableSurface(taskKey)) ?? (await newSurface(cwd));
   // `; exit` closes the pane once Claude quits, so the grid only shows live sessions.
   await runIn(workspace, surface, `${cwd ? `cd ${shellQuote(cwd)} && ` : ""}${command}; exit`);
   const sessionId = sessionIdOf(command);

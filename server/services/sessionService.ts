@@ -873,11 +873,15 @@ export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promis
  * Limux grid (`limuxGridService`), or a terminal of its own. Without Limux the grid falls back to
  * a terminal.
  */
-export async function launchInTerminal(command: string, cwd?: string): Promise<void> {
+export async function launchInTerminal(
+  command: string,
+  cwd?: string,
+  taskKey: string | null = null,
+): Promise<void> {
   const { terminalLayout } = await getUserPreferences();
   if (terminalLayout === "limux-grid") {
     if (await isLimuxAvailable()) {
-      await launchInLimuxGrid(command, cwd);
+      await launchInLimuxGrid(command, cwd, taskKey);
       return;
     }
     console.warn(
@@ -919,7 +923,8 @@ export async function focusSessionInGrid(id: string): Promise<boolean> {
 }
 
 /** Refuses an active session: a second `claude --resume` would race the first one's writes. */
-export async function continueSession(id: string): Promise<void> {
+/** `taskKey` (when the caller knows it) lets the grid reuse a Limux tab named after the task. */
+export async function continueSession(id: string, taskKey: string | null = null): Promise<void> {
   const activeIds = await getActiveResumeSessionIds();
   if (activeIds.has(id)) {
     throw new SessionActiveError(`Session "${id}" is already open in a terminal.`);
@@ -936,7 +941,7 @@ export async function continueSession(id: string): Promise<void> {
   }
 
   // `id` is validated above, so it's safe to interpolate.
-  await launchInTerminal(`claude --resume ${id}`, cwd ?? undefined);
+  await launchInTerminal(`claude --resume ${id}`, cwd ?? undefined, taskKey);
   recordEvent("session.resumed", { sessionId: id, cwd });
 }
 
@@ -1211,7 +1216,7 @@ export async function resumeOpenTasks(): Promise<ResumeOpenResult> {
   };
   for (const session of candidates.slice(0, room)) {
     try {
-      await continueSession(session.id);
+      await continueSession(session.id, session.taskKey ?? null);
       result.resumed.push({ id: session.id, taskKey: session.taskKey ?? null });
     } catch (err) {
       result.failed.push({ id: session.id, message: errorMessage(err) });
