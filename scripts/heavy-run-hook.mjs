@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { appendFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -37,14 +38,32 @@ let input = "";
 for await (const chunk of process.stdin) input += chunk;
 
 let command = "";
+let hookInput = {};
 try {
-  command = JSON.parse(input)?.tool_input?.command ?? "";
+  hookInput = JSON.parse(input) ?? {};
+  command = hookInput.tool_input?.command ?? "";
 } catch {
   process.exit(0);
 }
 
 if (typeof command !== "string" || !HEAVY_COMMAND.test(command) || command.includes("heavy-run")) {
   process.exit(0);
+}
+
+// For the app's history (server/utils/history.ts); best-effort.
+try {
+  appendFileSync(
+    path.join(path.dirname(HEAVY_RUN), "..", "history.jsonl"),
+    `${JSON.stringify({
+      ts: new Date().toISOString(),
+      type: "heavy.blocked",
+      command: command.slice(0, 300),
+      cwd: hookInput.cwd ?? null,
+      sessionId: hookInput.session_id ?? null,
+    })}\n`,
+  );
+} catch {
+  // Never let the history break the hook.
 }
 
 process.stderr.write(

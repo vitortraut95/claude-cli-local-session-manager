@@ -45,6 +45,7 @@ import {
   errorMessage,
   NotFoundError,
 } from "../utils/httpError.js";
+import { recordEvent } from "../utils/history.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import {
   applyFileDiff,
@@ -902,6 +903,7 @@ export async function continueSession(id: string): Promise<void> {
 
   // `id` is validated above, so it's safe to interpolate.
   await launchInTerminal(`claude --resume ${id}`, cwd ?? undefined);
+  recordEvent("session.resumed", { sessionId: id, cwd });
 }
 
 /**
@@ -1181,6 +1183,11 @@ export async function resumeOpenTasks(): Promise<ResumeOpenResult> {
       result.failed.push({ id: session.id, message: errorMessage(err) });
     }
   }
+  recordEvent("sessions.resumeOpen", {
+    resumed: result.resumed,
+    skippedForLimit: result.skippedForLimit,
+    failed: result.failed,
+  });
   return result;
 }
 

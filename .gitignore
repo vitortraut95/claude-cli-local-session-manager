@@ -26,6 +26,8 @@ claude-session-manager.desktop
 # Per-machine task/session data (server/utils/taskStore.ts).
 /tasks.json
 /tasks.json.*
+# Task flow event log (server/utils/history.ts, scripts/heavy-run).
+/history.jsonl
 # Legacy sidecar files that may still exist on disk.
 /custom-titles.json
 /session-continuations.json
