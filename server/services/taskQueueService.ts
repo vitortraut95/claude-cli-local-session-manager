@@ -16,6 +16,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+/** A branch-name segment: what `createTaskWorktree` accepts, minus the "/" (added in between). */
+const SAFE_BRANCH_PREFIX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
 /** Each repo is stored as its repo root, so a subfolder and the root don't count twice. A task
  *  with no repo yet is kept (still to be chosen). */
 async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
@@ -40,10 +43,18 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
     }
     if (!repos.includes(repoRoot)) repos.push(repoRoot);
   }
+  const rawPrefix = isRecord(raw) ? raw.branchPrefix : null;
+  const branchPrefix = typeof rawPrefix === "string" ? rawPrefix.trim() : null;
+  if (branchPrefix && !SAFE_BRANCH_PREFIX.test(branchPrefix)) {
+    throw new BadRequestError(
+      "QUEUE_INVALID_BRANCH_PREFIX",
+      `"${branchPrefix}" isn't a valid branch prefix (letters, numbers, "-", "_" and "." only).`,
+    );
+  }
   // Kept as sent: the modal clears it to retry a failed launch.
   const error =
     isRecord(raw) && typeof raw.error === "string" && raw.error.trim() ? raw.error.trim() : null;
-  return { key, link, repos, error };
+  return { key, link, repos, branchPrefix, error };
 }
 
 /** Replaces the whole queue (the modal saves its full list); a repeated key keeps the first. */

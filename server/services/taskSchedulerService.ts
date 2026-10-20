@@ -20,7 +20,7 @@ import {
 /**
  * Launches the task queue on its own: every `TICK_MS` it checks for room (live sessions, free
  * RAM, memory pressure, Claude plan usage) and starts the next ready entry exactly like "New
- * task" does — task branch off the repo's default, always in its own worktree, extra repos via
+ * task" does — task branch (`<prefix>/<key>`, or just the key) off the repo's default, always in its own worktree, extra repos via
  * `--add-dir`, the default prompt — in a new terminal. At most one launch per tick, so sessions
  * start staggered and each one's memory shows up before the next check.
  */
@@ -44,7 +44,7 @@ export type SchedulerStatus = {
   /** Highest Claude plan limit in use; null when it couldn't be read (not a block then). */
   usagePercent: number | null;
   maxUsagePercent: number;
-  /** Entries ready to launch (have a repo, not launched, no error). */
+  /** Entries ready to launch (repo and branch prefix chosen, not launched, no error). */
   waiting: number;
   /** Why nothing would launch right now; null = there's room. */
   blockedBy: SchedulerBlock | null;
@@ -57,7 +57,7 @@ let launchingKey: string | null = null;
 let ticking = false;
 
 function isReady(entry: QueueEntry): boolean {
-  return !entry.launchedAt && !entry.error && entry.repos.length > 0;
+  return !entry.launchedAt && !entry.error && entry.repos.length > 0 && entry.branchPrefix !== null;
 }
 
 /** Live sessions plus launches still inside their grace period that haven't shown up yet. */
@@ -158,7 +158,7 @@ async function findExistingTaskWorktree(
 async function launchEntry(entry: QueueEntry, prefs: UserPreferences): Promise<void> {
   const [mainFolder, ...extraFolders] = entry.repos;
   if (!mainFolder) return;
-  const branch = `${prefs.branchTypes[0] ?? "feature"}/${entry.key}`;
+  const branch = entry.branchPrefix ? `${entry.branchPrefix}/${entry.key}` : entry.key;
 
   const repo = await getRepoInfo(mainFolder);
   const base = repo.defaultBaseBranch;

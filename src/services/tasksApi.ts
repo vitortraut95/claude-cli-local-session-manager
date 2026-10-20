@@ -217,6 +217,9 @@ export type QueueEntry = {
   link: string | null;
   /** Repo roots; empty = still to be chosen. */
   repos: string[];
+  /** Task branch = `<prefix>/<key>`; "" = just the key; null = not chosen (won't launch).
+   *  Optional: older backend. */
+  branchPrefix?: string | null;
   addedAt: string;
   /** Set by the scheduler once it opened the task's session. Optional: older backend. */
   launchedAt?: string | null;
@@ -227,7 +230,7 @@ export type QueueEntry = {
 };
 
 /** What the modal saves; the launch fields are the scheduler's. */
-export type QueueEntryInput = Pick<QueueEntry, "key" | "link" | "repos" | "error">;
+export type QueueEntryInput = Pick<QueueEntry, "key" | "link" | "repos" | "branchPrefix" | "error">;
 
 export async function fetchTaskQueue(): Promise<QueueEntry[]> {
   const { data } = await withServerErrorMessage(() =>

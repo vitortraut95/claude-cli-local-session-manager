@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useProjectFolders } from "../hooks/useProjectFolders";
 import { useToast } from "../hooks/useToast";
+import * as preferencesApi from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import type { QueueEntry, SchedulerStatus } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
@@ -21,13 +22,44 @@ const TEXTAREA_CLASSNAME =
 /** While open, the scheduler's progress (launches, errors, room left) is re-read this often. */
 const POLL_MS = 10_000;
 
-type DraftEntry = Omit<QueueEntry, "addedAt">;
+/** The optional (older-backend) fields resolved, so the rows never deal with `undefined`. */
+type DraftEntry = Pick<QueueEntry, "key" | "link" | "repos"> & {
+  branchPrefix: string | null;
+  launchedAt: string | null;
+  sessionId: string | null;
+  error: string | null;
+};
 
-function toDraft({ key, link, repos, launchedAt, sessionId, error }: QueueEntry): DraftEntry {
+/** Select values for a prefix: null = not chosen yet, "" = no prefix. */
+const PREFIX_UNSET = "__unset__";
+const PREFIX_NONE = "__none__";
+
+function prefixToValue(prefix: string | null): string {
+  return prefix === null ? PREFIX_UNSET : prefix === "" ? PREFIX_NONE : prefix;
+}
+
+function valueToPrefix(value: string): string | null {
+  return value === PREFIX_UNSET ? null : value === PREFIX_NONE ? "" : value;
+}
+
+function branchNameFor(entry: { key: string; branchPrefix?: string | null }): string {
+  return entry.branchPrefix ? `${entry.branchPrefix}/${entry.key}` : entry.key;
+}
+
+function toDraft({
+  key,
+  link,
+  repos,
+  branchPrefix,
+  launchedAt,
+  sessionId,
+  error,
+}: QueueEntry): DraftEntry {
   return {
     key,
     link,
     repos,
+    branchPrefix: branchPrefix ?? null,
     launchedAt: launchedAt ?? null,
     sessionId: sessionId ?? null,
     error: error ?? null,
@@ -59,6 +91,9 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
   const [saving, setSaving] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [pasteRepo, setPasteRepo] = useState("");
+  // No default on purpose: env/feature/fix/none changes what the pipeline does with the branch.
+  const [pastePrefix, setPastePrefix] = useState<string | null>(null);
+  const [branchTypes, setBranchTypes] = useState<string[]>([]);
   const [status, setStatus] = useState<SchedulerStatus | null>(null);
   const [runningNow, setRunningNow] = useState(false);
   // Keys whose error the user cleared to retry: a poll mustn't bring the old error back.
@@ -66,6 +101,12 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
 
   useEffect(() => {
     let cancelled = false;
+    preferencesApi
+      .fetchPreferences()
+      .then((prefs) => {
+        if (!cancelled) setBranchTypes(prefs.branchTypes);
+      })
+      .catch(() => undefined);
     tasksApi
       .fetchTaskQueue()
       .then((list) => {
@@ -103,6 +144,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
           return {
             ...entry,
             repos: server.launchedAt ? server.repos : entry.repos,
+            branchPrefix: server.launchedAt ? (server.branchPrefix ?? null) : entry.branchPrefix,
             launchedAt: server.launchedAt ?? null,
             sessionId: server.sessionId ?? null,
             error: keepLocalError ? entry.error : (server.error ?? null),
@@ -159,6 +201,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
       ...fresh.map((task) => ({
         ...task,
         repos: pasteRepo ? [pasteRepo] : [],
+        branchPrefix: pastePrefix,
         launchedAt: null,
         sessionId: null,
         error: null,
@@ -177,7 +220,13 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
     setSaving(true);
     try {
       const stored = await tasksApi.saveTaskQueue(
-        entries.map(({ key, link, repos, error }) => ({ key, link, repos, error })),
+        entries.map(({ key, link, repos, branchPrefix, error }) => ({
+          key,
+          link,
+          repos,
+          branchPrefix,
+          error,
+        })),
       );
       retriedRef.current.clear();
       setEntries(stored.map(toDraft));
@@ -197,8 +246,37 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
   };
 
   const pending = entries.filter((e) => !e.launchedAt);
-  const missingRepoCount = pending.filter((e) => e.repos.length === 0).length;
+  const missingSetupCount = pending.filter(
+    (e) => e.repos.length === 0 || e.branchPrefix === null,
+  ).length;
   const launchedCount = entries.length - pending.length;
+
+  const renderPrefixSelect = (
+    value: string | null,
+    onChange: (prefix: string | null) => void,
+    className = "",
+  ) => {
+    // A stored prefix no longer among the configured types stays selectable.
+    const options = value && !branchTypes.includes(value) ? [value, ...branchTypes] : branchTypes;
+    return (
+      <Select
+        value={prefixToValue(value)}
+        onChange={(event) => onChange(valueToPrefix(event.target.value))}
+        aria-label={t("taskQueueModal.prefixAriaLabel")}
+        className={`${value === null ? "border-amber-400 dark:border-amber-600" : ""} ${className}`}
+      >
+        <option value={PREFIX_UNSET} disabled>
+          {t("taskQueueModal.prefixUnset")}
+        </option>
+        {options.map((prefix) => (
+          <option key={prefix} value={prefix}>
+            {prefix}/
+          </option>
+        ))}
+        <option value={PREFIX_NONE}>{t("taskQueueModal.prefixNone")}</option>
+      </Select>
+    );
+  };
 
   const renderState = (entry: DraftEntry) => {
     if (entry.launchedAt) {
@@ -222,7 +300,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
         </span>
       );
     }
-    if (entry.repos.length === 0) return null;
+    if (entry.repos.length === 0 || entry.branchPrefix === null) return null;
     return (
       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
         {t("taskQueueModal.state.waiting")}
@@ -284,6 +362,12 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
                 ))}
               </Select>
             </label>
+            <label className="block sm:w-56">
+              <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                {t("taskQueueModal.pastePrefix")}
+              </span>
+              {renderPrefixSelect(pastePrefix, setPastePrefix)}
+            </label>
             <Button variant="outline" onClick={handleAdd} disabled={!pasteText.trim()}>
               {t("taskQueueModal.add")}
             </Button>
@@ -296,9 +380,9 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
               {t("taskQueueModal.listTitle", { count: entries.length })}
             </h3>
             <div className="flex items-center gap-3">
-              {missingRepoCount > 0 && (
+              {missingSetupCount > 0 && (
                 <span className="text-xs text-amber-600 dark:text-amber-400">
-                  {t("taskQueueModal.missingRepoCount", { count: missingRepoCount })}
+                  {t("taskQueueModal.missingSetupCount", { count: missingSetupCount })}
                 </span>
               )}
               {launchedCount > 0 && (
@@ -424,6 +508,28 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
                         title={t("taskQueueModal.removeTask")}
                         icon={<Trash2 className="h-4 w-4" />}
                       />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <span>{t("taskQueueModal.branchLabel")}</span>
+                      {!locked && (
+                        <div className="w-44">
+                          {renderPrefixSelect(
+                            entry.branchPrefix,
+                            (branchPrefix) => updateEntry(entry.key, { branchPrefix }),
+                            "py-1",
+                          )}
+                        </div>
+                      )}
+                      {entry.branchPrefix === null ? (
+                        <span className="text-amber-600 dark:text-amber-400">
+                          {t("taskQueueModal.missingPrefix")}
+                        </span>
+                      ) : (
+                        <code className="font-mono text-gray-700 dark:text-gray-300">
+                          {branchNameFor(entry)}
+                        </code>
+                      )}
                     </div>
 
                     {entry.error && (
