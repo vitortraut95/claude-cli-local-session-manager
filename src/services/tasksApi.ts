@@ -275,3 +275,25 @@ export async function runSchedulerNow(): Promise<SchedulerStatus> {
   const { data } = await withServerErrorMessage(() => client.post<SchedulerStatus>("/queue/run"));
   return data;
 }
+
+/** The PreToolUse hook that routes every session's test commands through `scripts/heavy-run`. */
+export type HeavyRunHookStatus = {
+  installed: boolean;
+  settingsPath: string;
+  heavyRunPath: string;
+};
+
+export async function fetchHeavyRunHookStatus(): Promise<HeavyRunHookStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<HeavyRunHookStatus>("/heavy-run/hook"),
+  );
+  return data;
+}
+
+/** Edits `~/.claude/settings.json` (only this hook's entry); new sessions pick it up. */
+export async function setHeavyRunHookInstalled(installed: boolean): Promise<HeavyRunHookStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.put<HeavyRunHookStatus>("/heavy-run/hook", { installed }),
+  );
+  return data;
+}

@@ -31,6 +31,11 @@ export type OrchestratorPreferences = {
   minFreeMemoryPercent: number;
   /** Nothing new starts while any Claude plan limit is at or above this %. */
   maxUsagePercent: number;
+  /** `scripts/heavy-run`: test runs at once across every session, and each one's RAM (GB) and CPU
+   *  (%, 100 = one core) cap. */
+  testSlots: number;
+  testMemoryMaxGb: number;
+  testCpuPercent: number;
 };
 
 export type UserPreferences = {
@@ -102,6 +107,9 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     maxSessions: 6,
     minFreeMemoryPercent: 20,
     maxUsagePercent: 90,
+    testSlots: 1,
+    testMemoryMaxGb: 6,
+    testCpuPercent: 400,
   },
 };
 
@@ -171,6 +179,13 @@ function parseOrchestrator(value: unknown): OrchestratorPreferences {
     maxUsagePercent: isIntInRange(raw.maxUsagePercent, 1, 100)
       ? raw.maxUsagePercent
       : fallback.maxUsagePercent,
+    testSlots: isIntInRange(raw.testSlots, 1, 16) ? raw.testSlots : fallback.testSlots,
+    testMemoryMaxGb: isIntInRange(raw.testMemoryMaxGb, 1, 256)
+      ? raw.testMemoryMaxGb
+      : fallback.testMemoryMaxGb,
+    testCpuPercent: isIntInRange(raw.testCpuPercent, 50, 6400)
+      ? raw.testCpuPercent
+      : fallback.testCpuPercent,
   };
 }
 
@@ -181,7 +196,11 @@ export function isOrchestratorPreferences(value: unknown): value is Orchestrator
     typeof raw.enabled === "boolean" &&
     isIntInRange(raw.maxSessions, 1, 50) &&
     isIntInRange(raw.minFreeMemoryPercent, 0, 90) &&
-    isIntInRange(raw.maxUsagePercent, 1, 100)
+    isIntInRange(raw.maxUsagePercent, 1, 100) &&
+    // Optional: an older frontend bundle sends the object without them.
+    (raw.testSlots === undefined || isIntInRange(raw.testSlots, 1, 16)) &&
+    (raw.testMemoryMaxGb === undefined || isIntInRange(raw.testMemoryMaxGb, 1, 256)) &&
+    (raw.testCpuPercent === undefined || isIntInRange(raw.testCpuPercent, 50, 6400))
   );
 }
 

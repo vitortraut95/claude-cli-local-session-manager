@@ -26,6 +26,11 @@ and clean them up. Everything runs on your machine — no external server involv
   (default 6, every session counts), enough free RAM, no memory pressure (PSI) and Claude plan
   usage under a limit. Pause/resume and the limits live in the queue window; a launched task gets
   the "in progress" status. Kept in the local `tasks.json`
+- **Heavy tests** — optional (Task queue window → "Turn on"): a PreToolUse hook in
+  `~/.claude/settings.json` blocks test commands (jest, vitest, `yarn/npm/pnpm test`…) run
+  directly and has Claude rerun them through `scripts/heavy-run`, which waits for a free slot
+  across every session (default 1 at a time) and runs each one in its own cgroup with a RAM/CPU
+  cap (`systemd-run --user --scope`), so going over the cap kills only that run (exit 137)
 - **Worktree → root** — copy a worktree's files into the project root to test locally, or move
   the branch there for real once it's ready to push. One task per repo at a time: bringing another
   task's worktree to a root still holding one
@@ -130,6 +135,8 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | PUT    | `/tasks/queue`                        | Replace the queue `{ entries: { key, link?, repos }[] }` (repos → repo roots)  |
 | GET    | `/tasks/queue/status`                 | Scheduler state: live sessions, free RAM, plan usage, what it's waiting on     |
 | POST   | `/tasks/queue/run`                    | Run a scheduler check now (launches the next ready task if there's room)       |
+| GET    | `/tasks/heavy-run/hook`               | Whether the heavy-tests hook is in `~/.claude/settings.json`                   |
+| PUT    | `/tasks/heavy-run/hook`               | Install/remove it `{ installed }` (only that hook's entry is touched)          |
 | POST   | `/tasks/test-task`                    | Open a terminal running `/<taskTestSkill> <ticketLink>` ("Test task" button)   |
 | GET    | `/tasks/skills-hub/status`            | Team skills: hub location/branch, catalogs, link state per skill               |
 | GET    | `/tasks/skills-hub/skill`             | One hub skill's SKILL.md content (`?catalog=&name=`)                           |

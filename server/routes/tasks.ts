@@ -30,6 +30,7 @@ import {
   launchTaskTest,
   resolveBaseBranch,
 } from "../services/taskService.js";
+import { getHeavyRunHookStatus, setHeavyRunHookInstalled } from "../services/heavyRunService.js";
 import { getTaskQueue, saveTaskQueue } from "../services/taskQueueService.js";
 import { getSchedulerStatus, runSchedulerNow } from "../services/taskSchedulerService.js";
 import { extractBooleanField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
@@ -135,6 +136,7 @@ tasksRouter.put("/preferences", async (req, res) => {
     ...stored,
     ...body,
     skillsHub: { ...stored.skillsHub, ...body.skillsHub },
+    orchestrator: { ...stored.orchestrator, ...body.orchestrator },
   }));
   res.json({ success: true });
 });
@@ -230,6 +232,15 @@ tasksRouter.get("/queue/status", async (_req, res) => {
 
 tasksRouter.post("/queue/run", async (_req, res) => {
   res.json(await runSchedulerNow());
+});
+
+/** The PreToolUse hook that routes every session's test commands through `scripts/heavy-run`. */
+tasksRouter.get("/heavy-run/hook", async (_req, res) => {
+  res.json(await getHeavyRunHookStatus());
+});
+
+tasksRouter.put("/heavy-run/hook", async (req, res) => {
+  res.json(await setHeavyRunHookInstalled(extractBooleanField(req.body, "installed", true)));
 });
 
 // Tasks spanning several repos. `:key` may also be a ticket URL.

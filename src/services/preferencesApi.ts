@@ -13,6 +13,10 @@ export type OrchestratorPreferences = {
   maxSessions: number;
   minFreeMemoryPercent: number;
   maxUsagePercent: number;
+  /** `scripts/heavy-run` limits. Optional: older backend. */
+  testSlots?: number;
+  testMemoryMaxGb?: number;
+  testCpuPercent?: number;
 };
 
 export type UserPreferences = {
