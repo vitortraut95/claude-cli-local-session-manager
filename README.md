@@ -19,12 +19,25 @@ and clean them up. Everything runs on your machine — no external server involv
   `userPreferences.json`): the New task/New session modals invite you to clone it, you pick whole catalogs and/or single skills, and
   their skills get linked into `~/.claude/skills`; the hub is fast-forwarded on server start (when
   clean) and on "Update now", which also links new skills (Settings → "Team skills" to manage)
+- **Task queue** — paste a list of tickets (links or keys) that are ready to be worked on and pick
+  the repo(s) of each one (the first is the main repo). A scheduler then launches them on its own,
+  each exactly like "New task" (task branch off the repo's default, its own worktree, the default
+  prompt, a new terminal), one at a time while there's room: at most N live `claude` sessions
+  (default 6, every session counts), enough free RAM, no memory pressure (PSI) and Claude plan
+  usage under a limit. Pause/resume and the limits live in the queue window; a launched task gets
+  the "in progress" status. Kept in the local `tasks.json`
 - **Worktree → root** — copy a worktree's files into the project root to test locally, or move
-  the branch there for real once it's ready to push
+  the branch there for real once it's ready to push. One task per repo at a time: bringing another
+  task's worktree to a root still holding one
+  (files copied there, or its branch checked out) is refused until "Reset root" frees it (or the
+  root is cleaned / switched branch by hand)
 - **Multi-repo tasks** — a task (ticket key, e.g. `PROJ-123`) can span several repos: New task can
   create the same branch in extra repos (they join the one session via `--add-dir`), a card's "+"
   adds another repo later (then paste the `/add-dir` it shows), and each card shows the task's
   other repos. Everything is kept in the local `tasks.json`
+- **Work status** — an editable tag on each card (to do, in progress, waiting user, done) to pick
+  sessions back up another day; a task's status is shared by all its sessions (a session with no
+  task keeps its own), and the list can be filtered by it ("not done" = what's left to resume)
 - Full-text search across every prompt (also matches a session's task key), plus a project filter
 - Local nicknames, bulk delete, active-session protection (won't let two terminals fight over
   the same session)
@@ -97,6 +110,7 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | GET    | `/sessions/:id/prompts`               | Full, untruncated list of prompts for a session                                |
 | PATCH  | `/sessions/:id/nickname`              | Set or clear a session's local nickname                                        |
 | PATCH  | `/sessions/:id/branches`              | Set or clear a session's saved origin/destination branches                     |
+| PATCH  | `/sessions/:id/status`                | Set or clear (`null`) the work status of a session with no task                |
 | DELETE | `/sessions/:id`                       | Delete the session's `.jsonl` file                                             |
 | POST   | `/sessions/:id/continue`              | Open a terminal running `claude --resume <id>`                                 |
 | POST   | `/sessions/:id/vscode`                | Open the session's working directory in VS Code                                |
@@ -108,9 +122,14 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | POST   | `/tasks/preferences/import`           | Replace every setting with an imported `userPreferences.json`                  |
 | GET    | `/tasks/by-key/:key`                  | A task's link, repos (branch, base, folder) and sessions                       |
 | PUT    | `/tasks/by-key/:key`                  | Save the task's `{ link }`                                                     |
+| PUT    | `/tasks/by-key/:key/status`           | Set or clear (`null`) the task's work status `{ status }`                      |
 | POST   | `/tasks/by-key/:key/repos`            | Create the task's branch in another repo `{ folderPath, branchName?, ... }`    |
 | DELETE | `/tasks/by-key/:key/repos`            | Unlink `{ repoRoot, branch }` from the task (branch and worktree stay)         |
 | GET    | `/tasks/by-key/:key/pr-url`           | "Open PR" link for one of the task's repos (`?repoRoot=&branch=&base=`)        |
+| GET    | `/tasks/queue`                        | The task queue: `{ key, link, repos, addedAt }[]` (first repo = main)          |
+| PUT    | `/tasks/queue`                        | Replace the queue `{ entries: { key, link?, repos }[] }` (repos → repo roots)  |
+| GET    | `/tasks/queue/status`                 | Scheduler state: live sessions, free RAM, plan usage, what it's waiting on     |
+| POST   | `/tasks/queue/run`                    | Run a scheduler check now (launches the next ready task if there's room)       |
 | POST   | `/tasks/test-task`                    | Open a terminal running `/<taskTestSkill> <ticketLink>` ("Test task" button)   |
 | GET    | `/tasks/skills-hub/status`            | Team skills: hub location/branch, catalogs, link state per skill               |
 | GET    | `/tasks/skills-hub/skill`             | One hub skill's SKILL.md content (`?catalog=&name=`)                           |

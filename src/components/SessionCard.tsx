@@ -22,7 +22,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
 import * as sessionsApi from "../services/sessionsApi";
-import type { Session } from "../types/session";
+import type { Session, WorkStatus } from "../types/session";
 import { Button } from "./Button";
 import { ExportSessionModal } from "./ExportSessionModal";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -38,6 +38,7 @@ import { ResetRootConfirmModal } from "./ResetRootConfirmModal";
 import { SessionSizeMeter } from "./SessionSizeMeter";
 import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
+import { WorkStatusSelect } from "./WorkStatusSelect";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
@@ -56,6 +57,7 @@ type SessionCardProps = {
   onDeleteRequest: (session: Session) => void;
   onSetNickname: (session: Session, nickname: string) => void;
   onSetBranches: (session: Session, origin: string, destination: string) => void;
+  onSetStatus: (session: Session, status: WorkStatus | null) => void;
   onOpenInVSCode: (session: Session) => void;
   onOpenInCursor: (session: Session) => void;
   onOpenMissingWorktreeRootInVSCode: (session: Session) => void;
@@ -75,6 +77,7 @@ export function SessionCard({
   onDeleteRequest,
   onSetNickname,
   onSetBranches,
+  onSetStatus,
   onOpenInVSCode,
   onOpenInCursor,
   onOpenMissingWorktreeRootInVSCode,
@@ -244,6 +247,12 @@ export function SessionCard({
 
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-0.5">
+          <WorkStatusSelect
+            value={session.status ?? null}
+            taskKey={session.taskKey ?? null}
+            saving={pendingAction === "status"}
+            onChange={(status) => onSetStatus(session, status)}
+          />
           <h2
             className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
             title={session.title}

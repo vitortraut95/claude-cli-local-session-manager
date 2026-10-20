@@ -4,6 +4,7 @@ import type {
   Session,
   SessionImportPreview,
   SessionImportResult,
+  WorkStatus,
   WorktreeToRootPreview,
 } from "../types/session";
 import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
@@ -84,6 +85,12 @@ export async function setNickname(id: string, nickname: string): Promise<void> {
   );
 }
 
+/** For a session with no task (a task's status goes through `tasksApi.setTaskStatus`); null
+ *  clears it. */
+export async function setStatus(id: string, status: WorkStatus | null): Promise<void> {
+  await withServerErrorMessage(() => client.patch(`/${encodeURIComponent(id)}/status`, { status }));
+}
+
 /** Blank clears that side; both blank removes the saved branches. */
 export async function setBranches(id: string, origin: string, destination: string): Promise<void> {
   await withServerErrorMessage(() =>
@@ -136,10 +143,16 @@ export async function openWorktreeRootInVSCode(id: string): Promise<void> {
 
 /** Stashes every uncommitted change in the repo's main checkout; returns the stash ref (null if
  *  nothing was dirty). */
-export async function resetRootWorkingTree(id: string): Promise<{ stashRef: string | null }> {
+/** `force` (the standalone "Reset root") also frees a root another task holds; without it the
+ *  server refuses with `ROOT_IN_USE`. */
+export async function resetRootWorkingTree(
+  id: string,
+  force = false,
+): Promise<{ stashRef: string | null }> {
   const { data } = await withServerErrorMessage(() =>
     client.post<{ success: true; stashRef: string | null }>(
       `/${encodeURIComponent(id)}/worktree-to-root/reset-root`,
+      { force },
     ),
   );
   return { stashRef: data.stashRef };

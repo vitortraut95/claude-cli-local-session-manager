@@ -21,6 +21,18 @@ export type SkillsHubPreferences = {
   autoUpdateOnStart: boolean;
 };
 
+/** The task queue's scheduler (`taskSchedulerService`). Optional: older files lack it. */
+export type OrchestratorPreferences = {
+  /** Launch queued tasks on its own; false = queue paused. */
+  enabled: boolean;
+  /** Most `claude` sessions running at once (every live session counts, not only queued ones). */
+  maxSessions: number;
+  /** Nothing new starts while less than this % of RAM is available. */
+  minFreeMemoryPercent: number;
+  /** Nothing new starts while any Claude plan limit is at or above this %. */
+  maxUsagePercent: number;
+};
+
 export type UserPreferences = {
   defaultPrompt: string;
   /** The "New session" modal's pre-filled prompt. Optional: older files lack it (""). */
@@ -55,6 +67,7 @@ export type UserPreferences = {
   taskTestPermissionModeAuto: boolean;
   /** UI theme; null = follow the system. Optional: older files lack it. */
   theme: "light" | "dark" | null;
+  orchestrator: OrchestratorPreferences;
 };
 
 export type EnvPreviewTemplate = { label: string; url: string };
@@ -84,6 +97,12 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   taskTestSkill: "",
   taskTestPermissionModeAuto: true,
   theme: null,
+  orchestrator: {
+    enabled: true,
+    maxSessions: 6,
+    minFreeMemoryPercent: 20,
+    maxUsagePercent: 90,
+  },
 };
 
 function isLanguage(value: unknown): value is Language {
@@ -131,6 +150,38 @@ export function isEnvPreviews(value: unknown): value is EnvPreviews {
           typeof (item as Record<string, unknown>).label === "string" &&
           typeof (item as Record<string, unknown>).url === "string",
       ),
+  );
+}
+
+function isIntInRange(value: unknown, min: number, max: number): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
+}
+
+/** Each field falls back on its own, so a hand-edited file with one bad value keeps the rest. */
+function parseOrchestrator(value: unknown): OrchestratorPreferences {
+  const fallback = DEFAULT_PREFERENCES.orchestrator;
+  if (typeof value !== "object" || value === null) return fallback;
+  const raw = value as Record<string, unknown>;
+  return {
+    enabled: typeof raw.enabled === "boolean" ? raw.enabled : fallback.enabled,
+    maxSessions: isIntInRange(raw.maxSessions, 1, 50) ? raw.maxSessions : fallback.maxSessions,
+    minFreeMemoryPercent: isIntInRange(raw.minFreeMemoryPercent, 0, 90)
+      ? raw.minFreeMemoryPercent
+      : fallback.minFreeMemoryPercent,
+    maxUsagePercent: isIntInRange(raw.maxUsagePercent, 1, 100)
+      ? raw.maxUsagePercent
+      : fallback.maxUsagePercent,
+  };
+}
+
+export function isOrchestratorPreferences(value: unknown): value is OrchestratorPreferences {
+  if (typeof value !== "object" || value === null) return false;
+  const raw = value as Record<string, unknown>;
+  return (
+    typeof raw.enabled === "boolean" &&
+    isIntInRange(raw.maxSessions, 1, 50) &&
+    isIntInRange(raw.minFreeMemoryPercent, 0, 90) &&
+    isIntInRange(raw.maxUsagePercent, 1, 100)
   );
 }
 
@@ -208,6 +259,7 @@ function normalizePreferences(value: unknown): UserPreferences {
       parsed.theme === "light" || parsed.theme === "dark"
         ? parsed.theme
         : DEFAULT_PREFERENCES.theme,
+    orchestrator: parseOrchestrator(parsed.orchestrator),
   };
 }
 

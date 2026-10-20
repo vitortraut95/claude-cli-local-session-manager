@@ -60,7 +60,7 @@ export function ResetRootConfirmModal({ session, onClose }: ResetRootConfirmModa
   const handleConfirm = async () => {
     setResetting(true);
     try {
-      const { stashRef } = await sessionsApi.resetRootWorkingTree(session.id);
+      const { stashRef } = await sessionsApi.resetRootWorkingTree(session.id, true);
       showToast(
         stashRef
           ? t("resetRootConfirmModal.toast.resetWithStash", { stashRef })

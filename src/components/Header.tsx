@@ -4,6 +4,7 @@ import {
   FlaskConical,
   Globe,
   Import,
+  ListTodo,
   MessageSquarePlus,
   Plus,
   Settings,
@@ -23,6 +24,7 @@ import { NewSessionModal } from "./NewSessionModal";
 import { NewTaskModal } from "./NewTaskModal";
 import { SettingsModal } from "./SettingsModal";
 import { SetupModal } from "./SetupModal";
+import { TaskQueueModal } from "./TaskQueueModal";
 import { TestTaskModal } from "./TestTaskModal";
 import { SkillsHeaderButton } from "./SkillsHeaderButton";
 import { SkillsHubModal } from "./SkillsHubModal";
@@ -68,6 +70,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   const [showSettings, setShowSettings] = useState(false);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
   const [showTestTaskModal, setShowTestTaskModal] = useState(false);
+  const [showTaskQueueModal, setShowTaskQueueModal] = useState(false);
   // `taskTestSkill` ("" = "Test task" button hidden) and where its terminal opens (display only —
   // the server picks the first workspace dir that exists, else the home dir).
   const [taskTestSkill, setTaskTestSkill] = useState("");
@@ -115,6 +118,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     !showNewTaskModal &&
     !showNewSessionModal &&
     !showTestTaskModal &&
+    !showTaskQueueModal &&
     !showSkillsModal;
 
   // Only known once the skills status loaded (and on a backend that sends the list).
@@ -146,6 +150,13 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           />
           <Button onClick={() => setShowNewTaskModal(true)} icon={<Plus className="h-4 w-4" />}>
             {t("header.newTask")}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowTaskQueueModal(true)}
+            icon={<ListTodo className="h-4 w-4" />}
+          >
+            {t("header.taskQueue")}
           </Button>
           <Button
             variant="outline"
@@ -246,6 +257,12 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         onClose={() => setShowNewSessionModal(false)}
         onSessionCreated={onSessionCreated}
       />
+      {showTaskQueueModal && (
+        <TaskQueueModal
+          onClose={() => setShowTaskQueueModal(false)}
+          onSessionCreated={onSessionCreated}
+        />
+      )}
       {showTestTaskModal && taskTestSkill !== "" && (
         <TestTaskModal
           skill={taskTestSkill}

@@ -21,6 +21,7 @@ import {
   removeWorktreeAndCheckoutRoot,
   resetRootWorkingTree,
   setSessionNickname,
+  setSessionWorkStatus,
   setSessionBranches,
   startFreshSessionAtMissingWorktreeRoot,
   stopSiblingAndResume,
@@ -31,7 +32,7 @@ import {
   inspectSessionBundle,
 } from "../services/sessionTransferService.js";
 import { getSessionTask, setSessionTask } from "../services/taskGroupService.js";
-import { extractStringField } from "../utils/httpBody.js";
+import { extractBooleanField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
 import { sendErrorResponse } from "../utils/httpError.js";
 
 export const sessionsRouter = Router();
@@ -100,6 +101,11 @@ sessionsRouter.delete("/:id/branch", async (req, res) => {
 
 sessionsRouter.patch("/:id/nickname", async (req, res) => {
   await setSessionNickname(req.params.id, extractStringField(req.body, "nickname"));
+  res.json({ success: true });
+});
+
+sessionsRouter.patch("/:id/status", async (req, res) => {
+  await setSessionWorkStatus(req.params.id, parseWorkStatus(req.body));
   res.json({ success: true });
 });
 
@@ -179,7 +185,10 @@ sessionsRouter.get("/:id/worktree-to-root/root-status", async (req, res) => {
 });
 
 sessionsRouter.post("/:id/worktree-to-root/reset-root", async (req, res) => {
-  const stashRef = await resetRootWorkingTree(req.params.id);
+  const stashRef = await resetRootWorkingTree(
+    req.params.id,
+    extractBooleanField(req.body, "force", false),
+  );
   res.json({ success: true, stashRef });
 });
 

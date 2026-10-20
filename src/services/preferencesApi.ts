@@ -7,6 +7,14 @@ const client = axios.create({
 
 export type Language = "en" | "pt";
 
+/** The task queue's scheduler; mirrors the server's `OrchestratorPreferences`. */
+export type OrchestratorPreferences = {
+  enabled: boolean;
+  maxSessions: number;
+  minFreeMemoryPercent: number;
+  maxUsagePercent: number;
+};
+
 export type UserPreferences = {
   defaultPrompt: string;
   /** NewSessionModal's pre-filled prompt. Optional: older backend. */
@@ -41,6 +49,8 @@ export type UserPreferences = {
   taskTestPermissionModeAuto?: boolean;
   /** UI theme; null = follow the system. Optional: older backend. */
   theme?: "light" | "dark" | null;
+  /** Task queue scheduler. Optional: older backend. */
+  orchestrator?: OrchestratorPreferences;
 };
 
 export type EnvPreviewTemplate = { label: string; url: string };
