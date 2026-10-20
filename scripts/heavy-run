@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # Usage: heavy-run <command> [args...]
 #
-# Runs a heavy command (unit tests, mostly) so parallel Claude sessions can't freeze the machine:
+# Runs a heavy command (tests, typecheck, lint, builds) so parallel Claude sessions can't freeze the machine:
 #   - at most N of them at once across every session (`flock` slots — released by the kernel when
 #     the process ends, so a killed run never leaves a slot taken);
 #   - inside its own cgroup (`systemd-run --user --scope`) with a RAM and CPU cap: a run that goes
-#     over is killed on its own (exit 137) instead of dragging the whole machine into swap.
+#     over is killed on its own (exit 137) instead of dragging the whole machine into swap;
+#   - with Node's heap capped below that (NODE_OPTIONS --max-old-space-size), so tsc/jest fail with
+#     a clear "heap out of memory" instead of crawling in GC right at the cgroup limit;
+#   - at low CPU/IO priority (nice, ionice, cgroup weights), so the desktop stays responsive;
+#   - only once enough RAM is actually free and the machine isn't under memory pressure.
 # Limits come from `orchestrator` in this app's userPreferences.json (Task queue window).
-# Required by the PreToolUse hook `heavy-run-hook.mjs` for test commands.
+# Required by the PreToolUse hook `heavy-run-hook.mjs` for those commands.
 set -u
 
 if [ "$#" -eq 0 ]; then
@@ -46,22 +50,62 @@ while :; do
   fi
   sleep 5
 done
-$waited && echo "heavy-run: got a slot, starting." >&2
+$waited && echo "heavy-run: got a slot." >&2
+
+# Holding the slot, wait until the cap's worth of RAM is free and nothing is stalling on memory
+# (PSI some avg10 under 10%) — another app (browser, dev server) may be using it.
+need_kb=$((MEMORY_GB * 1024 * 1024))
+mem_waited=false
+while :; do
+  available_kb=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || echo "$need_kb")
+  pressure=$(awk -F'[ =]' '/^some/ {print int($3)}' /proc/pressure/memory 2>/dev/null || echo 0)
+  if [ "${available_kb:-0}" -ge "$need_kb" ] && [ "${pressure:-0}" -lt 10 ]; then
+    break
+  fi
+  if ! $mem_waited; then
+    echo "heavy-run: waiting for ${MEMORY_GB} GB of free RAM (now $((available_kb / 1024 / 1024)) GB," \
+      "memory pressure ${pressure}%)..." >&2
+    mem_waited=true
+  fi
+  sleep 5
+done
+$mem_waited && echo "heavy-run: memory is free, starting." >&2
+
+# Node's heap at ~85% of the cap; a larger --max-old-space-size the caller set is lowered to it.
+heap_mb=$((MEMORY_GB * 1024 * 85 / 100))
+node_options="${NODE_OPTIONS:-}"
+if [[ "$node_options" =~ --max-old-space-size=([0-9]+) ]]; then
+  if [ "${BASH_REMATCH[1]}" -gt "$heap_mb" ]; then
+    node_options="${node_options//--max-old-space-size=${BASH_REMATCH[1]}/--max-old-space-size=$heap_mb}"
+  fi
+else
+  node_options="${node_options:+$node_options }--max-old-space-size=$heap_mb"
+fi
+export NODE_OPTIONS="$node_options"
+
+low_priority=(nice -n 10)
+command -v ionice >/dev/null 2>&1 && low_priority+=(ionice -c 2 -n 7)
 
 if command -v systemd-run >/dev/null 2>&1 &&
   systemd-run --user --scope --quiet true >/dev/null 2>&1; then
   systemd-run --user --scope --quiet \
     -p "MemoryMax=${MEMORY_GB}G" -p MemorySwapMax=0 -p "CPUQuota=${CPU_PERCENT}%" \
-    -- "$@"
+    -p CPUWeight=20 -p IOWeight=20 \
+    -- "${low_priority[@]}" "$@"
   status=$?
 else
   echo "heavy-run: systemd-run unavailable — running without a memory/CPU cap." >&2
-  "$@"
+  "${low_priority[@]}" "$@"
   status=$?
 fi
 
 if [ "$status" -eq 137 ]; then
   echo "heavy-run: killed for going over the ${MEMORY_GB} GB memory cap. Run fewer workers" \
     "(e.g. jest/vitest --maxWorkers=2, or a single test file) — this is not a test failure." >&2
+elif [ "$status" -eq 134 ]; then
+  # V8 aborts (SIGABRT) on "JavaScript heap out of memory".
+  echo "heavy-run: aborted (134) — most likely the ${heap_mb} MB Node heap cap (from the" \
+    "${MEMORY_GB} GB RAM cap in the Task queue window), not a code error. Run something narrower," \
+    "or raise the cap there." >&2
 fi
 exit "$status"

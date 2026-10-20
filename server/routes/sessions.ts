@@ -20,6 +20,8 @@ import {
   openWorktreeRootInVSCode,
   removeWorktreeAndCheckoutRoot,
   resetRootWorkingTree,
+  resumeOpenTasks,
+  focusSessionInGrid,
   setSessionNickname,
   setSessionWorkStatus,
   setSessionBranches,
@@ -63,6 +65,11 @@ const rawBundleBody = express.raw({ type: "application/octet-stream", limit: "1g
 function bundleFromBody(body: unknown): Buffer {
   return Buffer.isBuffer(body) ? body : Buffer.alloc(0);
 }
+
+/** Resumes the latest session of every in-progress / waiting task with nothing running. */
+sessionsRouter.post("/resume-open", async (_req, res) => {
+  res.json(await resumeOpenTasks());
+});
 
 sessionsRouter.post("/import/inspect", rawBundleBody, async (req, res) => {
   const preview = await inspectSessionBundle(bundleFromBody(req.body));
@@ -200,6 +207,11 @@ sessionsRouter.post("/:id/worktree-to-root/copy", async (req, res) => {
 sessionsRouter.post("/:id/worktree-to-root/remove-and-checkout", async (req, res) => {
   const { previousRootBranch, newBranch } = await removeWorktreeAndCheckoutRoot(req.params.id);
   res.json({ success: true, previousRootBranch, newBranch });
+});
+
+/** Shows the grid pane running this session; `{ focused: false }` when there's none. */
+sessionsRouter.post("/:id/grid-focus", async (req, res) => {
+  res.json({ focused: await focusSessionInGrid(req.params.id) });
 });
 
 sessionsRouter.post("/:id/vscode", async (req, res) => {

@@ -44,6 +44,31 @@ export const workStatus = {
     "Worktree kept: its session is still open — close it, then use Cleanup to remove the worktree.",
     "Worktree mantido: a sessão dele ainda está aberta — feche e use a Limpeza pra remover o worktree.",
   ),
+  "sessionsPage.resumeOpen": dict(
+    "Resume open tasks ({count})",
+    "Retomar não concluídas ({count})",
+  ),
+  "sessionsPage.resumeOpen.tooltip": dict(
+    'Resumes the latest session of every task "In progress" or "Waiting user" that has nothing running — in the grid when that\'s where sessions open — up to the session limit. Tasks never started ("To do") aren\'t resumed.',
+    'Retoma a sessão mais recente de cada tarefa "Em andamento" ou "Aguardando usuário" que não tem nada rodando — na grade, se é lá que as sessões abrem — até o limite de sessões. Tarefas que nunca começaram ("A fazer") não são retomadas.',
+  ),
+  "useSessions.resumeOpen.done": dict(
+    "{count} session(s) resumed.",
+    "{count} sessão(ões) retomada(s).",
+  ),
+  "useSessions.resumeOpen.limit": dict(
+    "{count} left out: the session limit was reached — close one and click again.",
+    "{count} ficaram de fora: limite de sessões atingido — feche uma e clique de novo.",
+  ),
+  "useSessions.resumeOpen.failed": dict(
+    "{count} couldn't be resumed: {message}",
+    "{count} não puderam ser retomadas: {message}",
+  ),
+  "useSessions.shownInGrid": dict(
+    "Already running — shown in the grid.",
+    "Já está rodando — mostrada na grade.",
+  ),
+  "useSessions.resumeOpen.none": dict("Nothing to resume.", "Nada pra retomar."),
   "workStatusFilter.ariaLabel": dict("Filter by status", "Filtrar por status"),
   "workStatusFilter.all": dict("All statuses", "Todos os status"),
   "workStatusFilter.open": dict("Not done (to resume)", "Não concluídas (pra retomar)"),

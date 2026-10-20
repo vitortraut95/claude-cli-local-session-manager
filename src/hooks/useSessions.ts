@@ -435,6 +435,55 @@ export function useSessions() {
    * Refetches the list before resuming (the loaded one may be stale). If another session is active
    * in the same directory, or this one is already open, sets `resumeConflict` instead of resuming.
    */
+  /** Mirrors `resumeOpenTasks` on the server: one per task (its latest session), in progress or
+   *  waiting on the user, with nothing of it running. */
+  const resumableCount = useMemo(() => {
+    const groupOf = (s: Session) => s.taskKey ?? `session:${s.id}`;
+    const active = new Set(sessions.filter((s) => s.isActive).map(groupOf));
+    const seen = new Set<string>();
+    let count = 0;
+    for (const s of [...sessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))) {
+      const group = groupOf(s);
+      if (seen.has(group)) continue;
+      seen.add(group);
+      if (active.has(group) || s.directoryMissing) continue;
+      if (s.status === "in_progress" || s.status === "waiting_user") count += 1;
+    }
+    return count;
+  }, [sessions]);
+
+  const [resumingOpen, setResumingOpen] = useState(false);
+
+  const resumeOpenTasks = useCallback(async () => {
+    setResumingOpen(true);
+    try {
+      const { resumed, skippedForLimit, failed } = await sessionsApi.resumeOpenTasks();
+      if (resumed.length > 0) {
+        showToast(t("useSessions.resumeOpen.done", { count: resumed.length }), "success");
+      }
+      if (skippedForLimit > 0) {
+        showToast(t("useSessions.resumeOpen.limit", { count: skippedForLimit }), "error");
+      }
+      if (failed.length > 0) {
+        showToast(
+          t("useSessions.resumeOpen.failed", {
+            count: failed.length,
+            message: failed[0]?.message ?? "",
+          }),
+          "error",
+        );
+      }
+      if (resumed.length === 0 && skippedForLimit === 0 && failed.length === 0) {
+        showToast(t("useSessions.resumeOpen.none"), "success");
+      }
+      refreshSoon();
+    } catch (err) {
+      showToast(resolveApiErrorMessage(err, t, "useSessions.resumeError"), "error");
+    } finally {
+      setResumingOpen(false);
+    }
+  }, [showToast, t, refreshSoon]);
+
   const resumeSession = useCallback(
     async (id: string) => {
       setPending(id, "continue");
@@ -448,6 +497,12 @@ export function useSessions() {
                 (s) => s.id !== id && s.workingDirectory === target.workingDirectory && s.isActive,
               )
             : undefined;
+
+        // Already running in the tmux grid: just show its pane.
+        if (target?.isActive && (await sessionsApi.focusSessionInGrid(id).catch(() => false))) {
+          showToast(t("useSessions.shownInGrid"), "success");
+          return;
+        }
 
         if (target && sibling) {
           setResumeConflict({ target, sibling });
@@ -598,6 +653,9 @@ export function useSessions() {
     removeSession,
     removeSessions,
     resumeSession,
+    resumableCount,
+    resumeOpenTasks,
+    resumingOpen,
     setNickname,
     setBranches,
     setStatus,

@@ -43,6 +43,30 @@ export async function continueSession(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/continue`));
 }
 
+/** Shows the tmux grid pane already running this session; false when the grid isn't the layout
+ *  or no pane runs it. */
+export async function focusSessionInGrid(id: string): Promise<boolean> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ focused: boolean }>(`/${encodeURIComponent(id)}/grid-focus`),
+  );
+  return data.focused;
+}
+
+export type ResumeOpenResult = {
+  resumed: { id: string; taskKey: string | null }[];
+  skippedForLimit: number;
+  failed: { id: string; message: string }[];
+};
+
+/** Resumes the latest session of every in-progress / waiting task with nothing running, up to
+ *  the session limit (in the grid when that's the terminal layout). */
+export async function resumeOpenTasks(): Promise<ResumeOpenResult> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<ResumeOpenResult>("/resume-open"),
+  );
+  return data;
+}
+
 export async function openInVSCode(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/vscode`));
 }
