@@ -13,7 +13,10 @@ and clean them up. Everything runs on your machine — no external server involv
   task, the queue, New session, Resume) becomes a pane of one [Limux](https://github.com/am-will/limux)
   workspace, "Claude — tarefas", in its own window, instead of a tab of its own; a pane closes when
   Claude quits, and "Resume" on a session already there focuses its pane. Needs Limux 0.1.33+;
-  closing the Limux window ends the sessions in it (they stay resumable)
+  closing the Limux window ends the sessions in it (they stay resumable). Reopened, Limux restores
+  its panes as empty shells: "Open grid" resumes each session into the idle pane of a tab named
+  after its task (one dragged out of the grid), else an idle grid pane, and closes the grid's
+  leftover empty panes
 - **History** — every step of the task flow is appended to the local, gitignored `history.jsonl`
   (one JSON event per line: queue added/updated/removed/retried, scheduler blocked/unblocked and
   why, launch started/launched/failed with durations, status changes and who made them, root

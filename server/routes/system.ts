@@ -2,7 +2,12 @@ import { Router } from "express";
 import { getUpdateJobStatus, getUpdateStatus, startUpdate } from "../services/updateService.js";
 import { getClaudeUsageStatus } from "../services/usageService.js";
 import { resumeOpenTasks } from "../services/sessionService.js";
-import { getGridStatus, isLimuxAvailable, presentLimuxGrid } from "../services/limuxGridService.js";
+import {
+  closeIdleGridPanes,
+  getGridStatus,
+  isLimuxAvailable,
+  presentLimuxGrid,
+} from "../services/limuxGridService.js";
 import { AppError } from "../utils/httpError.js";
 
 export const systemRouter = Router();
@@ -24,7 +29,10 @@ systemRouter.post("/terminal-grid/open", async (_req, res) => {
     throw new AppError("LIMUX_NOT_INSTALLED", "Limux isn't installed (github.com/am-will/limux).");
   }
   await presentLimuxGrid();
-  res.json(await resumeOpenTasks());
+  const result = await resumeOpenTasks();
+  // Panes Limux restored empty and no session took: only clutter now.
+  await closeIdleGridPanes().catch(() => 0);
+  res.json(result);
 });
 
 systemRouter.get("/update-status", async (_req, res) => {
