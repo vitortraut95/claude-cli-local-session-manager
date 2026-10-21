@@ -390,6 +390,7 @@ function sessionPreviews(session: Session, servers: PreviewServer[]): SessionPre
         port: server.port,
         url: server.url,
         inWorktree: folder.includes(`${path.sep}.claude${path.sep}worktrees${path.sep}`),
+        running: server.running,
       });
     }
   }

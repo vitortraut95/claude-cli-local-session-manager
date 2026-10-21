@@ -295,4 +295,8 @@ export const apiErrors = {
     "Skill not found in the skills hub (maybe removed by the last update).",
     "Skill não encontrada no hub de skills (talvez removida na última atualização).",
   ),
+  "apiError.previewLimit": dict(
+    "The preview limit is reached — stop another preview first (limit in the Task queue window).",
+    "O limite de previews foi atingido — pare outro preview antes (limite na janela da fila).",
+  ),
 };

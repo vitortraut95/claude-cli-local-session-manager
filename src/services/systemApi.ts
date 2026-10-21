@@ -88,7 +88,17 @@ export async function openTerminalGrid(): Promise<ResumeOpenResult> {
   return data;
 }
 
-/** Stops a task worktree's preview (container removed / process ended). */
+/** Stops a task worktree's preview (container stopped / process ended). */
 export async function stopPreview(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/previews/${encodeURIComponent(id)}/stop`));
+}
+
+/** Removes a task worktree's preview container (running or stopped). */
+export async function removePreview(id: string): Promise<void> {
+  await withServerErrorMessage(() => client.post(`/previews/${encodeURIComponent(id)}/remove`));
+}
+
+/** Starts a task worktree's stopped preview container again. */
+export async function startPreview(id: string): Promise<void> {
+  await withServerErrorMessage(() => client.post(`/previews/${encodeURIComponent(id)}/start`));
 }

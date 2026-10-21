@@ -131,7 +131,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     testSlots: 1,
     testMemoryMaxGb: 6,
     testCpuPercent: 400,
-    previewSlots: 3,
+    previewSlots: 5,
     previewMemoryMaxGb: 4,
   },
   worktreeSetup: {},

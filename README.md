@@ -20,9 +20,9 @@ and clean them up. Everything runs on your machine — no external server involv
 - **Preview URLs** — each card lists the local URLs serving its folder and its task's worktrees,
   found with no config: docker dev-server containers (declaring PORT / BASE_URL / `-p`, tied by
   their bind mounts or compose dir — e.g. a worktree's own `mainsite<country>-<task>` container)
-  and processes listening from inside the folder. A task worktree's previews can be stopped from
-  the card, and stop by themselves (container removed / process ended) when the task is marked
-  done or its task checklist (`~/.cache/task-checklists/<KEY>.md`) has nothing left unchecked
+  and processes listening from inside the folder. A task worktree's container can be stopped
+  (frees its memory, stays on the card), started again or removed from the card; otherwise it keeps
+  running until the task is marked done, which removes it
 - **History** — every step of the task flow is appended to the local, gitignored `history.jsonl`
   (one JSON event per line: queue added/updated/removed/retried, scheduler blocked/unblocked and
   why, launch started/launched/failed with durations, status changes and who made them, root
@@ -61,8 +61,9 @@ and clean them up. Everything runs on your machine — no external server involv
   caps Node's heap at ~85% of the RAM cap — so a runaway run fails alone (137 = RAM cap, 134 =
   heap cap) instead of freezing the machine. Dev-server containers (`docker run … next dev`,
   `yarn dev`, vite, storybook) are blocked too and started as `heavy-run --preview docker run …`:
-  at most N previews at once across sessions (default 3, counted by a container label), each with
-  a RAM cap (default 4 GB) and 2 CPUs. A run or preview that waits over 15 min gives up (exit 75,
+  at most N previews at once across sessions (default 5, counted by a container label), each with
+  a RAM cap (default 4 GB) and 2 CPUs. Each task keeps one preview running for you to validate
+  its worktree. A run or preview that waits over 15 min gives up (exit 75,
   nothing ran) instead of hanging the session
 - **Task worktree setup** — per repo (Settings → "Task worktree setup"), a new task worktree gets
   a symlink to each of the main checkout's `node_modules` (root and workspaces) and a copy of its
@@ -181,7 +182,9 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | POST   | `/tasks/queue/run`                    | Run a scheduler check now (launches the next ready task if there's room)       |
 | GET    | `/tasks/heavy-run/hook`               | Whether the heavy-tests hook is in `~/.claude/settings.json`                   |
 | PUT    | `/tasks/heavy-run/hook`               | Install/remove it `{ installed }` (only that hook's entry is touched)          |
-| POST   | `/system/previews/:id/stop`           | Stop a task worktree's preview (container removed / process ended)             |
+| POST   | `/system/previews/:id/stop`           | Stop a task worktree's preview (container stopped / process ended)             |
+| POST   | `/system/previews/:id/start`          | Start a task worktree's stopped preview container again (409 at the limit)     |
+| POST   | `/system/previews/:id/remove`         | Remove a task worktree's preview container                                     |
 | GET    | `/system/terminal-grid`               | The Limux grid: Limux installed, running, pane count                           |
 | POST   | `/system/terminal-grid/open`          | Bring Limux up and resume every open task into the grid                        |
 | GET    | `/cleanup/worktree-for-session/:id`   | What removing a session's worktree would mean now (finding, or why not)        |

@@ -366,7 +366,7 @@ export function SessionCard({
           )}
           <PreviewLinks
             previews={session.previews ?? []}
-            onStopped={() => onWorktreeSyncComplete(session)}
+            onChanged={() => onWorktreeSyncComplete(session)}
           />
           <TaskReposLine
             session={session}

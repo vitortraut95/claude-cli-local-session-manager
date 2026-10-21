@@ -82,9 +82,12 @@ if (isPreview) {
       `don't freeze the machine: it waits while too many previews already run across sessions, ` +
       `and caps each one's RAM/CPU. Rerun it as:\n\n` +
       `  ${HEAVY_RUN} --preview docker run <the same options, image and command>\n\n` +
-      `Don't set --memory/--cpus yourself. Start one preview at a time (a single country/site ` +
-      `unless the task needs more) and stop it (docker rm -f <name>) as soon as you're done ` +
-      `checking it. Exit 75 = gave up waiting for a free preview slot; nothing started.\n`,
+      `Don't set --memory/--cpus yourself. Keep one preview per task running when you're done — ` +
+      `the task's main country/site, on a free port — since that's how the user validates the ` +
+      `worktree, and say its URL; the app removes it when the task is marked done. Never stop it ` +
+      `to free memory for tests (heavy-run already caps those). Extra previews (other ` +
+      `countries): start, check, then stop them (docker stop <name>, not rm). Exit 75 = gave up ` +
+      `waiting for a free preview slot; nothing started.\n`,
   );
   process.exit(2);
 }

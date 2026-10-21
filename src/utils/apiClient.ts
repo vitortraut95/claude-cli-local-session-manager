@@ -56,6 +56,7 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   SKILLS_DIR_UNWRITABLE: "apiError.skillsDirUnwritable",
   SKILL_NOT_FOUND: "apiError.skillNotFound",
   SKILLS_FOLDER_OPEN_FAILED: "apiError.skillsFolderOpenFailed",
+  PREVIEW_LIMIT: "apiError.previewLimit",
   // SKILLS_HUB_CLONE_FAILED unmapped: its message carries git's stderr, the useful part.
   USAGE_NO_CREDENTIALS: "apiError.usageNoCredentials",
   USAGE_CREDENTIALS_UNREADABLE: "apiError.usageCredentialsUnreadable",
