@@ -32,6 +32,7 @@ import {
   resolveBaseBranch,
 } from "../services/taskService.js";
 import { getHeavyRunHookStatus, setHeavyRunHookInstalled } from "../services/heavyRunService.js";
+import { stopPreviewsIn, taskWorktrees } from "../services/previewService.js";
 import { getTaskQueue, saveTaskQueue } from "../services/taskQueueService.js";
 import { getSchedulerStatus, runSchedulerNow } from "../services/taskSchedulerService.js";
 import { extractBooleanField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
@@ -278,7 +279,15 @@ tasksRouter.put("/by-key/:key", async (req, res) => {
 });
 
 tasksRouter.put("/by-key/:key/status", async (req, res) => {
-  await setTaskStatus(parseTaskKeyParam(req.params.key), parseWorkStatus(req.body));
+  const key = parseTaskKeyParam(req.params.key);
+  const status = parseWorkStatus(req.body);
+  await setTaskStatus(key, status);
+  if (status === "done") {
+    // Done: its worktrees' preview servers only hold memory now (background, best-effort).
+    void taskWorktrees(key)
+      .then((worktrees) => stopPreviewsIn(worktrees, "done", key))
+      .catch(() => undefined);
+  }
   res.json({ success: true });
 });
 

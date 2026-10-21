@@ -87,3 +87,8 @@ export async function openTerminalGrid(): Promise<ResumeOpenResult> {
   );
   return data;
 }
+
+/** Stops a task worktree's preview (container removed / process ended). */
+export async function stopPreview(id: string): Promise<void> {
+  await withServerErrorMessage(() => client.post(`/previews/${encodeURIComponent(id)}/stop`));
+}
