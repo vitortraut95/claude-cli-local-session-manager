@@ -8,7 +8,8 @@ import {
   isLimuxAvailable,
   presentLimuxGrid,
 } from "../services/limuxGridService.js";
-import { AppError } from "../utils/httpError.js";
+import { stopPreviewById } from "../services/previewService.js";
+import { AppError, NotFoundError } from "../utils/httpError.js";
 
 export const systemRouter = Router();
 
@@ -33,6 +34,17 @@ systemRouter.post("/terminal-grid/open", async (_req, res) => {
   // Panes Limux restored empty and no session took: only clutter now.
   await closeIdleGridPanes().catch(() => 0);
   res.json(result);
+});
+
+/** The card's stop button on a task worktree's preview (container removed / process ended). */
+systemRouter.post("/previews/:id/stop", async (req, res) => {
+  if (!(await stopPreviewById(req.params.id))) {
+    throw new NotFoundError(
+      "PREVIEW_NOT_FOUND",
+      "No running preview of a task worktree by that id.",
+    );
+  }
+  res.json({ success: true });
 });
 
 systemRouter.get("/update-status", async (_req, res) => {

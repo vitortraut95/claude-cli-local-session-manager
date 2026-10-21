@@ -50,6 +50,21 @@ export type Session = {
   /** `history.jsonl` has events tied to this session or its task (the card's "info"). Optional:
    *  older backend. */
   hasHistory?: boolean;
+  /** Local preview servers serving this session's folder or its task's worktrees. Optional:
+   *  older backend. */
+  previews?: SessionPreview[];
+};
+
+/** Mirrors `server/types/session.ts`. */
+export type SessionPreview = {
+  kind: "docker" | "process";
+  /** Container name, or pid. */
+  id: string;
+  name: string;
+  port: number;
+  url: string;
+  /** Serves a task worktree (stoppable from the card), not a repo's main checkout. */
+  inWorktree: boolean;
 };
 
 /** One repo/branch of a multi-repo task — mirrors `server/utils/taskRepos.ts`. */

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { stopPreviewsOfCompletedChecklists } from "./previewService.js";
 import { addRepoToTask } from "./taskGroupService.js";
 import { getUserPreferences, type UserPreferences } from "./preferencesService.js";
 import { directoryExists, getActiveResumeSessionIds } from "./sessionService.js";
@@ -333,8 +334,24 @@ async function tick(): Promise<void> {
   }
 }
 
+/** Checklist-complete previews are looked for every few ticks (one `docker ps` when none). */
+const PREVIEW_SWEEP_EVERY_TICKS = 4;
+let ticksSincePreviewSweep = 0;
+
+function sweepPreviews(): void {
+  ticksSincePreviewSweep += 1;
+  if (ticksSincePreviewSweep < PREVIEW_SWEEP_EVERY_TICKS) return;
+  ticksSincePreviewSweep = 0;
+  void stopPreviewsOfCompletedChecklists().catch((err: unknown) =>
+    console.warn("[scheduler] Preview sweep failed:", err),
+  );
+}
+
 export function startTaskScheduler(): void {
-  setInterval(() => void tick(), TICK_MS);
+  setInterval(() => {
+    void tick();
+    sweepPreviews();
+  }, TICK_MS);
   void tick();
 }
 

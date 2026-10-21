@@ -40,6 +40,7 @@ import { ResetRootConfirmModal } from "./ResetRootConfirmModal";
 import { SessionSizeMeter } from "./SessionSizeMeter";
 import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
+import { PreviewLinks } from "./PreviewLinks";
 import { TaskHistoryModal } from "./TaskHistoryModal";
 import { WorkStatusSelect } from "./WorkStatusSelect";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
@@ -363,6 +364,10 @@ export function SessionCard({
               </Tooltip>
             </div>
           )}
+          <PreviewLinks
+            previews={session.previews ?? []}
+            onStopped={() => onWorktreeSyncComplete(session)}
+          />
           <TaskReposLine
             session={session}
             onFilterByTask={onFilterByTask}

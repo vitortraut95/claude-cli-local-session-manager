@@ -46,6 +46,19 @@ export type Session = {
   status?: "todo" | "in_progress" | "waiting_user" | "done" | null;
   /** `history.jsonl` has events tied to this session or its task (the card's "info"). */
   hasHistory?: boolean;
+  /** Local preview servers (docker containers / listening processes) serving this session's
+   *  folder or its task's worktrees — the card's URLs. */
+  previews?: SessionPreview[];
+};
+
+export type SessionPreview = {
+  kind: "docker" | "process";
+  id: string;
+  name: string;
+  port: number;
+  url: string;
+  /** Serves a task worktree (stoppable from the card), not a repo's main checkout. */
+  inWorktree: boolean;
 };
 
 /** One repo/branch of a multi-repo task — mirrors `server/utils/taskRepos.ts`. */

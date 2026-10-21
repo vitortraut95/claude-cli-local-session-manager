@@ -3,7 +3,18 @@ import { accessSync, constants, realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { RootStatus, Session, WorktreeToRootPreview } from "../types/session.js";
+import type {
+  RootStatus,
+  Session,
+  SessionPreview,
+  WorktreeToRootPreview,
+} from "../types/session.js";
+import {
+  listPreviewServers,
+  previewsFor,
+  stopPreviewsIn,
+  type PreviewServer,
+} from "./previewService.js";
 import {
   findJsonlFiles,
   forgetCachedSession,
@@ -347,14 +358,41 @@ async function listSessionsUncached(): Promise<Session[]> {
 
   // Second pass: a task's repos depend on every session carrying its key.
   const reposByTask = collectTaskRepos(store, decorated);
-  const history = await readHistory();
+  const [history, servers] = await Promise.all([readHistory(), listPreviewServers()]);
   return decorated.map((session) => {
     const withRepos = session.taskKey
       ? { ...session, taskRepos: reposByTask.get(session.taskKey) ?? [] }
       : session;
     const target = historyTargetOf(withRepos);
-    return { ...withRepos, hasHistory: history.some((event) => belongsTo(event, target)) };
+    return {
+      ...withRepos,
+      hasHistory: history.some((event) => belongsTo(event, target)),
+      previews: sessionPreviews(withRepos, servers),
+    };
   });
+}
+
+/** Previews serving the session's folder, plus its task's other worktrees (a multi-repo task's
+ *  cart preview shows on its card too). */
+function sessionPreviews(session: Session, servers: PreviewServer[]): SessionPreview[] {
+  if (servers.length === 0 || session.directoryMissing) return [];
+  const folders = new Set<string>();
+  if (session.workingDirectory) folders.add(session.workingDirectory);
+  for (const repo of session.taskRepos ?? []) if (repo.worktreePath) folders.add(repo.worktreePath);
+  const found = new Map<string, SessionPreview>();
+  for (const folder of folders) {
+    for (const server of previewsFor(servers, folder)) {
+      found.set(server.id, {
+        kind: server.kind,
+        id: server.id,
+        name: server.name,
+        port: server.port,
+        url: server.url,
+        inWorktree: folder.includes(`${path.sep}.claude${path.sep}worktrees${path.sep}`),
+      });
+    }
+  }
+  return [...found.values()].sort((a, b) => a.port - b.port);
 }
 
 function historyTargetOf(session: Session): HistoryTarget {
@@ -539,6 +577,11 @@ export async function setSessionNickname(id: string, nickname: string): Promise<
 export async function setSessionWorkStatus(id: string, status: WorkStatus | null): Promise<void> {
   if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
   await setSessionStatus(id, status);
+  if (status === "done") {
+    // Done: its worktree's preview servers only hold memory now (background, best-effort).
+    const cwd = await findSessionCwd(id);
+    if (cwd) void stopPreviewsIn([cwd], "done").catch(() => undefined);
+  }
 }
 
 /** Local only (`tasks.json`), so no active-session gate. */
