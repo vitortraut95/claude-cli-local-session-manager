@@ -93,6 +93,10 @@ export const taskQueue = {
     "Waiting: the session limit is reached — close a finished session to free a slot.",
     "Aguardando: limite de sessões atingido — feche uma sessão terminada pra liberar vaga.",
   ),
+  "scheduler.blocked.recentLaunch": dict(
+    "Waiting: a task opened less than 5 min ago — its memory use shows up before the next one starts.",
+    "Aguardando: uma tarefa abriu há menos de 5 min — o uso de memória dela aparece antes da próxima começar.",
+  ),
   "scheduler.blocked.lowMemory": dict(
     "Waiting: free RAM is below the minimum.",
     "Aguardando: RAM livre abaixo do mínimo.",
@@ -144,9 +148,14 @@ export const taskQueue = {
   "scheduler.setting.testSlots": dict("Test runs at once", "Testes simultâneos"),
   "scheduler.setting.testMemory": dict("RAM cap per run (GB)", "Limite de RAM por teste (GB)"),
   "scheduler.setting.testCpu": dict("CPU cap per run (%)", "Limite de CPU por teste (%)"),
+  "scheduler.setting.previewSlots": dict("Previews at once", "Previews simultâneos"),
+  "scheduler.setting.previewMemory": dict(
+    "RAM cap per preview (GB)",
+    "Limite de RAM por preview (GB)",
+  ),
   "scheduler.tests.explanation": dict(
-    "A PreToolUse hook in {settings} blocks a test command (jest, vitest, yarn/npm test…) run directly and has Claude rerun it as {path} <command>: it waits for a free slot across every session and runs inside its own cgroup — going over the RAM cap kills just that run (exit 137). 100% CPU = one core.",
-    "Um hook PreToolUse em {settings} bloqueia um comando de teste (jest, vitest, yarn/npm test…) rodado direto e faz o Claude rodar de novo como {path} <comando>: ele espera uma vaga livre entre todas as sessões e roda num cgroup próprio — passar do limite de RAM encerra só aquele teste (saída 137). 100% de CPU = um núcleo.",
+    "A PreToolUse hook in {settings} blocks a test command (jest, vitest, yarn/npm test…) run directly and has Claude rerun it as {path} <command>: it waits for a free slot across every session and runs inside its own cgroup — going over the RAM cap kills just that run (exit 137). It also has dev-server containers (docker run … next dev) started as {path} --preview docker run …: at most that many previews at once across sessions, each with its RAM cap and 2 CPUs. A run or preview that waits over 15 min gives up (exit 75). 100% CPU = one core.",
+    "Um hook PreToolUse em {settings} bloqueia um comando de teste (jest, vitest, yarn/npm test…) rodado direto e faz o Claude rodar de novo como {path} <comando>: ele espera uma vaga livre entre todas as sessões e roda num cgroup próprio — passar do limite de RAM encerra só aquele teste (saída 137). Também faz containers de dev server (docker run … next dev) subirem como {path} --preview docker run …: no máximo tantos previews ao mesmo tempo entre as sessões, cada um com seu limite de RAM e 2 CPUs. Um teste ou preview que espera mais de 15 min desiste (saída 75). 100% de CPU = um núcleo.",
   ),
   "scheduler.saveError": dict(
     "Couldn't save the scheduler settings.",

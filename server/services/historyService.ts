@@ -129,6 +129,15 @@ export function summarize(
   const errors = events
     .filter((e) => e.type.endsWith(".failed") || e.type === "scheduler.error")
     .map((e) => ({ ts: e.ts, type: e.type, message: typeof e.error === "string" ? e.error : "" }));
+  for (const e of events) {
+    if (e.type === "heavy.timeout") {
+      errors.push({
+        ts: e.ts,
+        type: e.type,
+        message: `${String(e.command)} (${String(e.reason)}, ${String(e.waitedS)}s)`,
+      });
+    }
+  }
   for (const e of heavy) {
     if (e.status === 137 || e.status === 134) {
       errors.push({

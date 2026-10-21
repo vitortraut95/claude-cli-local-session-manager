@@ -17,6 +17,9 @@ export type OrchestratorPreferences = {
   testSlots?: number;
   testMemoryMaxGb?: number;
   testCpuPercent?: number;
+  /** `heavy-run --preview` limits. Optional: older backend. */
+  previewSlots?: number;
+  previewMemoryMaxGb?: number;
 };
 
 export type UserPreferences = {

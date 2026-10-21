@@ -5,8 +5,10 @@ import { fileURLToPath } from "node:url";
 
 /**
  * Claude CLI PreToolUse hook (matcher "Bash"), installed by the Task queue window: blocks a heavy
- * command (tests, typecheck, lint, builds, git commit) run directly and tells Claude to rerun it through `heavy-run`, which queues it among
- * every session's tests and caps its RAM/CPU. Exit 2 = the call is blocked and stderr goes back
+ * command (tests, typecheck, lint, builds, git commit) run directly and tells Claude to rerun it
+ * through `heavy-run`, which queues it among every session's tests and caps its RAM/CPU; and a
+ * dev-server container (`docker run … next dev`), to be started with `heavy-run --preview`, which
+ * caps how many run at once and each one's RAM/CPU. Exit 2 = the call is blocked and stderr goes back
  * to Claude; anything else (including unreadable input) lets the call through untouched.
  */
 
@@ -34,6 +36,13 @@ const HEAVY_COMMAND = new RegExp(
     ")",
 );
 
+/** `docker run` of a dev server (next dev, yarn/npm/pnpm dev, vite, storybook) — the command may
+ *  be quoted for the container's shell (`sh -c "yarn && yarn dev"`). */
+const PREVIEW_COMMAND = new RegExp(
+  COMMAND_START +
+    String.raw`docker\s+run\b[\s\S]*?(?:\bnext\s+dev\b|\b(?:yarn|npm|pnpm)\s+(?:run\s+)?dev\b|\bvite\b|\bstorybook\b)`,
+);
+
 let input = "";
 for await (const chunk of process.stdin) input += chunk;
 
@@ -46,9 +55,9 @@ try {
   process.exit(0);
 }
 
-if (typeof command !== "string" || !HEAVY_COMMAND.test(command) || command.includes("heavy-run")) {
-  process.exit(0);
-}
+if (typeof command !== "string" || command.includes("heavy-run")) process.exit(0);
+const isPreview = PREVIEW_COMMAND.test(command);
+if (!isPreview && !HEAVY_COMMAND.test(command)) process.exit(0);
 
 // For the app's history (server/utils/history.ts); best-effort.
 try {
@@ -57,6 +66,7 @@ try {
     `${JSON.stringify({
       ts: new Date().toISOString(),
       type: "heavy.blocked",
+      mode: isPreview ? "preview" : "test",
       command: command.slice(0, 300),
       cwd: hookInput.cwd ?? null,
       sessionId: hookInput.session_id ?? null,
@@ -64,6 +74,19 @@ try {
   );
 } catch {
   // Never let the history break the hook.
+}
+
+if (isPreview) {
+  process.stderr.write(
+    `Dev-server containers (previews) must be started through heavy-run so parallel sessions ` +
+      `don't freeze the machine: it waits while too many previews already run across sessions, ` +
+      `and caps each one's RAM/CPU. Rerun it as:\n\n` +
+      `  ${HEAVY_RUN} --preview docker run <the same options, image and command>\n\n` +
+      `Don't set --memory/--cpus yourself. Start one preview at a time (a single country/site ` +
+      `unless the task needs more) and stop it (docker rm -f <name>) as soon as you're done ` +
+      `checking it. Exit 75 = gave up waiting for a free preview slot; nothing started.\n`,
+  );
+  process.exit(2);
 }
 
 process.stderr.write(
@@ -74,7 +97,8 @@ process.stderr.write(
     `For a chain (a && b), wrap the whole thing: ${HEAVY_RUN} bash -c 'a && b'. Prefer the ` +
     `narrowest run (the changed files) and fewer workers (--maxWorkers=2); don't set ` +
     `--max-old-space-size yourself, heavy-run sets it. If other sessions hold every slot it ` +
-    `waits; for a long run use run_in_background. Exit 137 = over the RAM cap, 134 = over the ` +
-    `heap cap — neither is a failing test.\n`,
+    `waits (up to 15 min, then exit 75 with nothing run — retry later); for a long run use ` +
+    `run_in_background. Exit 137 = over the RAM cap, 134 = over the heap cap — neither is a ` +
+    `failing test.\n`,
 );
 process.exit(2);

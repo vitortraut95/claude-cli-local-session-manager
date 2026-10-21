@@ -14,6 +14,7 @@ import { Input } from "./Input";
 const BLOCK_KEYS: Record<SchedulerBlock, TranslationKey> = {
   paused: "scheduler.blocked.paused",
   max_sessions: "scheduler.blocked.maxSessions",
+  recent_launch: "scheduler.blocked.recentLaunch",
   low_memory: "scheduler.blocked.lowMemory",
   memory_pressure: "scheduler.blocked.memoryPressure",
   usage_limit: "scheduler.blocked.usageLimit",
@@ -27,6 +28,8 @@ const LIMITS: Record<Exclude<keyof OrchestratorPreferences, "enabled">, [number,
   testSlots: [1, 16],
   testMemoryMaxGb: [1, 256],
   testCpuPercent: [50, 6400],
+  previewSlots: [1, 16],
+  previewMemoryMaxGb: [1, 64],
 };
 
 type SchedulerPanelProps = {
@@ -238,6 +241,8 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
           {numberField("testSlots", "scheduler.setting.testSlots")}
           {numberField("testMemoryMaxGb", "scheduler.setting.testMemory")}
           {numberField("testCpuPercent", "scheduler.setting.testCpu")}
+          {numberField("previewSlots", "scheduler.setting.previewSlots")}
+          {numberField("previewMemoryMaxGb", "scheduler.setting.previewMemory")}
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {t("scheduler.tests.explanation", {

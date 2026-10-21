@@ -26,8 +26,8 @@ and clean them up. Everything runs on your machine — no external server involv
 - **History** — every step of the task flow is appended to the local, gitignored `history.jsonl`
   (one JSON event per line: queue added/updated/removed/retried, scheduler blocked/unblocked and
   why, launch started/launched/failed with durations, status changes and who made them, root
-  locked/released/refused, cleanup, sessions started/resumed, heavy-run waits/durations/exit codes
-  and hook blocks), to measure where time goes and track errors. A card with events tied to its
+  locked/released/refused, cleanup, sessions started/resumed, heavy-run waits/timeouts/previews/
+  durations/exit codes and hook blocks), to measure where time goes and track errors. A card with events tied to its
   session or task shows an "info" button next to its status tag: a summary (time in line and what
   held it, time per status, until done, heavy runs and their waits, root held/refused) plus the
   task's timeline and problems
@@ -49,7 +49,8 @@ and clean them up. Everything runs on your machine — no external server involv
   the repo(s) of each one (the first is the main repo). A scheduler then launches them on its own,
   each exactly like "New task" (task branch off the repo's default, its own worktree, the default
   prompt, a new terminal), one at a time while there's room: at most N live `claude` sessions
-  (default 6, every session counts), enough free RAM, no memory pressure (PSI) and Claude plan
+  (default 6, every session counts), at least 5 min since the last launch (a session's memory
+  shows up minutes after it opens), enough free RAM, no memory pressure (PSI) and Claude plan
   usage under a limit. Pause/resume and the limits live in the queue window; a launched task gets
   the "in progress" status. Kept in the local `tasks.json`
 - **Heavy commands** — optional (Task queue window → "Turn on"): a PreToolUse hook in
@@ -58,7 +59,11 @@ and clean them up. Everything runs on your machine — no external server involv
   free slot across every session (default 1 at a time) and for that much free RAM, runs each one
   in its own cgroup with a RAM/CPU cap (`systemd-run --user --scope`) at low CPU/IO priority, and
   caps Node's heap at ~85% of the RAM cap — so a runaway run fails alone (137 = RAM cap, 134 =
-  heap cap) instead of freezing the machine
+  heap cap) instead of freezing the machine. Dev-server containers (`docker run … next dev`,
+  `yarn dev`, vite, storybook) are blocked too and started as `heavy-run --preview docker run …`:
+  at most N previews at once across sessions (default 3, counted by a container label), each with
+  a RAM cap (default 4 GB) and 2 CPUs. A run or preview that waits over 15 min gives up (exit 75,
+  nothing ran) instead of hanging the session
 - **Task worktree setup** — per repo (Settings → "Task worktree setup"), a new task worktree gets
   a symlink to each of the main checkout's `node_modules` (root and workspaces) and a copy of its
   gitignored `.env*` files, since git only checks out tracked files. The link is added to the repo's

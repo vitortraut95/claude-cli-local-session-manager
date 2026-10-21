@@ -30,6 +30,7 @@ function formatTime(iso: string): string {
 const BLOCK_REASON_KEYS: Record<string, TranslationKey> = {
   paused: "history.reason.paused",
   max_sessions: "history.reason.maxSessions",
+  recent_launch: "history.reason.recentLaunch",
   low_memory: "history.reason.lowMemory",
   memory_pressure: "history.reason.memoryPressure",
   usage_limit: "history.reason.usageLimit",
@@ -101,6 +102,19 @@ function describe(event: HistoryEvent, t: T): string {
       });
     case "heavy.blocked":
       return t("history.event.heavyBlocked", { command: str(event.command) });
+    case "heavy.waiting":
+      return t("history.event.heavyWaiting", { command: str(event.command) });
+    case "heavy.timeout":
+      return t("history.event.heavyTimeout", {
+        command: str(event.command),
+        wait: secs(event.waitedS),
+      });
+    case "heavy.preview":
+      return t("history.event.heavyPreview", {
+        command: str(event.command),
+        wait: secs((Number(event.slotWaitS) || 0) + (Number(event.memoryWaitS) || 0)),
+        status: String(event.status),
+      });
     default:
       return event.type;
   }
@@ -111,6 +125,7 @@ function isProblem(event: HistoryEvent): boolean {
   return (
     event.type.endsWith(".failed") ||
     event.type === "root.refused" ||
+    event.type === "heavy.timeout" ||
     (event.type === "heavy.run" && event.status !== 0)
   );
 }
