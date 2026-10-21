@@ -8,7 +8,12 @@ import {
   isLimuxAvailable,
   presentLimuxGrid,
 } from "../services/limuxGridService.js";
-import { stopPreviewById } from "../services/previewService.js";
+import { getUserPreferences } from "../services/preferencesService.js";
+import {
+  removePreviewById,
+  startPreviewById,
+  stopPreviewById,
+} from "../services/previewService.js";
 import { AppError, NotFoundError } from "../utils/httpError.js";
 
 export const systemRouter = Router();
@@ -36,7 +41,7 @@ systemRouter.post("/terminal-grid/open", async (_req, res) => {
   res.json(result);
 });
 
-/** The card's stop button on a task worktree's preview (container removed / process ended). */
+/** The card's stop button on a task worktree's preview (container stopped / process ended). */
 systemRouter.post("/previews/:id/stop", async (req, res) => {
   if (!(await stopPreviewById(req.params.id))) {
     throw new NotFoundError(
@@ -44,6 +49,21 @@ systemRouter.post("/previews/:id/stop", async (req, res) => {
       "No running preview of a task worktree by that id.",
     );
   }
+  res.json({ success: true });
+});
+
+/** The card's remove button on a task worktree's preview container (running or stopped). */
+systemRouter.post("/previews/:id/remove", async (req, res) => {
+  if (!(await removePreviewById(req.params.id))) {
+    throw new NotFoundError("PREVIEW_NOT_FOUND", "No preview of a task worktree by that id.");
+  }
+  res.json({ success: true });
+});
+
+/** The card's restart button on a task worktree's stopped preview container. */
+systemRouter.post("/previews/:id/start", async (req, res) => {
+  const { orchestrator } = await getUserPreferences();
+  await startPreviewById(req.params.id, orchestrator.previewSlots);
   res.json({ success: true });
 });
 

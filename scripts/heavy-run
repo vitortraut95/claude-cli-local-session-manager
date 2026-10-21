@@ -73,7 +73,7 @@ read -r SLOTS MEMORY_GB CPU_PERCENT PREVIEW_SLOTS PREVIEW_MEMORY_GB < <(
     const n = (v, d) => (Number.isInteger(v) && v > 0 ? v : d);
     process.stdout.write([
       n(o.testSlots, 1), n(o.testMemoryMaxGb, 6), n(o.testCpuPercent, 400),
-      n(o.previewSlots, 3), n(o.previewMemoryMaxGb, 4),
+      n(o.previewSlots, 5), n(o.previewMemoryMaxGb, 4),
     ].join(" ") + "\n");
   ' "$PREFS_FILE" 2>/dev/null
 )
@@ -81,7 +81,7 @@ positive_int() { [[ "${1:-}" =~ ^[1-9][0-9]*$ ]] && echo "$1" || echo "$2"; }
 SLOTS=$(positive_int "${SLOTS:-}" 1)
 MEMORY_GB=$(positive_int "${MEMORY_GB:-}" 6)
 CPU_PERCENT=$(positive_int "${CPU_PERCENT:-}" 400)
-PREVIEW_SLOTS=$(positive_int "${PREVIEW_SLOTS:-}" 3)
+PREVIEW_SLOTS=$(positive_int "${PREVIEW_SLOTS:-}" 5)
 PREVIEW_MEMORY_GB=$(positive_int "${PREVIEW_MEMORY_GB:-}" 4)
 
 requested_at=$(date +%s)

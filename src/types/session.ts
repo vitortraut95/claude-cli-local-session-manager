@@ -65,6 +65,9 @@ export type SessionPreview = {
   url: string;
   /** Serves a task worktree (stoppable from the card), not a repo's main checkout. */
   inWorktree: boolean;
+  /** false = a task worktree's stopped container, which the card can start again. Optional:
+   *  older backend (always running). */
+  running?: boolean;
 };
 
 /** One repo/branch of a multi-repo task — mirrors `server/utils/taskRepos.ts`. */

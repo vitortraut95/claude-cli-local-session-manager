@@ -1,9 +1,10 @@
 import { execFile } from "node:child_process";
-import { readFile, readlink } from "node:fs/promises";
+import { readlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { recordEvent } from "../utils/history.js";
+import { ConflictError, NotFoundError } from "../utils/httpError.js";
 import { getTaskStore } from "../utils/taskStore.js";
 
 /**
@@ -14,8 +15,9 @@ import { getTaskStore } from "../utils/taskStore.js";
  *   BASE_URL/PORT, `-p <port>` in the command, or a published port.
  * - Plain processes listening on a port, tied to a folder by their working directory.
  *
- * A task worktree's previews are stopped (container removed / process terminated) when the task
- * is marked done or its task checklist is fully checked, to give back their memory.
+ * A task worktree's stopped containers are listed too, so the card can start them again. Its
+ * previews only stop or go from the card (stop / remove), and are removed when the task is marked
+ * done.
  */
 
 const execFileAsync = promisify(execFile);
@@ -30,7 +32,16 @@ export type PreviewServer = {
   url: string;
   /** Folders it serves (mount sources / compose dir / cwd). */
   dirs: string[];
+  /** false = a task worktree's stopped container, which can be started again. */
+  running: boolean;
 };
+
+/** Containers `heavy-run --preview` starts carry it; it counts them against `previewSlots`. */
+const PREVIEW_LABEL = "claude-session-manager.preview";
+
+function isTaskWorktree(dir: string): boolean {
+  return dir.includes(`${path.sep}.claude${path.sep}worktrees${path.sep}`);
+}
 
 function isInside(dir: string, root: string): boolean {
   const resolved = path.resolve(dir);
@@ -43,6 +54,7 @@ type DockerInspect = {
   Config: { Env?: string[] | null; Cmd?: string[] | null; Labels?: Record<string, string> | null };
   Mounts?: { Type: string; Source: string }[] | null;
   NetworkSettings?: { Ports?: Record<string, { HostPort: string }[] | null> | null } | null;
+  State?: { Running?: boolean } | null;
 };
 
 const PORT_FLAG = /(?:^|\s)(?:-p|--port)[\s=](\d{2,5})(?!\S)/;
@@ -79,12 +91,22 @@ function dockerPreview(container: DockerInspect): PreviewServer | null {
       .filter((source) => !/(^|\/)(node_modules|\.ssh)(\/|$)/.test(source)),
     ...(composeDir ? [composeDir] : []),
   ];
-  return { kind: "docker", id: name, name, port, url, dirs };
+  const running = container.State?.Running ?? true;
+  // A stopped container is only worth listing when it's a task worktree's, to start it again.
+  if (!running && !dirs.some(isTaskWorktree)) return null;
+  return { kind: "docker", id: name, name, port, url, dirs, running };
 }
 
 async function dockerPreviews(): Promise<PreviewServer[]> {
   try {
-    const { stdout: ids } = await execFileAsync("docker", ["ps", "-q"]);
+    const { stdout: ids } = await execFileAsync("docker", [
+      "ps",
+      "-aq",
+      "--filter",
+      "status=running",
+      "--filter",
+      "status=exited",
+    ]);
     const list = ids.split("\n").filter(Boolean);
     if (list.length === 0) return [];
     const { stdout } = await execFileAsync("docker", ["inspect", ...list], {
@@ -123,6 +145,7 @@ async function processPreviews(): Promise<PreviewServer[]> {
         port,
         url: `http://localhost:${port}`,
         dirs: [cwd],
+        running: true,
       });
     }
   }
@@ -145,59 +168,112 @@ export function previewsFor(servers: PreviewServer[], folder: string): PreviewSe
   );
 }
 
-async function stopServer(server: PreviewServer): Promise<void> {
-  if (server.kind === "docker") {
-    await execFileAsync("docker", ["rm", "-f", server.id]);
-  } else {
-    process.kill(Number(server.id), "SIGTERM");
+/** Why a preview is stopped: a task marked done or the card's remove button removes its
+ *  containers; the card's stop button just stops them. */
+type StopReason = "done" | "removed" | "manual";
+
+function removes(reason: StopReason): boolean {
+  return reason === "done" || reason === "removed";
+}
+
+async function stopServer(server: PreviewServer, reason: StopReason, taskKey: string | null) {
+  try {
+    if (server.kind === "docker") {
+      await execFileAsync(
+        "docker",
+        removes(reason) ? ["rm", "-f", server.id] : ["stop", server.id],
+      );
+    } else {
+      process.kill(Number(server.id), "SIGTERM");
+    }
+    recordEvent("preview.stopped", {
+      key: taskKey,
+      reason,
+      kind: server.kind,
+      name: server.name,
+      port: server.port,
+      dirs: server.dirs,
+    });
+    return true;
+  } catch (err) {
+    recordEvent("preview.stop.failed", {
+      key: taskKey,
+      name: server.name,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
   }
 }
 
-/** Stops every preview serving one of `worktreePaths` (task worktrees only — never a repo root). */
+/** Stops (or removes, see `StopReason`) every preview serving one of `worktreePaths` (task
+ *  worktrees only — never a repo root). */
 export async function stopPreviewsIn(
   worktreePaths: string[],
-  reason: "done" | "checklist" | "manual",
+  reason: StopReason,
   taskKey: string | null = null,
 ): Promise<PreviewServer[]> {
-  const targets = worktreePaths.filter((p) =>
-    p.includes(`${path.sep}.claude${path.sep}worktrees${path.sep}`),
-  );
+  const targets = worktreePaths.filter(isTaskWorktree);
   if (targets.length === 0) return [];
-  const servers = await listPreviewServers();
   const stopped: PreviewServer[] = [];
-  for (const server of servers) {
+  for (const server of await listPreviewServers()) {
+    if (!server.running && !removes(reason)) continue;
     if (!targets.some((target) => previewsFor([server], target).length > 0)) continue;
-    try {
-      await stopServer(server);
-      stopped.push(server);
-      recordEvent("preview.stopped", {
-        key: taskKey,
-        reason,
-        kind: server.kind,
-        name: server.name,
-        port: server.port,
-        dirs: server.dirs,
-      });
-    } catch (err) {
-      recordEvent("preview.stop.failed", {
-        key: taskKey,
-        name: server.name,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
+    if (await stopServer(server, reason, taskKey)) stopped.push(server);
   }
   return stopped;
 }
 
-/** Stops one preview by id (the card's stop button); only a task worktree's. */
+/** One task worktree's preview by id (the card's buttons act on that one only). */
+async function findWorktreePreview(id: string): Promise<PreviewServer | undefined> {
+  return (await listPreviewServers()).find((s) => s.id === id && s.dirs.some(isTaskWorktree));
+}
+
+/** The card's stop button: stops the container (it stays on the card, to start again). */
 export async function stopPreviewById(id: string): Promise<boolean> {
-  const server = (await listPreviewServers()).find((s) => s.id === id);
+  const server = await findWorktreePreview(id);
+  if (!server?.running) return false;
+  return stopServer(server, "manual", null);
+}
+
+/** The card's remove button: removes the container (running or stopped). */
+export async function removePreviewById(id: string): Promise<boolean> {
+  const server = await findWorktreePreview(id);
   if (!server) return false;
-  const worktreeDirs = server.dirs.filter((d) =>
-    d.includes(`${path.sep}.claude${path.sep}worktrees${path.sep}`),
-  );
-  if (worktreeDirs.length === 0) return false;
-  return (await stopPreviewsIn(worktreeDirs, "manual")).length > 0;
+  return stopServer(server, "removed", null);
+}
+
+/**
+ * Starts a task worktree's stopped preview container again (the card's restart button), with the
+ * limits it was created with. Refused while `previewSlots` previews started by `heavy-run
+ * --preview` are already running, like heavy-run itself would wait.
+ */
+export async function startPreviewById(id: string, previewSlots: number): Promise<void> {
+  const server = await findWorktreePreview(id);
+  if (server?.kind !== "docker" || server.running) {
+    throw new NotFoundError(
+      "PREVIEW_NOT_FOUND",
+      "No stopped preview container of a task worktree by that id.",
+    );
+  }
+  const { stdout } = await execFileAsync("docker", [
+    "ps",
+    "-q",
+    "--filter",
+    `label=${PREVIEW_LABEL}`,
+  ]);
+  const running = stdout.split("\n").filter(Boolean).length;
+  if (running >= previewSlots) {
+    throw new ConflictError(
+      "PREVIEW_LIMIT",
+      `${running} of ${previewSlots} previews are already running — stop one first.`,
+    );
+  }
+  await execFileAsync("docker", ["start", server.id]);
+  recordEvent("preview.started", {
+    name: server.name,
+    port: server.port,
+    dirs: server.dirs,
+  });
 }
 
 /** The task's worktrees, as "New task"/the queue recorded them. */
@@ -208,40 +284,4 @@ export async function taskWorktrees(taskKey: string): Promise<string[]> {
       .filter((entry) => entry.taskKey === taskKey && entry.worktreePath)
       .map((entry) => entry.worktreePath!),
   );
-}
-
-function checklistDir(): string {
-  return process.env.TASK_CHECKLIST_DIR ?? path.join(os.homedir(), ".cache", "task-checklists");
-}
-
-/** The task-checklist skill's `<KEY>.md`: complete when nothing is left unchecked. */
-async function isChecklistComplete(taskKey: string): Promise<boolean> {
-  try {
-    const text = await readFile(path.join(checklistDir(), `${taskKey}.md`), "utf8");
-    return /^\s*- \[x\]/im.test(text) && !/^\s*- \[ \]/m.test(text);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Scheduler housekeeping: stops the previews of every task worktree whose checklist is now
- * complete. Cheap when nothing previews (one `docker ps`).
- */
-export async function stopPreviewsOfCompletedChecklists(): Promise<void> {
-  const servers = await listPreviewServers();
-  if (servers.length === 0) return;
-  const store = await getTaskStore();
-  const keyByWorktree = new Map<string, string>();
-  for (const branches of Object.values(store.repoBranches)) {
-    for (const entry of Object.values(branches)) {
-      if (entry.taskKey && entry.worktreePath) keyByWorktree.set(entry.worktreePath, entry.taskKey);
-    }
-  }
-  const checked = new Map<string, boolean>();
-  for (const [worktree, key] of keyByWorktree) {
-    if (previewsFor(servers, worktree).length === 0) continue;
-    if (!checked.has(key)) checked.set(key, await isChecklistComplete(key));
-    if (checked.get(key)) await stopPreviewsIn([worktree], "checklist", key);
-  }
 }
