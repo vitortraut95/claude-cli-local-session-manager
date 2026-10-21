@@ -3,6 +3,7 @@ import { access, constants } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { sanitizedSpawnEnv } from "../utils/spawnEnv.js";
 
 /**
  * "Grid" terminal layout on Limux (github.com/am-will/limux, a Ghostty-based terminal driven
@@ -76,7 +77,7 @@ async function ensureRunning(): Promise<void> {
   if (await isRunning()) return;
   const bin = await limuxBin();
   if (!bin) throw new Error("limux isn't installed");
-  spawn(bin, [], { detached: true, stdio: "ignore" }).unref();
+  spawn(bin, [], { detached: true, stdio: "ignore", env: sanitizedSpawnEnv() }).unref();
   const deadline = Date.now() + STARTUP_TIMEOUT_MS;
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 500));

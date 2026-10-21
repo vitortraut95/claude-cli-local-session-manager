@@ -66,6 +66,7 @@ import {
   type HistoryTarget,
 } from "./historyService.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
+import { sanitizedSpawnEnv } from "../utils/spawnEnv.js";
 import {
   applyFileDiff,
   checkoutExistingBranch,
@@ -608,30 +609,6 @@ const TERMINAL_LAUNCHERS: { bin: string; buildArgs: (shellCmd: string) => string
   { bin: "xfce4-terminal", buildArgs: (c) => ["-x", "bash", "-c", c] },
   { bin: "xterm", buildArgs: (c) => ["-e", "bash", "-c", c] },
 ];
-
-const SNAP_ORIG_SUFFIX = "_VSCODE_SNAP_ORIG";
-
-/**
- * Undoes snap VS Code's env overrides (GTK_PATH, LOCPATH, ...; originals kept in
- * `<VAR>_VSCODE_SNAP_ORIG`) when the server runs in its terminal: a GTK terminal spawned under them
- * fails with symbol errors like `undefined symbol: __libc_pthread_init`.
- */
-function sanitizedSpawnEnv(): NodeJS.ProcessEnv {
-  const env = { ...process.env };
-  if (process.platform !== "linux") return env;
-
-  for (const key of Object.keys(env)) {
-    if (!key.endsWith(SNAP_ORIG_SUFFIX)) continue;
-    const originalVar = key.slice(0, -SNAP_ORIG_SUFFIX.length);
-    const originalValue = env[key];
-    if (originalValue) {
-      env[originalVar] = originalValue;
-    } else {
-      delete env[originalVar];
-    }
-  }
-  return env;
-}
 
 function trySpawnDetached(bin: string, args: string[], cwd?: string): Promise<boolean> {
   return new Promise((resolve) => {

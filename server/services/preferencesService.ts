@@ -36,6 +36,10 @@ export type OrchestratorPreferences = {
   testSlots: number;
   testMemoryMaxGb: number;
   testCpuPercent: number;
+  /** `heavy-run --preview`: dev-server containers running at once across every session, and each
+   *  one's RAM cap (GB). */
+  previewSlots: number;
+  previewMemoryMaxGb: number;
 };
 
 export type UserPreferences = {
@@ -127,6 +131,8 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     testSlots: 1,
     testMemoryMaxGb: 6,
     testCpuPercent: 400,
+    previewSlots: 3,
+    previewMemoryMaxGb: 4,
   },
   worktreeSetup: {},
   terminalLayout: "tabs",
@@ -205,6 +211,10 @@ function parseOrchestrator(value: unknown): OrchestratorPreferences {
     testCpuPercent: isIntInRange(raw.testCpuPercent, 50, 6400)
       ? raw.testCpuPercent
       : fallback.testCpuPercent,
+    previewSlots: isIntInRange(raw.previewSlots, 1, 16) ? raw.previewSlots : fallback.previewSlots,
+    previewMemoryMaxGb: isIntInRange(raw.previewMemoryMaxGb, 1, 64)
+      ? raw.previewMemoryMaxGb
+      : fallback.previewMemoryMaxGb,
   };
 }
 
@@ -219,7 +229,9 @@ export function isOrchestratorPreferences(value: unknown): value is Orchestrator
     // Optional: an older frontend bundle sends the object without them.
     (raw.testSlots === undefined || isIntInRange(raw.testSlots, 1, 16)) &&
     (raw.testMemoryMaxGb === undefined || isIntInRange(raw.testMemoryMaxGb, 1, 256)) &&
-    (raw.testCpuPercent === undefined || isIntInRange(raw.testCpuPercent, 50, 6400))
+    (raw.testCpuPercent === undefined || isIntInRange(raw.testCpuPercent, 50, 6400)) &&
+    (raw.previewSlots === undefined || isIntInRange(raw.previewSlots, 1, 16)) &&
+    (raw.previewMemoryMaxGb === undefined || isIntInRange(raw.previewMemoryMaxGb, 1, 64))
   );
 }
 

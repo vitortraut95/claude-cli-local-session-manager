@@ -24,18 +24,25 @@ import {
  * Launches the task queue on its own: every `TICK_MS` it checks for room (live sessions, free
  * RAM, memory pressure, Claude plan usage) and starts the next ready entry exactly like "New
  * task" does — task branch (`<prefix>/<key>`, or just the key) off the repo's default, always in its own worktree, extra repos via
- * `--add-dir`, the default prompt — in a new terminal. At most one launch per tick, so sessions
- * start staggered and each one's memory shows up before the next check.
+ * `--add-dir`, the default prompt — in a new terminal. Launches are `LAUNCH_SPACING_MS` apart:
+ * a session's memory (tests, preview servers) only shows up minutes after it opens, so free RAM at
+ * launch time alone would let the whole queue start at once.
  */
 
 const TICK_MS = 15_000;
 /** A just-launched session has no pid file yet; it holds its slot this long meanwhile. */
 const LAUNCH_GRACE_MS = 90_000;
+const LAUNCH_SPACING_MS = 5 * 60_000;
 /** PSI `some avg10` above this = the machine is already stalling on memory. */
 const MAX_MEMORY_PRESSURE = 10;
 
 export type SchedulerBlock =
-  "paused" | "max_sessions" | "low_memory" | "memory_pressure" | "usage_limit";
+  | "paused"
+  | "max_sessions"
+  | "recent_launch"
+  | "low_memory"
+  | "memory_pressure"
+  | "usage_limit";
 
 export type SchedulerStatus = {
   enabled: boolean;
@@ -57,6 +64,7 @@ export type SchedulerStatus = {
 
 const pendingLaunches = new Map<string, number>();
 let launchingKey: string | null = null;
+let lastLaunchAt = 0;
 let ticking = false;
 
 function isReady(entry: QueueEntry): boolean {
@@ -98,6 +106,7 @@ export async function getSchedulerStatus(): Promise<SchedulerStatus> {
   let blockedBy: SchedulerBlock | null = null;
   if (!enabled) blockedBy = "paused";
   else if (activeSessions >= maxSessions) blockedBy = "max_sessions";
+  else if (Date.now() - lastLaunchAt < LAUNCH_SPACING_MS) blockedBy = "recent_launch";
   else if (freeMemoryPercent !== null && freeMemoryPercent < minFreeMemoryPercent)
     blockedBy = "low_memory";
   else if (memoryPressure !== null && memoryPressure > MAX_MEMORY_PRESSURE)
@@ -304,6 +313,7 @@ async function tick(): Promise<void> {
     if (!next) return;
     launchingKey = next.key;
     const startedAt = Date.now();
+    lastLaunchAt = startedAt;
     recordEvent("queue.launch.started", { key: next.key, repos: next.repos });
     try {
       const outcome = await launchEntry(next, prefs);

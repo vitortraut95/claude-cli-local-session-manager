@@ -18,6 +18,7 @@ export const history = {
   ),
   "history.reason.paused": dict("paused queue", "fila pausada"),
   "history.reason.maxSessions": dict("session limit", "limite de sessões"),
+  "history.reason.recentLaunch": dict("spacing between launches", "intervalo entre aberturas"),
   "history.reason.lowMemory": dict("free RAM", "RAM livre"),
   "history.reason.memoryPressure": dict("memory pressure", "pressão de memória"),
   "history.reason.usageLimit": dict("Claude plan usage", "uso do plano Claude"),
@@ -87,4 +88,13 @@ export const history = {
     "{command} — esperou {wait}, rodou {duration}, saída {status}",
   ),
   "history.event.heavyBlocked": dict("Hook blocked: {command}", "Hook barrou: {command}"),
+  "history.event.heavyWaiting": dict("Waiting to run: {command}", "Esperando pra rodar: {command}"),
+  "history.event.heavyTimeout": dict(
+    "Gave up after waiting {wait}: {command}",
+    "Desistiu depois de esperar {wait}: {command}",
+  ),
+  "history.event.heavyPreview": dict(
+    "Preview: {command} — waited {wait}, exit {status}",
+    "Preview: {command} — esperou {wait}, saída {status}",
+  ),
 };
