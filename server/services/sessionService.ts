@@ -359,6 +359,22 @@ async function listSessionsUncached(): Promise<Session[]> {
 
   // Second pass: a task's repos depend on every session carrying its key.
   const reposByTask = collectTaskRepos(store, decorated);
+  // Recorded repos with no session in this listing still need their default branch.
+  const missingRoots = [
+    ...new Set(
+      [...reposByTask.values()]
+        .flat()
+        .map((repo) => repo.repoRoot)
+        .filter((root) => !defaultBranchByRoot.has(root)),
+    ),
+  ];
+  const missingDefaults = await Promise.all(
+    missingRoots.map((root) => getDefaultBaseBranch(root).catch(() => null)),
+  );
+  missingRoots.forEach((root, i) => defaultBranchByRoot.set(root, missingDefaults[i]));
+  for (const repo of [...reposByTask.values()].flat()) {
+    repo.defaultBranch = defaultBranchByRoot.get(repo.repoRoot) ?? null;
+  }
   const [history, servers] = await Promise.all([readHistory(), listPreviewServers()]);
   return decorated.map((session) => {
     const withRepos = session.taskKey

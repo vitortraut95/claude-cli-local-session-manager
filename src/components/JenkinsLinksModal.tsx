@@ -2,32 +2,58 @@ import { ExternalLink, Eye, GitBranch, GitPullRequest, Home, Tag } from "lucide-
 import type { ReactNode } from "react";
 import jenkinsIcon from "../assets/jenkins.svg";
 import { useLanguage } from "../hooks/useLanguage";
-import type { EnvPreviewGroup, JenkinsLink } from "../utils/jenkins";
+import type { EnvPreviewGroup, JenkinsLink, JenkinsRepoGroup } from "../utils/jenkins";
 import { Modal } from "./Modal";
 
 type JenkinsLinksModalProps = {
-  project: string;
-  links: JenkinsLink[];
-  envPreviews: EnvPreviewGroup[];
+  /** The session's repo first, then the task's other repos. */
+  groups: JenkinsRepoGroup[];
   onClose: () => void;
 };
 
 /**
- * Every Jenkins link that could apply to this session, as new-tab links. None are checked for
- * existence, so the modal stays open after a click in case one is a 404.
+ * Every Jenkins link that could apply to this session (and its task's other repos), as new-tab
+ * links. None are checked for existence, so the modal stays open after a click in case one is a
+ * 404.
  */
-export function JenkinsLinksModal({
-  project,
-  links,
-  envPreviews,
-  onClose,
-}: JenkinsLinksModalProps) {
+export function JenkinsLinksModal({ groups, onClose }: JenkinsLinksModalProps) {
   const { t } = useLanguage();
+  const multiRepo = groups.length > 1;
+
+  return (
+    <Modal
+      open
+      title={t("jenkinsLinksModal.title")}
+      onClose={onClose}
+      size="lg"
+      icon={<img src={jenkinsIcon} alt="" className="h-5 w-5" />}
+    >
+      {groups.map((group) =>
+        multiRepo ? (
+          <section
+            key={group.project}
+            className="mt-4 border-t border-gray-200 pt-3 first:mt-0 first:border-t-0 first:pt-0 dark:border-gray-800"
+          >
+            <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {group.project}
+            </h2>
+            <RepoLinks group={group} />
+          </section>
+        ) : (
+          <RepoLinks key={group.project} group={group} />
+        ),
+      )}
+    </Modal>
+  );
+}
+
+/** One repo's env previews and Jenkins links (current branch, origin branch, project views). */
+function RepoLinks({ group }: { group: JenkinsRepoGroup }) {
+  const { t } = useLanguage();
+  const { project, links, envPreviews } = group;
   const current = links.filter((l) => l.kind === "branch" && l.role === "current");
   const origin = links.filter((l) => l.kind === "branch" && l.role === "origin");
   const views = links.filter((l) => l.kind !== "branch");
-  // A multi-repo task lists previews of several repos — name the repo on each line.
-  const showProjects = envPreviews.some((group) => group.project !== project);
 
   const labelFor = (link: JenkinsLink): string => {
     switch (link.kind) {
@@ -93,36 +119,23 @@ export function JenkinsLinksModal({
     );
 
   return (
-    <Modal
-      open
-      title={t("jenkinsLinksModal.title")}
-      onClose={onClose}
-      size="lg"
-      icon={<img src={jenkinsIcon} alt="" className="h-5 w-5" />}
-    >
-      {envPreviews.map((group) => (
-        <EnvPreviewLinks
-          key={`${group.project}\0${group.branch}`}
-          group={group}
-          showProject={showProjects}
-        />
+    <>
+      {envPreviews.map((preview) => (
+        <EnvPreviewLinks key={preview.branch} group={preview} />
       ))}
       {section(t("jenkinsLinksModal.section.currentBranch"), current)}
       {section(t("jenkinsLinksModal.section.originBranch"), origin)}
       {section(t("jenkinsLinksModal.section.views"), views)}
-    </Modal>
+    </>
   );
 }
 
 /** One `env/*` branch's preview sites as a single line of locale links ("BR · MX · AR ..."). */
-function EnvPreviewLinks({ group, showProject }: { group: EnvPreviewGroup; showProject: boolean }) {
+function EnvPreviewLinks({ group }: { group: EnvPreviewGroup }) {
   const { t } = useLanguage();
   return (
     <p className="mt-3 first:mt-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
       <Eye className="h-3.5 w-3.5 shrink-0" />
-      {showProject && (
-        <span className="font-medium text-gray-700 dark:text-gray-300">{group.project}</span>
-      )}
       <span>{t("jenkinsLinksModal.section.envPreviews", { branch: group.branch })}</span>
       {group.previews.map((preview) => (
         <a

@@ -77,6 +77,9 @@ export type TaskRepoRef = {
   branch: string;
   /** Recorded only when it differs from the repo's default. */
   baseBranch: string | null;
+  /** The repo's default branch (the base when `baseBranch` is null); null = unknown. Optional:
+   *  older backend. */
+  defaultBranch?: string | null;
   /** The linked worktree the branch lives in; null = the repo root, or not known. */
   worktreePath: string | null;
   /** True when linked in `tasks.json`; false when only implied by a session's (inferred) key. */

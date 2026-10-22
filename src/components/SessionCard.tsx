@@ -47,7 +47,7 @@ import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
 import { DEFAULT_BRANCHES } from "../utils/branches";
-import { getJenkinsLinks, getTaskEnvPreviewGroups } from "../utils/jenkins";
+import { getTaskJenkinsGroups } from "../utils/jenkins";
 import { useTeamLinks } from "../hooks/useTeamLinks";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import { resolveApiErrorMessage } from "../utils/apiClient";
@@ -135,12 +135,13 @@ export function SessionCard({
   const { origin: originBranch, destination: taskBranch } = resolveSessionBranches(session);
   // `gitBranch` is null when the folder isn't a git repo, where a job link would be meaningless.
   const teamLinks = useTeamLinks();
-  const jenkinsLinks =
+  const jenkinsGroups =
     session.directoryMissing || session.gitBranch === null || session.isAppRepo
       ? null
-      : getJenkinsLinks(
+      : getTaskJenkinsGroups(
           teamLinks.jenkinsBaseUrl,
-          session.project,
+          teamLinks.envPreviews,
+          session,
           taskBranch ?? null,
           originBranch,
         );
@@ -591,7 +592,7 @@ export function SessionCard({
             icon={<RotateCcw className="h-4 w-4" />}
           />
         )}
-        {jenkinsLinks && (
+        {jenkinsGroups && (
           <ToolbarIconButton
             tooltip={t("sessionCard.openJenkinsTooltip")}
             ariaLabel={t("sessionCard.openJenkinsAriaLabel")}
@@ -708,16 +709,8 @@ export function SessionCard({
       {showResetRootConfirm && (
         <ResetRootConfirmModal session={session} onClose={() => setShowResetRootConfirm(false)} />
       )}
-      {showJenkinsModal && jenkinsLinks && (
-        <JenkinsLinksModal
-          project={session.project}
-          links={jenkinsLinks}
-          envPreviews={getTaskEnvPreviewGroups(teamLinks.envPreviews, session, [
-            taskBranch ?? null,
-            originBranch,
-          ])}
-          onClose={() => setShowJenkinsModal(false)}
-        />
+      {showJenkinsModal && jenkinsGroups && (
+        <JenkinsLinksModal groups={jenkinsGroups} onClose={() => setShowJenkinsModal(false)} />
       )}
       {showExportModal && (
         <ExportSessionModal session={session} onClose={() => setShowExportModal(false)} />

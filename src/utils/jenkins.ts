@@ -51,7 +51,7 @@ export function getJenkinsLinks(
 }
 
 type EnvPreview = { label: string; url: string };
-export type EnvPreviewGroup = { project: string; branch: string; previews: EnvPreview[] };
+export type EnvPreviewGroup = { branch: string; previews: EnvPreview[] };
 
 /**
  * Preview URLs for each `env/*` branch among a repo's task and origin branches, from the
@@ -71,7 +71,6 @@ export function getEnvPreviewGroups(
   return envBranches.map((branch) => {
     const slug = branch.replace(/\//g, "-").toLowerCase();
     return {
-      project,
       branch,
       previews: templates.map((template) => ({
         label: template.label,
@@ -81,25 +80,44 @@ export function getEnvPreviewGroups(
   });
 }
 
+export type JenkinsRepoGroup = {
+  project: string;
+  links: JenkinsLink[];
+  envPreviews: EnvPreviewGroup[];
+};
+
 /**
- * Env previews of the session's repo and, for a multi-repo task, of every other repo in the task
- * (its branch and base), so one modal has the previews of the whole task.
+ * Jenkins links and env previews of the session's repo and, for a multi-repo task, of every other
+ * repo in the task (its task branch and base), so one modal covers the whole task. Null when no
+ * base URL is configured.
  */
-export function getTaskEnvPreviewGroups(
+export function getTaskJenkinsGroups(
+  jenkinsBaseUrl: string | null,
   envPreviews: EnvPreviews,
   session: Session,
-  branches: (string | null)[],
-): EnvPreviewGroup[] {
-  const groups = getEnvPreviewGroups(envPreviews, session.project, branches);
+  branch: string | null,
+  originBranch: string | null,
+): JenkinsRepoGroup[] | null {
+  const repos = [{ project: session.project, branch, originBranch }];
+  const seen = new Set([session.repoRoot]);
   for (const repo of session.taskRepos ?? []) {
-    if (repo.repoRoot === session.repoRoot) continue;
-    groups.push(...getEnvPreviewGroups(envPreviews, repo.project, [repo.branch, repo.baseBranch]));
+    if (seen.has(repo.repoRoot)) continue;
+    seen.add(repo.repoRoot);
+    repos.push({
+      project: repo.project,
+      branch: repo.branch,
+      originBranch: repo.baseBranch ?? repo.defaultBranch ?? null,
+    });
   }
-  const seen = new Set<string>();
-  return groups.filter((group) => {
-    const id = `${group.project}\0${group.branch}`;
-    if (seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  });
+  const groups: JenkinsRepoGroup[] = [];
+  for (const repo of repos) {
+    const links = getJenkinsLinks(jenkinsBaseUrl, repo.project, repo.branch, repo.originBranch);
+    if (!links) return null;
+    groups.push({
+      project: repo.project,
+      links,
+      envPreviews: getEnvPreviewGroups(envPreviews, repo.project, [repo.branch, repo.originBranch]),
+    });
+  }
+  return groups;
 }
