@@ -162,8 +162,14 @@ sessionsRouter.get("/:id/pr-url", async (req, res) => {
   res.json({ url });
 });
 
+/** Optional `{ layout: "tabs" | "limux-grid" }` picks where it opens instead of the preference. */
 sessionsRouter.post("/:id/continue", async (req, res) => {
-  await continueSession(req.params.id);
+  const layout = (req.body as { layout?: unknown } | undefined)?.layout;
+  await continueSession(
+    req.params.id,
+    null,
+    layout === "tabs" || layout === "limux-grid" ? layout : undefined,
+  );
   res.json({ success: true });
 });
 

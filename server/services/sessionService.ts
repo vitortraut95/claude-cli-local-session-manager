@@ -47,7 +47,7 @@ import {
   type WorkStatus,
 } from "../utils/taskStore.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
-import { getUserPreferences } from "./preferencesService.js";
+import { getUserPreferences, type TerminalLayout } from "./preferencesService.js";
 import { focusLimuxSession, isLimuxAvailable, launchInLimuxGrid } from "./limuxGridService.js";
 import {
   AppError,
@@ -906,16 +906,17 @@ export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promis
 }
 
 /**
- * Runs a Claude session's `command` where the `terminalLayout` preference says: a pane of the
- * Limux grid (`limuxGridService`), or a terminal of its own. Without Limux the grid falls back to
- * a terminal.
+ * Runs a Claude session's `command` where `layout` (default: the `terminalLayout` preference)
+ * says: a pane of the Limux grid (`limuxGridService`), or a terminal of its own. Without Limux the
+ * grid falls back to a terminal.
  */
 export async function launchInTerminal(
   command: string,
   cwd?: string,
   taskKey: string | null = null,
+  layout?: TerminalLayout,
 ): Promise<void> {
-  const { terminalLayout } = await getUserPreferences();
+  const terminalLayout = layout ?? (await getUserPreferences()).terminalLayout;
   if (terminalLayout === "limux-grid") {
     if (await isLimuxAvailable()) {
       await launchInLimuxGrid(command, cwd, taskKey);
@@ -960,8 +961,13 @@ export async function focusSessionInGrid(id: string): Promise<boolean> {
 }
 
 /** Refuses an active session: a second `claude --resume` would race the first one's writes. */
-/** `taskKey` (when the caller knows it) lets the grid reuse a Limux tab named after the task. */
-export async function continueSession(id: string, taskKey: string | null = null): Promise<void> {
+/** `taskKey` (when the caller knows it) lets the grid reuse a Limux tab named after the task;
+ *  `layout` overrides the `terminalLayout` preference for this resume. */
+export async function continueSession(
+  id: string,
+  taskKey: string | null = null,
+  layout?: TerminalLayout,
+): Promise<void> {
   const activeIds = await getActiveResumeSessionIds();
   if (activeIds.has(id)) {
     throw new SessionActiveError(`Session "${id}" is already open in a terminal.`);
@@ -978,7 +984,7 @@ export async function continueSession(id: string, taskKey: string | null = null)
   }
 
   // `id` is validated above, so it's safe to interpolate.
-  await launchInTerminal(`claude --resume ${id}`, cwd ?? undefined, taskKey);
+  await launchInTerminal(`claude --resume ${id}`, cwd ?? undefined, taskKey, layout);
   recordEvent("session.resumed", { sessionId: id, cwd });
 }
 
