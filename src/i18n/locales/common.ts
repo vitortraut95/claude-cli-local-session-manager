@@ -35,6 +35,8 @@ export const common = {
   "modal.closeAriaLabel": dict("Close", "Fechar"),
   "modal.confirmDefault": dict("Confirm", "Confirmar"),
   "modal.cancelDefault": dict("Cancel", "Cancelar"),
+  "launchIn.grid": dict("In the Limux grid", "Na grade do Limux"),
+  "launchIn.terminal": dict("In a terminal", "Num terminal"),
   "toast.closeAriaLabel": dict("Close notification", "Fechar notificação"),
   "searchBar.placeholder": dict(
     "Search by title, project, branch, or ID...",

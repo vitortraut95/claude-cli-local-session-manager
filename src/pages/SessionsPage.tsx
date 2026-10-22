@@ -181,8 +181,8 @@ export function SessionsPage() {
               onOpenInVSCode={(s) => openInVSCode(s.id)}
               onOpenInCursor={(s) => openInCursor(s.id)}
               onOpenMissingWorktreeRootInVSCode={(s) => openMissingWorktreeRootInVSCode(s.id)}
-              onStartNewSessionAtMissingWorktreeRoot={(s) =>
-                startNewSessionAtMissingWorktreeRoot(s)
+              onStartNewSessionAtMissingWorktreeRoot={(s, layout) =>
+                startNewSessionAtMissingWorktreeRoot(s, layout)
               }
               onDeleteWorktree={(s) => deleteWorktree(s.id)}
               onWorktreeSyncComplete={() => refresh()}
@@ -292,11 +292,16 @@ export function SessionsPage() {
           isCreatingWorktree={pendingActions[resumeConflict.target.id] === "worktree-create"}
           isSwitching={pendingActions[resumeConflict.target.id] === "continue"}
           onCreateWorktree={(name) => {
-            void createWorktree(resumeConflict.target.id, name);
+            void createWorktree(resumeConflict.target.id, name, resumeConflict.layout);
             clearResumeConflict();
           }}
           onStopAndCheckout={(branch) =>
-            stopAndCheckoutResume(resumeConflict.target.id, resumeConflict.sibling.id, branch)
+            stopAndCheckoutResume(
+              resumeConflict.target.id,
+              resumeConflict.sibling.id,
+              branch,
+              resumeConflict.layout,
+            )
           }
           onCancel={clearResumeConflict}
         />

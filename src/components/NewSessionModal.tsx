@@ -4,6 +4,7 @@ import { useProjectFolders } from "../hooks/useProjectFolders";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import { useToast } from "../hooks/useToast";
 import * as preferencesApi from "../services/preferencesApi";
+import type { TerminalLayout } from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Button } from "./Button";
@@ -49,6 +50,7 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
   // Set when the chosen project's root already has an active session — holds the resolved repo
   // root so the confirmation's "start anyway" launches exactly what was checked.
   const [pendingRepoRoot, setPendingRepoRoot] = useState<string | null>(null);
+  const [pendingLayout, setPendingLayout] = useState<TerminalLayout>();
 
   const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(open);
   const [skillsHubModalOpen, setSkillsHubModalOpen] = useState(false);
@@ -121,10 +123,20 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
   const trimmedFolder = effectiveFolderPath.trim();
   const canSubmit = trimmedFolder.length > 0 && !launching;
 
-  const launch = async (repoRoot: string) => {
+  const launch = async (repoRoot: string, layout?: TerminalLayout) => {
     setLaunching(true);
     try {
-      await tasksApi.launchTaskTerminal(repoRoot, promptText.trim(), false, repoRoot);
+      await tasksApi.launchTaskTerminal(
+        repoRoot,
+        promptText.trim(),
+        false,
+        repoRoot,
+        "",
+        "",
+        "",
+        [],
+        layout,
+      );
       showToast(t("newTaskModal.terminalOpened"), "success");
       setPendingRepoRoot(null);
       resetForm();
@@ -139,7 +151,7 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
     }
   };
 
-  const handleStart = async () => {
+  const handleStart = async (layout?: TerminalLayout) => {
     if (!canSubmit) return;
     setLaunching(true);
     let repoInfo: tasksApi.RepoInfo;
@@ -154,9 +166,10 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
     if (repoInfo.hasActiveSessionInRoot) {
       setLaunching(false);
       setPendingRepoRoot(repoInfo.repoRoot);
+      setPendingLayout(layout);
       return;
     }
-    await launch(repoInfo.repoRoot);
+    await launch(repoInfo.repoRoot, layout);
   };
 
   return (
@@ -168,7 +181,7 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
         if (!skillsHubModalOpen && pendingRepoRoot === null) onClose();
       }}
       onCancel={onClose}
-      onConfirm={() => void handleStart()}
+      onConfirmLaunch={(layout) => void handleStart(layout)}
       confirmLabel={t("newSessionModal.confirm")}
       cancelLabel={t("newTaskModal.cancel")}
       isConfirmLoading={launching}
@@ -225,7 +238,7 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
         confirmLabel={t("newSessionModal.activeSessionConfirm")}
         isLoading={launching}
         onConfirm={() => {
-          if (pendingRepoRoot) void launch(pendingRepoRoot);
+          if (pendingRepoRoot) void launch(pendingRepoRoot, pendingLayout);
         }}
         onCancel={() => setPendingRepoRoot(null)}
       />

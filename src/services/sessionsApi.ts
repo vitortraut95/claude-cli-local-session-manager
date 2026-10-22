@@ -8,6 +8,7 @@ import type {
   WorktreeToRootPreview,
 } from "../types/session";
 import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
+import type { TerminalLayout } from "./preferencesApi";
 
 const client = axios.create({
   baseURL: "/sessions",
@@ -39,8 +40,9 @@ export async function deleteSession(id: string): Promise<void> {
   await withServerErrorMessage(() => client.delete(`/${encodeURIComponent(id)}`));
 }
 
-/** `layout` overrides the `terminalLayout` preference for this resume. */
-export async function continueSession(id: string, layout?: "tabs" | "limux-grid"): Promise<void> {
+// `layout` (actions that open a Claude session) overrides the `terminalLayout` preference.
+
+export async function continueSession(id: string, layout?: TerminalLayout): Promise<void> {
   await withServerErrorMessage(() =>
     client.post(`/${encodeURIComponent(id)}/continue`, layout ? { layout } : undefined),
   );
@@ -79,8 +81,14 @@ export async function openInCursor(id: string): Promise<void> {
 }
 
 /** Starts a new `claude --worktree <name>` conversation in this session's project. */
-export async function createWorktree(id: string, name: string): Promise<void> {
-  await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/worktree`, { name }));
+export async function createWorktree(
+  id: string,
+  name: string,
+  layout?: TerminalLayout,
+): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.post(`/${encodeURIComponent(id)}/worktree`, { name, layout }),
+  );
 }
 
 export async function deleteWorktree(id: string): Promise<void> {
@@ -100,9 +108,14 @@ export async function stopAndCheckoutResume(
   id: string,
   siblingSessionId: string,
   branch: string,
+  layout?: TerminalLayout,
 ): Promise<void> {
   await withServerErrorMessage(() =>
-    client.post(`/${encodeURIComponent(id)}/checkout-and-resume`, { siblingSessionId, branch }),
+    client.post(`/${encodeURIComponent(id)}/checkout-and-resume`, {
+      siblingSessionId,
+      branch,
+      layout,
+    }),
   );
 }
 
@@ -201,9 +214,12 @@ export async function openMissingWorktreeRootInVSCode(id: string): Promise<void>
 
 /** Starts a new `claude` conversation in an orphaned worktree session's repo root, seeded with
  *  that session's recap. */
-export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promise<void> {
+export async function startFreshSessionAtMissingWorktreeRoot(
+  id: string,
+  layout?: TerminalLayout,
+): Promise<void> {
   await withServerErrorMessage(() =>
-    client.post(`/${encodeURIComponent(id)}/missing-worktree-root/resume`),
+    client.post(`/${encodeURIComponent(id)}/missing-worktree-root/resume`, { layout }),
   );
 }
 

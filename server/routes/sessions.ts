@@ -35,7 +35,12 @@ import {
   inspectSessionBundle,
 } from "../services/sessionTransferService.js";
 import { getSessionTask, setSessionTask } from "../services/taskGroupService.js";
-import { extractBooleanField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
+import {
+  extractBooleanField,
+  extractLayoutField,
+  extractStringField,
+  parseWorkStatus,
+} from "../utils/httpBody.js";
 import { sendErrorResponse } from "../utils/httpError.js";
 
 export const sessionsRouter = Router();
@@ -162,19 +167,20 @@ sessionsRouter.get("/:id/pr-url", async (req, res) => {
   res.json({ url });
 });
 
-/** Optional `{ layout: "tabs" | "limux-grid" }` picks where it opens instead of the preference. */
+// Routes that open a Claude session take an optional `{ layout: "tabs" | "limux-grid" }` (where it
+// opens instead of the `terminalLayout` preference).
+
 sessionsRouter.post("/:id/continue", async (req, res) => {
-  const layout = (req.body as { layout?: unknown } | undefined)?.layout;
-  await continueSession(
-    req.params.id,
-    null,
-    layout === "tabs" || layout === "limux-grid" ? layout : undefined,
-  );
+  await continueSession(req.params.id, null, extractLayoutField(req.body));
   res.json({ success: true });
 });
 
 sessionsRouter.post("/:id/worktree", async (req, res) => {
-  await createSessionWorktree(req.params.id, extractStringField(req.body, "name"));
+  await createSessionWorktree(
+    req.params.id,
+    extractStringField(req.body, "name"),
+    extractLayoutField(req.body),
+  );
   res.json({ success: true });
 });
 
@@ -188,6 +194,7 @@ sessionsRouter.post("/:id/checkout-and-resume", async (req, res) => {
     req.params.id,
     extractStringField(req.body, "siblingSessionId"),
     extractStringField(req.body, "branch"),
+    extractLayoutField(req.body),
   );
   res.json({ success: true });
 });
@@ -246,6 +253,6 @@ sessionsRouter.post("/:id/missing-worktree-root/vscode", async (req, res) => {
 });
 
 sessionsRouter.post("/:id/missing-worktree-root/resume", async (req, res) => {
-  await startFreshSessionAtMissingWorktreeRoot(req.params.id);
+  await startFreshSessionAtMissingWorktreeRoot(req.params.id, extractLayoutField(req.body));
   res.json({ success: true });
 });

@@ -8,7 +8,11 @@ import {
   listSessions,
   posixShellQuote,
 } from "./sessionService.js";
-import { getUserPreferences, updateUserPreferences } from "./preferencesService.js";
+import {
+  getUserPreferences,
+  updateUserPreferences,
+  type TerminalLayout,
+} from "./preferencesService.js";
 import { getUserSkillsDir } from "./skillsHubService.js";
 import { expandHome, findReposIn } from "./workspaceService.js";
 import { prepareWorktreeBestEffort, type WorktreeSetupResult } from "./worktreeSetupService.js";
@@ -328,6 +332,8 @@ type LaunchTaskOptions = {
   destinationBranch?: string;
   /** Other folders the session gets tool access to (`--add-dir`); each must exist. */
   addDirs?: string[];
+  /** Where it opens; omitted = the `terminalLayout` preference. */
+  layout?: TerminalLayout;
 };
 
 export async function launchTaskTerminal({
@@ -339,6 +345,7 @@ export async function launchTaskTerminal({
   originBranch = "",
   destinationBranch = "",
   addDirs = [],
+  layout,
 }: LaunchTaskOptions): Promise<{ sessionId: string | null }> {
   const trimmedWorktreePath = worktreePath.trim();
   const trimmedPrompt = prompt.trim();
@@ -368,6 +375,8 @@ export async function launchTaskTerminal({
   await launchInTerminal(
     `claude ${sessionIdFlag}${permissionFlag}${promptArg}`.trimEnd() + addDirArgs,
     trimmedWorktreePath,
+    null,
+    layout,
   );
 
   recordEvent("session.started", {
@@ -393,6 +402,7 @@ export async function launchTaskTest(
   ticketLink: string,
   permissionModeAuto: boolean,
   nickname = "",
+  layout?: TerminalLayout,
 ): Promise<void> {
   const link = ticketLink.trim();
   if (!link) throw new BadRequestError("TASK_TEST_LINK_REQUIRED", "A ticket link is required.");
@@ -427,5 +437,6 @@ export async function launchTaskTest(
     permissionModeAuto,
     repoRoot: "",
     nickname,
+    layout,
   });
 }

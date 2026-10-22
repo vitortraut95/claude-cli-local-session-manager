@@ -35,7 +35,12 @@ import { getHeavyRunHookStatus, setHeavyRunHookInstalled } from "../services/hea
 import { stopPreviewsIn, taskWorktrees } from "../services/previewService.js";
 import { getTaskQueue, saveTaskQueue } from "../services/taskQueueService.js";
 import { getSchedulerStatus, runSchedulerNow } from "../services/taskSchedulerService.js";
-import { extractBooleanField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
+import {
+  extractBooleanField,
+  extractLayoutField,
+  extractStringField,
+  parseWorkStatus,
+} from "../utils/httpBody.js";
 import { BadRequestError } from "../utils/httpError.js";
 import { normalizeTaskKey } from "../utils/taskKeys.js";
 import { setTaskStatus } from "../utils/taskStore.js";
@@ -213,6 +218,7 @@ tasksRouter.post("/launch", async (req, res) => {
     originBranch: extractStringField(req.body, "originBranch"),
     destinationBranch: extractStringField(req.body, "destinationBranch"),
     addDirs: extractStringArray(req.body, "addDirs"),
+    layout: extractLayoutField(req.body),
   });
   res.json({ success: true, sessionId });
 });
@@ -319,6 +325,7 @@ tasksRouter.post("/test-task", async (req, res) => {
     extractStringField(req.body, "ticketLink"),
     extractBooleanField(req.body, "permissionModeAuto", true),
     extractStringField(req.body, "nickname"),
+    extractLayoutField(req.body),
   );
   res.json({ success: true });
 });

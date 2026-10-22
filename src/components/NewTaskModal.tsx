@@ -6,6 +6,7 @@ import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
 import * as preferencesApi from "../services/preferencesApi";
+import type { TerminalLayout } from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import { Button } from "./Button";
 import { Input } from "./Input";
@@ -328,7 +329,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
    * Runs the steps in sequence, updating `steps` for the live checklist. A failure stops there,
    * marks that step "error" and leaves the modal open with the checklist visible.
    */
-  const handleCreate = async () => {
+  const handleCreate = async (layout?: TerminalLayout) => {
     if (!canSubmit) return;
     setCreating(true);
     const extras = extraRepos;
@@ -428,6 +429,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         trimmedBase,
         trimmedBranch,
         addDirs,
+        layout,
       );
       updateStep("launch", "done");
 
@@ -486,7 +488,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         if (!skillsHubModalOpen) onClose();
       }}
       onCancel={onClose}
-      onConfirm={handleCreate}
+      onConfirmLaunch={(layout) => void handleCreate(layout)}
       confirmLabel={t("newTaskModal.confirm")}
       cancelLabel={t("newTaskModal.cancel")}
       isConfirmLoading={creating}
