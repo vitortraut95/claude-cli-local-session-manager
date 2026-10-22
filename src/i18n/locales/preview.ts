@@ -14,10 +14,7 @@ export const preview = {
   "preview.stopConfirm": dict("Stop preview", "Parar preview"),
   "preview.stopped": dict("{name} stopped.", "{name} parado."),
   "preview.stopError": dict("Couldn't stop the preview.", "Não foi possível parar o preview."),
-  "preview.stoppedState": dict(
-    "{name} is stopped ({url})",
-    "{name} está parado ({url})",
-  ),
+  "preview.stoppedState": dict("{name} is stopped ({url})", "{name} está parado ({url})"),
   "preview.remove": dict("Remove {name}'s container", "Remover o container de {name}"),
   "preview.removeConfirmTitle": dict("Remove the preview?", "Remover o preview?"),
   "preview.removeConfirmMessage": dict(
@@ -26,7 +23,10 @@ export const preview = {
   ),
   "preview.removeConfirm": dict("Remove", "Remover"),
   "preview.removed": dict("{name} removed.", "{name} removido."),
-  "preview.removeError": dict("Couldn't remove the preview.", "Não foi possível remover o preview."),
+  "preview.removeError": dict(
+    "Couldn't remove the preview.",
+    "Não foi possível remover o preview.",
+  ),
   "preview.start": dict("Start {name} again", "Religar {name}"),
   "preview.started": dict(
     "{name} started — the first page load compiles for a few minutes.",

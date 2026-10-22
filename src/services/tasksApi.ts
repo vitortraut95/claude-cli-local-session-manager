@@ -254,12 +254,7 @@ export async function saveTaskQueue(entries: QueueEntryInput[]): Promise<QueueEn
 }
 
 export type SchedulerBlock =
-  | "paused"
-  | "max_sessions"
-  | "recent_launch"
-  | "low_memory"
-  | "memory_pressure"
-  | "usage_limit";
+  "paused" | "max_sessions" | "recent_launch" | "low_memory" | "memory_pressure" | "usage_limit";
 
 export type SchedulerStatus = {
   enabled: boolean;

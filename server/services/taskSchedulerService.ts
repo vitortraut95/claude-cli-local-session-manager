@@ -23,7 +23,7 @@ import {
  * Launches the task queue on its own: every `TICK_MS` it checks for room (live sessions, free
  * RAM, memory pressure, Claude plan usage) and starts the next ready entry exactly like "New
  * task" does — task branch (`<prefix>/<key>`, or just the key) off the repo's default, always in its own worktree, extra repos via
- * `--add-dir`, the default prompt — in a new terminal. Launches are `LAUNCH_SPACING_MS` apart:
+ * `--add-dir`, the default prompt — in a new terminal. Launches are `launchSpacingMinutes` apart:
  * a session's memory (tests, preview servers) only shows up minutes after it opens, so free RAM at
  * launch time alone would let the whole queue start at once.
  */
@@ -31,17 +31,11 @@ import {
 const TICK_MS = 15_000;
 /** A just-launched session has no pid file yet; it holds its slot this long meanwhile. */
 const LAUNCH_GRACE_MS = 90_000;
-const LAUNCH_SPACING_MS = 5 * 60_000;
 /** PSI `some avg10` above this = the machine is already stalling on memory. */
 const MAX_MEMORY_PRESSURE = 10;
 
 export type SchedulerBlock =
-  | "paused"
-  | "max_sessions"
-  | "recent_launch"
-  | "low_memory"
-  | "memory_pressure"
-  | "usage_limit";
+  "paused" | "max_sessions" | "recent_launch" | "low_memory" | "memory_pressure" | "usage_limit";
 
 export type SchedulerStatus = {
   enabled: boolean;
@@ -99,13 +93,14 @@ export async function getSchedulerStatus(): Promise<SchedulerStatus> {
       getMemoryPressure(),
       getUsagePercent(),
     ]);
-  const { enabled, maxSessions, minFreeMemoryPercent, maxUsagePercent } = prefs.orchestrator;
+  const { enabled, maxSessions, minFreeMemoryPercent, maxUsagePercent, launchSpacingMinutes } =
+    prefs.orchestrator;
 
   // Unreadable values never block: the app still works on a box without PSI.
   let blockedBy: SchedulerBlock | null = null;
   if (!enabled) blockedBy = "paused";
   else if (activeSessions >= maxSessions) blockedBy = "max_sessions";
-  else if (Date.now() - lastLaunchAt < LAUNCH_SPACING_MS) blockedBy = "recent_launch";
+  else if (Date.now() - lastLaunchAt < launchSpacingMinutes * 60_000) blockedBy = "recent_launch";
   else if (freeMemoryPercent !== null && freeMemoryPercent < minFreeMemoryPercent)
     blockedBy = "low_memory";
   else if (memoryPressure !== null && memoryPressure > MAX_MEMORY_PRESSURE)
@@ -192,6 +187,23 @@ type LaunchOutcome = {
   linkedNodeModules: number;
 };
 
+/** How long a launched session gets to show up as running (its pid file) before the launch counts
+ *  as failed. The terminal/Limux opening the command is no proof Claude actually started. */
+const SESSION_START_TIMEOUT_MS = 60_000;
+
+async function waitForSessionStart(sessionId: string): Promise<void> {
+  const deadline = Date.now() + SESSION_START_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if ((await getActiveResumeSessionIds()).has(sessionId)) return;
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+  }
+  pendingLaunches.delete(sessionId);
+  throw new Error(
+    `The session didn't start within ${SESSION_START_TIMEOUT_MS / 1000}s (Claude never showed up ` +
+      `in the terminal/Limux) — check the pane or tab for an error, then try again.`,
+  );
+}
+
 async function launchEntry(
   entry: QueueEntry,
   prefs: UserPreferences,
@@ -254,7 +266,10 @@ async function launchEntry(
     destinationBranch: branch,
     addDirs,
   });
-  if (sessionId) pendingLaunches.set(sessionId, Date.now());
+  if (sessionId) {
+    pendingLaunches.set(sessionId, Date.now());
+    await waitForSessionStart(sessionId);
+  }
 
   await updateQueueEntry(entry.key, {
     launchedAt: new Date().toISOString(),
@@ -340,6 +355,34 @@ async function tick(): Promise<void> {
   } finally {
     launchingKey = null;
     ticking = false;
+  }
+}
+
+/**
+ * Launches a queue entry again — for one marked launched whose session never actually started
+ * (no transcript, no process). Reuses its worktree (see `findExistingTaskWorktree`).
+ */
+export async function relaunchQueueEntry(key: string): Promise<LaunchOutcome | null> {
+  const [prefs, queue] = await Promise.all([getUserPreferences(), getQueue()]);
+  const entry = queue.find((e) => e.key === key);
+  if (!entry) throw new Error(`${key} isn't in the queue.`);
+  const startedAt = Date.now();
+  recordEvent("queue.launch.started", { key, repos: entry.repos, relaunch: true });
+  try {
+    const outcome = await launchEntry({ ...entry, launchedAt: null, error: null }, prefs);
+    lastLaunchAt = startedAt;
+    recordEvent("queue.launched", {
+      key,
+      durationMs: Date.now() - startedAt,
+      relaunch: true,
+      ...outcome,
+    });
+    return outcome;
+  } catch (err) {
+    const message = errorMessage(err);
+    recordEvent("queue.launch.failed", { key, durationMs: Date.now() - startedAt, error: message });
+    await updateQueueEntry(key, { error: message });
+    throw err;
   }
 }
 

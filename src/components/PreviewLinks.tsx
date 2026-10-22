@@ -51,7 +51,11 @@ export function PreviewLinks({ previews, onChanged }: PreviewLinksProps) {
       onChanged();
     } catch (err) {
       showToast(
-        resolveApiErrorMessage(err, t, action === "stop" ? "preview.stopError" : "preview.removeError"),
+        resolveApiErrorMessage(
+          err,
+          t,
+          action === "stop" ? "preview.stopError" : "preview.removeError",
+        ),
         "error",
       );
     } finally {
@@ -154,7 +158,9 @@ export function PreviewLinks({ previews, onChanged }: PreviewLinksProps) {
       <ConfirmDialog
         open={confirming !== null}
         title={t(
-          confirming?.action === "remove" ? "preview.removeConfirmTitle" : "preview.stopConfirmTitle",
+          confirming?.action === "remove"
+            ? "preview.removeConfirmTitle"
+            : "preview.stopConfirmTitle",
         )}
         message={t(
           confirming?.action === "remove"

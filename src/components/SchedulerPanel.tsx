@@ -30,6 +30,7 @@ const LIMITS: Record<Exclude<keyof OrchestratorPreferences, "enabled">, [number,
   testCpuPercent: [50, 6400],
   previewSlots: [1, 16],
   previewMemoryMaxGb: [1, 64],
+  launchSpacingMinutes: [0, 60],
 };
 
 type SchedulerPanelProps = {
@@ -201,10 +202,11 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         {numberField("maxSessions", "scheduler.setting.maxSessions")}
         {numberField("minFreeMemoryPercent", "scheduler.setting.minFreeMemory")}
         {numberField("maxUsagePercent", "scheduler.setting.maxUsage")}
+        {numberField("launchSpacingMinutes", "scheduler.setting.launchSpacing")}
       </div>
       <p className="text-xs text-gray-500 dark:text-gray-400">{t("scheduler.explanation")}</p>
 

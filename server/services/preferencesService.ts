@@ -40,6 +40,9 @@ export type OrchestratorPreferences = {
    *  one's RAM cap (GB). */
   previewSlots: number;
   previewMemoryMaxGb: number;
+  /** Minutes between two launches, so a session's memory shows up before the next one starts
+   *  (0 = no spacing). */
+  launchSpacingMinutes: number;
 };
 
 export type UserPreferences = {
@@ -133,6 +136,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     testCpuPercent: 400,
     previewSlots: 5,
     previewMemoryMaxGb: 4,
+    launchSpacingMinutes: 5,
   },
   worktreeSetup: {},
   terminalLayout: "tabs",
@@ -215,6 +219,9 @@ function parseOrchestrator(value: unknown): OrchestratorPreferences {
     previewMemoryMaxGb: isIntInRange(raw.previewMemoryMaxGb, 1, 64)
       ? raw.previewMemoryMaxGb
       : fallback.previewMemoryMaxGb,
+    launchSpacingMinutes: isIntInRange(raw.launchSpacingMinutes, 0, 60)
+      ? raw.launchSpacingMinutes
+      : fallback.launchSpacingMinutes,
   };
 }
 
@@ -231,7 +238,8 @@ export function isOrchestratorPreferences(value: unknown): value is Orchestrator
     (raw.testMemoryMaxGb === undefined || isIntInRange(raw.testMemoryMaxGb, 1, 256)) &&
     (raw.testCpuPercent === undefined || isIntInRange(raw.testCpuPercent, 50, 6400)) &&
     (raw.previewSlots === undefined || isIntInRange(raw.previewSlots, 1, 16)) &&
-    (raw.previewMemoryMaxGb === undefined || isIntInRange(raw.previewMemoryMaxGb, 1, 64))
+    (raw.previewMemoryMaxGb === undefined || isIntInRange(raw.previewMemoryMaxGb, 1, 64)) &&
+    (raw.launchSpacingMinutes === undefined || isIntInRange(raw.launchSpacingMinutes, 0, 60))
   );
 }
 
