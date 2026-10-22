@@ -1,6 +1,5 @@
 import express, { Router } from "express";
 import {
-  applyWorktreeCopyToRoot,
   continueSession,
   createSessionWorktree,
   deleteSession,
@@ -10,16 +9,11 @@ import {
   getSessionPrompts,
   invalidSessionIdError,
   isSafeSessionId,
-  getRootStatus,
   getScanProgress,
-  getWorktreeToRootPreview,
   listSessions,
   openInCursor,
   openInVSCode,
   openMissingWorktreeRootInVSCode,
-  openWorktreeRootInVSCode,
-  removeWorktreeAndCheckoutRoot,
-  resetRootWorkingTree,
   resumeOpenTasks,
   getSessionHistory,
   focusSessionInGrid,
@@ -35,12 +29,7 @@ import {
   inspectSessionBundle,
 } from "../services/sessionTransferService.js";
 import { getSessionTask, setSessionTask } from "../services/taskGroupService.js";
-import {
-  extractBooleanField,
-  extractLayoutField,
-  extractStringField,
-  parseWorkStatus,
-} from "../utils/httpBody.js";
+import { extractLayoutField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
 import { sendErrorResponse } from "../utils/httpError.js";
 
 export const sessionsRouter = Router();
@@ -199,34 +188,6 @@ sessionsRouter.post("/:id/checkout-and-resume", async (req, res) => {
   res.json({ success: true });
 });
 
-sessionsRouter.get("/:id/worktree-to-root-preview", async (req, res) => {
-  const preview = await getWorktreeToRootPreview(req.params.id);
-  res.json({ preview });
-});
-
-sessionsRouter.get("/:id/worktree-to-root/root-status", async (req, res) => {
-  const status = await getRootStatus(req.params.id);
-  res.json({ status });
-});
-
-sessionsRouter.post("/:id/worktree-to-root/reset-root", async (req, res) => {
-  const stashRef = await resetRootWorkingTree(
-    req.params.id,
-    extractBooleanField(req.body, "force", false),
-  );
-  res.json({ success: true, stashRef });
-});
-
-sessionsRouter.post("/:id/worktree-to-root/copy", async (req, res) => {
-  await applyWorktreeCopyToRoot(req.params.id);
-  res.json({ success: true });
-});
-
-sessionsRouter.post("/:id/worktree-to-root/remove-and-checkout", async (req, res) => {
-  const { previousRootBranch, newBranch } = await removeWorktreeAndCheckoutRoot(req.params.id);
-  res.json({ success: true, previousRootBranch, newBranch });
-});
-
 /** Shows the grid pane running this session; `{ focused: false }` when there's none. */
 sessionsRouter.post("/:id/grid-focus", async (req, res) => {
   res.json({ focused: await focusSessionInGrid(req.params.id) });
@@ -239,11 +200,6 @@ sessionsRouter.post("/:id/vscode", async (req, res) => {
 
 sessionsRouter.post("/:id/cursor", async (req, res) => {
   await openInCursor(req.params.id);
-  res.json({ success: true });
-});
-
-sessionsRouter.post("/:id/worktree-to-root/vscode-root", async (req, res) => {
-  await openWorktreeRootInVSCode(req.params.id);
   res.json({ success: true });
 });
 

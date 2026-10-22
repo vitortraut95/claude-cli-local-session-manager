@@ -81,45 +81,6 @@ export type TaskRepoRef = {
   sessionIds: string[];
 };
 
-export type WorktreeToRootFileDiff = {
-  added: string[];
-  modified: string[];
-  removed: string[];
-};
-
-/** Returned by `GET /sessions/:id/worktree-to-root-preview`; never cached. */
-export type WorktreeToRootPreview = {
-  repoRoot: string;
-  /** Null only for a detached HEAD. */
-  rootBranch: string | null;
-  worktreeBranch: string | null;
-  /** Uncommitted files in the root checkout (what the "reset root" step stashes). */
-  rootDirtyFiles: string[];
-  /** Filesystem diff between the worktree's and root's working trees (not a git diff). */
-  fileDiff: WorktreeToRootFileDiff;
-  rootHasActiveSession: boolean;
-  worktreeHasActiveSession: boolean;
-  /** Another task already holding the root (files copied or branch moved there); bringing this
-   *  worktree is refused until it's released. */
-  rootLock: {
-    mode: "copy" | "checkout";
-    branch: string;
-    taskKey: string | null;
-    worktreePath: string | null;
-    since: string;
-  } | null;
-};
-
-/** Returned by `GET /sessions/:id/worktree-to-root/root-status`: root's branch and dirty files,
- *  without the preview's file diff. */
-export type RootStatus = {
-  repoRoot: string;
-  rootBranch: string | null;
-  rootDirtyFiles: string[];
-  /** Every stash `discardWorkingTreeChanges` created here, newest first. */
-  appStashes: { sha: string; message: string }[];
-};
-
 /** One local folder an imported session could land in — see `inspectSessionBundle`
  *  (`server/services/sessionTransferService.ts`). */
 export type SessionImportCandidate = {

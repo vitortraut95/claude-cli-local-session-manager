@@ -144,7 +144,3 @@ export async function isBranchPushed(repoRoot: string, branch: string): Promise<
     return false;
   }
 }
-
-export async function checkoutExistingBranch(cwd: string, branch: string): Promise<void> {
-  await runGit(["checkout", branch], cwd);
-}

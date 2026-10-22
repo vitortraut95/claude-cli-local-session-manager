@@ -3,14 +3,12 @@ import {
   Folder,
   GitBranch,
   GitFork,
-  GitMerge,
   GitPullRequest,
   Layers,
   Loader2,
   MessageSquare,
   Pencil,
   Play,
-  RotateCcw,
   Share,
   Trash2,
   TriangleAlert,
@@ -38,13 +36,11 @@ import { PromptPreviewModal } from "./PromptPreviewModal";
 import { NicknameModal } from "./NicknameModal";
 import { SessionBranchesModal } from "./SessionBranchesModal";
 import { OpenPrBaseChoiceModal } from "./OpenPrBaseChoiceModal";
-import { ResetRootConfirmModal } from "./ResetRootConfirmModal";
 import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
 import { PreviewLinks } from "./PreviewLinks";
 import { TaskHistoryModal } from "./TaskHistoryModal";
 import { WorkStatusSelect } from "./WorkStatusSelect";
-import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatWorktreePath } from "../utils/formatPath";
 import { DEFAULT_BRANCHES } from "../utils/branches";
 import { getTaskJenkinsGroups } from "../utils/jenkins";
@@ -125,8 +121,6 @@ export function SessionCard({
   );
   const [removingDoneWorktree, setRemovingDoneWorktree] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [showWorktreeToRootModal, setShowWorktreeToRootModal] = useState(false);
-  const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
   const [showOpenPrBaseChoice, setShowOpenPrBaseChoice] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showJenkinsModal, setShowJenkinsModal] = useState(false);
@@ -484,22 +478,6 @@ export function SessionCard({
               )}
             </span>
           </Tooltip>
-
-          {session.isWorktree && !session.directoryMissing && (
-            // Enabled even while active: "copy" mode only reads the worktree, and the modal itself
-            // blocks "checkout" mode while the worktree's session is active.
-            <Tooltip content={t("sessionCard.worktreeToRoot.tooltip")}>
-              <Button
-                variant="outline-danger"
-                size="sm"
-                onClick={() => setShowWorktreeToRootModal(true)}
-                aria-label={t("sessionCard.worktreeToRoot.ariaLabel")}
-                icon={<GitMerge className="h-3.5 w-3.5" />}
-              >
-                {t("sessionCard.worktreeToRootButton")}
-              </Button>
-            </Tooltip>
-          )}
         </div>
       </div>
 
@@ -530,15 +508,6 @@ export function SessionCard({
           onClick={() => setShowExportModal(true)}
           icon={<Share className="h-4 w-4" />}
         />
-        {session.isWorktree && !session.directoryMissing && (
-          <ToolbarIconButton
-            tooltip={t("sessionCard.resetRootTooltip")}
-            ariaLabel={t("sessionCard.resetRootAriaLabel")}
-            color="amber"
-            onClick={() => setShowResetRootConfirm(true)}
-            icon={<RotateCcw className="h-4 w-4" />}
-          />
-        )}
         {jenkinsGroups && (
           <ToolbarIconButton
             tooltip={t("sessionCard.openJenkinsTooltip")}
@@ -675,19 +644,6 @@ export function SessionCard({
           }}
           onCancel={() => setShowNicknameModal(false)}
         />
-      )}
-      {showWorktreeToRootModal && (
-        <WorktreeToRootModal
-          session={session}
-          onClose={() => setShowWorktreeToRootModal(false)}
-          onComplete={() => onWorktreeSyncComplete(session)}
-          // `session` is pre-refresh here; checkout mode already removed the worktree, so
-          // isWorktree is corrected by hand to avoid a stale "clean up worktree" checkbox.
-          onOfferDeleteSession={() => onDeleteRequest({ ...session, isWorktree: false })}
-        />
-      )}
-      {showResetRootConfirm && (
-        <ResetRootConfirmModal session={session} onClose={() => setShowResetRootConfirm(false)} />
       )}
       {showJenkinsModal && jenkinsGroups && (
         <JenkinsLinksModal groups={jenkinsGroups} onClose={() => setShowJenkinsModal(false)} />

@@ -83,8 +83,7 @@ async function unlockAndRemoveWorktree(
       throw new AppError(
         "WORKTREE_UNCOMMITTED_CHANGES",
         `The worktree at "${worktreePath}" still has uncommitted changes, so it wasn't removed ` +
-          `— commit or discard them in the worktree first (or use "copy" mode instead, which ` +
-          `doesn't require the worktree to be clean).`,
+          `— commit or discard them in the worktree first.`,
         { cause: err },
       );
     }
@@ -126,13 +125,4 @@ export async function forceRemoveWorktree(worktreePath: string): Promise<void> {
     return;
   }
   await rm(worktreePath, { recursive: true, force: true });
-}
-
-/** Worktrees nested inside `rootDir`, relative to it. Root operations must skip them: each is a
- *  separate checkout, possibly in use by another session. */
-export function nestedWorktreeRelativePaths(rootDir: string, entries: WorktreeEntry[]): string[] {
-  const resolvedRoot = path.resolve(rootDir);
-  return entries
-    .map((entry) => path.relative(resolvedRoot, path.resolve(entry.path)))
-    .filter((rel) => rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel));
 }

@@ -70,11 +70,6 @@ and clean them up. Everything runs on your machine — no external server involv
   gitignored `.env*` files, since git only checks out tracked files. The link is added to the repo's
   `info/exclude` (a `node_modules/` ignore line doesn't match a symlink) and the session is told not
   to install there
-- **Worktree → root** — copy a worktree's files into the project root to test locally, or move
-  the branch there for real once it's ready to push. One task per repo at a time: bringing another
-  task's worktree to a root still holding one
-  (files copied there, or its branch checked out) is refused until "Reset root" frees it (or the
-  root is cleaned / switched branch by hand)
 - **Multi-repo tasks** — a task (ticket key, e.g. `PROJ-123`) can span several repos: New task can
   create the same branch in extra repos (they join the one session via `--add-dir`), a card's "+"
   adds another repo later (then paste the `/add-dir` it shows), and each card shows the task's

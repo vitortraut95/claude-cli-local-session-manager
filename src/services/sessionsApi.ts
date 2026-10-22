@@ -1,11 +1,9 @@
 import axios from "axios";
 import type {
-  RootStatus,
   Session,
   SessionImportPreview,
   SessionImportResult,
   WorkStatus,
-  WorktreeToRootPreview,
 } from "../types/session";
 import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
 import type { TerminalLayout } from "./preferencesApi";
@@ -155,56 +153,6 @@ export async function fetchPrUrl(id: string, branch: string, base?: string): Pro
   return data.url;
 }
 
-/** Read-only snapshot for the "worktree → root" modal: branches, root's dirty files and a file
- *  diff between the worktree and root. */
-export async function fetchWorktreeToRootPreview(id: string): Promise<WorktreeToRootPreview> {
-  const { data } = await withServerErrorMessage(() =>
-    client.get<{ preview: WorktreeToRootPreview }>(
-      `/${encodeURIComponent(id)}/worktree-to-root-preview`,
-    ),
-  );
-  return data.preview;
-}
-
-/** Root's branch, dirty files and app stashes — `fetchWorktreeToRootPreview` without the diff. */
-export async function fetchRootStatus(id: string): Promise<RootStatus> {
-  const { data } = await withServerErrorMessage(() =>
-    client.get<{ status: RootStatus }>(`/${encodeURIComponent(id)}/worktree-to-root/root-status`),
-  );
-  return data.status;
-}
-
-/** Opens the repo *root* (not the worktree) in VS Code. */
-export async function openWorktreeRootInVSCode(id: string): Promise<void> {
-  await withServerErrorMessage(() =>
-    client.post(`/${encodeURIComponent(id)}/worktree-to-root/vscode-root`),
-  );
-}
-
-/** Stashes every uncommitted change in the repo's main checkout; returns the stash ref (null if
- *  nothing was dirty). */
-/** `force` (the standalone "Reset root") also frees a root another task holds; without it the
- *  server refuses with `ROOT_IN_USE`. */
-export async function resetRootWorkingTree(
-  id: string,
-  force = false,
-): Promise<{ stashRef: string | null }> {
-  const { data } = await withServerErrorMessage(() =>
-    client.post<{ success: true; stashRef: string | null }>(
-      `/${encodeURIComponent(id)}/worktree-to-root/reset-root`,
-      { force },
-    ),
-  );
-  return { stashRef: data.stashRef };
-}
-
-/** "Copy" mode: copies/deletes root's files to match the worktree (worktree left untouched). */
-export async function applyWorktreeCopyToRoot(id: string): Promise<void> {
-  await withServerErrorMessage(() =>
-    client.post(`/${encodeURIComponent(id)}/worktree-to-root/copy`),
-  );
-}
-
 /** Opens an orphaned worktree session's repo root (`missingWorktreeRepoRoot`) in VS Code. */
 export async function openMissingWorktreeRootInVSCode(id: string): Promise<void> {
   await withServerErrorMessage(() =>
@@ -221,19 +169,6 @@ export async function startFreshSessionAtMissingWorktreeRoot(
   await withServerErrorMessage(() =>
     client.post(`/${encodeURIComponent(id)}/missing-worktree-root/resume`, { layout }),
   );
-}
-
-/** "Checkout" mode: removes the worktree (keeping its branch) and checks that branch out in root.
- *  Returns the branches root switched from/to. */
-export async function removeWorktreeAndCheckoutRoot(
-  id: string,
-): Promise<{ previousRootBranch: string | null; newBranch: string }> {
-  const { data } = await withServerErrorMessage(() =>
-    client.post<{ success: true; previousRootBranch: string | null; newBranch: string }>(
-      `/${encodeURIComponent(id)}/worktree-to-root/remove-and-checkout`,
-    ),
-  );
-  return { previousRootBranch: data.previousRootBranch, newBranch: data.newBranch };
 }
 
 /** `withServerErrorMessage` for a `responseType: "blob"` request, whose JSON error body also
@@ -322,8 +257,6 @@ export type HistorySummary = {
   heavyMemoryWaitS: number;
   heavyDurationS: number;
   heavyBlocked: number;
-  rootHeldMs: number;
-  rootRefused: number;
   errors: { ts: string; type: string; message: string }[];
 };
 

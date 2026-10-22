@@ -3,12 +3,7 @@ import { accessSync, constants, realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type {
-  RootStatus,
-  Session,
-  SessionPreview,
-  WorktreeToRootPreview,
-} from "../types/session.js";
+import type { Session, SessionPreview } from "../types/session.js";
 import {
   listPreviewServers,
   previewsFor,
@@ -28,13 +23,6 @@ import {
 } from "../utils/claudeProjects.js";
 import { inferTaskKey } from "../utils/taskKeys.js";
 import { collectTaskRepos } from "../utils/taskRepos.js";
-import {
-  assertRootFreeFor,
-  getRootLock,
-  lockRootForCheckout,
-  lockRootForCopy,
-  taskKeyForBranch,
-} from "./rootLockService.js";
 import {
   forgetRepoBranch,
   forgetSession,
@@ -67,24 +55,14 @@ import {
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import { sanitizedSpawnEnv } from "../utils/spawnEnv.js";
 import {
-  applyFileDiff,
-  checkoutExistingBranch,
-  computeFileDiff,
   deleteLocalBranch,
-  discardWorkingTreeChanges,
   forceRemoveWorktree,
   getDefaultBaseBranch,
   getGitDirs,
   getGitHostInfo,
   getRepoRoot,
-  getStatusFiles,
   isLinkedWorktree,
-  listAppStashes,
-  getWorktreeBranch,
-  listWorktrees,
-  nestedWorktreeRelativePaths,
   removeWorktreeAndBranch,
-  removeWorktreeKeepBranch,
   runGit,
   sanitizeWorktreeDirName,
 } from "../utils/git.js";
@@ -855,12 +833,6 @@ export async function openInCursor(id: string): Promise<void> {
   }
 }
 
-/** Opens a worktree session's repo root (not the worktree) in VS Code. */
-export async function openWorktreeRootInVSCode(id: string): Promise<void> {
-  const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
-  await openDirInVSCode(repoRoot);
-}
-
 /** Repo root of an orphaned worktree session, derived from its recorded `cwd` (the worktree is
  *  gone, so git can't tell); must still exist. */
 async function resolveMissingWorktreeRepoRoot(
@@ -1069,177 +1041,6 @@ export async function deleteSessionWorktree(id: string): Promise<void> {
   if (repoRootForCleanup && branchForCleanup) {
     await forgetRepoBranch(repoRootForCleanup, branchForCleanup).catch(() => undefined);
   }
-}
-
-/** Resolves a worktree session's cwd and repo root, or throws. */
-async function resolveWorktreeAndRepoRoot(id: string): Promise<{ cwd: string; repoRoot: string }> {
-  const cwd = await findSessionCwd(id);
-  if (!cwd) throw new SessionNotFoundError(id);
-  if (!(await directoryExists(cwd))) {
-    throw sessionDirectoryMissingError(cwd);
-  }
-  if (!(await isLinkedWorktree(cwd))) {
-    throw notAWorktreeSessionError();
-  }
-
-  const repoRoot = await getRepoRoot(cwd);
-  if (!repoRoot) {
-    throw new AppError("REPO_ROOT_UNRESOLVED", `Could not resolve the repo root for "${cwd}".`);
-  }
-
-  return { cwd, repoRoot };
-}
-
-/** Read-only preview for the "worktree → root" modal. The mutating steps re-check everything
- *  themselves rather than trusting it. */
-export async function getWorktreeToRootPreview(id: string): Promise<WorktreeToRootPreview> {
-  const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
-
-  const entries = await listWorktrees(repoRoot);
-  const excludePaths = nestedWorktreeRelativePaths(repoRoot, entries);
-  const [rootDirtyFiles, fileDiff, sessions, rootLock] = await Promise.all([
-    getStatusFiles(repoRoot, excludePaths),
-    computeFileDiff(cwd, repoRoot),
-    listSessions(),
-    getRootLock(repoRoot),
-  ]);
-
-  const resolvedRepoRoot = path.resolve(repoRoot);
-  const resolvedCwd = path.resolve(cwd);
-  const rootBranch = entries.find((e) => path.resolve(e.path) === resolvedRepoRoot)?.branch ?? null;
-  const worktreeBranch = entries.find((e) => path.resolve(e.path) === resolvedCwd)?.branch ?? null;
-
-  return {
-    repoRoot,
-    rootBranch,
-    worktreeBranch,
-    rootDirtyFiles,
-    fileDiff,
-    rootHasActiveSession: sessions.some((s) => s.workingDirectory === repoRoot && s.isActive),
-    worktreeHasActiveSession: sessions.some((s) => s.workingDirectory === cwd && s.isActive),
-    // Another task holding the root; this worktree's own copy doesn't count.
-    rootLock:
-      rootLock && !(rootLock.mode === "copy" && rootLock.worktreePath === cwd) ? rootLock : null,
-  };
-}
-
-/** Root's branch, dirty files and this app's stashes, without the preview's file diff. */
-export async function getRootStatus(id: string): Promise<RootStatus> {
-  const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
-  const entries = await listWorktrees(repoRoot);
-  const excludePaths = nestedWorktreeRelativePaths(repoRoot, entries);
-  const [rootDirtyFiles, appStashes] = await Promise.all([
-    getStatusFiles(repoRoot, excludePaths),
-    listAppStashes(repoRoot),
-  ]);
-  const resolvedRepoRoot = path.resolve(repoRoot);
-  const rootBranch = entries.find((e) => path.resolve(e.path) === resolvedRepoRoot)?.branch ?? null;
-
-  return { repoRoot, rootBranch, rootDirtyFiles, appStashes };
-}
-
-/**
- * Stashes every uncommitted change in the main checkout (nested worktrees excluded), refused while
- * a session is active there. Returns the stash SHA, or null when root was clean.
- *
- * As the first step of "worktree → root" it's also refused while another task holds the root
- * (`rootLockService`), so it can't stash that task's copy away; `force` (the standalone "Reset
- * root") is the user deliberately freeing it.
- */
-export async function resetRootWorkingTree(id: string, force = false): Promise<string | null> {
-  const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
-  if (!force) await assertRootFreeFor(repoRoot, cwd);
-
-  const sessions = await listSessions();
-  if (sessions.some((s) => s.workingDirectory === repoRoot && s.isActive)) {
-    throw new SessionActiveError(
-      "A session is active in the root project directory — close its terminal before continuing.",
-    );
-  }
-
-  const entries = await listWorktrees(repoRoot);
-  const excludePaths = nestedWorktreeRelativePaths(repoRoot, entries);
-  const stashRef = await discardWorkingTreeChanges(repoRoot, excludePaths);
-  // A copy lock goes with the files; a moved branch keeps it until root leaves that branch.
-  await getRootLock(repoRoot);
-  return stashRef;
-}
-
-/** Copies the worktree's files onto root, recomputing the diff fresh (never the client's copy).
- *  The worktree itself is left untouched. */
-export async function applyWorktreeCopyToRoot(id: string): Promise<void> {
-  const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
-
-  const sessions = await listSessions();
-  if (sessions.some((s) => s.workingDirectory === repoRoot && s.isActive)) {
-    throw new SessionActiveError(
-      "A session is active in the root project directory — close its terminal before continuing.",
-    );
-  }
-
-  await assertRootFreeFor(repoRoot, cwd);
-  const diff = await computeFileDiff(cwd, repoRoot);
-  await applyFileDiff(cwd, repoRoot, diff);
-  const branch = await getWorktreeBranch(cwd, repoRoot);
-  if (branch) await lockRootForCopy(repoRoot, cwd, branch);
-}
-
-/**
- * Removes the worktree (keeping its branch) and checks that branch out in root, as one server-side
- * operation so a dropped request can't leave the worktree gone with root on its old branch.
- * Returns root's previous branch (null for a detached HEAD) and the new one.
- */
-export async function removeWorktreeAndCheckoutRoot(
-  id: string,
-): Promise<{ previousRootBranch: string | null; newBranch: string }> {
-  const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
-
-  const sessions = await listSessions();
-  if (sessions.some((s) => s.workingDirectory === cwd && s.isActive)) {
-    throw new SessionActiveError(
-      "A session is still active in this worktree — close its terminal before removing it.",
-    );
-  }
-  if (sessions.some((s) => s.workingDirectory === repoRoot && s.isActive)) {
-    throw new SessionActiveError(
-      "A session is active in the root project directory — close its terminal before checking " +
-        "out a branch there.",
-    );
-  }
-
-  await assertRootFreeFor(repoRoot, cwd);
-  const resolvedRepoRoot = path.resolve(repoRoot);
-  const entriesBefore = await listWorktrees(repoRoot);
-  const previousRootBranch =
-    entriesBefore.find((e) => path.resolve(e.path) === resolvedRepoRoot)?.branch ?? null;
-  const worktreeBranch = await getWorktreeBranch(cwd, repoRoot);
-  // Read before the worktree goes: removing it forgets the branch's task link.
-  const taskKey = worktreeBranch ? await taskKeyForBranch(repoRoot, worktreeBranch) : null;
-
-  const branch = await removeWorktreeKeepBranch(cwd);
-  if (!branch) {
-    throw new AppError(
-      "WORKTREE_BRANCH_UNKNOWN",
-      "Could not determine the worktree's branch before removing it.",
-    );
-  }
-  // Best-effort, whether or not the checkout below succeeds.
-  await forgetRepoBranch(repoRoot, branch).catch(() => undefined);
-
-  try {
-    await checkoutExistingBranch(repoRoot, branch);
-  } catch (err) {
-    const message = errorMessage(err);
-    throw new AppError(
-      "WORKTREE_TO_ROOT_CHECKOUT_FAILED",
-      `The worktree was removed, but "git checkout ${branch}" failed in ${repoRoot}: ${message} ` +
-        `The branch's commits are safe — finish the checkout by hand from a terminal in ${repoRoot}.`,
-      { cause: err },
-    );
-  }
-
-  await lockRootForCheckout(repoRoot, branch, taskKey);
-  return { previousRootBranch, newBranch: branch };
 }
 
 /** Statuses "Resume open tasks" brings back: work left mid-way (not "to do": never started). */
