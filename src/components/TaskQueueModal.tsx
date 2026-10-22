@@ -1,10 +1,10 @@
 import {
-  ArrowDown,
-  ArrowUp,
   ExternalLink,
   FolderPlus,
+  GripVertical,
   ListTodo,
   Loader2,
+  Rocket,
   RotateCcw,
   Trash2,
   X,
@@ -230,28 +230,34 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
   const updateEntry = (key: string, patch: Partial<DraftEntry>) =>
     setEntries((current) => current.map((e) => (e.key === key ? { ...e, ...patch } : e)));
 
-  // The scheduler launches the first ready entry in list order, so the order is the priority. A
-  // move swaps with the nearest entry not launched yet (launched ones keep their place).
-  const isMovable = (entry: DraftEntry) => !entry.launchedAt && status?.launching !== entry.key;
-  const neighborIndex = (list: DraftEntry[], index: number, step: -1 | 1) => {
-    for (let i = index + step; i >= 0 && i < list.length; i += step) {
-      const candidate = list[i];
-      if (candidate && isMovable(candidate)) return i;
-    }
-    return -1;
-  };
-  const moveEntry = (key: string, step: -1 | 1) =>
+  // The scheduler launches the first ready entry in list order, so the order is the priority.
+  // Entries not launched yet are dragged by their handle; `armedKey` makes only that row
+  // draggable, so text in its inputs can still be selected.
+  const [armedKey, setArmedKey] = useState<string | null>(null);
+  const [dragKey, setDragKey] = useState<string | null>(null);
+  const [overKey, setOverKey] = useState<string | null>(null);
+  const moveEntryTo = (key: string, targetKey: string) =>
     setEntries((current) => {
-      const index = current.findIndex((e) => e.key === key);
-      const target = neighborIndex(current, index, step);
-      const from = current[index];
-      const to = current[target];
-      if (!from || !to) return current;
-      const next = [...current];
-      next[index] = to;
-      next[target] = from;
+      const from = current.findIndex((e) => e.key === key);
+      const to = current.findIndex((e) => e.key === targetKey);
+      const moved = current[from];
+      if (!moved || to < 0 || from === to) return current;
+      const next = current.filter((e) => e.key !== key);
+      next.splice(to, 0, moved);
       return next;
     });
+  const endDrag = () => {
+    setArmedKey(null);
+    setDragKey(null);
+    setOverKey(null);
+  };
+
+  // "Start now" sends the queue as it is on screen first (the server launches the saved entry).
+  const [startingNow, setStartingNow] = useState<Set<string>>(new Set());
+  const isLaunching = (key: string) =>
+    startingNow.has(key) ||
+    status?.launching === key ||
+    (status?.launchingKeys?.includes(key) ?? false);
 
   const handleAdd = () => {
     const pasted = parsePastedTasks(pasteText);
@@ -286,36 +292,62 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
     }
   };
 
+  const persist = async () => {
+    const stored = await tasksApi.saveTaskQueue(
+      entries.map(
+        ({
+          key,
+          link,
+          kind,
+          repos,
+          branchPrefix,
+          branch,
+          baseBranch,
+          useLocalBaseBranch,
+          error,
+        }) => ({
+          key,
+          link,
+          kind,
+          repos,
+          branchPrefix,
+          branch,
+          baseBranch,
+          useLocalBaseBranch,
+          error,
+        }),
+      ),
+    );
+    retriedRef.current.clear();
+    setEntries(stored.map(toDraft));
+  };
+
+  const handleStartNow = async (key: string) => {
+    setStartingNow((current) => new Set(current).add(key));
+    try {
+      await persist();
+      await tasksApi.startQueueEntryNow(key);
+      showToast(t("taskQueueModal.startNow.started", { key }), "success");
+    } catch (err) {
+      showToast(resolveApiErrorMessage(err, t, "newTaskModal.unexpectedFailure"), "error");
+    } finally {
+      setStartingNow((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+      refreshStatus();
+      tasksApi
+        .fetchTaskQueue()
+        .then(mergeProgress)
+        .catch(() => undefined);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const stored = await tasksApi.saveTaskQueue(
-        entries.map(
-          ({
-            key,
-            link,
-            kind,
-            repos,
-            branchPrefix,
-            branch,
-            baseBranch,
-            useLocalBaseBranch,
-            error,
-          }) => ({
-            key,
-            link,
-            kind,
-            repos,
-            branchPrefix,
-            branch,
-            baseBranch,
-            useLocalBaseBranch,
-            error,
-          }),
-        ),
-      );
-      retriedRef.current.clear();
-      setEntries(stored.map(toDraft));
+      await persist();
       showToast(t("taskQueueModal.saved"), "success");
       // Don't wait for the next tick to start what just became ready.
       void tasksApi
@@ -395,7 +427,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
         </span>
       );
     }
-    if (status?.launching === entry.key) {
+    if (isLaunching(entry.key)) {
       return (
         <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
           <Loader2 className="h-3 w-3 animate-spin" /> {t("taskQueueModal.state.launching")}
@@ -582,13 +614,51 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
             <p className="text-sm text-gray-500 dark:text-gray-400">{t("taskQueueModal.empty")}</p>
           ) : (
             <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
-              {entries.map((entry, index) => {
-                const locked = Boolean(entry.launchedAt) || status?.launching === entry.key;
+              {entries.map((entry) => {
+                const locked = Boolean(entry.launchedAt) || isLaunching(entry.key);
                 const available = projects.filter((p) => !entry.repos.includes(p.path));
                 return (
-                  <li key={entry.key} className="flex flex-col gap-2 px-3 py-2.5">
+                  <li
+                    key={entry.key}
+                    draggable={armedKey === entry.key}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = "move";
+                      setDragKey(entry.key);
+                    }}
+                    onDragOver={(event) => {
+                      if (!dragKey || locked) return;
+                      event.preventDefault();
+                      if (overKey !== entry.key) setOverKey(entry.key);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (dragKey && !locked) moveEntryTo(dragKey, entry.key);
+                      endDrag();
+                    }}
+                    onDragEnd={endDrag}
+                    className={`flex flex-col gap-2 px-3 py-2.5 ${
+                      dragKey === entry.key ? "opacity-50" : ""
+                    } ${
+                      overKey === entry.key && dragKey !== entry.key
+                        ? "bg-gray-50 shadow-[inset_0_2px_0_0] shadow-gray-400 dark:bg-gray-800/60"
+                        : ""
+                    }`}
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        {!locked && (
+                          <span
+                            onPointerDown={() => setArmedKey(entry.key)}
+                            onPointerUp={() => {
+                              if (!dragKey) setArmedKey(null);
+                            }}
+                            title={t("taskQueueModal.dragHandle")}
+                            aria-label={t("taskQueueModal.dragHandle")}
+                            className="-ml-1 cursor-grab rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 active:cursor-grabbing dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                          >
+                            <GripVertical className="h-4 w-4" />
+                          </span>
+                        )}
                         {entry.link ? (
                           <a
                             href={entry.link}
@@ -614,26 +684,17 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
                       </div>
                       <div className="flex shrink-0 items-center">
                         {!locked && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => moveEntry(entry.key, -1)}
-                              disabled={neighborIndex(entries, index, -1) === -1}
-                              aria-label={t("taskQueueModal.moveUp")}
-                              title={t("taskQueueModal.moveUp")}
-                              icon={<ArrowUp className="h-4 w-4" />}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => moveEntry(entry.key, 1)}
-                              disabled={neighborIndex(entries, index, 1) === -1}
-                              aria-label={t("taskQueueModal.moveDown")}
-                              title={t("taskQueueModal.moveDown")}
-                              icon={<ArrowDown className="h-4 w-4" />}
-                            />
-                          </>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void handleStartNow(entry.key)}
+                            disabled={isMissingSetup(entry) || saving}
+                            title={t("taskQueueModal.startNow.tooltip")}
+                            icon={<Rocket className="h-3.5 w-3.5" />}
+                            className="mr-1"
+                          >
+                            {t("taskQueueModal.startNow")}
+                          </Button>
                         )}
                         <Button
                           variant="ghost"
@@ -641,7 +702,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
                           onClick={() =>
                             setEntries((current) => current.filter((e) => e.key !== entry.key))
                           }
-                          disabled={status?.launching === entry.key}
+                          disabled={isLaunching(entry.key)}
                           aria-label={t("taskQueueModal.removeTask")}
                           title={t("taskQueueModal.removeTask")}
                           icon={<Trash2 className="h-4 w-4" />}

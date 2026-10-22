@@ -33,7 +33,11 @@ import {
 import { getHeavyRunHookStatus, setHeavyRunHookInstalled } from "../services/heavyRunService.js";
 import { stopPreviewsIn, taskWorktrees } from "../services/previewService.js";
 import { getTaskQueue, saveTaskQueue } from "../services/taskQueueService.js";
-import { getSchedulerStatus, runSchedulerNow } from "../services/taskSchedulerService.js";
+import {
+  getSchedulerStatus,
+  launchQueueEntryNow,
+  runSchedulerNow,
+} from "../services/taskSchedulerService.js";
 import {
   extractBooleanField,
   extractLayoutField,
@@ -246,6 +250,12 @@ tasksRouter.get("/queue/status", async (_req, res) => {
 
 tasksRouter.post("/queue/run", async (_req, res) => {
   res.json(await runSchedulerNow());
+});
+
+/** "Start now": launches that entry right away, ignoring its place in line and every limit. */
+tasksRouter.post("/queue/:key/start-now", async (req, res) => {
+  const outcome = await launchQueueEntryNow(parseTaskKeyParam(req.params.key));
+  res.json({ success: true, sessionId: outcome?.sessionId ?? null });
 });
 
 /** The PreToolUse hook that routes every session's test commands through `scripts/heavy-run`. */
