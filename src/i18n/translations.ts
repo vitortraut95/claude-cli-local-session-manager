@@ -9,6 +9,10 @@ import { worktrees } from "./locales/worktrees";
 import { transfer } from "./locales/transfer";
 import { skillsHub } from "./locales/skillsHub";
 import { settings } from "./locales/settings";
+import { taskQueue } from "./locales/taskQueue";
+import { workStatus } from "./locales/workStatus";
+import { history } from "./locales/history";
+import { preview } from "./locales/preview";
 
 export type { Language };
 
@@ -39,6 +43,10 @@ export const translations = {
   ...transfer,
   ...skillsHub,
   ...settings,
+  ...taskQueue,
+  ...workStatus,
+  ...history,
+  ...preview,
 } satisfies Record<string, Dict>;
 
 export type TranslationKey = keyof typeof translations;

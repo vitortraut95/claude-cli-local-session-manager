@@ -6,6 +6,7 @@ import type { Session, TaskRepoRef } from "../types/session.js";
 import { collectTaskRepos } from "../utils/taskRepos.js";
 import { buildPrUrl, listSessions, SessionNotFoundError } from "./sessionService.js";
 import { createTaskWorktree, getRepoInfo, resolveBaseBranch } from "./taskService.js";
+import type { WorktreeSetupResult } from "./worktreeSetupService.js";
 
 /**
  * Tasks that span several repos: one ticket key (`PROJ-123`) grouping branches in different repos.
@@ -192,6 +193,8 @@ export type AddRepoResult = {
   baseBranch: string;
   /** Where the branch is checked out (worktree or the repo root) — what to `/add-dir`. */
   workingDirectory: string;
+  /** What the new worktree got from the repo's `worktreeSetup`. */
+  setup: WorktreeSetupResult;
   completedSteps: AddRepoStep[];
   task: TaskDetails;
 };
@@ -231,7 +234,7 @@ export async function addRepoToTask(key: string, input: AddRepoInput): Promise<A
   const { baseBranchRef } = await step("base", () =>
     resolveBaseBranch(repo.repoRoot, base, input.useLocalBranch),
   );
-  const { worktreePath } = await step("worktree", () =>
+  const { worktreePath, setup } = await step("worktree", () =>
     createTaskWorktree(
       repo.repoRoot,
       branch,
@@ -248,6 +251,7 @@ export async function addRepoToTask(key: string, input: AddRepoInput): Promise<A
     branch,
     baseBranch: base,
     workingDirectory: worktreePath,
+    setup,
     completedSteps: completed,
     task: await getTaskDetails(key),
   };

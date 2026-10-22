@@ -3,7 +3,18 @@ import { accessSync, constants, realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { RootStatus, Session, WorktreeToRootPreview } from "../types/session.js";
+import type {
+  RootStatus,
+  Session,
+  SessionPreview,
+  WorktreeToRootPreview,
+} from "../types/session.js";
+import {
+  listPreviewServers,
+  previewsFor,
+  stopPreviewsIn,
+  type PreviewServer,
+} from "./previewService.js";
 import {
   findJsonlFiles,
   forgetCachedSession,
@@ -19,14 +30,25 @@ import {
 import { inferTaskKey } from "../utils/taskKeys.js";
 import { collectTaskRepos } from "../utils/taskRepos.js";
 import {
+  assertRootFreeFor,
+  getRootLock,
+  lockRootForCheckout,
+  lockRootForCopy,
+  taskKeyForBranch,
+} from "./rootLockService.js";
+import {
   forgetRepoBranch,
   forgetSession,
   getTaskStore,
   moveSessionTaskKeyToBranch,
   setNickname,
   setSessionBranchOverride,
+  setSessionStatus,
+  type WorkStatus,
 } from "../utils/taskStore.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
+import { getUserPreferences, type TerminalLayout } from "./preferencesService.js";
+import { focusLimuxSession, isLimuxAvailable, launchInLimuxGrid } from "./limuxGridService.js";
 import {
   AppError,
   BadRequestError,
@@ -34,7 +56,17 @@ import {
   errorMessage,
   NotFoundError,
 } from "../utils/httpError.js";
+import { recordEvent } from "../utils/history.js";
+import {
+  belongsTo,
+  readHistory,
+  summarize,
+  type HistoryEvent,
+  type HistorySummary,
+  type HistoryTarget,
+} from "./historyService.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
+import { sanitizedSpawnEnv } from "../utils/spawnEnv.js";
 import {
   applyFileDiff,
   checkoutExistingBranch,
@@ -48,6 +80,7 @@ import {
   getStatusFiles,
   isLinkedWorktree,
   listAppStashes,
+  getWorktreeBranch,
   listWorktrees,
   nestedWorktreeRelativePaths,
   removeWorktreeAndBranch,
@@ -318,15 +351,87 @@ async function listSessionsUncached(): Promise<Session[]> {
         repoRoot,
         taskKey: recordedTaskKey ?? inferredTaskKey,
         taskKeyInferred: inferredTaskKey !== null,
+        status:
+          store.tasks[recordedTaskKey ?? inferredTaskKey ?? ""]?.status ?? saved?.status ?? null,
       };
     })
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   // Second pass: a task's repos depend on every session carrying its key.
   const reposByTask = collectTaskRepos(store, decorated);
-  return decorated.map((session) =>
-    session.taskKey ? { ...session, taskRepos: reposByTask.get(session.taskKey) ?? [] } : session,
+  // Recorded repos with no session in this listing still need their default branch.
+  const missingRoots = [
+    ...new Set(
+      [...reposByTask.values()]
+        .flat()
+        .map((repo) => repo.repoRoot)
+        .filter((root) => !defaultBranchByRoot.has(root)),
+    ),
+  ];
+  const missingDefaults = await Promise.all(
+    missingRoots.map((root) => getDefaultBaseBranch(root).catch(() => null)),
   );
+  missingRoots.forEach((root, i) => defaultBranchByRoot.set(root, missingDefaults[i]));
+  for (const repo of [...reposByTask.values()].flat()) {
+    repo.defaultBranch = defaultBranchByRoot.get(repo.repoRoot) ?? null;
+  }
+  const [history, servers] = await Promise.all([readHistory(), listPreviewServers()]);
+  return decorated.map((session) => {
+    const withRepos = session.taskKey
+      ? { ...session, taskRepos: reposByTask.get(session.taskKey) ?? [] }
+      : session;
+    const target = historyTargetOf(withRepos);
+    return {
+      ...withRepos,
+      hasHistory: history.some((event) => belongsTo(event, target)),
+      previews: sessionPreviews(withRepos, servers),
+    };
+  });
+}
+
+/** Previews serving the session's folder, plus its task's other worktrees (a multi-repo task's
+ *  cart preview shows on its card too). */
+function sessionPreviews(session: Session, servers: PreviewServer[]): SessionPreview[] {
+  if (servers.length === 0 || session.directoryMissing) return [];
+  const folders = new Set<string>();
+  if (session.workingDirectory) folders.add(session.workingDirectory);
+  for (const repo of session.taskRepos ?? []) if (repo.worktreePath) folders.add(repo.worktreePath);
+  const found = new Map<string, SessionPreview>();
+  for (const folder of folders) {
+    for (const server of previewsFor(servers, folder)) {
+      found.set(server.id, {
+        kind: server.kind,
+        id: server.id,
+        name: server.name,
+        port: server.port,
+        url: server.url,
+        inWorktree: folder.includes(`${path.sep}.claude${path.sep}worktrees${path.sep}`),
+        running: server.running,
+      });
+    }
+  }
+  return [...found.values()].sort((a, b) => a.port - b.port);
+}
+
+function historyTargetOf(session: Session): HistoryTarget {
+  return {
+    sessionId: session.id,
+    taskKey: session.taskKey ?? null,
+    worktreePath: session.isWorktree ? session.workingDirectory : null,
+  };
+}
+
+/** The card's "info": this session's (and its task's) history events and their summary. */
+export async function getSessionHistory(
+  id: string,
+): Promise<{ events: HistoryEvent[]; summary: HistorySummary }> {
+  if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
+  const [sessions, history] = await Promise.all([listSessions(), readHistory()]);
+  const session = sessions.find((s) => s.id === id);
+  if (!session) throw new SessionNotFoundError(id);
+  const target = historyTargetOf(session);
+  const events = history.filter((event) => belongsTo(event, target));
+  return { events, summary: summarize(events, history) };
 }
 
 /** Session ids are UUID-shaped; reject anything that looks like a path segment. */
@@ -486,6 +591,17 @@ export async function setSessionNickname(id: string, nickname: string): Promise<
   await setNickname(id, nickname);
 }
 
+/** For a session with no task — a task's status is set on the task (`PUT /tasks/by-key/:key/status`). */
+export async function setSessionWorkStatus(id: string, status: WorkStatus | null): Promise<void> {
+  if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
+  await setSessionStatus(id, status);
+  if (status === "done") {
+    // Done: its worktree's preview servers only hold memory now (background, best-effort).
+    const cwd = await findSessionCwd(id);
+    if (cwd) void stopPreviewsIn([cwd], "done").catch(() => undefined);
+  }
+}
+
 /** Local only (`tasks.json`), so no active-session gate. */
 export async function setSessionBranches(
   id: string,
@@ -510,30 +626,6 @@ const TERMINAL_LAUNCHERS: { bin: string; buildArgs: (shellCmd: string) => string
   { bin: "xfce4-terminal", buildArgs: (c) => ["-x", "bash", "-c", c] },
   { bin: "xterm", buildArgs: (c) => ["-e", "bash", "-c", c] },
 ];
-
-const SNAP_ORIG_SUFFIX = "_VSCODE_SNAP_ORIG";
-
-/**
- * Undoes snap VS Code's env overrides (GTK_PATH, LOCPATH, ...; originals kept in
- * `<VAR>_VSCODE_SNAP_ORIG`) when the server runs in its terminal: a GTK terminal spawned under them
- * fails with symbol errors like `undefined symbol: __libc_pthread_init`.
- */
-function sanitizedSpawnEnv(): NodeJS.ProcessEnv {
-  const env = { ...process.env };
-  if (process.platform !== "linux") return env;
-
-  for (const key of Object.keys(env)) {
-    if (!key.endsWith(SNAP_ORIG_SUFFIX)) continue;
-    const originalVar = key.slice(0, -SNAP_ORIG_SUFFIX.length);
-    const originalValue = env[key];
-    if (originalValue) {
-      env[originalVar] = originalValue;
-    } else {
-      delete env[originalVar];
-    }
-  }
-  return env;
-}
 
 function trySpawnDetached(bin: string, args: string[], cwd?: string): Promise<boolean> {
   return new Promise((resolve) => {
@@ -813,9 +905,33 @@ export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promis
   await launchInTerminal(`claude ${posixShellQuote(prompt)}`, repoRoot);
 }
 
+/**
+ * Runs a Claude session's `command` where `layout` (default: the `terminalLayout` preference)
+ * says: a pane of the Limux grid (`limuxGridService`), or a terminal of its own. Without Limux the
+ * grid falls back to a terminal.
+ */
+export async function launchInTerminal(
+  command: string,
+  cwd?: string,
+  taskKey: string | null = null,
+  layout?: TerminalLayout,
+): Promise<void> {
+  const terminalLayout = layout ?? (await getUserPreferences()).terminalLayout;
+  if (terminalLayout === "limux-grid") {
+    if (await isLimuxAvailable()) {
+      await launchInLimuxGrid(command, cwd, taskKey);
+      return;
+    }
+    console.warn(
+      "[terminal] terminalLayout is limux-grid but limux isn't installed — using a tab.",
+    );
+  }
+  await openTerminalWindow(command, cwd);
+}
+
 /** Runs `command` in a new terminal: Warp when installed, else the first `TERMINAL_LAUNCHERS`
  *  entry that starts. */
-export async function launchInTerminal(command: string, cwd?: string): Promise<void> {
+export async function openTerminalWindow(command: string, cwd?: string): Promise<void> {
   if (await launchWarp(command, cwd)) {
     return;
   }
@@ -834,8 +950,24 @@ export async function launchInTerminal(command: string, cwd?: string): Promise<v
   );
 }
 
+/** "Resume" on a session already running in the Limux grid: shows its pane instead of a second
+ *  terminal. False when the grid isn't the layout or no pane runs it (the caller handles the
+ *  active-session conflict as usual). */
+export async function focusSessionInGrid(id: string): Promise<boolean> {
+  if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
+  const { terminalLayout } = await getUserPreferences();
+  if (terminalLayout !== "limux-grid" || !(await isLimuxAvailable())) return false;
+  return focusLimuxSession(id);
+}
+
 /** Refuses an active session: a second `claude --resume` would race the first one's writes. */
-export async function continueSession(id: string): Promise<void> {
+/** `taskKey` (when the caller knows it) lets the grid reuse a Limux tab named after the task;
+ *  `layout` overrides the `terminalLayout` preference for this resume. */
+export async function continueSession(
+  id: string,
+  taskKey: string | null = null,
+  layout?: TerminalLayout,
+): Promise<void> {
   const activeIds = await getActiveResumeSessionIds();
   if (activeIds.has(id)) {
     throw new SessionActiveError(`Session "${id}" is already open in a terminal.`);
@@ -852,7 +984,8 @@ export async function continueSession(id: string): Promise<void> {
   }
 
   // `id` is validated above, so it's safe to interpolate.
-  await launchInTerminal(`claude --resume ${id}`, cwd ?? undefined);
+  await launchInTerminal(`claude --resume ${id}`, cwd ?? undefined, taskKey, layout);
+  recordEvent("session.resumed", { sessionId: id, cwd });
 }
 
 /**
@@ -939,10 +1072,11 @@ export async function getWorktreeToRootPreview(id: string): Promise<WorktreeToRo
 
   const entries = await listWorktrees(repoRoot);
   const excludePaths = nestedWorktreeRelativePaths(repoRoot, entries);
-  const [rootDirtyFiles, fileDiff, sessions] = await Promise.all([
+  const [rootDirtyFiles, fileDiff, sessions, rootLock] = await Promise.all([
     getStatusFiles(repoRoot, excludePaths),
     computeFileDiff(cwd, repoRoot),
     listSessions(),
+    getRootLock(repoRoot),
   ]);
 
   const resolvedRepoRoot = path.resolve(repoRoot);
@@ -958,6 +1092,9 @@ export async function getWorktreeToRootPreview(id: string): Promise<WorktreeToRo
     fileDiff,
     rootHasActiveSession: sessions.some((s) => s.workingDirectory === repoRoot && s.isActive),
     worktreeHasActiveSession: sessions.some((s) => s.workingDirectory === cwd && s.isActive),
+    // Another task holding the root; this worktree's own copy doesn't count.
+    rootLock:
+      rootLock && !(rootLock.mode === "copy" && rootLock.worktreePath === cwd) ? rootLock : null,
   };
 }
 
@@ -979,9 +1116,14 @@ export async function getRootStatus(id: string): Promise<RootStatus> {
 /**
  * Stashes every uncommitted change in the main checkout (nested worktrees excluded), refused while
  * a session is active there. Returns the stash SHA, or null when root was clean.
+ *
+ * As the first step of "worktree → root" it's also refused while another task holds the root
+ * (`rootLockService`), so it can't stash that task's copy away; `force` (the standalone "Reset
+ * root") is the user deliberately freeing it.
  */
-export async function resetRootWorkingTree(id: string): Promise<string | null> {
-  const { repoRoot } = await resolveWorktreeAndRepoRoot(id);
+export async function resetRootWorkingTree(id: string, force = false): Promise<string | null> {
+  const { cwd, repoRoot } = await resolveWorktreeAndRepoRoot(id);
+  if (!force) await assertRootFreeFor(repoRoot, cwd);
 
   const sessions = await listSessions();
   if (sessions.some((s) => s.workingDirectory === repoRoot && s.isActive)) {
@@ -992,7 +1134,10 @@ export async function resetRootWorkingTree(id: string): Promise<string | null> {
 
   const entries = await listWorktrees(repoRoot);
   const excludePaths = nestedWorktreeRelativePaths(repoRoot, entries);
-  return discardWorkingTreeChanges(repoRoot, excludePaths);
+  const stashRef = await discardWorkingTreeChanges(repoRoot, excludePaths);
+  // A copy lock goes with the files; a moved branch keeps it until root leaves that branch.
+  await getRootLock(repoRoot);
+  return stashRef;
 }
 
 /** Copies the worktree's files onto root, recomputing the diff fresh (never the client's copy).
@@ -1007,8 +1152,11 @@ export async function applyWorktreeCopyToRoot(id: string): Promise<void> {
     );
   }
 
+  await assertRootFreeFor(repoRoot, cwd);
   const diff = await computeFileDiff(cwd, repoRoot);
   await applyFileDiff(cwd, repoRoot, diff);
+  const branch = await getWorktreeBranch(cwd, repoRoot);
+  if (branch) await lockRootForCopy(repoRoot, cwd, branch);
 }
 
 /**
@@ -1034,10 +1182,14 @@ export async function removeWorktreeAndCheckoutRoot(
     );
   }
 
+  await assertRootFreeFor(repoRoot, cwd);
   const resolvedRepoRoot = path.resolve(repoRoot);
   const entriesBefore = await listWorktrees(repoRoot);
   const previousRootBranch =
     entriesBefore.find((e) => path.resolve(e.path) === resolvedRepoRoot)?.branch ?? null;
+  const worktreeBranch = await getWorktreeBranch(cwd, repoRoot);
+  // Read before the worktree goes: removing it forgets the branch's task link.
+  const taskKey = worktreeBranch ? await taskKeyForBranch(repoRoot, worktreeBranch) : null;
 
   const branch = await removeWorktreeKeepBranch(cwd);
   if (!branch) {
@@ -1061,7 +1213,64 @@ export async function removeWorktreeAndCheckoutRoot(
     );
   }
 
+  await lockRootForCheckout(repoRoot, branch, taskKey);
   return { previousRootBranch, newBranch: branch };
+}
+
+/** Statuses "Resume open tasks" brings back: work left mid-way (not "to do": never started). */
+const RESUMABLE_STATUSES = new Set(["in_progress", "waiting_user"]);
+
+export type ResumeOpenResult = {
+  resumed: { id: string; taskKey: string | null }[];
+  /** Left out because the session limit (`orchestrator.maxSessions`) was reached. */
+  skippedForLimit: number;
+  failed: { id: string; message: string }[];
+};
+
+/**
+ * "Resume open tasks": for each task (or task-less session) in progress or waiting on the user
+ * with nothing of it running, resumes its most recently updated session — in the grid when that's
+ * the terminal layout — up to the session limit, so a day's work comes back in one click.
+ */
+export async function resumeOpenTasks(): Promise<ResumeOpenResult> {
+  const [sessions, prefs] = await Promise.all([listSessions(), getUserPreferences()]);
+  const groupOf = (s: Session) => s.taskKey ?? `session:${s.id}`;
+  const activeGroups = new Set(sessions.filter((s) => s.isActive).map(groupOf));
+
+  const seen = new Set<string>();
+  const candidates: Session[] = [];
+  // Newest first, so the first one per group is its latest session.
+  for (const session of sessions) {
+    const group = groupOf(session);
+    if (seen.has(group)) continue;
+    seen.add(group);
+    if (activeGroups.has(group) || session.directoryMissing) continue;
+    if (session.status && RESUMABLE_STATUSES.has(session.status)) candidates.push(session);
+  }
+
+  const room = Math.max(
+    0,
+    prefs.orchestrator.maxSessions - (await getActiveResumeSessionIds()).size,
+  );
+  const result: ResumeOpenResult = {
+    resumed: [],
+    skippedForLimit: Math.max(0, candidates.length - room),
+    failed: [],
+  };
+  for (const session of candidates.slice(0, room)) {
+    try {
+      await continueSession(session.id, session.taskKey ?? null);
+      result.resumed.push({ id: session.id, taskKey: session.taskKey ?? null });
+    } catch (err) {
+      result.failed.push({ id: session.id, message: errorMessage(err) });
+    }
+  }
+  recordEvent("sessions.resumeOpen", {
+    resumed: result.resumed,
+    skippedForLimit: result.skippedForLimit,
+    failed: result.failed,
+  });
+  return result;
 }
 
 /**

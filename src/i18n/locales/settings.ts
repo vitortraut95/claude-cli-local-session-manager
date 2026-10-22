@@ -159,6 +159,21 @@ export const settings = {
     "Your team's Jenkins, used by the Jenkins button on session cards. Empty = button hidden.",
     "O Jenkins do seu time, usado pelo botão do Jenkins nos cards de sessão. Vazio = botão escondido.",
   ),
+  "settings.terminalLayout.title": dict("Where sessions open", "Onde as sessões abrem"),
+  "settings.terminalLayout.description": dict(
+    'A terminal tab per session (Warp when installed), or all of them as panes of one Limux workspace ("Claude — tarefas") in its own window — each new session joins it, and its pane closes when Claude quits. Applies to New task, the queue, New session and Resume. Needs Limux (github.com/am-will/limux); without it, tabs are used. Closing the Limux window ends the sessions in it (they stay resumable).',
+    'Uma aba de terminal por sessão (Warp quando instalado), ou todas como painéis de um workspace do Limux ("Claude — tarefas") numa janela própria — cada sessão nova entra nele, e o painel fecha quando o Claude sai. Vale pra Nova tarefa, fila, Nova sessão e Retomar. Precisa do Limux (github.com/am-will/limux); sem ele, usa abas. Fechar a janela do Limux encerra as sessões dele (elas continuam retomáveis).',
+  ),
+  "settings.terminalLayout.tabs": dict("A tab per session", "Uma aba por sessão"),
+  "settings.terminalLayout.grid": dict("Limux grid", "Grade no Limux"),
+  "settings.worktreeSetup.title": dict("Task worktree setup", "Preparação dos worktrees de tarefa"),
+  "settings.worktreeSetup.description": dict(
+    "What a new task worktree (New task, Task queue) gets from the repo's main checkout, since git only checks out tracked files. node_modules (root and workspaces) is symlinked — shared, so the session is told not to install there — and the gitignored .env* files are copied, so each task can change its own. Per repo folder name.",
+    "O que um worktree novo de tarefa (Nova tarefa, Fila de tarefas) recebe da raiz do repo, já que o git só traz os arquivos versionados. O node_modules (raiz e workspaces) vira um link — compartilhado, então a sessão é avisada pra não instalar ali — e os .env* ignorados pelo git são copiados, pra cada tarefa poder mudar o seu. Por nome da pasta do repo.",
+  ),
+  "settings.worktreeSetup.repo": dict("Repo", "Repo"),
+  "settings.worktreeSetup.linkNodeModules": dict("Link node_modules", "Linkar node_modules"),
+  "settings.worktreeSetup.copyEnvFiles": dict("Copy .env*", "Copiar .env*"),
   "settings.envPreviews.title": dict("env/* preview links", "Links de preview de env/*"),
   "settings.envPreviews.description": dict(
     'Preview sites an env/* branch deploys, per project folder name, shown in the Jenkins modal. JSON: { "<project>": [{ "label": "BR", "url": "http://{env}.example.com/" }] } — {env} becomes the branch slug (env/PROJ-1 → env-proj-1).',

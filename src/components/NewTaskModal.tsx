@@ -368,7 +368,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       updateStep("base", "done");
 
       updateStep("worktree", "doing");
-      const { worktreePath } = await tasksApi.createTaskWorktree(
+      const { worktreePath, setup } = await tasksApi.createTaskWorktree(
         trimmedFolder,
         trimmedBranch,
         baseBranchRef,
@@ -378,6 +378,9 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
         jiraLink.trim(),
       );
       updateStep("worktree", "done");
+
+      // Absolute paths of node_modules symlinked from the main checkouts — the session is warned.
+      const linkedNodeModules = (setup?.linked ?? []).map((rel) => `${worktreePath}/${rel}`);
 
       // Extra repos: a failure in one doesn't stop the others or the main launch.
       const addDirs: string[] = [];
@@ -394,18 +397,26 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
             taskLink: jiraLink.trim(),
           });
           addDirs.push(result.workingDirectory);
+          linkedNodeModules.push(
+            ...(result.setup?.linked ?? []).map((rel) => `${result.workingDirectory}/${rel}`),
+          );
           updateStep(key, "done");
         } catch (err) {
           extraFailed = true;
           updateStep(key, "error", resolveApiErrorMessage(err, t, "taskModal.addRepo.error"));
         }
       }
-      const mainPrompt =
+      const mainPrompt = [
+        composedPrompt,
         addDirs.length > 0
-          ? `${composedPrompt}\n\n${t("newTaskModal.extraRepos.promptNote", {
-              dirs: addDirs.join(", "),
-            })}`
-          : composedPrompt;
+          ? t("newTaskModal.extraRepos.promptNote", { dirs: addDirs.join(", ") })
+          : null,
+        linkedNodeModules.length > 0
+          ? t("newTaskModal.sharedNodeModulesNote", { dirs: linkedNodeModules.join(", ") })
+          : null,
+      ]
+        .filter((part): part is string => Boolean(part))
+        .join("\n\n");
 
       updateStep("launch", "doing");
       await tasksApi.launchTaskTerminal(

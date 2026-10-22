@@ -5,6 +5,7 @@ import { sessionsRouter } from "./routes/sessions.js";
 import { systemRouter } from "./routes/system.js";
 import { tasksRouter } from "./routes/tasks.js";
 import { autoUpdateSkillsHubOnStart } from "./services/skillsHubService.js";
+import { startTaskScheduler } from "./services/taskSchedulerService.js";
 import { errorHandler } from "./utils/httpError.js";
 import { migrateLegacySidecars } from "./utils/taskStore.js";
 
@@ -24,6 +25,7 @@ app.listen(PORT, () => {
   console.log(`Claude Session Manager API listening on http://localhost:${PORT}`);
   // Background, after the server is already answering.
   void autoUpdateSkillsHubOnStart();
+  startTaskScheduler();
   // Also runs lazily on the first read/write, so a request arriving first can't miss it.
   migrateLegacySidecars()
     .then(({ migrated, sessions, branches }) => {

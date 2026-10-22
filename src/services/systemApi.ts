@@ -1,5 +1,6 @@
 import axios from "axios";
 import { withServerErrorMessage } from "../utils/apiClient";
+import type { ResumeOpenResult } from "./sessionsApi";
 
 const client = axios.create({
   baseURL: "/system",
@@ -53,6 +54,10 @@ export type ClaudeExtraUsage = {
 export type ClaudeUsageStatus = {
   limits: ClaudeUsageLimit[];
   extraUsage: ClaudeExtraUsage | null;
+  /** When this reading was fetched. Optional: older backend. */
+  fetchedAt?: string;
+  /** Anthropic is rate-limiting the usage endpoint: the last good reading, kept meanwhile. */
+  stale?: boolean;
 };
 
 /** `forceRefresh` bypasses the server's short cache. */
@@ -63,4 +68,37 @@ export async function fetchUsageLimits(forceRefresh = false): Promise<ClaudeUsag
     }),
   );
   return data;
+}
+
+/** The Limux grid Claude sessions open in when `terminalLayout` is "limux-grid". */
+export type TerminalGridStatus = { available: boolean; running: boolean; panes: number };
+
+export async function fetchTerminalGridStatus(): Promise<TerminalGridStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<TerminalGridStatus>("/terminal-grid"),
+  );
+  return data;
+}
+
+/** "Open grid": brings Limux up and resumes into it every open task with nothing running. */
+export async function openTerminalGrid(): Promise<ResumeOpenResult> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<ResumeOpenResult>("/terminal-grid/open"),
+  );
+  return data;
+}
+
+/** Stops a task worktree's preview (container stopped / process ended). */
+export async function stopPreview(id: string): Promise<void> {
+  await withServerErrorMessage(() => client.post(`/previews/${encodeURIComponent(id)}/stop`));
+}
+
+/** Removes a task worktree's preview container (running or stopped). */
+export async function removePreview(id: string): Promise<void> {
+  await withServerErrorMessage(() => client.post(`/previews/${encodeURIComponent(id)}/remove`));
+}
+
+/** Starts a task worktree's stopped preview container again. */
+export async function startPreview(id: string): Promise<void> {
+  await withServerErrorMessage(() => client.post(`/previews/${encodeURIComponent(id)}/start`));
 }

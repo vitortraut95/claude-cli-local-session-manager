@@ -8,6 +8,14 @@ export const apiErrors = {
     "Esta sessão (ou a pasta dela) já está aberta em outro terminal.",
   ),
   "apiError.invalidSessionId": dict("Invalid session id.", "Id de sessão inválido."),
+  "apiError.limuxNotInstalled": dict(
+    "Limux isn't installed (github.com/am-will/limux) — install it, or set sessions to open in tabs in Settings.",
+    "O Limux não está instalado (github.com/am-will/limux) — instale, ou volte as sessões pra abas nas Configurações.",
+  ),
+  "apiError.rootInUse": dict(
+    "The root of this repo is in use by another task — reset the root before bringing a new one there.",
+    "A raiz deste repo está em uso por outra tarefa — resete a raiz antes de trazer uma nova.",
+  ),
   "apiError.taskFolderRequired": dict(
     "A project folder is required.",
     "É necessário informar a pasta do projeto.",
@@ -84,6 +92,10 @@ export const apiErrors = {
   "apiError.usageTokenExpired": dict(
     'Claude\'s login token has expired — run "claude" once to refresh it.',
     'O token de login do Claude expirou — rode "claude" uma vez para renová-lo.',
+  ),
+  "apiError.usageRateLimited": dict(
+    "Anthropic is rate-limiting usage checks (HTTP 429) — the app pauses them and tries again by itself in a few minutes.",
+    "A Anthropic está limitando as consultas de uso (HTTP 429) — o app pausa as consultas e tenta de novo sozinho em alguns minutos.",
   ),
   "apiError.usageFetchFailed": dict(
     "Could not fetch usage data.",
@@ -282,5 +294,9 @@ export const apiErrors = {
   "apiError.skillNotFound": dict(
     "Skill not found in the skills hub (maybe removed by the last update).",
     "Skill não encontrada no hub de skills (talvez removida na última atualização).",
+  ),
+  "apiError.previewLimit": dict(
+    "The preview limit is reached — stop another preview first (limit in the Task queue window).",
+    "O limite de previews foi atingido — pare outro preview antes (limite na janela da fila).",
   ),
 };

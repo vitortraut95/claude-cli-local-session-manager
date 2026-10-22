@@ -1,12 +1,12 @@
 import type { EnvPreviews } from "../services/preferencesApi";
-import { DEFAULT_BRANCHES } from "./branches";
+import type { Session } from "../types/session";
 
 // Jenkins multibranch pipeline links. The job name is the repo folder name (`session.project`);
 // the base URL is per-machine config (`jenkinsBaseUrl` in userPreferences.json).
 
 export type JenkinsLink =
   | { kind: "project"; url: string }
-  | { kind: "branch"; branch: string; url: string; role: "current" | "origin" | "variant" }
+  | { kind: "branch"; branch: string; url: string; role: "current" | "origin" }
   | { kind: "pullRequests"; url: string }
   | { kind: "tags"; url: string };
 
@@ -21,16 +21,13 @@ function branchJobUrl(projectUrl: string, branch: string): string {
 
 /**
  * Candidate Jenkins links for a session, built from naming conventions only (none checked for
- * existence). `originBranch` is the task's base branch. `branchTypes` (the user's branch types)
- * are offered as `<type>/<ticket>` variations, since the branch with a pipeline isn't always the
- * one checked out. Null when no base URL is configured.
+ * existence). `originBranch` is the task's base branch. Null when no base URL is configured.
  */
 export function getJenkinsLinks(
   jenkinsBaseUrl: string | null,
   project: string,
   branch: string | null,
   originBranch: string | null,
-  branchTypes: string[],
 ): JenkinsLink[] | null {
   if (!jenkinsBaseUrl) return null;
   const projectUrl = `${jenkinsBaseUrl.replace(/\/+$/, "")}/job/${encodeURIComponent(project)}/`;
@@ -38,23 +35,6 @@ export function getJenkinsLinks(
 
   if (branch) {
     links.push({ kind: "branch", branch, url: branchJobUrl(projectUrl, branch), role: "current" });
-    if (!DEFAULT_BRANCHES.has(branch)) {
-      // "feature/PROJ-1-foo" → "PROJ-1-foo"; a branch without "/" is already the bare ticket.
-      const slash = branch.indexOf("/");
-      const ticket = slash === -1 ? branch : branch.slice(slash + 1);
-      // Bare ticket first — the most common pipeline branch name across teams.
-      const variants = [ticket, ...branchTypes.map((type) => `${type}/${ticket}`)];
-      for (const variant of variants) {
-        // The origin branch gets its own section below — don't list it twice.
-        if (variant === branch || variant === originBranch) continue;
-        links.push({
-          kind: "branch",
-          branch: variant,
-          url: branchJobUrl(projectUrl, variant),
-          role: "variant",
-        });
-      }
-    }
   }
   if (originBranch && originBranch !== branch) {
     links.push({
@@ -74,7 +54,7 @@ type EnvPreview = { label: string; url: string };
 export type EnvPreviewGroup = { branch: string; previews: EnvPreview[] };
 
 /**
- * Preview URLs for each `env/*` branch among the session's current and origin branches, from the
+ * Preview URLs for each `env/*` branch among a repo's task and origin branches, from the
  * project's `envPreviews` templates: `{env}` becomes the branch slug (`env/PROJ-123` →
  * `env-proj-123`). Empty for projects without templates.
  */
@@ -98,4 +78,46 @@ export function getEnvPreviewGroups(
       })),
     };
   });
+}
+
+export type JenkinsRepoGroup = {
+  project: string;
+  links: JenkinsLink[];
+  envPreviews: EnvPreviewGroup[];
+};
+
+/**
+ * Jenkins links and env previews of the session's repo and, for a multi-repo task, of every other
+ * repo in the task (its task branch and base), so one modal covers the whole task. Null when no
+ * base URL is configured.
+ */
+export function getTaskJenkinsGroups(
+  jenkinsBaseUrl: string | null,
+  envPreviews: EnvPreviews,
+  session: Session,
+  branch: string | null,
+  originBranch: string | null,
+): JenkinsRepoGroup[] | null {
+  const repos = [{ project: session.project, branch, originBranch }];
+  const seen = new Set([session.repoRoot]);
+  for (const repo of session.taskRepos ?? []) {
+    if (seen.has(repo.repoRoot)) continue;
+    seen.add(repo.repoRoot);
+    repos.push({
+      project: repo.project,
+      branch: repo.branch,
+      originBranch: repo.baseBranch ?? repo.defaultBranch ?? null,
+    });
+  }
+  const groups: JenkinsRepoGroup[] = [];
+  for (const repo of repos) {
+    const links = getJenkinsLinks(jenkinsBaseUrl, repo.project, repo.branch, repo.originBranch);
+    if (!links) return null;
+    groups.push({
+      project: repo.project,
+      links,
+      envPreviews: getEnvPreviewGroups(envPreviews, repo.project, [repo.branch, repo.originBranch]),
+    });
+  }
+  return groups;
 }

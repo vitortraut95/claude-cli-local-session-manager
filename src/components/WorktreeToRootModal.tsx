@@ -311,7 +311,9 @@ export function WorktreeToRootModal({
 
   const blockedByActiveSession =
     !!preview &&
-    (preview.rootHasActiveSession || (mode === "checkout" && preview.worktreeHasActiveSession));
+    (preview.rootHasActiveSession ||
+      (mode === "checkout" && preview.worktreeHasActiveSession) ||
+      !!preview.rootLock);
 
   return (
     <Modal
@@ -489,6 +491,20 @@ export function WorktreeToRootModal({
                 </p>
               )}
 
+              {preview.rootLock && (
+                <p className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-400">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  {t(
+                    preview.rootLock.mode === "copy"
+                      ? "worktreeToRootModal.preview.rootLockedCopy"
+                      : "worktreeToRootModal.preview.rootLockedCheckout",
+                    {
+                      owner: preview.rootLock.taskKey ?? preview.rootLock.branch,
+                      branch: preview.rootLock.branch,
+                    },
+                  )}
+                </p>
+              )}
               {preview.rootHasActiveSession && (
                 <p className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-400">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />

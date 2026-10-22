@@ -1,0 +1,205 @@
+#!/usr/bin/env bash
+# Usage: heavy-run <command> [args...]
+#        heavy-run --preview docker run [docker run options] <image> [command...]
+#
+# Runs a heavy command (tests, typecheck, lint, builds) so parallel Claude sessions can't freeze the machine:
+#   - at most N of them at once across every session (`flock` slots — released by the kernel when
+#     the process ends, so a killed run never leaves a slot taken);
+#   - inside its own cgroup (`systemd-run --user --scope`) with a RAM and CPU cap: a run that goes
+#     over is killed on its own (exit 137) instead of dragging the whole machine into swap;
+#   - with Node's heap capped below that (NODE_OPTIONS --max-old-space-size), so tsc/jest fail with
+#     a clear "heap out of memory" instead of crawling in GC right at the cgroup limit;
+#   - at low CPU/IO priority (nice, ionice, cgroup weights), so the desktop stays responsive;
+#   - only once enough RAM is actually free and the machine isn't under memory pressure (PSI).
+# With --preview it starts a dev-server container instead: at most N previews running across every
+# session (counted by the label it adds), each with a RAM/CPU cap and low CPU weight.
+# Waiting gives up after MAX_WAIT_S (exit 75, nothing ran) so a session never hangs on it.
+# Limits come from `orchestrator` in this app's userPreferences.json (Task queue window).
+# Required by the PreToolUse hook `heavy-run-hook.mjs` for those commands.
+set -u
+
+MAX_WAIT_S=900
+# PSI memory `some avg10` (% of the last 10s something stalled on memory) at or above which
+# nothing starts.
+MAX_MEMORY_PRESSURE=10
+PREVIEW_LABEL=claude-session-manager.preview
+PREVIEW_CPUS=2
+
+mode=test
+if [ "${1:-}" = "--preview" ]; then
+  mode=preview
+  shift
+  if [ "${1:-}" != "docker" ] || [ "${2:-}" != "run" ]; then
+    echo "usage: heavy-run --preview docker run [options] <image> [command...]" >&2
+    exit 64
+  fi
+fi
+if [ "$#" -eq 0 ]; then
+  echo "usage: heavy-run <command> [args...]" >&2
+  exit 64
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PREFS_FILE="$SCRIPT_DIR/../userPreferences.json"
+# For the app's history (server/utils/history.ts).
+HISTORY_FILE="$SCRIPT_DIR/../history.jsonl"
+COMMAND_TEXT="$*"
+
+# record <type> [HR_F_<field>=<value>...] — one event; all-digit values are stored as numbers.
+record() {
+  local type=$1
+  shift
+  env "$@" HR_TYPE="$type" HR_COMMAND="$COMMAND_TEXT" HR_CWD="$PWD" node -e '
+    const e = process.env;
+    const event = {
+      ts: new Date().toISOString(),
+      type: e.HR_TYPE,
+      command: e.HR_COMMAND.slice(0, 300),
+      cwd: e.HR_CWD,
+    };
+    for (const [key, value] of Object.entries(e)) {
+      if (key.startsWith("HR_F_")) event[key.slice(5)] = /^-?\d+$/.test(value) ? Number(value) : value;
+    }
+    require("fs").appendFileSync(process.argv[1], JSON.stringify(event) + "\n");
+  ' "$HISTORY_FILE" 2>/dev/null || true
+}
+
+# Defaults when the file or a field is missing. Plain write (never console.log: under FORCE_COLOR it
+# prints numbers as ANSI-colored text).
+read -r SLOTS MEMORY_GB CPU_PERCENT PREVIEW_SLOTS PREVIEW_MEMORY_GB < <(
+  NO_COLOR=1 FORCE_COLOR=0 node -e '
+    let o = {};
+    try { o = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).orchestrator ?? {}; } catch {}
+    const n = (v, d) => (Number.isInteger(v) && v > 0 ? v : d);
+    process.stdout.write([
+      n(o.testSlots, 1), n(o.testMemoryMaxGb, 6), n(o.testCpuPercent, 400),
+      n(o.previewSlots, 5), n(o.previewMemoryMaxGb, 4),
+    ].join(" ") + "\n");
+  ' "$PREFS_FILE" 2>/dev/null
+)
+positive_int() { [[ "${1:-}" =~ ^[1-9][0-9]*$ ]] && echo "$1" || echo "$2"; }
+SLOTS=$(positive_int "${SLOTS:-}" 1)
+MEMORY_GB=$(positive_int "${MEMORY_GB:-}" 6)
+CPU_PERCENT=$(positive_int "${CPU_PERCENT:-}" 400)
+PREVIEW_SLOTS=$(positive_int "${PREVIEW_SLOTS:-}" 5)
+PREVIEW_MEMORY_GB=$(positive_int "${PREVIEW_MEMORY_GB:-}" 4)
+
+requested_at=$(date +%s)
+waiting_recorded=false
+
+# note_wait <reason> <message...> — called on every wait iteration: says why once (stderr + history),
+# and gives up past MAX_WAIT_S.
+note_wait() {
+  if ! $waiting_recorded; then
+    echo "heavy-run: ${*:2}" >&2
+    record heavy.waiting HR_F_reason="$1" HR_F_mode="$mode"
+    waiting_recorded=true
+  fi
+  local waited=$(($(date +%s) - requested_at))
+  if [ "$waited" -ge "$MAX_WAIT_S" ]; then
+    record heavy.timeout HR_F_reason="$1" HR_F_mode="$mode" HR_F_waitedS="$waited"
+    echo "heavy-run: gave up after $((waited / 60)) min waiting ($1) — nothing ran. The machine is" \
+      "busy with other sessions' runs/previews: retry later, and stop previews you no longer need." >&2
+    exit 75
+  fi
+  sleep 5
+}
+
+# Waits until <gb> GB are free and nothing is stalling on memory — another app (browser, dev
+# server) may be using it.
+wait_for_resources() {
+  local need_kb=$(($1 * 1024 * 1024)) available_kb memory_pressure
+  while :; do
+    available_kb=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null)
+    memory_pressure=$(awk -F'[ =]' '/^some/ {print int($3)}' /proc/pressure/memory 2>/dev/null)
+    available_kb=${available_kb:-$need_kb}
+    if [ "$available_kb" -ge "$need_kb" ] &&
+      [ "${memory_pressure:-0}" -lt "$MAX_MEMORY_PRESSURE" ]; then
+      return
+    fi
+    note_wait resources "waiting for $1 GB of free RAM (now $((available_kb / 1024 / 1024)) GB," \
+      "memory pressure ${memory_pressure:-0}%)..."
+  done
+}
+
+if [ "$mode" = preview ]; then
+  while :; do
+    running=$(docker ps -q --filter "label=$PREVIEW_LABEL" 2>/dev/null | wc -l)
+    [ "$running" -lt "$PREVIEW_SLOTS" ] && break
+    note_wait preview_slot "$running of $PREVIEW_SLOTS preview(s) already running across sessions" \
+      "(docker ps --filter label=$PREVIEW_LABEL) — waiting for one to stop..."
+  done
+  slot_at=$(date +%s)
+  wait_for_resources "$PREVIEW_MEMORY_GB"
+  started_at=$(date +%s)
+  shift 2
+  # Right after `run`, so an explicit flag later in the command still wins.
+  docker run --label "$PREVIEW_LABEL=1" --memory="${PREVIEW_MEMORY_GB}g" \
+    --memory-swap="${PREVIEW_MEMORY_GB}g" --cpus="$PREVIEW_CPUS" --cpu-shares=256 "$@"
+  status=$?
+  record heavy.preview HR_F_status="$status" HR_F_slotWaitS=$((slot_at - requested_at)) \
+    HR_F_memoryWaitS=$((started_at - slot_at)) HR_F_memoryCapGb="$PREVIEW_MEMORY_GB" \
+    HR_F_slots="$PREVIEW_SLOTS"
+  exit "$status"
+fi
+
+LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/claude-heavy-run"
+mkdir -p "$LOCK_DIR"
+while :; do
+  for i in $(seq 1 "$SLOTS"); do
+    exec {slot_fd}>"$LOCK_DIR/slot$i"
+    if flock -n "$slot_fd"; then
+      break 2
+    fi
+    exec {slot_fd}>&-
+  done
+  note_wait slot "all $SLOTS test slot(s) are busy in other sessions — waiting for one..."
+done
+slot_at=$(date +%s)
+wait_for_resources "$MEMORY_GB"
+$waiting_recorded && echo "heavy-run: starting." >&2
+started_at=$(date +%s)
+
+# Node's heap at ~85% of the cap; a larger --max-old-space-size the caller set is lowered to it.
+heap_mb=$((MEMORY_GB * 1024 * 85 / 100))
+node_options="${NODE_OPTIONS:-}"
+if [[ "$node_options" =~ --max-old-space-size=([0-9]+) ]]; then
+  if [ "${BASH_REMATCH[1]}" -gt "$heap_mb" ]; then
+    node_options="${node_options//--max-old-space-size=${BASH_REMATCH[1]}/--max-old-space-size=$heap_mb}"
+  fi
+else
+  node_options="${node_options:+$node_options }--max-old-space-size=$heap_mb"
+fi
+export NODE_OPTIONS="$node_options"
+
+low_priority=(nice -n 10)
+command -v ionice >/dev/null 2>&1 && low_priority+=(ionice -c 2 -n 7)
+
+# The command doesn't get the slot's fd: a daemon it leaves behind would hold the slot forever.
+if command -v systemd-run >/dev/null 2>&1 &&
+  systemd-run --user --scope --quiet true >/dev/null 2>&1; then
+  systemd-run --user --scope --quiet \
+    -p "MemoryMax=${MEMORY_GB}G" -p MemorySwapMax=0 -p "CPUQuota=${CPU_PERCENT}%" \
+    -p CPUWeight=20 -p IOWeight=20 \
+    -- "${low_priority[@]}" "$@" {slot_fd}>&-
+  status=$?
+else
+  echo "heavy-run: systemd-run unavailable — running without a memory/CPU cap." >&2
+  "${low_priority[@]}" "$@" {slot_fd}>&-
+  status=$?
+fi
+
+record heavy.run HR_F_status="$status" HR_F_slotWaitS=$((slot_at - requested_at)) \
+  HR_F_memoryWaitS=$((started_at - slot_at)) HR_F_durationS=$(($(date +%s) - started_at)) \
+  HR_F_memoryCapGb="$MEMORY_GB" HR_F_slots="$SLOTS"
+
+if [ "$status" -eq 137 ]; then
+  echo "heavy-run: killed for going over the ${MEMORY_GB} GB memory cap. Run fewer workers" \
+    "(e.g. jest/vitest --maxWorkers=2, or a single test file) — this is not a test failure." >&2
+elif [ "$status" -eq 134 ]; then
+  # V8 aborts (SIGABRT) on "JavaScript heap out of memory".
+  echo "heavy-run: aborted (134) — most likely the ${heap_mb} MB Node heap cap (from the" \
+    "${MEMORY_GB} GB RAM cap in the Task queue window), not a code error. Run something narrower," \
+    "or raise the cap there." >&2
+fi
+exit "$status"

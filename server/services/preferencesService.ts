@@ -21,6 +21,30 @@ export type SkillsHubPreferences = {
   autoUpdateOnStart: boolean;
 };
 
+/** The task queue's scheduler (`taskSchedulerService`). Optional: older files lack it. */
+export type OrchestratorPreferences = {
+  /** Launch queued tasks on its own; false = queue paused. */
+  enabled: boolean;
+  /** Most `claude` sessions running at once (every live session counts, not only queued ones). */
+  maxSessions: number;
+  /** Nothing new starts while less than this % of RAM is available. */
+  minFreeMemoryPercent: number;
+  /** Nothing new starts while any Claude plan limit is at or above this %. */
+  maxUsagePercent: number;
+  /** `scripts/heavy-run`: test runs at once across every session, and each one's RAM (GB) and CPU
+   *  (%, 100 = one core) cap. */
+  testSlots: number;
+  testMemoryMaxGb: number;
+  testCpuPercent: number;
+  /** `heavy-run --preview`: dev-server containers running at once across every session, and each
+   *  one's RAM cap (GB). */
+  previewSlots: number;
+  previewMemoryMaxGb: number;
+  /** Minutes between two launches, so a session's memory shows up before the next one starts
+   *  (0 = no spacing). */
+  launchSpacingMinutes: number;
+};
+
 export type UserPreferences = {
   defaultPrompt: string;
   /** The "New session" modal's pre-filled prompt. Optional: older files lack it (""). */
@@ -55,7 +79,25 @@ export type UserPreferences = {
   taskTestPermissionModeAuto: boolean;
   /** UI theme; null = follow the system. Optional: older files lack it. */
   theme: "light" | "dark" | null;
+  orchestrator: OrchestratorPreferences;
+  /** Optional: older files lack it. */
+  worktreeSetup: WorktreeSetup;
+  /** Where Claude sessions open: a terminal tab each, or panes of one Limux grid. Optional: older
+   *  files lack it. */
+  terminalLayout: TerminalLayout;
 };
+
+export type TerminalLayout = "tabs" | "limux-grid";
+
+/** What a new task worktree gets from the repo's main checkout (things git doesn't check out). */
+export type WorktreeSetupOptions = {
+  /** Symlink each `node_modules` (root and workspaces) instead of installing per worktree. */
+  linkNodeModules: boolean;
+  /** Copy the gitignored `.env*` files, so each task can change its own. */
+  copyEnvFiles: boolean;
+};
+/** Per repo folder name, like `envPreviews`; a repo not listed gets nothing. */
+export type WorktreeSetup = Record<string, WorktreeSetupOptions>;
 
 export type EnvPreviewTemplate = { label: string; url: string };
 export type EnvPreviews = Record<string, EnvPreviewTemplate[]>;
@@ -84,6 +126,20 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   taskTestSkill: "",
   taskTestPermissionModeAuto: true,
   theme: null,
+  orchestrator: {
+    enabled: true,
+    maxSessions: 6,
+    minFreeMemoryPercent: 20,
+    maxUsagePercent: 90,
+    testSlots: 1,
+    testMemoryMaxGb: 6,
+    testCpuPercent: 400,
+    previewSlots: 5,
+    previewMemoryMaxGb: 4,
+    launchSpacingMinutes: 5,
+  },
+  worktreeSetup: {},
+  terminalLayout: "tabs",
 };
 
 function isLanguage(value: unknown): value is Language {
@@ -132,6 +188,68 @@ export function isEnvPreviews(value: unknown): value is EnvPreviews {
           typeof (item as Record<string, unknown>).url === "string",
       ),
   );
+}
+
+function isIntInRange(value: unknown, min: number, max: number): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
+}
+
+/** Each field falls back on its own, so a hand-edited file with one bad value keeps the rest. */
+function parseOrchestrator(value: unknown): OrchestratorPreferences {
+  const fallback = DEFAULT_PREFERENCES.orchestrator;
+  if (typeof value !== "object" || value === null) return fallback;
+  const raw = value as Record<string, unknown>;
+  return {
+    enabled: typeof raw.enabled === "boolean" ? raw.enabled : fallback.enabled,
+    maxSessions: isIntInRange(raw.maxSessions, 1, 50) ? raw.maxSessions : fallback.maxSessions,
+    minFreeMemoryPercent: isIntInRange(raw.minFreeMemoryPercent, 0, 90)
+      ? raw.minFreeMemoryPercent
+      : fallback.minFreeMemoryPercent,
+    maxUsagePercent: isIntInRange(raw.maxUsagePercent, 1, 100)
+      ? raw.maxUsagePercent
+      : fallback.maxUsagePercent,
+    testSlots: isIntInRange(raw.testSlots, 1, 16) ? raw.testSlots : fallback.testSlots,
+    testMemoryMaxGb: isIntInRange(raw.testMemoryMaxGb, 1, 256)
+      ? raw.testMemoryMaxGb
+      : fallback.testMemoryMaxGb,
+    testCpuPercent: isIntInRange(raw.testCpuPercent, 50, 6400)
+      ? raw.testCpuPercent
+      : fallback.testCpuPercent,
+    previewSlots: isIntInRange(raw.previewSlots, 1, 16) ? raw.previewSlots : fallback.previewSlots,
+    previewMemoryMaxGb: isIntInRange(raw.previewMemoryMaxGb, 1, 64)
+      ? raw.previewMemoryMaxGb
+      : fallback.previewMemoryMaxGb,
+    launchSpacingMinutes: isIntInRange(raw.launchSpacingMinutes, 0, 60)
+      ? raw.launchSpacingMinutes
+      : fallback.launchSpacingMinutes,
+  };
+}
+
+export function isOrchestratorPreferences(value: unknown): value is OrchestratorPreferences {
+  if (typeof value !== "object" || value === null) return false;
+  const raw = value as Record<string, unknown>;
+  return (
+    typeof raw.enabled === "boolean" &&
+    isIntInRange(raw.maxSessions, 1, 50) &&
+    isIntInRange(raw.minFreeMemoryPercent, 0, 90) &&
+    isIntInRange(raw.maxUsagePercent, 1, 100) &&
+    // Optional: an older frontend bundle sends the object without them.
+    (raw.testSlots === undefined || isIntInRange(raw.testSlots, 1, 16)) &&
+    (raw.testMemoryMaxGb === undefined || isIntInRange(raw.testMemoryMaxGb, 1, 256)) &&
+    (raw.testCpuPercent === undefined || isIntInRange(raw.testCpuPercent, 50, 6400)) &&
+    (raw.previewSlots === undefined || isIntInRange(raw.previewSlots, 1, 16)) &&
+    (raw.previewMemoryMaxGb === undefined || isIntInRange(raw.previewMemoryMaxGb, 1, 64)) &&
+    (raw.launchSpacingMinutes === undefined || isIntInRange(raw.launchSpacingMinutes, 0, 60))
+  );
+}
+
+export function isWorktreeSetup(value: unknown): value is WorktreeSetup {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  return Object.values(value as Record<string, unknown>).every((options) => {
+    if (typeof options !== "object" || options === null) return false;
+    const raw = options as Record<string, unknown>;
+    return typeof raw.linkNodeModules === "boolean" && typeof raw.copyEnvFiles === "boolean";
+  });
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -208,6 +326,17 @@ function normalizePreferences(value: unknown): UserPreferences {
       parsed.theme === "light" || parsed.theme === "dark"
         ? parsed.theme
         : DEFAULT_PREFERENCES.theme,
+    orchestrator: parseOrchestrator(parsed.orchestrator),
+    worktreeSetup: isWorktreeSetup(parsed.worktreeSetup)
+      ? parsed.worktreeSetup
+      : DEFAULT_PREFERENCES.worktreeSetup,
+    terminalLayout:
+      parsed.terminalLayout === "tabs" || parsed.terminalLayout === "limux-grid"
+        ? parsed.terminalLayout
+        : // The grid used to be tmux's; it's Limux now.
+          (parsed.terminalLayout as string | undefined) === "tmux-grid"
+          ? "limux-grid"
+          : DEFAULT_PREFERENCES.terminalLayout,
   };
 }
 

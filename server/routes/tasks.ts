@@ -3,6 +3,8 @@ import {
   getPreferencesPath,
   getUserPreferences,
   isEnvPreviews,
+  isOrchestratorPreferences,
+  isWorktreeSetup,
   isSkillsHubPreferences,
   replaceUserPreferences,
   updateUserPreferences,
@@ -29,9 +31,14 @@ import {
   launchTaskTest,
   resolveBaseBranch,
 } from "../services/taskService.js";
-import { extractBooleanField, extractStringField } from "../utils/httpBody.js";
+import { getHeavyRunHookStatus, setHeavyRunHookInstalled } from "../services/heavyRunService.js";
+import { stopPreviewsIn, taskWorktrees } from "../services/previewService.js";
+import { getTaskQueue, saveTaskQueue } from "../services/taskQueueService.js";
+import { getSchedulerStatus, runSchedulerNow } from "../services/taskSchedulerService.js";
+import { extractBooleanField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
 import { BadRequestError } from "../utils/httpError.js";
 import { normalizeTaskKey } from "../utils/taskKeys.js";
+import { setTaskStatus } from "../utils/taskStore.js";
 import {
   addRepoToTask,
   getTaskDetails,
@@ -51,7 +58,10 @@ type LateFields =
   | "envPreviews"
   | "taskTestSkill"
   | "taskTestPermissionModeAuto"
-  | "theme";
+  | "theme"
+  | "orchestrator"
+  | "worktreeSetup"
+  | "terminalLayout";
 
 /** Optional fields: an older frontend bundle sends the object without them, and the PUT handler
  *  keeps the stored value instead of rejecting or wiping it. */
@@ -93,7 +103,12 @@ function isValidPreferences(
     (candidate.theme === undefined ||
       candidate.theme === null ||
       candidate.theme === "light" ||
-      candidate.theme === "dark")
+      candidate.theme === "dark") &&
+    (candidate.orchestrator === undefined || isOrchestratorPreferences(candidate.orchestrator)) &&
+    (candidate.worktreeSetup === undefined || isWorktreeSetup(candidate.worktreeSetup)) &&
+    (candidate.terminalLayout === undefined ||
+      candidate.terminalLayout === "tabs" ||
+      candidate.terminalLayout === "limux-grid")
   );
 }
 
@@ -119,7 +134,9 @@ tasksRouter.put("/preferences", async (req, res) => {
         "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
         "autoUpdateOnStart? }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
         "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean, " +
-        'theme?: "light"|"dark"|null }.',
+        'theme?: "light"|"dark"|null, orchestrator?: { enabled, maxSessions, ' +
+        "minFreeMemoryPercent, maxUsagePercent }, worktreeSetup?: { [project]: " +
+        '{ linkNodeModules, copyEnvFiles } }, terminalLayout?: "tabs"|"limux-grid" }.',
     );
   }
   const body = req.body;
@@ -128,6 +145,7 @@ tasksRouter.put("/preferences", async (req, res) => {
     ...stored,
     ...body,
     skillsHub: { ...stored.skillsHub, ...body.skillsHub },
+    orchestrator: { ...stored.orchestrator, ...body.orchestrator },
   }));
   res.json({ success: true });
 });
@@ -206,6 +224,34 @@ function extractStringArray(body: unknown, key: string): string[] {
     : [];
 }
 
+// Task queue: tickets waiting to be worked on, each with its repos.
+
+tasksRouter.get("/queue", async (_req, res) => {
+  res.json({ entries: await getTaskQueue() });
+});
+
+tasksRouter.put("/queue", async (req, res) => {
+  res.json({ entries: await saveTaskQueue(req.body) });
+});
+
+/** Room left for the scheduler (sessions, RAM, plan usage) and why it's waiting, if it is. */
+tasksRouter.get("/queue/status", async (_req, res) => {
+  res.json(await getSchedulerStatus());
+});
+
+tasksRouter.post("/queue/run", async (_req, res) => {
+  res.json(await runSchedulerNow());
+});
+
+/** The PreToolUse hook that routes every session's test commands through `scripts/heavy-run`. */
+tasksRouter.get("/heavy-run/hook", async (_req, res) => {
+  res.json(await getHeavyRunHookStatus());
+});
+
+tasksRouter.put("/heavy-run/hook", async (req, res) => {
+  res.json(await setHeavyRunHookInstalled(extractBooleanField(req.body, "installed", true)));
+});
+
 // Tasks spanning several repos. `:key` may also be a ticket URL.
 
 tasksRouter.get("/by-key/:key", async (req, res) => {
@@ -229,6 +275,19 @@ tasksRouter.get("/by-key/:key/pr-url", async (req, res) => {
 
 tasksRouter.put("/by-key/:key", async (req, res) => {
   await setTaskLink(parseTaskKeyParam(req.params.key), extractStringField(req.body, "link"));
+  res.json({ success: true });
+});
+
+tasksRouter.put("/by-key/:key/status", async (req, res) => {
+  const key = parseTaskKeyParam(req.params.key);
+  const status = parseWorkStatus(req.body);
+  await setTaskStatus(key, status);
+  if (status === "done") {
+    // Done: its worktrees' preview servers only hold memory now (background, best-effort).
+    void taskWorktrees(key)
+      .then((worktrees) => stopPreviewsIn(worktrees, "done", key))
+      .catch(() => undefined);
+  }
   res.json({ success: true });
 });
 

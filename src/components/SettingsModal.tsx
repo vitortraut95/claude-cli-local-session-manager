@@ -23,9 +23,11 @@ import { Button } from "./Button";
 import { ImportPreferencesButton } from "./ImportPreferencesButton";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
+import { Select } from "./Select";
 import { TaskTestSkillSelect } from "./TaskTestSkillSelect";
 import { ThemeToggle } from "./ThemeToggle";
 import { WorkspaceDirsEditor } from "./WorkspaceDirsEditor";
+import { WorktreeSetupEditor } from "./WorktreeSetupEditor";
 
 type SettingsModalProps = {
   theme: Theme;
@@ -42,7 +44,8 @@ type BigEditorKey =
   | "recentProjectPaths"
   | "jenkinsBaseUrl"
   | "skillsHubRepoUrl"
-  | "envPreviews";
+  | "envPreviews"
+  | "worktreeSetup";
 
 /** The envPreviews editor's JSON draft, parsed — null when it isn't valid JSON of the right shape. */
 function parseEnvPreviews(raw: string): EnvPreviews | null {
@@ -267,6 +270,26 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
               }
             />
           )}
+          {prefs.terminalLayout !== undefined && (
+            <SettingRow
+              title={t("settings.terminalLayout.title")}
+              description={t("settings.terminalLayout.description")}
+              keyName="terminalLayout"
+              control={
+                <Select
+                  value={prefs.terminalLayout}
+                  disabled={savingKey === "terminalLayout"}
+                  onChange={(event) =>
+                    void save({ terminalLayout: event.target.value as "tabs" | "limux-grid" })
+                  }
+                  className="w-48"
+                >
+                  <option value="tabs">{t("settings.terminalLayout.tabs")}</option>
+                  <option value="limux-grid">{t("settings.terminalLayout.grid")}</option>
+                </Select>
+              }
+            />
+          )}
           {skillsHub?.installedSkills && (
             <SettingRow
               title={t("taskTestSkill.title")}
@@ -311,6 +334,22 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
                   : t("settings.preview.emptyList")
               }
               control={<EditButton onClick={() => setEditing("envPreviews")} />}
+            />
+          )}
+          {prefs.worktreeSetup !== undefined && (
+            <SettingRow
+              title={t("settings.worktreeSetup.title")}
+              description={t("settings.worktreeSetup.description")}
+              keyName="worktreeSetup"
+              preview={
+                Object.keys(prefs.worktreeSetup).length > 0
+                  ? t("settings.envPreviews.preview", {
+                      count: Object.keys(prefs.worktreeSetup).length,
+                      projects: Object.keys(prefs.worktreeSetup).join(", "),
+                    })
+                  : t("settings.preview.emptyList")
+              }
+              control={<EditButton onClick={() => setEditing("worktreeSetup")} />}
             />
           )}
           <SettingRow
@@ -456,6 +495,18 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
               )}
             </>
           )}
+        />
+      )}
+      {prefs && editing === "worktreeSetup" && (
+        <BigEditorModal
+          title={t("settings.worktreeSetup.title")}
+          description={t("settings.worktreeSetup.description")}
+          initial={prefs.worktreeSetup ?? {}}
+          onCancel={() => setEditing(null)}
+          onSave={async (value) => {
+            if (await save({ worktreeSetup: value })) setEditing(null);
+          }}
+          render={(value, setValue) => <WorktreeSetupEditor value={value} onChange={setValue} />}
         />
       )}
       {prefs && editing === "skillsHubRepoUrl" && (

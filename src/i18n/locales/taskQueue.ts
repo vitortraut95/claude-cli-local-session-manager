@@ -1,0 +1,171 @@
+import { dict } from "../dict";
+
+export const taskQueue = {
+  "header.taskQueue": dict("Task queue", "Fila de tarefas"),
+  "header.grid": dict("Open grid", "Abrir grade"),
+  "header.grid.tooltip": dict(
+    'Brings up the Limux window (starting it if needed) on the "Claude — tarefas" workspace and resumes into it, one pane each, every task "In progress" or "Waiting user" that has nothing running — up to the session limit',
+    'Traz a janela do Limux pra frente (abrindo se preciso) no workspace "Claude — tarefas" e retoma nele, um painel cada, toda tarefa "Em andamento" ou "Aguardando usuário" que não tem nada rodando — até o limite de sessões',
+  ),
+  "header.grid.nothingToResume": dict(
+    "Grid open — nothing left to resume.",
+    "Grade aberta — nada pendente pra retomar.",
+  ),
+  "header.resumeOpen": dict("Resume open tasks", "Retomar não concluídas"),
+  "header.grid.error": dict("Couldn't open the grid.", "Não foi possível abrir a grade."),
+  "taskQueueModal.title": dict("Task queue", "Fila de tarefas"),
+  "taskQueueModal.intro": dict(
+    'Paste the tasks that are ready to be worked on and pick the repo of each one (the first is the main one; any other joins the same session). Once saved, each task is launched like "New task" — its own worktree, the default prompt, a new terminal — one at a time while there\'s room.',
+    'Cole as tarefas que já podem ser feitas e escolha o repo de cada uma (o primeiro é o principal; os outros entram na mesma sessão). Depois de salvar, cada tarefa é lançada como na "Nova tarefa" — worktree próprio, prompt padrão, terminal novo — uma por vez enquanto houver espaço.',
+  ),
+  "taskQueueModal.pasteLabel": dict(
+    "Tasks (links or keys, one per line)",
+    "Tarefas (links ou chaves, uma por linha)",
+  ),
+  "taskQueueModal.pastePlaceholder": dict(
+    "https://your-company.atlassian.net/browse/PROJ-123\nPROJ-124",
+    "https://sua-empresa.atlassian.net/browse/PROJ-123\nPROJ-124",
+  ),
+  "taskQueueModal.pasteRepo": dict(
+    "Repo for the pasted tasks (optional)",
+    "Repo das tarefas coladas (opcional)",
+  ),
+  "taskQueueModal.pasteRepoNone": dict("Choose later, per task", "Escolher depois, por tarefa"),
+  "taskQueueModal.add": dict("Add to the list", "Adicionar à lista"),
+  "taskQueueModal.added": dict("{count} task(s) added.", "{count} tarefa(s) adicionada(s)."),
+  "taskQueueModal.noneFound": dict(
+    "No task key found in the pasted text.",
+    "Nenhuma chave de tarefa encontrada no texto colado.",
+  ),
+  "taskQueueModal.alreadyListed": dict(
+    "Already in the list: {keys}",
+    "Já estavam na lista: {keys}",
+  ),
+  "taskQueueModal.listTitle": dict("Tasks ({count})", "Tarefas ({count})"),
+  "taskQueueModal.empty": dict("No task in the queue yet.", "Nenhuma tarefa na fila ainda."),
+  "taskQueueModal.loading": dict("Loading the queue…", "Carregando a fila…"),
+  "taskQueueModal.loadError": dict("Couldn't load the queue.", "Não foi possível carregar a fila."),
+  "taskQueueModal.missingRepo": dict("Choose a repo", "Escolha um repo"),
+  "taskQueueModal.missingSetupCount": dict(
+    "{count} task(s) still without a repo or branch prefix — they won't launch.",
+    "{count} tarefa(s) ainda sem repo ou prefixo de branch — não serão lançadas.",
+  ),
+  "taskQueueModal.pastePrefix": dict(
+    "Branch prefix for the pasted tasks",
+    "Prefixo da branch das tarefas coladas",
+  ),
+  "taskQueueModal.prefixAriaLabel": dict("Branch prefix", "Prefixo da branch"),
+  "taskQueueModal.prefixUnset": dict("Choose a prefix…", "Escolha o prefixo…"),
+  "taskQueueModal.prefixNone": dict("No prefix (just the key)", "Sem prefixo (só a chave)"),
+  "taskQueueModal.branchLabel": dict("Branch:", "Branch:"),
+  "taskQueueModal.missingPrefix": dict("Choose the prefix", "Escolha o prefixo"),
+  "taskQueueModal.mainRepo": dict("main", "principal"),
+  "taskQueueModal.addRepo": dict("+ repo", "+ repo"),
+  "taskQueueModal.removeRepo": dict("Remove repo", "Remover repo"),
+  "taskQueueModal.removeTask": dict("Remove from the queue", "Remover da fila"),
+  "taskQueueModal.clear": dict("Clear list", "Limpar lista"),
+  "taskQueueModal.state.waiting": dict("In line", "Na fila"),
+  "taskQueueModal.state.launching": dict("Opening…", "Abrindo…"),
+  "taskQueueModal.state.launched": dict("Launched {time}", "Lançada {time}"),
+  "taskQueueModal.state.failed": dict("Failed", "Falhou"),
+  "taskQueueModal.retry": dict("Try again", "Tentar de novo"),
+  "taskQueueModal.extraRepoFailed": dict(
+    "Launched without an extra repo: {message}",
+    "Lançada sem um repo extra: {message}",
+  ),
+  "taskQueueModal.removeLaunched": dict("Remove launched ({count})", "Remover lançadas ({count})"),
+  "scheduler.title.running": dict("Automatic launch on", "Lançamento automático ligado"),
+  "scheduler.title.paused": dict("Automatic launch paused", "Lançamento automático pausado"),
+  "scheduler.pause": dict("Pause", "Pausar"),
+  "scheduler.resume": dict("Resume", "Retomar"),
+  "scheduler.runNow": dict("Check now", "Verificar agora"),
+  "scheduler.idle": dict("Nothing waiting in the queue.", "Nada esperando na fila."),
+  "scheduler.ready": dict(
+    "{count} task(s) ready — launching as soon as there's room.",
+    "{count} tarefa(s) pronta(s) — lançando assim que houver espaço.",
+  ),
+  "scheduler.launching": dict("Opening {key}…", "Abrindo {key}…"),
+  "scheduler.blocked.paused": dict(
+    "Paused — nothing new starts until you resume.",
+    "Pausado — nada novo começa até você retomar.",
+  ),
+  "scheduler.blocked.maxSessions": dict(
+    "Waiting: the session limit is reached — close a finished session to free a slot.",
+    "Aguardando: limite de sessões atingido — feche uma sessão terminada pra liberar vaga.",
+  ),
+  "scheduler.blocked.recentLaunch": dict(
+    "Waiting: a task opened a moment ago (spacing between launches) — its memory use shows up before the next one starts.",
+    "Aguardando: uma tarefa acabou de abrir (intervalo entre aberturas) — o uso de memória dela aparece antes da próxima começar.",
+  ),
+  "scheduler.blocked.lowMemory": dict(
+    "Waiting: free RAM is below the minimum.",
+    "Aguardando: RAM livre abaixo do mínimo.",
+  ),
+  "scheduler.blocked.memoryPressure": dict(
+    "Waiting: the machine is under memory pressure right now.",
+    "Aguardando: a máquina está sob pressão de memória agora.",
+  ),
+  "scheduler.blocked.usageLimit": dict(
+    "Waiting: the Claude plan usage is above the limit.",
+    "Aguardando: o uso do plano Claude está acima do limite.",
+  ),
+  "scheduler.metric.sessions": dict("Sessions: {active}/{max}", "Sessões: {active}/{max}"),
+  "scheduler.metric.memory": dict(
+    "Free RAM: {free}% (min. {min}%)",
+    "RAM livre: {free}% (mín. {min}%)",
+  ),
+  "scheduler.metric.usage": dict(
+    "Plan usage: {used}% (max. {max}%)",
+    "Uso do plano: {used}% (máx. {max}%)",
+  ),
+  "scheduler.setting.maxSessions": dict("Max sessions at once", "Máx. de sessões simultâneas"),
+  "scheduler.setting.minFreeMemory": dict("Min. free RAM (%)", "RAM livre mínima (%)"),
+  "scheduler.setting.maxUsage": dict("Max. plan usage (%)", "Uso máx. do plano (%)"),
+  "scheduler.explanation": dict(
+    "Every live claude session counts, including ones you opened by hand. Tasks always run in their own worktree; bringing one to the root to test locally is done from its card, one task per repo at a time.",
+    "Toda sessão claude ativa conta, inclusive as que você abriu à mão. As tarefas sempre rodam em worktree próprio; levar uma pra raiz pra testar localmente é feito pelo card dela, uma tarefa por repo de cada vez.",
+  ),
+  "scheduler.tests.title": dict("Heavy tests", "Testes pesados"),
+  "scheduler.tests.on": dict(
+    "On — every session's test commands go through heavy-run.",
+    "Ligado — os comandos de teste de toda sessão passam pelo heavy-run.",
+  ),
+  "scheduler.tests.off": dict(
+    "Off — sessions run tests directly, with no queue or memory cap.",
+    "Desligado — as sessões rodam testes direto, sem fila nem limite de memória.",
+  ),
+  "scheduler.tests.install": dict("Turn on (install hook)", "Ligar (instalar hook)"),
+  "scheduler.tests.remove": dict("Turn off (remove hook)", "Desligar (remover hook)"),
+  "scheduler.tests.hookInstalled": dict(
+    "Hook installed — sessions started from now on use it.",
+    "Hook instalado — vale para as sessões abertas a partir de agora.",
+  ),
+  "scheduler.tests.hookRemoved": dict("Hook removed.", "Hook removido."),
+  "scheduler.tests.hookError": dict(
+    "Couldn't change the Claude settings file.",
+    "Não foi possível alterar o arquivo de configurações do Claude.",
+  ),
+  "scheduler.setting.testSlots": dict("Test runs at once", "Testes simultâneos"),
+  "scheduler.setting.testMemory": dict("RAM cap per run (GB)", "Limite de RAM por teste (GB)"),
+  "scheduler.setting.testCpu": dict("CPU cap per run (%)", "Limite de CPU por teste (%)"),
+  "scheduler.setting.launchSpacing": dict("Minutes between launches", "Minutos entre aberturas"),
+  "scheduler.setting.previewSlots": dict("Previews at once", "Previews simultâneos"),
+  "scheduler.setting.previewMemory": dict(
+    "RAM cap per preview (GB)",
+    "Limite de RAM por preview (GB)",
+  ),
+  "scheduler.tests.explanation": dict(
+    "A PreToolUse hook in {settings} blocks a test command (jest, vitest, yarn/npm test…) run directly and has Claude rerun it as {path} <command>: it waits for a free slot across every session and runs inside its own cgroup — going over the RAM cap kills just that run (exit 137). It also has dev-server containers (docker run … next dev) started as {path} --preview docker run …: at most that many previews at once across sessions, each with its RAM cap and 2 CPUs. A run or preview that waits over 15 min gives up (exit 75). 100% CPU = one core.",
+    "Um hook PreToolUse em {settings} bloqueia um comando de teste (jest, vitest, yarn/npm test…) rodado direto e faz o Claude rodar de novo como {path} <comando>: ele espera uma vaga livre entre todas as sessões e roda num cgroup próprio — passar do limite de RAM encerra só aquele teste (saída 137). Também faz containers de dev server (docker run … next dev) subirem como {path} --preview docker run …: no máximo tantos previews ao mesmo tempo entre as sessões, cada um com seu limite de RAM e 2 CPUs. Um teste ou preview que espera mais de 15 min desiste (saída 75). 100% de CPU = um núcleo.",
+  ),
+  "scheduler.saveError": dict(
+    "Couldn't save the scheduler settings.",
+    "Não foi possível salvar as configurações do agendador.",
+  ),
+  "taskQueueModal.save": dict("Save queue", "Salvar fila"),
+  "taskQueueModal.saved": dict("Queue saved.", "Fila salva."),
+  "taskQueueModal.saveError": dict(
+    "Couldn't save the queue: {message}",
+    "Não foi possível salvar a fila: {message}",
+  ),
+};
