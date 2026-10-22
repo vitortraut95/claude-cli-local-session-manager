@@ -884,7 +884,10 @@ export async function openMissingWorktreeRootInVSCode(id: string): Promise<void>
  * Starts a new `claude` conversation in an orphaned worktree session's repo root (it can't be
  * resumed: its directory is gone), seeded with the old session's recap or title.
  */
-export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promise<void> {
+export async function startFreshSessionAtMissingWorktreeRoot(
+  id: string,
+  layout?: TerminalLayout,
+): Promise<void> {
   const { head, filePath, repoRoot } = await resolveMissingWorktreeRepoRoot(id);
 
   const sessions = await listSessions();
@@ -902,7 +905,7 @@ export async function startFreshSessionAtMissingWorktreeRoot(id: string): Promis
     : "Continuing a previous session that ran in a git worktree now merged into this folder. " +
       "(No recap of that session was recorded — take a look around before continuing.)";
 
-  await launchInTerminal(`claude ${posixShellQuote(prompt)}`, repoRoot);
+  await launchInTerminal(`claude ${posixShellQuote(prompt)}`, repoRoot, null, layout);
 }
 
 /**
@@ -993,7 +996,11 @@ export async function continueSession(
  * be resumed from another directory). The CLI creates and locks `<repo>/.claude/worktrees/<name>`
  * on a new `worktree-<name>` branch.
  */
-export async function createSessionWorktree(id: string, requestedName: string): Promise<void> {
+export async function createSessionWorktree(
+  id: string,
+  requestedName: string,
+  layout?: TerminalLayout,
+): Promise<void> {
   const name = requestedName.trim();
   if (!name) {
     throw new BadRequestError("WORKTREE_NAME_REQUIRED", "A worktree name is required.");
@@ -1013,7 +1020,7 @@ export async function createSessionWorktree(id: string, requestedName: string): 
     await markWorktreeTrustAccepted(path.join(repoRoot, ".claude", "worktrees", worktreeDirName));
   }
 
-  await launchInTerminal(`claude --worktree ${posixShellQuote(name)}`, cwd);
+  await launchInTerminal(`claude --worktree ${posixShellQuote(name)}`, cwd, null, layout);
 }
 
 /** Removes the worktree `id` runs in and its branch; refused while any session is active in it. */
@@ -1282,6 +1289,7 @@ export async function stopSiblingAndResume(
   id: string,
   siblingSessionId: string,
   requestedBranch: string,
+  layout?: TerminalLayout,
 ): Promise<void> {
   if (!isSafeSessionId(siblingSessionId)) throw invalidSessionIdError(siblingSessionId);
   const branch = requestedBranch.trim();
@@ -1306,5 +1314,5 @@ export async function stopSiblingAndResume(
   }
 
   await runGit(["checkout", branch], cwd);
-  await continueSession(id);
+  await continueSession(id, null, layout);
 }

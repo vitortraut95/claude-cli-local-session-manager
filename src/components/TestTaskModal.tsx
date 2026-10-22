@@ -1,12 +1,14 @@
 import { FlaskConical } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
+import { useTeamLinks } from "../hooks/useTeamLinks";
 import { useToast } from "../hooks/useToast";
 import * as tasksApi from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
 import * as preferencesApi from "../services/preferencesApi";
+import type { TerminalLayout } from "../services/preferencesApi";
 
 type TestTaskModalProps = {
   /** `taskTestSkill` — only mounted while one is set. */
@@ -30,6 +32,7 @@ export function TestTaskModal({
 }: TestTaskModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
+  const { gridLayout } = useTeamLinks();
   const [link, setLink] = useState("");
   const [permissionModeAuto, setPermissionModeAuto] = useState(true);
   const [storedPermissionModeAuto, setStoredPermissionModeAuto] = useState(true);
@@ -54,7 +57,7 @@ export function TestTaskModal({
   const trimmedLink = link.trim();
   const canSubmit = trimmedLink.length > 0 && !launching;
 
-  const handleTest = async () => {
+  const handleTest = async (layout?: TerminalLayout) => {
     if (!canSubmit) return;
     setLaunching(true);
     try {
@@ -62,6 +65,7 @@ export function TestTaskModal({
         trimmedLink,
         permissionModeAuto,
         t("testTaskModal.nickname", { link: trimmedLink }),
+        layout,
       );
       showToast(t("newTaskModal.terminalOpened"), "success");
       if (permissionModeAuto !== storedPermissionModeAuto) {
@@ -86,7 +90,7 @@ export function TestTaskModal({
       icon={<FlaskConical className="h-5 w-5 text-teal-600 dark:text-teal-400" />}
       onClose={onClose}
       onCancel={onClose}
-      onConfirm={() => void handleTest()}
+      onConfirmLaunch={(layout) => void handleTest(layout)}
       confirmLabel={t("testTaskModal.confirm")}
       cancelLabel={t("newTaskModal.cancel")}
       isConfirmLoading={launching}
@@ -107,7 +111,8 @@ export function TestTaskModal({
             value={link}
             onChange={(event) => setLink(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") void handleTest();
+              // With the grid, where it opens is picked in the confirm button's menu.
+              if (event.key === "Enter" && !gridLayout) void handleTest();
             }}
             placeholder={t("testTaskModal.linkPlaceholder")}
             autoFocus

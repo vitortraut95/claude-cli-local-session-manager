@@ -64,8 +64,10 @@ export type UserPreferences = {
   worktreeSetup?: WorktreeSetup;
   /** Where Claude sessions open: a terminal tab each, or panes of one Limux grid. Optional: older
    *  backend. */
-  terminalLayout?: "tabs" | "limux-grid";
+  terminalLayout?: TerminalLayout;
 };
+
+export type TerminalLayout = "tabs" | "limux-grid";
 
 /** Per repo folder name: what a new task worktree gets from the main checkout. */
 export type WorktreeSetup = Record<string, { linkNodeModules: boolean; copyEnvFiles: boolean }>;

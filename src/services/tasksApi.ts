@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { TaskRepoRef, WorkStatus } from "../types/session";
 import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
+import type { TerminalLayout } from "./preferencesApi";
 
 const client = axios.create({
   baseURL: "/tasks",
@@ -79,7 +80,8 @@ export async function createTaskWorktree(
  *  Absent from an older backend. */
 export type WorktreeSetupResult = { linked: string[]; copied: string[] };
 
-/** Opens a terminal in `worktreePath` running `claude <prompt>`. `repoRoot` ("" if unknown) is
+/** Opens a terminal (or a grid pane, per `layout` / the preference) in `worktreePath` running
+ *  `claude <prompt>`. `repoRoot` ("" if unknown) is
  *  remembered for the folder dropdown. A non-blank `nickname` and `originBranch`/`destinationBranch`
  *  are saved for the new session. */
 export async function launchTaskTerminal(
@@ -91,6 +93,7 @@ export async function launchTaskTerminal(
   originBranch = "",
   destinationBranch = "",
   addDirs: string[] = [],
+  layout?: TerminalLayout,
 ): Promise<void> {
   await withServerErrorMessage(() =>
     client.post("/launch", {
@@ -102,6 +105,7 @@ export async function launchTaskTerminal(
       originBranch,
       destinationBranch,
       addDirs,
+      layout,
     }),
   );
 }
@@ -208,9 +212,10 @@ export async function launchTaskTest(
   ticketLink: string,
   permissionModeAuto: boolean,
   nickname: string,
+  layout?: TerminalLayout,
 ): Promise<void> {
   await withServerErrorMessage(() =>
-    client.post("/test-task", { ticketLink, permissionModeAuto, nickname }),
+    client.post("/test-task", { ticketLink, permissionModeAuto, nickname, layout }),
   );
 }
 

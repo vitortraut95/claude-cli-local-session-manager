@@ -6,7 +6,7 @@ type TeamLinks = {
   /** Null = no Jenkins configured (button hidden). */
   jenkinsBaseUrl: string | null;
   envPreviews: EnvPreviews;
-  /** `terminalLayout` is the Limux grid: Resume offers grid or terminal. */
+  /** `terminalLayout` is the Limux grid: actions that open a session offer grid or terminal. */
   gridLayout: boolean;
 };
 

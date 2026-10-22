@@ -1,5 +1,4 @@
 import {
-  ChevronDown,
   Clock,
   Code2,
   Folder,
@@ -8,30 +7,30 @@ import {
   GitMerge,
   GitPullRequest,
   Layers,
-  LayoutGrid,
   Loader2,
   MessageSquare,
   Pencil,
   Play,
   RotateCcw,
   Share,
-  SquareTerminal,
   Trash2,
   TriangleAlert,
   Info,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import jenkinsIcon from "../assets/jenkins.svg";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
 import * as cleanupApi from "../services/cleanupApi";
 import * as sessionsApi from "../services/sessionsApi";
+import type { TerminalLayout } from "../services/preferencesApi";
 import type { Session, WorkStatus } from "../types/session";
 import { Button } from "./Button";
 import { ExportSessionModal } from "./ExportSessionModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { JenkinsLinksModal } from "./JenkinsLinksModal";
+import { LaunchLayoutButton } from "./LaunchLayoutButton";
 import { LinkifiedText } from "./LinkifiedText";
 import { TaskModal } from "./TaskModal";
 import { TaskReposLine } from "./TaskReposLine";
@@ -67,7 +66,7 @@ type SessionCardProps = {
   selected: boolean;
   onToggleSelect: (id: string) => void;
   /** `layout` = where the user picked to open it; omitted = the `terminalLayout` preference. */
-  onContinue: (session: Session, layout?: "tabs" | "limux-grid") => void;
+  onContinue: (session: Session, layout?: TerminalLayout) => void;
   onDeleteRequest: (session: Session) => void;
   onSetNickname: (session: Session, nickname: string) => void;
   onSetBranches: (session: Session, origin: string, destination: string) => void;
@@ -76,7 +75,10 @@ type SessionCardProps = {
   onOpenInVSCode: (session: Session) => void;
   onOpenInCursor: (session: Session) => void;
   onOpenMissingWorktreeRootInVSCode: (session: Session) => void;
-  onStartNewSessionAtMissingWorktreeRoot: (session: Session) => Promise<void>;
+  onStartNewSessionAtMissingWorktreeRoot: (
+    session: Session,
+    layout?: TerminalLayout,
+  ) => Promise<void>;
   onDeleteWorktree: (session: Session) => void;
   onWorktreeSyncComplete: (session: Session) => void;
   onFilterByTask: (taskKey: string) => void;
@@ -234,30 +236,15 @@ export function SessionCard({
 
   const continueButton = (
     <span className="flex flex-1">
-      {teamLinks.gridLayout ? (
-        <ResumeLayoutMenu
-          disabled={isBusy || continueDisabledReason !== null}
-          busy={isContinuing}
-          onPick={(layout) => onContinue(session, layout)}
-        />
-      ) : (
-        <Button
-          variant="primary"
-          size="sm"
-          fullWidth
-          onClick={() => onContinue(session, "tabs")}
-          disabled={isBusy || continueDisabledReason !== null}
-          icon={
-            isContinuing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )
-          }
-        >
-          {t("sessionCard.resumeButton")}
-        </Button>
-      )}
+      <LaunchLayoutButton
+        size="sm"
+        fullWidth
+        label={t(teamLinks.gridLayout ? "sessionCard.resumeIn.button" : "sessionCard.resumeButton")}
+        icon={<Play className="h-4 w-4" />}
+        busy={isContinuing}
+        disabled={isBusy || continueDisabledReason !== null}
+        onLaunch={(layout) => onContinue(session, layout)}
+      />
     </span>
   );
 
@@ -439,28 +426,23 @@ export function SessionCard({
                   {t("sessionCard.codeButton")}
                 </Button>
                 <Tooltip content={t("sessionCard.directoryMissing.newSessionTooltip")}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      setResumingAtRoot(true);
-                      try {
-                        await onStartNewSessionAtMissingWorktreeRoot(session);
-                      } finally {
-                        setResumingAtRoot(false);
-                      }
-                    }}
-                    disabled={resumingAtRoot || isResumingAtMissingWorktreeRoot}
-                    icon={
-                      resumingAtRoot || isResumingAtMissingWorktreeRoot ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Play className="h-3.5 w-3.5" />
-                      )
-                    }
-                  >
-                    {t("sessionCard.newSessionAtRootButton")}
-                  </Button>
+                  <span className="inline-flex">
+                    <LaunchLayoutButton
+                      variant="outline"
+                      size="sm"
+                      label={t("sessionCard.newSessionAtRootButton")}
+                      icon={<Play className="h-3.5 w-3.5" />}
+                      busy={resumingAtRoot || isResumingAtMissingWorktreeRoot}
+                      onLaunch={async (layout) => {
+                        setResumingAtRoot(true);
+                        try {
+                          await onStartNewSessionAtMissingWorktreeRoot(session, layout);
+                        } finally {
+                          setResumingAtRoot(false);
+                        }
+                      }}
+                    />
+                  </span>
                 </Tooltip>
               </div>
             </div>
@@ -762,84 +744,6 @@ export function SessionCard({
         }}
         onCancel={() => setShowDeleteWorktreeConfirm(false)}
       />
-    </div>
-  );
-}
-
-/** Resume when sessions open in the Limux grid: asks whether this one goes to the grid or to a
- *  terminal of its own. */
-function ResumeLayoutMenu({
-  disabled,
-  busy,
-  onPick,
-}: {
-  disabled: boolean;
-  busy: boolean;
-  onPick: (layout: "tabs" | "limux-grid") => void;
-}) {
-  const { t } = useLanguage();
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
-
-  const options = [
-    {
-      layout: "limux-grid" as const,
-      label: t("sessionCard.resumeIn.grid"),
-      icon: <LayoutGrid className="h-4 w-4" />,
-    },
-    {
-      layout: "tabs" as const,
-      label: t("sessionCard.resumeIn.terminal"),
-      icon: <SquareTerminal className="h-4 w-4" />,
-    },
-  ];
-
-  return (
-    <div ref={containerRef} className="relative flex flex-1">
-      <Button
-        variant="primary"
-        size="sm"
-        fullWidth
-        onClick={() => setOpen((v) => !v)}
-        disabled={disabled}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        icon={busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-      >
-        {t("sessionCard.resumeIn.button")}
-        <ChevronDown className="h-3.5 w-3.5" />
-      </Button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute bottom-full left-0 z-20 mb-1 w-full min-w-44 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900"
-        >
-          {options.map((option) => (
-            <button
-              key={option.layout}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onPick(option.layout);
-              }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-900 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-800"
-            >
-              <span className="text-gray-500 dark:text-gray-400">{option.icon}</span>
-              {option.label}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -2,7 +2,9 @@ import { Loader2, X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLanguage } from "../hooks/useLanguage";
+import type { TerminalLayout } from "../services/preferencesApi";
 import { Button } from "./Button";
+import { LaunchLayoutButton } from "./LaunchLayoutButton";
 
 type ModalSize = "sm" | "md" | "lg" | "xl" | "xxl" | "xxxl";
 
@@ -21,6 +23,9 @@ type ModalProps = {
   children: ReactNode;
   onClose: () => void;
   onConfirm?: () => void;
+  /** In place of `onConfirm` when confirming opens a Claude session: with the Limux grid as the
+   *  layout, the button asks whether it opens in the grid or in a terminal. */
+  onConfirmLaunch?: (layout?: TerminalLayout) => void;
   onCancel?: () => void;
   confirmLabel?: string;
   cancelLabel?: string;
@@ -48,6 +53,7 @@ export function Modal({
   children,
   onClose,
   onConfirm,
+  onConfirmLaunch,
   onCancel,
   confirmLabel,
   cancelLabel,
@@ -108,7 +114,7 @@ export function Modal({
 
         <div className="overflow-y-auto px-8 py-4">{children}</div>
 
-        {(onConfirm ?? onCancel) && (
+        {(onConfirm ?? onConfirmLaunch ?? onCancel) && (
           <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-8 py-4 dark:border-gray-800">
             <div>
               {onSecondary && (
@@ -123,15 +129,25 @@ export function Modal({
                   {resolvedCancelLabel}
                 </Button>
               )}
-              {onConfirm && (
-                <Button
-                  variant={confirmVariant === "danger" ? "danger" : "primary"}
-                  onClick={onConfirm}
-                  disabled={isConfirmLoading || isConfirmDisabled}
-                  icon={isConfirmLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                >
-                  {resolvedConfirmLabel}
-                </Button>
+              {onConfirmLaunch ? (
+                <LaunchLayoutButton
+                  label={resolvedConfirmLabel}
+                  busy={isConfirmLoading}
+                  disabled={isConfirmDisabled}
+                  onLaunch={onConfirmLaunch}
+                  align="right"
+                />
+              ) : (
+                onConfirm && (
+                  <Button
+                    variant={confirmVariant === "danger" ? "danger" : "primary"}
+                    onClick={onConfirm}
+                    disabled={isConfirmLoading || isConfirmDisabled}
+                    icon={isConfirmLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  >
+                    {resolvedConfirmLabel}
+                  </Button>
+                )
               )}
             </div>
           </div>

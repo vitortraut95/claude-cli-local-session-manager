@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { TerminalLayout } from "../services/preferencesApi";
 import * as sessionsApi from "../services/sessionsApi";
 import * as tasksApi from "../services/tasksApi";
 import type { Session, WorkStatus } from "../types/session";
@@ -427,9 +428,11 @@ export function useSessions() {
     [runAction],
   );
 
+  /** `layout` = where the user picked to resume it, also used by the conflict's way out. */
   const [resumeConflict, setResumeConflict] = useState<{
     target: Session;
     sibling: Session;
+    layout?: TerminalLayout;
   } | null>(null);
 
   const clearResumeConflict = useCallback(() => setResumeConflict(null), []);
@@ -439,7 +442,7 @@ export function useSessions() {
    * in the same directory, or this one is already open, sets `resumeConflict` instead of resuming.
    */
   const resumeSession = useCallback(
-    async (id: string, layout?: "tabs" | "limux-grid") => {
+    async (id: string, layout?: TerminalLayout) => {
       setPending(id, "continue");
       try {
         const fresh = await sessionsApi.fetchSessions();
@@ -463,7 +466,7 @@ export function useSessions() {
         }
 
         if (target && sibling) {
-          setResumeConflict({ target, sibling });
+          setResumeConflict({ target, sibling, layout });
           return;
         }
 
@@ -482,11 +485,11 @@ export function useSessions() {
   );
 
   const stopAndCheckoutResume = useCallback(
-    async (targetId: string, siblingId: string, branch: string) => {
+    async (targetId: string, siblingId: string, branch: string, layout?: TerminalLayout) => {
       const ok = await runAction(
         targetId,
         "continue",
-        () => sessionsApi.stopAndCheckoutResume(targetId, siblingId, branch),
+        () => sessionsApi.stopAndCheckoutResume(targetId, siblingId, branch, layout),
         "useSessions.stoppedAndResumed",
         "useSessions.switchSessionsError",
       );
@@ -543,11 +546,11 @@ export function useSessions() {
    * old session's recap.
    */
   const startNewSessionAtMissingWorktreeRoot = useCallback(
-    async (session: Session) => {
+    async (session: Session, layout?: TerminalLayout) => {
       await runAction(
         session.id,
         "missing-root-resume",
-        () => sessionsApi.startFreshSessionAtMissingWorktreeRoot(session.id),
+        () => sessionsApi.startFreshSessionAtMissingWorktreeRoot(session.id, layout),
         "useSessions.newTerminalAtRoot",
         "useSessions.startSessionError",
       );
@@ -556,11 +559,11 @@ export function useSessions() {
   );
 
   const createWorktree = useCallback(
-    async (id: string, name: string) => {
+    async (id: string, name: string, layout?: TerminalLayout) => {
       await runAction(
         id,
         "worktree-create",
-        () => sessionsApi.createWorktree(id, name),
+        () => sessionsApi.createWorktree(id, name, layout),
         "useSessions.worktreeCreated",
         "useSessions.createWorktreeError",
       );
