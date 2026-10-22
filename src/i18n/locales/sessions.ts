@@ -24,10 +24,6 @@ export const sessions = {
   "jenkinsLinksModal.section.currentBranch": dict("Current branch", "Branch atual"),
   "jenkinsLinksModal.section.originBranch": dict("Branch it was created from", "Branch de origem"),
   "jenkinsLinksModal.section.envPreviews": dict("{branch} previews:", "Previews do {branch}:"),
-  "jenkinsLinksModal.section.variants": dict(
-    "Same ticket, other prefixes",
-    "Mesmo ticket, outros prefixos",
-  ),
   "jenkinsLinksModal.section.views": dict("Project", "Projeto"),
   "jenkinsLinksModal.project": dict("{project} (all branches)", "{project} (todas as branches)"),
   "jenkinsLinksModal.pullRequests": dict("Pull requests", "Pull requests"),

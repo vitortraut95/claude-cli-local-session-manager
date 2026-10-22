@@ -6,11 +6,9 @@ type TeamLinks = {
   /** Null = no Jenkins configured (button hidden). */
   jenkinsBaseUrl: string | null;
   envPreviews: EnvPreviews;
-  /** The user's branch types, used as Jenkins branch variations. */
-  branchTypes: string[];
 };
 
-const EMPTY: TeamLinks = { jenkinsBaseUrl: null, envPreviews: {}, branchTypes: [] };
+const EMPTY: TeamLinks = { jenkinsBaseUrl: null, envPreviews: {} };
 
 let snapshot: TeamLinks = EMPTY;
 const listeners = new Set<() => void>();
@@ -24,7 +22,6 @@ function load() {
       snapshot = {
         jenkinsBaseUrl: base === "" ? null : base,
         envPreviews: prefs.envPreviews ?? {},
-        branchTypes: prefs.branchTypes,
       };
       listeners.forEach((listener) => listener());
     })
