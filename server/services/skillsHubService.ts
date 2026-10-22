@@ -47,7 +47,9 @@ function hubFolderName(repoUrl: string): string {
  *  → `https://host/owner/repo/`. Wrong for an SSH host alias, which is only a convenience link. */
 function hubWebUrl(repoUrl: string): string {
   const host = /^(?:[a-z+]+:\/\/)?(?:[^@/]+@)?([^/:]+)/i.exec(repoUrl.trim())?.[1] ?? "";
-  return host ? `https://${host}/${hubSlug(repoUrl)}/` : "";
+  // `ssh.bitbucket.org` is SSH-only; the web lives on `bitbucket.org`.
+  const webHost = host.replace(/^ssh\.(?=bitbucket\.org$)/i, "");
+  return webHost ? `https://${webHost}/${hubSlug(repoUrl)}/` : "";
 }
 
 async function readOrigin(dir: string): Promise<string | null> {
