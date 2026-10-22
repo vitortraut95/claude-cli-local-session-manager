@@ -25,6 +25,7 @@ import * as cleanupApi from "../services/cleanupApi";
 import * as sessionsApi from "../services/sessionsApi";
 import type { TerminalLayout } from "../services/preferencesApi";
 import type { Session, WorkStatus } from "../types/session";
+import { AnchoredMenu } from "./AnchoredMenu";
 import { Button } from "./Button";
 import { ExportSessionModal } from "./ExportSessionModal";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -484,48 +485,6 @@ export function SessionCard({
             </span>
           </Tooltip>
 
-          {!session.directoryMissing && (
-            <Tooltip content={t("sessionCard.openInVSCodeTooltip")}>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onOpenInVSCode(session)}
-                disabled={isOpeningVSCode}
-                aria-label={t("sessionCard.openInVSCodeAriaLabel")}
-                icon={
-                  isOpeningVSCode ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Code2 className="h-3.5 w-3.5" />
-                  )
-                }
-              >
-                {t("sessionCard.codeButton")}
-              </Button>
-            </Tooltip>
-          )}
-
-          {!session.directoryMissing && (
-            <Tooltip content={t("sessionCard.openInCursorTooltip")}>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onOpenInCursor(session)}
-                disabled={isOpeningCursor}
-                aria-label={t("sessionCard.openInCursorAriaLabel")}
-                icon={
-                  isOpeningCursor ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Code2 className="h-3.5 w-3.5" />
-                  )
-                }
-              >
-                {t("sessionCard.cursorButton")}
-              </Button>
-            </Tooltip>
-          )}
-
           {session.isWorktree && !session.directoryMissing && (
             // Enabled even while active: "copy" mode only reads the worktree, and the modal itself
             // blocks "checkout" mode while the worktree's session is active.
@@ -636,6 +595,43 @@ export function SessionCard({
         ) : (
           continueButton
         )}
+        <AnchoredMenu
+          disabled={session.directoryMissing || isOpeningVSCode || isOpeningCursor}
+          buttonClassName="shrink-0 gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+          label={
+            <>
+              {isOpeningVSCode || isOpeningCursor ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Code2 className="h-3.5 w-3.5" />
+              )}
+              {t("sessionCard.openEditor")}
+            </>
+          }
+        >
+          {(close) =>
+            (
+              [
+                { label: t("sessionCard.openEditor.vscode"), open: onOpenInVSCode },
+                { label: t("sessionCard.openEditor.cursor"), open: onOpenInCursor },
+              ] as const
+            ).map((editor) => (
+              <button
+                key={editor.label}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  close();
+                  editor.open(session);
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
+              >
+                <Code2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                {editor.label}
+              </button>
+            ))
+          }
+        </AnchoredMenu>
         {session.isActive ? (
           <Tooltip content={t("sessionCard.deleteDisabledTooltip")}>
             <span className="inline-flex shrink-0">{deleteButton}</span>
