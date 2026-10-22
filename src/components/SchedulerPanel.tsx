@@ -1,4 +1,4 @@
-import { FlaskConical, Pause, Play, RefreshCw } from "lucide-react";
+import { ChevronRight, FlaskConical, Pause, Play, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -10,6 +10,7 @@ import type { HeavyRunHookStatus, SchedulerBlock, SchedulerStatus } from "../ser
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Button } from "./Button";
 import { Input } from "./Input";
+import { SettingRow } from "./SettingRow";
 
 const BLOCK_KEYS: Record<SchedulerBlock, TranslationKey> = {
   paused: "scheduler.blocked.paused",
@@ -96,24 +97,33 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
     if (value !== settings[field]) void save({ ...settings, [field]: value });
   };
 
-  const numberField = (field: keyof typeof LIMITS, labelKey: TranslationKey) => (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-        {t(labelKey)}
-      </span>
-      <Input
-        type="number"
-        min={LIMITS[field][0]}
-        max={LIMITS[field][1]}
-        value={drafts[field] ?? String(settings?.[field] ?? "")}
-        disabled={!settings}
-        onChange={(event) => setDrafts((current) => ({ ...current, [field]: event.target.value }))}
-        onBlur={() => commitNumber(field)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") commitNumber(field);
-        }}
-      />
-    </label>
+  const numberField = (
+    field: keyof typeof LIMITS,
+    labelKey: TranslationKey,
+    descriptionKey: TranslationKey,
+  ) => (
+    <SettingRow
+      label={t(labelKey)}
+      description={t(descriptionKey)}
+      control={
+        <Input
+          type="number"
+          min={LIMITS[field][0]}
+          max={LIMITS[field][1]}
+          value={drafts[field] ?? String(settings?.[field] ?? "")}
+          disabled={!settings}
+          aria-label={t(labelKey)}
+          onChange={(event) =>
+            setDrafts((current) => ({ ...current, [field]: event.target.value }))
+          }
+          onBlur={() => commitNumber(field)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") commitNumber(field);
+          }}
+          className="py-1"
+        />
+      }
+    />
   );
 
   const toggleHook = async () => {
@@ -202,57 +212,101 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        {numberField("maxSessions", "scheduler.setting.maxSessions")}
-        {numberField("minFreeMemoryPercent", "scheduler.setting.minFreeMemory")}
-        {numberField("maxUsagePercent", "scheduler.setting.maxUsage")}
-        {numberField("launchSpacingMinutes", "scheduler.setting.launchSpacing")}
-      </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400">{t("scheduler.explanation")}</p>
-
-      <div className="flex flex-col gap-3 border-t border-gray-100 pt-3 dark:border-gray-800">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-gray-100">
-              <FlaskConical className="h-4 w-4" /> {t("scheduler.tests.title")}
+      <details className="group border-t border-gray-100 pt-3 dark:border-gray-800">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+          {t("scheduler.settings.title")}
+        </summary>
+        <div className="mt-3 flex flex-col gap-4">
+          <div className="flex flex-col gap-2.5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              {t("scheduler.settings.launch")}
             </p>
-            <p
-              className={`text-xs ${
-                hook?.installed
-                  ? "text-green-700 dark:text-green-400"
-                  : "text-amber-600 dark:text-amber-400"
-              }`}
-            >
-              {hook === null
-                ? "…"
-                : hook.installed
-                  ? t("scheduler.tests.on")
-                  : t("scheduler.tests.off")}
+            {numberField(
+              "maxSessions",
+              "scheduler.setting.maxSessions",
+              "scheduler.setting.maxSessions.hint",
+            )}
+            {numberField(
+              "minFreeMemoryPercent",
+              "scheduler.setting.minFreeMemory",
+              "scheduler.setting.minFreeMemory.hint",
+            )}
+            {numberField(
+              "maxUsagePercent",
+              "scheduler.setting.maxUsage",
+              "scheduler.setting.maxUsage.hint",
+            )}
+            {numberField(
+              "launchSpacingMinutes",
+              "scheduler.setting.launchSpacing",
+              "scheduler.setting.launchSpacing.hint",
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  <FlaskConical className="h-3.5 w-3.5" /> {t("scheduler.tests.title")}
+                </p>
+                <p
+                  className={`text-xs ${
+                    hook?.installed
+                      ? "text-green-700 dark:text-green-400"
+                      : "text-amber-600 dark:text-amber-400"
+                  }`}
+                >
+                  {hook === null
+                    ? "…"
+                    : hook.installed
+                      ? t("scheduler.tests.on")
+                      : t("scheduler.tests.off")}
+                </p>
+              </div>
+              <Button
+                variant={hook?.installed ? "outline" : "primary"}
+                size="sm"
+                onClick={() => void toggleHook()}
+                disabled={!hook || savingHook}
+              >
+                {hook?.installed ? t("scheduler.tests.remove") : t("scheduler.tests.install")}
+              </Button>
+            </div>
+            {numberField(
+              "testSlots",
+              "scheduler.setting.testSlots",
+              "scheduler.setting.testSlots.hint",
+            )}
+            {numberField(
+              "testMemoryMaxGb",
+              "scheduler.setting.testMemory",
+              "scheduler.setting.testMemory.hint",
+            )}
+            {numberField(
+              "testCpuPercent",
+              "scheduler.setting.testCpu",
+              "scheduler.setting.testCpu.hint",
+            )}
+            {numberField(
+              "previewSlots",
+              "scheduler.setting.previewSlots",
+              "scheduler.setting.previewSlots.hint",
+            )}
+            {numberField(
+              "previewMemoryMaxGb",
+              "scheduler.setting.previewMemory",
+              "scheduler.setting.previewMemory.hint",
+            )}
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {t("scheduler.tests.explanation", {
+                path: hook?.heavyRunPath ?? "scripts/heavy-run",
+                settings: hook?.settingsPath ?? "~/.claude/settings.json",
+              })}
             </p>
           </div>
-          <Button
-            variant={hook?.installed ? "outline" : "primary"}
-            size="sm"
-            onClick={() => void toggleHook()}
-            disabled={!hook || savingHook}
-          >
-            {hook?.installed ? t("scheduler.tests.remove") : t("scheduler.tests.install")}
-          </Button>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {numberField("testSlots", "scheduler.setting.testSlots")}
-          {numberField("testMemoryMaxGb", "scheduler.setting.testMemory")}
-          {numberField("testCpuPercent", "scheduler.setting.testCpu")}
-          {numberField("previewSlots", "scheduler.setting.previewSlots")}
-          {numberField("previewMemoryMaxGb", "scheduler.setting.previewMemory")}
-        </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          {t("scheduler.tests.explanation", {
-            path: hook?.heavyRunPath ?? "scripts/heavy-run",
-            settings: hook?.settingsPath ?? "~/.claude/settings.json",
-          })}
-        </p>
-      </div>
+      </details>
     </div>
   );
 }

@@ -73,6 +73,7 @@ import {
   computeFileDiff,
   deleteLocalBranch,
   discardWorkingTreeChanges,
+  forceRemoveWorktree,
   getDefaultBaseBranch,
   getGitDirs,
   getGitHostInfo,
@@ -332,10 +333,12 @@ async function listSessionsUncached(): Promise<Session[]> {
       if (saved?.taskKey && repoRoot && gitBranch) {
         void moveSessionTaskKeyToBranch(session.id, repoRoot, gitBranch).catch(() => undefined);
       }
-      // Recorded beats inferred from the task branch.
-      const recordedTaskKey = saved?.taskKey ?? branchEntry?.taskKey ?? null;
+      // Recorded beats inferred from the task branch. A test session has no task here (the task
+      // is someone else's): its status is its own.
+      const testKey = saved?.test?.key ?? null;
+      const recordedTaskKey = testKey ? null : (saved?.taskKey ?? branchEntry?.taskKey ?? null);
       const inferredTaskKey =
-        recordedTaskKey === null ? inferTaskKey(saved?.destination ?? gitBranch) : null;
+        recordedTaskKey === null && !testKey ? inferTaskKey(saved?.destination ?? gitBranch) : null;
       return {
         ...session,
         project,
@@ -351,6 +354,7 @@ async function listSessionsUncached(): Promise<Session[]> {
         repoRoot,
         taskKey: recordedTaskKey ?? inferredTaskKey,
         taskKeyInferred: inferredTaskKey !== null,
+        testKey,
         status:
           store.tasks[recordedTaskKey ?? inferredTaskKey ?? ""]?.status ?? saved?.status ?? null,
       };
@@ -561,6 +565,14 @@ export async function deleteSession(id: string): Promise<void> {
   if (!filePath) throw new SessionNotFoundError(id);
   await unlink(filePath);
   forgetCachedSession(filePath);
+  // A test session's disposable worktrees go with it, done or not (its entry is what lists them).
+  const testWorktrees = (await getTaskStore()).sessions[id]?.test?.worktrees ?? [];
+  if (testWorktrees.length > 0) {
+    await stopPreviewsIn(testWorktrees, "removed").catch(() => undefined);
+    for (const worktree of testWorktrees) {
+      await forceRemoveWorktree(worktree).catch(() => undefined);
+    }
+  }
   // Best-effort: the transcript is already gone, a leftover entry is just clutter.
   await forgetSession(id).catch(() => undefined);
 }
@@ -591,9 +603,18 @@ export async function setSessionNickname(id: string, nickname: string): Promise<
   await setNickname(id, nickname);
 }
 
-/** For a session with no task — a task's status is set on the task (`PUT /tasks/by-key/:key/status`). */
+/** For a session with no task — a task's status is set on the task (`PUT /tasks/by-key/:key/status`).
+ *  A test session only goes in progress or done; done + closed removes its worktrees
+ *  (`cleanupFinishedTests`). */
 export async function setSessionWorkStatus(id: string, status: WorkStatus | null): Promise<void> {
   if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
+  const isTest = Boolean((await getTaskStore()).sessions[id]?.test);
+  if (isTest && status !== "in_progress" && status !== "done") {
+    throw new BadRequestError(
+      "TEST_STATUS_INVALID",
+      'A test session is either "in_progress" or "done".',
+    );
+  }
   await setSessionStatus(id, status);
   if (status === "done") {
     // Done: its worktree's preview servers only hold memory now (background, best-effort).

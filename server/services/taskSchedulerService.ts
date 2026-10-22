@@ -8,6 +8,7 @@ import {
   launchTaskTerminal,
   resolveBaseBranch,
 } from "./taskService.js";
+import { cleanupFinishedTests, launchTestEntry } from "./taskTestService.js";
 import { getClaudeUsageStatus } from "./usageService.js";
 import { recordEvent } from "../utils/history.js";
 import { getFreeMemoryPercent, getMemoryPressure } from "../utils/systemResources.js";
@@ -22,8 +23,10 @@ import {
 /**
  * Launches the task queue on its own: every `TICK_MS` it checks for room (live sessions, free
  * RAM, memory pressure, Claude plan usage) and starts the next ready entry exactly like "New
- * task" does — task branch (`<prefix>/<key>`, or just the key) off the repo's default, always in its own worktree, extra repos via
- * `--add-dir`, the default prompt — in a new terminal. Launches are `launchSpacingMinutes` apart:
+ * task" does — task branch (`<prefix>/<key>`, or just the key) off the entry's base (else the
+ * repo's default), always in its own worktree, extra repos via
+ * `--add-dir`, the default prompt — in a new terminal; a test entry runs `taskTestSkill` on the
+ * task's existing branch instead (`taskTestService.ts`). Launches are `launchSpacingMinutes` apart:
  * a session's memory (tests, preview servers) only shows up minutes after it opens, so free RAM at
  * launch time alone would let the whole queue start at once.
  */
@@ -60,8 +63,14 @@ let launchingKey: string | null = null;
 let lastLaunchAt = 0;
 let ticking = false;
 
+/** A test entry needs no branch prefix (it tests a branch that already exists). */
 function isReady(entry: QueueEntry): boolean {
-  return !entry.launchedAt && !entry.error && entry.repos.length > 0 && entry.branchPrefix !== null;
+  return (
+    !entry.launchedAt &&
+    !entry.error &&
+    entry.repos.length > 0 &&
+    (entry.kind === "test" || entry.branchPrefix !== null)
+  );
 }
 
 /** Live sessions plus launches still inside their grace period that haven't shown up yet. */
@@ -208,16 +217,45 @@ async function launchEntry(
   entry: QueueEntry,
   prefs: UserPreferences,
 ): Promise<LaunchOutcome | null> {
+  return entry.kind === "test" ? launchTest(entry, prefs) : launchDevEntry(entry, prefs);
+}
+
+/** Same waiting and bookkeeping as a dev entry, but the task's own status is left alone (the task
+ *  is someone else's); the test session's status is set by `launchTestEntry`. */
+async function launchTest(
+  entry: QueueEntry,
+  prefs: UserPreferences,
+): Promise<LaunchOutcome | null> {
+  const outcome = await launchTestEntry(entry, prefs);
+  if (!outcome) return null;
+  pendingLaunches.set(outcome.sessionId, Date.now());
+  await waitForSessionStart(outcome.sessionId);
+  await updateQueueEntry(entry.key, {
+    launchedAt: new Date().toISOString(),
+    sessionId: outcome.sessionId,
+    error: outcome.extraErrors.length > 0 ? outcome.extraErrors.join("\n") : null,
+  });
+  return outcome;
+}
+
+async function launchDevEntry(
+  entry: QueueEntry,
+  prefs: UserPreferences,
+): Promise<LaunchOutcome | null> {
   const [mainFolder, ...extraFolders] = entry.repos;
   if (!mainFolder) return null;
   const branch = entry.branchPrefix ? `${entry.branchPrefix}/${entry.key}` : entry.key;
 
   const repo = await getRepoInfo(mainFolder);
-  const base = repo.defaultBaseBranch;
+  const base = entry.baseBranch ?? repo.defaultBaseBranch;
   const linked: string[] = [];
   let worktreePath = await findExistingTaskWorktree(repo.repoRoot, branch, entry.key);
   if (!worktreePath) {
-    const { baseBranchRef } = await resolveBaseBranch(repo.repoRoot, base);
+    const { baseBranchRef } = await resolveBaseBranch(
+      repo.repoRoot,
+      base,
+      entry.useLocalBaseBranch,
+    );
     const created = await createTaskWorktree(
       repo.repoRoot,
       branch,
@@ -319,6 +357,10 @@ async function tick(): Promise<void> {
   if (ticking) return;
   ticking = true;
   try {
+    // Every tick, paused or blocked or not: a finished test shouldn't keep its worktrees around.
+    await cleanupFinishedTests().catch((err: unknown) =>
+      console.warn("[scheduler] Test cleanup failed:", err),
+    );
     const status = await getSchedulerStatus();
     trackBlock(status);
     if (status.blockedBy || status.waiting === 0) return;
@@ -328,7 +370,7 @@ async function tick(): Promise<void> {
     launchingKey = next.key;
     const startedAt = Date.now();
     lastLaunchAt = startedAt;
-    recordEvent("queue.launch.started", { key: next.key, repos: next.repos });
+    recordEvent("queue.launch.started", { key: next.key, kind: next.kind, repos: next.repos });
     try {
       const outcome = await launchEntry(next, prefs);
       recordEvent("queue.launched", {

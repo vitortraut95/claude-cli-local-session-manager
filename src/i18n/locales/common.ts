@@ -17,15 +17,6 @@ export const common = {
     "Repo de skills do time configurado mas não clonado nesta máquina — clique pra instalar",
   ),
   "header.newSession": dict("New session", "Nova sessão"),
-  "header.testTask": dict("Test task", "Testar tarefa"),
-  "header.testTask.tooltip": dict(
-    "Opens a terminal running the {skill} skill on a task's link",
-    "Abre um terminal rodando a skill {skill} com o link de uma tarefa",
-  ),
-  "header.testTask.notInstalled": dict(
-    "The test skill {skill} isn't installed on this machine — choose another one in Settings or in the Skills window",
-    "A skill de teste {skill} não está instalada nesta máquina — escolha outra em Configurações ou na janela de Skills",
-  ),
   "header.cleanup": dict("Cleanup", "Limpeza"),
   "header.importSession": dict("Import session", "Importar sessão"),
   "header.settings": dict("Settings", "Configurações"),

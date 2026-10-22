@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import path from "node:path";
 import { AppError, errorMessage } from "../httpError.js";
 import { getGitDirs, runGit } from "./core.js";
@@ -105,6 +106,26 @@ export async function removeWorktreeAndBranch(worktreePath: string): Promise<voi
 export async function removeWorktreeKeepBranch(worktreePath: string): Promise<string | null> {
   const { branch } = await unlockAndRemoveWorktree(worktreePath);
   return branch;
+}
+
+/**
+ * Removes a disposable worktree whatever its state (modified, untracked, locked), run from its
+ * main root. A folder git no longer knows as a worktree is deleted too. Only ever touches a folder
+ * under `.claude/worktrees/`, never a main checkout.
+ */
+export async function forceRemoveWorktree(worktreePath: string): Promise<void> {
+  if (!path.resolve(worktreePath).includes(`${path.sep}.claude${path.sep}worktrees${path.sep}`)) {
+    throw new AppError("NOT_A_GIT_WORKTREE", `"${worktreePath}" isn't an app worktree.`);
+  }
+  const dirs = await getGitDirs(worktreePath).catch(() => null);
+  if (dirs && dirs.gitDir !== dirs.commonGitDir) {
+    const mainRoot = path.dirname(dirs.commonGitDir);
+    await runGit(["worktree", "unlock", worktreePath], mainRoot).catch(() => undefined);
+    await runGit(["worktree", "remove", "--force", "--force", worktreePath], mainRoot);
+    await runGit(["worktree", "prune"], mainRoot).catch(() => undefined);
+    return;
+  }
+  await rm(worktreePath, { recursive: true, force: true });
 }
 
 /** Worktrees nested inside `rootDir`, relative to it. Root operations must skip them: each is a

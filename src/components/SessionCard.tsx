@@ -302,6 +302,7 @@ export function SessionCard({
         <WorkStatusSelect
           value={session.status ?? null}
           taskKey={session.taskKey ?? null}
+          testKey={session.testKey ?? null}
           saving={pendingAction === "status"}
           onChange={(status) => void handleStatusChange(status)}
         />

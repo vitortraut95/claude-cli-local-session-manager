@@ -10,14 +10,15 @@ import { REPO_ROOT } from "./repoRoot.js";
  * - `tasks[<ticket key>]`: task metadata (`link`, the hand-set work `status`). Membership lives on the entries' own `taskKey`.
  * - `sessions[<session id>]`: `nickname` (a local label, never replaces the real title),
  *   `origin`/`destination` (the session's base/task branches, either may be null), and a work
- *   `status` for a session with no task (a task's status lives on the task, shared by its sessions). A `taskKey`
+ *   `status` for a session with no task (a task's status lives on the task, shared by its sessions),
+ *   and `test` for a test session (`taskTestService.ts`). A `taskKey`
  *   here comes from older versions and is moved to the branch entry on the next listing.
  * - `repoBranches[<repo root>][<branch>]`: the base a "New task" branch was created off (only when
  *   it differs from the repo default), its `taskKey` (the only place a task link is kept; none =
  *   inferred from the branch, see `taskKeys.ts`) and worktree. Keyed by `(repoRoot, branch)`
  *   because the session id doesn't exist yet at creation and a non-worktree task shares the repo
  *   root. Forgotten once the branch is deleted.
- * - `queue`: tasks waiting to be started, each with the repos it'll be worked in (the first one is
+ * - `queue`: tasks waiting to be started (`kind` dev = develop it, test = test its branch), each with the repos it'll be worked in (the first one is
  *   the main repo, the others join its session via `--add-dir`), in the order they were added.
  *   The scheduler sets `launchedAt`/`sessionId` once it starts one, or `error` when that failed
  *   (skipped until cleared).
@@ -43,12 +44,17 @@ type TaskEntry = {
   createdAt: string;
 };
 
+/** A test session (launched from the queue): the ticket it tests and the disposable worktrees it
+ *  was given, emptied once they're removed. */
+export type TestSessionInfo = { key: string; worktrees: string[] };
+
 type SessionEntry = {
   nickname: string | null;
   origin: string | null;
   destination: string | null;
   taskKey: string | null;
   status: WorkStatus | null;
+  test: TestSessionInfo | null;
 };
 
 type RepoBranchEntry = {
@@ -58,13 +64,23 @@ type RepoBranchEntry = {
   worktreePath: string | null;
 };
 
+/** "dev" = develop the task (new branch and worktree); "test" = test someone else's branch. */
+export type QueueKind = "dev" | "test";
+
 export type QueueEntry = {
   key: string;
   link: string | null;
+  kind: QueueKind;
   repos: string[];
   /** The task branch is `<prefix>/<key>`; "" = just `<key>`; null = not chosen yet (not
    *  launched until it is). */
   branchPrefix: string | null;
+  /** Test only: the branch to test; null = the one on origin whose name has the key. */
+  branch: string | null;
+  /** Dev only: what the task branch starts from in the main repo; null = the repo's default.
+   *  `useLocalBaseBranch` takes the local branch instead of a freshly fetched origin one. */
+  baseBranch: string | null;
+  useLocalBaseBranch: boolean;
   addedAt: string;
   launchedAt: string | null;
   sessionId: string | null;
@@ -72,7 +88,18 @@ export type QueueEntry = {
 };
 
 /** What the queue modal saves; the launch fields are only ever set by the scheduler. */
-export type QueueEntryInput = Pick<QueueEntry, "key" | "link" | "repos" | "branchPrefix" | "error">;
+export type QueueEntryInput = Pick<
+  QueueEntry,
+  | "key"
+  | "link"
+  | "kind"
+  | "repos"
+  | "branchPrefix"
+  | "branch"
+  | "baseBranch"
+  | "useLocalBaseBranch"
+  | "error"
+>;
 
 export type RootLock = {
   mode: "copy" | "checkout";
@@ -111,11 +138,28 @@ function asTextOrNull(value: unknown): string | null {
 }
 
 function isEmptySession(entry: SessionEntry): boolean {
-  return !entry.nickname && !entry.origin && !entry.destination && !entry.taskKey && !entry.status;
+  return (
+    !entry.nickname &&
+    !entry.origin &&
+    !entry.destination &&
+    !entry.taskKey &&
+    !entry.status &&
+    !entry.test
+  );
 }
 
 function isEmptyRepoBranch(entry: RepoBranchEntry): boolean {
   return !entry.baseBranch && !entry.taskKey;
+}
+
+function normalizeTestInfo(raw: unknown): TestSessionInfo | null {
+  if (!isRecord(raw) || typeof raw.key !== "string" || !raw.key.trim()) return null;
+  return {
+    key: raw.key.trim(),
+    worktrees: Array.isArray(raw.worktrees)
+      ? raw.worktrees.filter((w): w is string => typeof w === "string" && !!w.trim())
+      : [],
+  };
 }
 
 /** Tolerant of a hand-edited file: unknown fields are dropped, missing ones default to null. */
@@ -142,6 +186,7 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
         destination: asTextOrNull(raw.destination),
         taskKey: asTextOrNull(raw.taskKey),
         status: isWorkStatus(raw.status) ? raw.status : null,
+        test: normalizeTestInfo(raw.test),
       };
       if (!isEmptySession(entry)) store.sessions[id] = entry;
     }
@@ -170,10 +215,14 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
       store.queue.push({
         key: raw.key.trim(),
         link: asTextOrNull(raw.link),
+        kind: raw.kind === "test" ? "test" : "dev",
         repos: Array.isArray(raw.repos)
           ? [...new Set(raw.repos.filter((r): r is string => typeof r === "string" && !!r.trim()))]
           : [],
         branchPrefix: typeof raw.branchPrefix === "string" ? raw.branchPrefix.trim() : null,
+        branch: asTextOrNull(raw.branch),
+        baseBranch: asTextOrNull(raw.baseBranch),
+        useLocalBaseBranch: raw.useLocalBaseBranch === true,
         addedAt: typeof raw.addedAt === "string" ? raw.addedAt : "",
         launchedAt: asTextOrNull(raw.launchedAt),
         sessionId: asTextOrNull(raw.sessionId),
@@ -321,6 +370,7 @@ function updateSession(id: string, patch: Partial<SessionEntry>): Promise<void> 
       destination: null,
       taskKey: null,
       status: null,
+      test: null,
       ...store.sessions[id],
       ...patch,
     };
@@ -365,6 +415,21 @@ export function forgetSession(id: string): Promise<void> {
   return mutateStore((store) => {
     if (!store.sessions[id]) return false;
     delete store.sessions[id];
+    return true;
+  });
+}
+
+/** Marks `id` as a test session of `key`, given `worktrees`. */
+export function markTestSession(id: string, key: string, worktrees: string[]): Promise<void> {
+  return updateSession(id, { test: { key, worktrees } });
+}
+
+/** The test worktrees still left to remove (the session stays marked as a test). */
+export function setTestWorktrees(id: string, worktrees: string[]): Promise<void> {
+  return mutateStore((store) => {
+    const test = store.sessions[id]?.test;
+    if (!test) return false;
+    test.worktrees = worktrees;
     return true;
   });
 }

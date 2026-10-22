@@ -230,31 +230,11 @@ export const newTask = {
     "Já há uma sessão do Claude rodando em {folder}. As duas sessões vão mexer nos mesmos arquivos e na mesma branch ao mesmo tempo. Iniciar mesmo assim?",
   ),
   "newSessionModal.activeSessionConfirm": dict("Start anyway", "Iniciar mesmo assim"),
-  "testTaskModal.title": dict("Test task", "Testar tarefa"),
-  "testTaskModal.intro": dict(
-    "Opens a terminal in {dir} running {command}. The skill does the rest: finds the project, plans and runs the test.",
-    "Abre um terminal em {dir} rodando {command}. A skill faz o resto: acha o projeto, planeja e executa o teste.",
-  ),
-  "testTaskModal.linkLabel": dict("Task link", "Link da tarefa"),
-  "testTaskModal.linkPlaceholder": dict(
-    "https://company.atlassian.net/browse/PROJ-123",
-    "https://company.atlassian.net/browse/PROJ-123",
-  ),
-  "testTaskModal.permissionModeAutoExplanation": dict(
-    "On by default here: the test skill only reads code and the ticket, and its terminal usually sits in the background. Remembered as whatever you last left it at.",
-    "Ligado por padrão aqui: a skill de teste só lê o código e o ticket, e o terminal dela costuma ficar em segundo plano. Fica lembrado como você deixou da última vez.",
-  ),
-  "testTaskModal.confirm": dict("Test", "Testar"),
-  "testTaskModal.nickname": dict("Test - {link}", "Teste - {link}"),
-  "testTaskModal.launchFailed": dict(
-    "Failed to start the test: {message}",
-    "Falha ao iniciar o teste: {message}",
-  ),
   "taskTestSkill.title": dict("Task test skill", "Skill de teste da tarefa"),
   "taskTestSkill.description": dict(
-    "The skill the header's \"Test task\" button runs with the task's link. The button only shows up once one is chosen.",
-    'A skill que o botão "Testar tarefa" do header roda com o link da tarefa. O botão só aparece depois que uma é escolhida.',
+    "The skill the task queue's test entries run with the task's link.",
+    "A skill que os testes da fila de tarefas rodam com o link da tarefa.",
   ),
-  "taskTestSkill.none": dict("None (button hidden)", "Nenhuma (botão escondido)"),
+  "taskTestSkill.none": dict("None", "Nenhuma"),
   "taskTestSkill.missing": dict("{skill} (not installed)", "{skill} (não instalada)"),
 };

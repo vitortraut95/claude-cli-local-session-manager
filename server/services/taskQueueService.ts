@@ -2,6 +2,7 @@ import { getRepoRoot } from "../utils/git.js";
 import { AppError, BadRequestError } from "../utils/httpError.js";
 import { isTaskKey, normalizeTaskKey } from "../utils/taskKeys.js";
 import { recordEvent } from "../utils/history.js";
+import { SAFE_BRANCH_NAME } from "./taskService.js";
 import { getQueue, setQueue, type QueueEntry, type QueueEntryInput } from "../utils/taskStore.js";
 
 /**
@@ -52,10 +53,36 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
       `"${branchPrefix}" isn't a valid branch prefix (letters, numbers, "-", "_" and "." only).`,
     );
   }
+  const kind = isRecord(raw) && raw.kind === "test" ? "test" : "dev";
+  const rawBranch = isRecord(raw) && typeof raw.branch === "string" ? raw.branch.trim() : "";
+  if (rawBranch && !SAFE_BRANCH_NAME.test(rawBranch)) {
+    throw new BadRequestError(
+      "QUEUE_INVALID_BRANCH",
+      `"${rawBranch}" isn't a valid branch name (letters, numbers, "-", "_", "." and "/" only).`,
+    );
+  }
+  const rawBase = isRecord(raw) && typeof raw.baseBranch === "string" ? raw.baseBranch.trim() : "";
+  if (rawBase && !SAFE_BRANCH_NAME.test(rawBase)) {
+    throw new BadRequestError(
+      "QUEUE_INVALID_BRANCH",
+      `"${rawBase}" isn't a valid branch name (letters, numbers, "-", "_", "." and "/" only).`,
+    );
+  }
+  const useLocalBaseBranch = isRecord(raw) && raw.useLocalBaseBranch === true;
   // Kept as sent: the modal clears it to retry a failed launch.
   const error =
     isRecord(raw) && typeof raw.error === "string" && raw.error.trim() ? raw.error.trim() : null;
-  return { key, link, repos, branchPrefix, error };
+  return {
+    key,
+    link,
+    kind,
+    repos,
+    branchPrefix,
+    branch: rawBranch || null,
+    baseBranch: rawBase || null,
+    useLocalBaseBranch,
+    error,
+  };
 }
 
 /** Replaces the whole queue (the modal saves its full list); a repeated key keeps the first. */
@@ -82,20 +109,31 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
       recordEvent("queue.added", {
         key: entry.key,
         link: entry.link,
+        kind: entry.kind,
         repos: entry.repos,
         branchPrefix: entry.branchPrefix,
+        branch: entry.branch,
+        baseBranch: entry.baseBranch,
       });
       continue;
     }
     if (entry.launchedAt) continue;
     if (
+      before.kind !== entry.kind ||
       before.branchPrefix !== entry.branchPrefix ||
+      before.branch !== entry.branch ||
+      before.baseBranch !== entry.baseBranch ||
+      before.useLocalBaseBranch !== entry.useLocalBaseBranch ||
       before.repos.join("\n") !== entry.repos.join("\n")
     ) {
       recordEvent("queue.updated", {
         key: entry.key,
+        kind: entry.kind,
         repos: entry.repos,
         branchPrefix: entry.branchPrefix,
+        branch: entry.branch,
+        baseBranch: entry.baseBranch,
+        useLocalBaseBranch: entry.useLocalBaseBranch,
       });
     }
     if (before.error && !entry.error) {
