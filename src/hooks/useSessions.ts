@@ -439,7 +439,7 @@ export function useSessions() {
    * in the same directory, or this one is already open, sets `resumeConflict` instead of resuming.
    */
   const resumeSession = useCallback(
-    async (id: string) => {
+    async (id: string, layout?: "tabs" | "limux-grid") => {
       setPending(id, "continue");
       try {
         const fresh = await sessionsApi.fetchSessions();
@@ -453,7 +453,11 @@ export function useSessions() {
             : undefined;
 
         // Already running in the Limux grid: just show its pane.
-        if (target?.isActive && (await sessionsApi.focusSessionInGrid(id).catch(() => false))) {
+        if (
+          target?.isActive &&
+          layout !== "tabs" &&
+          (await sessionsApi.focusSessionInGrid(id).catch(() => false))
+        ) {
           showToast(t("useSessions.shownInGrid"), "success");
           return;
         }
@@ -463,7 +467,7 @@ export function useSessions() {
           return;
         }
 
-        await sessionsApi.continueSession(id);
+        await sessionsApi.continueSession(id, layout);
         // The new terminal may open behind this window (no focus stealing on Wayland).
         showToast(t("useSessions.terminalOpened"), "success");
         // Picks up the "active" status once the resumed process writes its pid file.

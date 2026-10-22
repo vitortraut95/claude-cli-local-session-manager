@@ -39,8 +39,11 @@ export async function deleteSession(id: string): Promise<void> {
   await withServerErrorMessage(() => client.delete(`/${encodeURIComponent(id)}`));
 }
 
-export async function continueSession(id: string): Promise<void> {
-  await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/continue`));
+/** `layout` overrides the `terminalLayout` preference for this resume. */
+export async function continueSession(id: string, layout?: "tabs" | "limux-grid"): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.post(`/${encodeURIComponent(id)}/continue`, layout ? { layout } : undefined),
+  );
 }
 
 /** Shows the Limux grid pane already running this session; false when the grid isn't the layout

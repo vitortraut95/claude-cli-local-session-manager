@@ -173,7 +173,7 @@ export function SessionsPage() {
               pendingAction={pendingActions[session.id]}
               selected={selectedIds.has(session.id)}
               onToggleSelect={toggleSelect}
-              onContinue={(s) => resumeSession(s.id)}
+              onContinue={(s, layout) => resumeSession(s.id, layout)}
               onDeleteRequest={handleDeleteRequest}
               onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
               onSetBranches={(s, origin, destination) => setBranches(s.id, origin, destination)}
