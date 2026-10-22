@@ -18,8 +18,16 @@ export const taskQueue = {
     "Paste the tasks and save: the queue launches one at a time, in list order, while there's room. Development = like \"New task\" (its own worktree, the default prompt); test = the test skill on the task's existing branch, in disposable worktrees.",
     'Cole as tarefas e salve: a fila lan\u00e7a uma por vez, na ordem da lista, enquanto houver espa\u00e7o. Desenvolvimento = como na "Nova tarefa" (worktree pr\u00f3prio, prompt padr\u00e3o); teste = a skill de teste na branch que a tarefa j\u00e1 tem, em worktrees descart\u00e1veis.',
   ),
-  "taskQueueModal.moveUp": dict("Move up (launches sooner)", "Subir (lança antes)"),
-  "taskQueueModal.moveDown": dict("Move down (launches later)", "Descer (lança depois)"),
+  "taskQueueModal.dragHandle": dict(
+    "Drag to reorder (top launches first)",
+    "Arraste pra reordenar (o de cima lança antes)",
+  ),
+  "taskQueueModal.startNow": dict("Start now", "Começar agora"),
+  "taskQueueModal.startNow.tooltip": dict(
+    "Saves the queue and launches this one right away, ignoring the order, the pause and every limit",
+    "Salva a fila e lança esta agora, ignorando a ordem, a pausa e todos os limites",
+  ),
+  "taskQueueModal.startNow.started": dict("{key} started.", "{key} iniciada."),
   "taskQueueModal.baseLabel": dict("Base", "Base"),
   "taskQueueModal.baseLocalLong": dict(
     "Use the local branch (don't fetch)",

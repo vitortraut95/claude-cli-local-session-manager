@@ -11,6 +11,7 @@ import {
 import { cleanupFinishedTests, launchTestEntry } from "./taskTestService.js";
 import { getClaudeUsageStatus } from "./usageService.js";
 import { recordEvent } from "../utils/history.js";
+import { BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
 import { getFreeMemoryPercent, getMemoryPressure } from "../utils/systemResources.js";
 import {
   getQueue,
@@ -54,12 +55,15 @@ export type SchedulerStatus = {
   waiting: number;
   /** Why nothing would launch right now; null = there's room. */
   blockedBy: SchedulerBlock | null;
-  /** The entry being launched at this moment, if any. */
+  /** An entry being launched at this moment, if any. */
   launching: string | null;
+  /** Every entry being launched (the tick's and any "Start now"). */
+  launchingKeys: string[];
 };
 
 const pendingLaunches = new Map<string, number>();
-let launchingKey: string | null = null;
+/** Entries being launched right now: the tick's and any "Start now". */
+const launchingKeys = new Set<string>();
 let lastLaunchAt = 0;
 let ticking = false;
 
@@ -127,7 +131,8 @@ export async function getSchedulerStatus(): Promise<SchedulerStatus> {
     maxUsagePercent,
     waiting: queue.filter(isReady).length,
     blockedBy,
-    launching: launchingKey,
+    launching: launchingKeys.values().next().value ?? null,
+    launchingKeys: [...launchingKeys],
   };
 }
 
@@ -365,67 +370,86 @@ async function tick(): Promise<void> {
     trackBlock(status);
     if (status.blockedBy || status.waiting === 0) return;
     const [prefs, queue] = await Promise.all([getUserPreferences(), getQueue()]);
-    const next = queue.find(isReady);
+    const next = queue.find((entry) => isReady(entry) && !launchingKeys.has(entry.key));
     if (!next) return;
-    launchingKey = next.key;
-    const startedAt = Date.now();
-    lastLaunchAt = startedAt;
-    recordEvent("queue.launch.started", { key: next.key, kind: next.kind, repos: next.repos });
-    try {
-      const outcome = await launchEntry(next, prefs);
-      recordEvent("queue.launched", {
-        key: next.key,
-        durationMs: Date.now() - startedAt,
-        // From entering the queue to its session opening.
-        queuedMs: next.addedAt ? Date.now() - Date.parse(next.addedAt) : null,
-        ...outcome,
-      });
-      console.log(`[scheduler] Launched ${next.key}.`);
-    } catch (err) {
-      const message = errorMessage(err);
-      console.warn(`[scheduler] ${next.key} failed: ${message}`);
-      recordEvent("queue.launch.failed", {
-        key: next.key,
-        durationMs: Date.now() - startedAt,
-        error: message,
-      });
-      await updateQueueEntry(next.key, { error: message });
-    }
+    // Its failure is already recorded on the entry.
+    await launchTracked(next, prefs, false).catch(() => undefined);
   } catch (err) {
     console.warn("[scheduler] Tick failed:", err);
     recordEvent("scheduler.error", { error: errorMessage(err) });
   } finally {
-    launchingKey = null;
     ticking = false;
   }
 }
 
-/**
- * Launches a queue entry again — for one marked launched whose session never actually started
- * (no transcript, no process). Reuses its worktree (see `findExistingTaskWorktree`).
- */
-export async function relaunchQueueEntry(key: string): Promise<LaunchOutcome | null> {
-  const [prefs, queue] = await Promise.all([getUserPreferences(), getQueue()]);
-  const entry = queue.find((e) => e.key === key);
-  if (!entry) throw new Error(`${key} isn't in the queue.`);
+/** Launches `entry` with the history events and, on failure, its error recorded on the entry
+ *  (skipped until cleared). `now` = a "Start now" from the modal. */
+async function launchTracked(
+  entry: QueueEntry,
+  prefs: UserPreferences,
+  now: boolean,
+): Promise<LaunchOutcome | null> {
+  launchingKeys.add(entry.key);
   const startedAt = Date.now();
-  recordEvent("queue.launch.started", { key, repos: entry.repos, relaunch: true });
+  lastLaunchAt = startedAt;
+  const extra = now ? { now: true } : {};
+  recordEvent("queue.launch.started", {
+    key: entry.key,
+    kind: entry.kind,
+    repos: entry.repos,
+    ...extra,
+  });
   try {
-    const outcome = await launchEntry({ ...entry, launchedAt: null, error: null }, prefs);
-    lastLaunchAt = startedAt;
+    const outcome = await launchEntry(entry, prefs);
     recordEvent("queue.launched", {
-      key,
+      key: entry.key,
       durationMs: Date.now() - startedAt,
-      relaunch: true,
+      // From entering the queue to its session opening.
+      queuedMs: entry.addedAt ? Date.now() - Date.parse(entry.addedAt) : null,
+      ...extra,
       ...outcome,
     });
+    console.log(`[scheduler] Launched ${entry.key}${now ? " (start now)" : ""}.`);
     return outcome;
   } catch (err) {
     const message = errorMessage(err);
-    recordEvent("queue.launch.failed", { key, durationMs: Date.now() - startedAt, error: message });
-    await updateQueueEntry(key, { error: message });
+    console.warn(`[scheduler] ${entry.key} failed: ${message}`);
+    recordEvent("queue.launch.failed", {
+      key: entry.key,
+      durationMs: Date.now() - startedAt,
+      error: message,
+      ...extra,
+    });
+    await updateQueueEntry(entry.key, { error: message });
     throw err;
+  } finally {
+    launchingKeys.delete(entry.key);
   }
+}
+
+/**
+ * "Start now": launches a saved queue entry right away, whatever its place in line and whether
+ * the scheduler is paused or out of room (sessions, RAM, plan usage, spacing). Also for one marked
+ * launched whose session never started (reuses its worktree, see `findExistingTaskWorktree`).
+ */
+export async function launchQueueEntryNow(key: string): Promise<LaunchOutcome | null> {
+  const [prefs, queue] = await Promise.all([getUserPreferences(), getQueue()]);
+  const entry = queue.find((e) => e.key === key);
+  if (!entry) throw new NotFoundError("QUEUE_ENTRY_NOT_FOUND", `${key} isn't in the queue.`);
+  if (launchingKeys.has(key)) {
+    throw new ConflictError("QUEUE_ENTRY_LAUNCHING", `${key} is already being launched.`);
+  }
+  if (entry.sessionId && (await getActiveResumeSessionIds()).has(entry.sessionId)) {
+    throw new ConflictError("QUEUE_ENTRY_RUNNING", `${key}'s session is already running.`);
+  }
+  const fresh = { ...entry, launchedAt: null, error: null };
+  if (!isReady(fresh)) {
+    throw new BadRequestError(
+      "QUEUE_ENTRY_NOT_READY",
+      `${key} still needs a repo${entry.kind === "dev" ? " and a branch prefix" : ""}.`,
+    );
+  }
+  return launchTracked(fresh, prefs, true);
 }
 
 export function startTaskScheduler(): void {

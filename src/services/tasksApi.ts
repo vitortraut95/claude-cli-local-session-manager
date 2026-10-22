@@ -284,6 +284,8 @@ export type SchedulerStatus = {
   waiting: number;
   blockedBy: SchedulerBlock | null;
   launching: string | null;
+  /** Every entry being launched (the tick's and any "Start now"). Optional: older backend. */
+  launchingKeys?: string[];
 };
 
 export async function fetchSchedulerStatus(): Promise<SchedulerStatus> {
@@ -295,6 +297,14 @@ export async function fetchSchedulerStatus(): Promise<SchedulerStatus> {
 export async function runSchedulerNow(): Promise<SchedulerStatus> {
   const { data } = await withServerErrorMessage(() => client.post<SchedulerStatus>("/queue/run"));
   return data;
+}
+
+/** "Start now": launches a saved entry right away, ignoring its place in line and every limit;
+ *  resolves once its session started. */
+export async function startQueueEntryNow(key: string): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.post(`/queue/${encodeURIComponent(key)}/start-now`, undefined, { timeout: 0 }),
+  );
 }
 
 /** The PreToolUse hook that routes every session's test commands through `scripts/heavy-run`. */
