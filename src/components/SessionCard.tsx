@@ -47,7 +47,7 @@ import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
 import { DEFAULT_BRANCHES } from "../utils/branches";
-import { getEnvPreviewGroups, getJenkinsLinks } from "../utils/jenkins";
+import { getJenkinsLinks, getTaskEnvPreviewGroups } from "../utils/jenkins";
 import { useTeamLinks } from "../hooks/useTeamLinks";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import { resolveApiErrorMessage } from "../utils/apiClient";
@@ -143,7 +143,6 @@ export function SessionCard({
           session.project,
           taskBranch ?? null,
           originBranch,
-          teamLinks.branchTypes,
         );
 
   /** Marking a worktree session done offers to remove its worktree when that's safe now (merged,
@@ -713,7 +712,7 @@ export function SessionCard({
         <JenkinsLinksModal
           project={session.project}
           links={jenkinsLinks}
-          envPreviews={getEnvPreviewGroups(teamLinks.envPreviews, session.project, [
+          envPreviews={getTaskEnvPreviewGroups(teamLinks.envPreviews, session, [
             taskBranch ?? null,
             originBranch,
           ])}

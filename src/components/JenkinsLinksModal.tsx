@@ -25,8 +25,9 @@ export function JenkinsLinksModal({
   const { t } = useLanguage();
   const current = links.filter((l) => l.kind === "branch" && l.role === "current");
   const origin = links.filter((l) => l.kind === "branch" && l.role === "origin");
-  const variants = links.filter((l) => l.kind === "branch" && l.role === "variant");
   const views = links.filter((l) => l.kind !== "branch");
+  // A multi-repo task lists previews of several repos — name the repo on each line.
+  const showProjects = envPreviews.some((group) => group.project !== project);
 
   const labelFor = (link: JenkinsLink): string => {
     switch (link.kind) {
@@ -100,22 +101,28 @@ export function JenkinsLinksModal({
       icon={<img src={jenkinsIcon} alt="" className="h-5 w-5" />}
     >
       {envPreviews.map((group) => (
-        <EnvPreviewLinks key={group.branch} group={group} />
+        <EnvPreviewLinks
+          key={`${group.project}\0${group.branch}`}
+          group={group}
+          showProject={showProjects}
+        />
       ))}
       {section(t("jenkinsLinksModal.section.currentBranch"), current)}
       {section(t("jenkinsLinksModal.section.originBranch"), origin)}
-      {section(t("jenkinsLinksModal.section.variants"), variants)}
       {section(t("jenkinsLinksModal.section.views"), views)}
     </Modal>
   );
 }
 
 /** One `env/*` branch's preview sites as a single line of locale links ("BR · MX · AR ..."). */
-function EnvPreviewLinks({ group }: { group: EnvPreviewGroup }) {
+function EnvPreviewLinks({ group, showProject }: { group: EnvPreviewGroup; showProject: boolean }) {
   const { t } = useLanguage();
   return (
     <p className="mt-3 first:mt-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
       <Eye className="h-3.5 w-3.5 shrink-0" />
+      {showProject && (
+        <span className="font-medium text-gray-700 dark:text-gray-300">{group.project}</span>
+      )}
       <span>{t("jenkinsLinksModal.section.envPreviews", { branch: group.branch })}</span>
       {group.previews.map((preview) => (
         <a
