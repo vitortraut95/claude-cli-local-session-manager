@@ -12,7 +12,7 @@ import { sanitizedSpawnEnv } from "../utils/spawnEnv.js";
  *
  * What works on Limux 0.1.33 (and what doesn't, so it's avoided): `--command` on new-workspace /
  * new-pane doesn't deliver the command, so each pane is created empty and the command is typed
- * into its shell with `send` + `send-key Enter`; a trailing `; exit` closes the pane when Claude
+ * into its shell with `send` + `send-key Enter`; a trailing `&& exit` closes the pane when Claude
  * quits. There's no "tile" command: panes alternate right/down into two columns. Closing the
  * Limux window ends the sessions in it (they stay resumable).
  *
@@ -240,8 +240,9 @@ export async function launchInLimuxGrid(
 ): Promise<void> {
   await ensureRunning();
   const { workspace, surface } = (await reusableSurface(taskKey)) ?? (await newSurface(cwd));
-  // `; exit` closes the pane once Claude quits, so the grid only shows live sessions.
-  await runIn(workspace, surface, `${cwd ? `cd ${shellQuote(cwd)} && ` : ""}${command}; exit`);
+  // `&& exit` closes the pane once Claude quits normally, so the grid only shows live sessions; a
+  // failure (bad folder, Claude not starting) keeps the pane open with its error on screen.
+  await runIn(workspace, surface, `${cwd ? `cd ${shellQuote(cwd)} && ` : ""}${command} && exit`);
   const sessionId = sessionIdOf(command);
   if (sessionId) surfaceBySession.set(sessionId, surface);
   await showSurface(workspace, surface);

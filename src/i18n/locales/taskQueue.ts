@@ -94,8 +94,8 @@ export const taskQueue = {
     "Aguardando: limite de sessões atingido — feche uma sessão terminada pra liberar vaga.",
   ),
   "scheduler.blocked.recentLaunch": dict(
-    "Waiting: a task opened less than 5 min ago — its memory use shows up before the next one starts.",
-    "Aguardando: uma tarefa abriu há menos de 5 min — o uso de memória dela aparece antes da próxima começar.",
+    "Waiting: a task opened a moment ago (spacing between launches) — its memory use shows up before the next one starts.",
+    "Aguardando: uma tarefa acabou de abrir (intervalo entre aberturas) — o uso de memória dela aparece antes da próxima começar.",
   ),
   "scheduler.blocked.lowMemory": dict(
     "Waiting: free RAM is below the minimum.",
@@ -148,6 +148,7 @@ export const taskQueue = {
   "scheduler.setting.testSlots": dict("Test runs at once", "Testes simultâneos"),
   "scheduler.setting.testMemory": dict("RAM cap per run (GB)", "Limite de RAM por teste (GB)"),
   "scheduler.setting.testCpu": dict("CPU cap per run (%)", "Limite de CPU por teste (%)"),
+  "scheduler.setting.launchSpacing": dict("Minutes between launches", "Minutos entre aberturas"),
   "scheduler.setting.previewSlots": dict("Previews at once", "Previews simultâneos"),
   "scheduler.setting.previewMemory": dict(
     "RAM cap per preview (GB)",

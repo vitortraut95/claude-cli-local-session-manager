@@ -20,6 +20,8 @@ export type OrchestratorPreferences = {
   /** `heavy-run --preview` limits. Optional: older backend. */
   previewSlots?: number;
   previewMemoryMaxGb?: number;
+  /** Minutes between two launches (0 = none). Optional: older backend. */
+  launchSpacingMinutes?: number;
 };
 
 export type UserPreferences = {
