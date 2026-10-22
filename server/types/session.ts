@@ -40,6 +40,9 @@ export type Session = {
    *  (`taskKeyInferred`). Optional: an older backend omits it. */
   taskKey?: string | null;
   taskKeyInferred?: boolean;
+  /** Ticket key a test session (launched from the queue) tests; its status is then only
+   *  in_progress/done. Optional: an older backend omits it. */
+  testKey?: string | null;
   /** Every repo/branch of that task, this session's included. Only set when `taskKey` is. */
   taskRepos?: TaskRepoRef[];
   /** Hand-set work status: the task's when the session has a key, else the session's own. */

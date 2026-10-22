@@ -15,6 +15,11 @@ export const workStatus = {
     "Status of this session (it has no task)",
     "Status desta sessão (ela não tem tarefa)",
   ),
+  "workStatus.testTooltip": dict(
+    "Test of {key}: in progress or done. Once done and closed, its test worktrees are deleted (the session can still be resumed).",
+    "Teste da {key}: em andamento ou concluído. Concluído e fechado, os worktrees de teste são apagados (a sessão continua podendo ser retomada).",
+  ),
+  "workStatus.testChip": dict("Test", "Teste"),
   "workStatus.saved": dict("Status saved.", "Status salvo."),
   "workStatus.saveError": dict("Couldn't save the status.", "Não foi possível salvar o status."),
   "sessionCard.doneWorktree.title": dict(

@@ -6,10 +6,9 @@ import { systemRouter } from "./routes/system.js";
 import { tasksRouter } from "./routes/tasks.js";
 import { autoUpdateSkillsHubOnStart } from "./services/skillsHubService.js";
 import { startTaskScheduler } from "./services/taskSchedulerService.js";
+import { API_PORT } from "./utils/apiPort.js";
 import { errorHandler } from "./utils/httpError.js";
 import { migrateLegacySidecars } from "./utils/taskStore.js";
-
-const PORT = Number(process.env.PORT ?? 58231);
 
 const app = express();
 app.use(cors());
@@ -21,8 +20,8 @@ app.use("/tasks", tasksRouter);
 app.use("/cleanup", cleanupRouter);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Claude Session Manager API listening on http://localhost:${PORT}`);
+app.listen(API_PORT, () => {
+  console.log(`Claude Session Manager API listening on http://localhost:${API_PORT}`);
   // Background, after the server is already answering.
   void autoUpdateSkillsHubOnStart();
   startTaskScheduler();

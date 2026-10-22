@@ -1,7 +1,5 @@
 import {
-  AlertTriangle,
   Bot,
-  FlaskConical,
   Globe,
   History,
   Import,
@@ -28,7 +26,6 @@ import { NewTaskModal } from "./NewTaskModal";
 import { SettingsModal } from "./SettingsModal";
 import { SetupModal } from "./SetupModal";
 import { TaskQueueModal } from "./TaskQueueModal";
-import { TestTaskModal } from "./TestTaskModal";
 import { SkillsHeaderButton } from "./SkillsHeaderButton";
 import { SkillsHubModal } from "./SkillsHubModal";
 import { Select } from "./Select";
@@ -75,12 +72,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   const [showImportModal, setShowImportModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
-  const [showTestTaskModal, setShowTestTaskModal] = useState(false);
   const [showTaskQueueModal, setShowTaskQueueModal] = useState(false);
-  // `taskTestSkill` ("" = "Test task" button hidden) and where its terminal opens (display only —
-  // the server picks the first workspace dir that exists, else the home dir).
-  const [taskTestSkill, setTaskTestSkill] = useState("");
-  const [testTaskFolderHint, setTestTaskFolderHint] = useState("~");
   // The one "bring my open tasks back" button: "Open grid" with the Limux grid layout (brings
   // Limux up too), "Resume open tasks" with tabs.
   const [gridLayout, setGridLayout] = useState(false);
@@ -100,8 +92,6 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         .fetchPreferences()
         .then((prefs) => {
           if (cancelled) return;
-          setTaskTestSkill(prefs.taskTestSkill?.trim() ?? "");
-          setTestTaskFolderHint(prefs.workspaceDirs?.[0] ?? "~");
           setGridLayout(prefs.terminalLayout === "limux-grid");
           setSetupPrefs(
             prefs.workspaceDirs == null ||
@@ -159,15 +149,8 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     !showSettings &&
     !showNewTaskModal &&
     !showNewSessionModal &&
-    !showTestTaskModal &&
     !showTaskQueueModal &&
     !showSkillsModal;
-
-  // Only known once the skills status loaded (and on a backend that sends the list).
-  const testSkillMissing =
-    taskTestSkill !== "" &&
-    skillsHub?.installedSkills !== undefined &&
-    !skillsHub.installedSkills.some((skill) => skill.name === taskTestSkill);
 
   return (
     <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -221,34 +204,6 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           >
             {t("header.newSession")}
           </Button>
-          {taskTestSkill !== "" && (
-            <Tooltip
-              content={
-                testSkillMissing
-                  ? t("header.testTask.notInstalled", { skill: taskTestSkill })
-                  : t("header.testTask.tooltip", { skill: taskTestSkill })
-              }
-            >
-              {testSkillMissing ? (
-                <Button
-                  variant="unstyled"
-                  className="gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/70"
-                  onClick={() => setShowSkillsModal(true)}
-                  icon={<AlertTriangle className="h-4 w-4" />}
-                >
-                  {t("header.testTask")}
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowTestTaskModal(true)}
-                  icon={<FlaskConical className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
-                >
-                  {t("header.testTask")}
-                </Button>
-              )}
-            </Tooltip>
-          )}
           <Button
             variant="outline"
             onClick={() => setShowImportModal(true)}
@@ -316,14 +271,6 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
       {showTaskQueueModal && (
         <TaskQueueModal
           onClose={() => setShowTaskQueueModal(false)}
-          onSessionCreated={onSessionCreated}
-        />
-      )}
-      {showTestTaskModal && taskTestSkill !== "" && (
-        <TestTaskModal
-          skill={taskTestSkill}
-          folderHint={testTaskFolderHint}
-          onClose={() => setShowTestTaskModal(false)}
           onSessionCreated={onSessionCreated}
         />
       )}

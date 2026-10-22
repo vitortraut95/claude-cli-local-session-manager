@@ -206,30 +206,30 @@ export async function fetchTaskRepoPrUrl(
   return data.url;
 }
 
-/** Header's "Test task": a terminal running `claude "/<taskTestSkill> <ticketLink>"` — the skill
- *  comes from the saved preference, resolved server-side. */
-export async function launchTaskTest(
-  ticketLink: string,
-  permissionModeAuto: boolean,
-  nickname: string,
-  layout?: TerminalLayout,
-): Promise<void> {
-  await withServerErrorMessage(() =>
-    client.post("/test-task", { ticketLink, permissionModeAuto, nickname, layout }),
-  );
-}
-
 // ---------------------------------------------------------------------------------------------
 // Task queue: tickets waiting to be worked on, each with its repos (first = main repo).
+
+/** "dev" = develop the task (new branch); "test" = test its existing branch with `taskTestSkill`. */
+export type QueueKind = "dev" | "test";
 
 export type QueueEntry = {
   key: string;
   link: string | null;
+  /** Optional: older backend (= "dev"). */
+  kind?: QueueKind;
   /** Repo roots; empty = still to be chosen. */
   repos: string[];
   /** Task branch = `<prefix>/<key>`; "" = just the key; null = not chosen (won't launch).
    *  Optional: older backend. */
   branchPrefix?: string | null;
+  /** Test only: the branch to test; null = the origin branch with the key in its name.
+   *  Optional: older backend. */
+  branch?: string | null;
+  /** Dev only: what the task branch starts from in the main repo; null = the repo's default.
+   *  `useLocalBaseBranch` = the local branch instead of a fresh origin one. Optional: older
+   *  backend. */
+  baseBranch?: string | null;
+  useLocalBaseBranch?: boolean;
   addedAt: string;
   /** Set by the scheduler once it opened the task's session. Optional: older backend. */
   launchedAt?: string | null;
@@ -240,7 +240,18 @@ export type QueueEntry = {
 };
 
 /** What the modal saves; the launch fields are the scheduler's. */
-export type QueueEntryInput = Pick<QueueEntry, "key" | "link" | "repos" | "branchPrefix" | "error">;
+export type QueueEntryInput = Pick<
+  QueueEntry,
+  | "key"
+  | "link"
+  | "kind"
+  | "repos"
+  | "branchPrefix"
+  | "branch"
+  | "baseBranch"
+  | "useLocalBaseBranch"
+  | "error"
+>;
 
 export async function fetchTaskQueue(): Promise<QueueEntry[]> {
   const { data } = await withServerErrorMessage(() =>

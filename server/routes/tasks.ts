@@ -28,7 +28,6 @@ import {
   getRecentProjectFolders,
   getRepoInfo,
   launchTaskTerminal,
-  launchTaskTest,
   resolveBaseBranch,
 } from "../services/taskService.js";
 import { getHeavyRunHookStatus, setHeavyRunHookInstalled } from "../services/heavyRunService.js";
@@ -316,16 +315,6 @@ tasksRouter.delete("/by-key/:key/repos", async (req, res) => {
     parseTaskKeyParam(req.params.key),
     extractStringField(req.body, "repoRoot"),
     extractStringField(req.body, "branch"),
-  );
-  res.json({ success: true });
-});
-
-tasksRouter.post("/test-task", async (req, res) => {
-  await launchTaskTest(
-    extractStringField(req.body, "ticketLink"),
-    extractBooleanField(req.body, "permissionModeAuto", true),
-    extractStringField(req.body, "nickname"),
-    extractLayoutField(req.body),
   );
   res.json({ success: true });
 });

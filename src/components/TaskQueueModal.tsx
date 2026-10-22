@@ -1,16 +1,28 @@
-import { ExternalLink, FolderPlus, ListTodo, Loader2, RotateCcw, Trash2, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ExternalLink,
+  FolderPlus,
+  ListTodo,
+  Loader2,
+  RotateCcw,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useProjectFolders } from "../hooks/useProjectFolders";
 import { useToast } from "../hooks/useToast";
 import * as preferencesApi from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
-import type { QueueEntry, SchedulerStatus } from "../services/tasksApi";
+import type { QueueEntry, QueueKind, SchedulerStatus } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { parsePastedTasks } from "../utils/taskQueue";
 import { Button } from "./Button";
+import { Input } from "./Input";
 import { Modal } from "./Modal";
 import { SchedulerPanel } from "./SchedulerPanel";
+import { SettingRow } from "./SettingRow";
 import { Select } from "./Select";
 
 const TEXTAREA_CLASSNAME =
@@ -24,7 +36,11 @@ const POLL_MS = 10_000;
 
 /** The optional (older-backend) fields resolved, so the rows never deal with `undefined`. */
 type DraftEntry = Pick<QueueEntry, "key" | "link" | "repos"> & {
+  kind: QueueKind;
   branchPrefix: string | null;
+  branch: string | null;
+  baseBranch: string | null;
+  useLocalBaseBranch: boolean;
   launchedAt: string | null;
   sessionId: string | null;
   error: string | null;
@@ -46,11 +62,20 @@ function branchNameFor(entry: { key: string; branchPrefix?: string | null }): st
   return entry.branchPrefix ? `${entry.branchPrefix}/${entry.key}` : entry.key;
 }
 
+/** A test needs no branch prefix: it tests the branch the task already has. */
+function isMissingSetup(entry: DraftEntry): boolean {
+  return entry.repos.length === 0 || (entry.kind === "dev" && entry.branchPrefix === null);
+}
+
 function toDraft({
   key,
   link,
+  kind,
   repos,
   branchPrefix,
+  branch,
+  baseBranch,
+  useLocalBaseBranch,
   launchedAt,
   sessionId,
   error,
@@ -58,8 +83,12 @@ function toDraft({
   return {
     key,
     link,
+    kind: kind ?? "dev",
     repos,
     branchPrefix: branchPrefix ?? null,
+    branch: branch ?? null,
+    baseBranch: baseBranch ?? null,
+    useLocalBaseBranch: useLocalBaseBranch ?? false,
     launchedAt: launchedAt ?? null,
     sessionId: sessionId ?? null,
     error: error ?? null,
@@ -93,7 +122,13 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
   const [pasteRepo, setPasteRepo] = useState("");
   // No default on purpose: env/feature/fix/none changes what the pipeline does with the branch.
   const [pastePrefix, setPastePrefix] = useState<string | null>(null);
+  const [pasteKind, setPasteKind] = useState<QueueKind>("dev");
+  // "" = each repo's default branch.
+  const [pasteBase, setPasteBase] = useState("");
+  const [pasteUseLocalBase, setPasteUseLocalBase] = useState(false);
   const [branchTypes, setBranchTypes] = useState<string[]>([]);
+  // "" = no test skill chosen: test entries would fail to launch.
+  const [taskTestSkill, setTaskTestSkill] = useState<string | null>(null);
   const [status, setStatus] = useState<SchedulerStatus | null>(null);
   const [runningNow, setRunningNow] = useState(false);
   // Keys whose error the user cleared to retry: a poll mustn't bring the old error back.
@@ -104,7 +139,9 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
     preferencesApi
       .fetchPreferences()
       .then((prefs) => {
-        if (!cancelled) setBranchTypes(prefs.branchTypes);
+        if (cancelled) return;
+        setBranchTypes(prefs.branchTypes);
+        setTaskTestSkill(prefs.taskTestSkill?.trim() ?? "");
       })
       .catch(() => undefined);
     tasksApi
@@ -144,7 +181,13 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
           return {
             ...entry,
             repos: server.launchedAt ? server.repos : entry.repos,
+            kind: server.launchedAt ? (server.kind ?? "dev") : entry.kind,
             branchPrefix: server.launchedAt ? (server.branchPrefix ?? null) : entry.branchPrefix,
+            branch: server.launchedAt ? (server.branch ?? null) : entry.branch,
+            baseBranch: server.launchedAt ? (server.baseBranch ?? null) : entry.baseBranch,
+            useLocalBaseBranch: server.launchedAt
+              ? (server.useLocalBaseBranch ?? false)
+              : entry.useLocalBaseBranch,
             launchedAt: server.launchedAt ?? null,
             sessionId: server.sessionId ?? null,
             error: keepLocalError ? entry.error : (server.error ?? null),
@@ -187,6 +230,29 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
   const updateEntry = (key: string, patch: Partial<DraftEntry>) =>
     setEntries((current) => current.map((e) => (e.key === key ? { ...e, ...patch } : e)));
 
+  // The scheduler launches the first ready entry in list order, so the order is the priority. A
+  // move swaps with the nearest entry not launched yet (launched ones keep their place).
+  const isMovable = (entry: DraftEntry) => !entry.launchedAt && status?.launching !== entry.key;
+  const neighborIndex = (list: DraftEntry[], index: number, step: -1 | 1) => {
+    for (let i = index + step; i >= 0 && i < list.length; i += step) {
+      const candidate = list[i];
+      if (candidate && isMovable(candidate)) return i;
+    }
+    return -1;
+  };
+  const moveEntry = (key: string, step: -1 | 1) =>
+    setEntries((current) => {
+      const index = current.findIndex((e) => e.key === key);
+      const target = neighborIndex(current, index, step);
+      const from = current[index];
+      const to = current[target];
+      if (!from || !to) return current;
+      const next = [...current];
+      next[index] = to;
+      next[target] = from;
+      return next;
+    });
+
   const handleAdd = () => {
     const pasted = parsePastedTasks(pasteText);
     if (pasted.length === 0) {
@@ -200,8 +266,12 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
       ...current,
       ...fresh.map((task) => ({
         ...task,
+        kind: pasteKind,
         repos: pasteRepo ? [pasteRepo] : [],
-        branchPrefix: pastePrefix,
+        branchPrefix: pasteKind === "dev" ? pastePrefix : null,
+        branch: null,
+        baseBranch: pasteKind === "dev" ? pasteBase.trim() || null : null,
+        useLocalBaseBranch: pasteKind === "dev" && pasteUseLocalBase,
         launchedAt: null,
         sessionId: null,
         error: null,
@@ -220,13 +290,29 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
     setSaving(true);
     try {
       const stored = await tasksApi.saveTaskQueue(
-        entries.map(({ key, link, repos, branchPrefix, error }) => ({
-          key,
-          link,
-          repos,
-          branchPrefix,
-          error,
-        })),
+        entries.map(
+          ({
+            key,
+            link,
+            kind,
+            repos,
+            branchPrefix,
+            branch,
+            baseBranch,
+            useLocalBaseBranch,
+            error,
+          }) => ({
+            key,
+            link,
+            kind,
+            repos,
+            branchPrefix,
+            branch,
+            baseBranch,
+            useLocalBaseBranch,
+            error,
+          }),
+        ),
       );
       retriedRef.current.clear();
       setEntries(stored.map(toDraft));
@@ -246,9 +332,8 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
   };
 
   const pending = entries.filter((e) => !e.launchedAt);
-  const missingSetupCount = pending.filter(
-    (e) => e.repos.length === 0 || e.branchPrefix === null,
-  ).length;
+  const missingSetupCount = pending.filter(isMissingSetup).length;
+  const testSkillMissing = taskTestSkill === "" && pending.some((e) => e.kind === "test");
   const launchedCount = entries.length - pending.length;
 
   const renderPrefixSelect = (
@@ -278,6 +363,30 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
     );
   };
 
+  const renderRepoChips = (entry: DraftEntry, removable: boolean) =>
+    entry.repos.map((repo, index) => (
+      <span
+        key={repo}
+        title={repo}
+        className="flex items-center gap-1 rounded-md bg-gray-100 py-0.5 pl-2 pr-1 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+      >
+        {repoLabel(repo)}
+        {index === 0 && entry.repos.length > 1 && (
+          <span className="text-gray-400 dark:text-gray-500">({t("taskQueueModal.mainRepo")})</span>
+        )}
+        {removable && (
+          <button
+            type="button"
+            onClick={() => updateEntry(entry.key, { repos: entry.repos.filter((r) => r !== repo) })}
+            aria-label={t("taskQueueModal.removeRepo")}
+            className="rounded p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </span>
+    ));
+
   const renderState = (entry: DraftEntry) => {
     if (entry.launchedAt) {
       return (
@@ -300,13 +409,29 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
         </span>
       );
     }
-    if (entry.repos.length === 0 || entry.branchPrefix === null) return null;
+    if (isMissingSetup(entry)) return null;
     return (
       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
         {t("taskQueueModal.state.waiting")}
       </span>
     );
   };
+
+  const renderKindSelect = (
+    value: QueueKind,
+    onChange: (kind: QueueKind) => void,
+    className = "",
+  ) => (
+    <Select
+      value={value}
+      onChange={(event) => onChange(event.target.value as QueueKind)}
+      aria-label={t("taskQueueModal.kindAriaLabel")}
+      className={className}
+    >
+      <option value="dev">{t("taskQueueModal.kind.dev")}</option>
+      <option value="test">{t("taskQueueModal.kind.test")}</option>
+    </Select>
+  );
 
   return (
     <Modal
@@ -334,7 +459,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
           running={runningNow}
         />
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
               {t("taskQueueModal.pasteLabel")}
@@ -348,26 +473,69 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
               autoFocus
             />
           </label>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <label className="block flex-1">
-              <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                {t("taskQueueModal.pasteRepo")}
-              </span>
-              <Select value={pasteRepo} onChange={(event) => setPasteRepo(event.target.value)}>
-                <option value="">{t("taskQueueModal.pasteRepoNone")}</option>
-                {projects.map((project) => (
-                  <option key={project.path} value={project.path}>
-                    {project.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className="block sm:w-56">
-              <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                {t("taskQueueModal.pastePrefix")}
-              </span>
-              {renderPrefixSelect(pastePrefix, setPastePrefix)}
-            </label>
+          <div className="flex flex-col gap-2.5">
+            <SettingRow
+              controlWidth="w-64"
+              label={t("taskQueueModal.pasteRepo")}
+              description={t("taskQueueModal.pasteRepo.hint")}
+              control={
+                <Select
+                  value={pasteRepo}
+                  onChange={(event) => setPasteRepo(event.target.value)}
+                  aria-label={t("taskQueueModal.pasteRepo")}
+                >
+                  <option value="">{t("taskQueueModal.pasteRepoNone")}</option>
+                  {projects.map((project) => (
+                    <option key={project.path} value={project.path}>
+                      {project.label}
+                    </option>
+                  ))}
+                </Select>
+              }
+            />
+            <SettingRow
+              controlWidth="w-64"
+              label={t("taskQueueModal.kindLabel")}
+              description={t("taskQueueModal.kind.hint")}
+              control={renderKindSelect(pasteKind, setPasteKind)}
+            />
+            {pasteKind === "dev" && (
+              <>
+                <SettingRow
+                  controlWidth="w-64"
+                  label={t("taskQueueModal.pastePrefix")}
+                  description={t("taskQueueModal.pastePrefix.hint")}
+                  control={renderPrefixSelect(pastePrefix, setPastePrefix)}
+                />
+                <SettingRow
+                  controlWidth="w-64"
+                  label={t("newTaskModal.baseBranchLabel")}
+                  description={t("taskQueueModal.pasteBase.hint")}
+                  control={
+                    <Input
+                      type="text"
+                      value={pasteBase}
+                      onChange={(event) => setPasteBase(event.target.value)}
+                      placeholder={t("taskQueueModal.basePlaceholder")}
+                      aria-label={t("newTaskModal.baseBranchLabel")}
+                    />
+                  }
+                />
+                {pasteBase.trim() && (
+                  <label className="flex items-start gap-2 pl-[17rem] text-xs text-gray-500 dark:text-gray-400">
+                    <input
+                      type="checkbox"
+                      checked={pasteUseLocalBase}
+                      onChange={(event) => setPasteUseLocalBase(event.target.checked)}
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-gray-900 dark:accent-gray-100"
+                    />
+                    {t("newTaskModal.useLocalBaseBranchLabel")}
+                  </label>
+                )}
+              </>
+            )}
+          </div>
+          <div className="flex justify-end">
             <Button variant="outline" onClick={handleAdd} disabled={!pasteText.trim()}>
               {t("taskQueueModal.add")}
             </Button>
@@ -380,6 +548,11 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
               {t("taskQueueModal.listTitle", { count: entries.length })}
             </h3>
             <div className="flex items-center gap-3">
+              {testSkillMissing && (
+                <span className="text-xs text-amber-600 dark:text-amber-400">
+                  {t("taskQueueModal.testSkillMissing")}
+                </span>
+              )}
               {missingSetupCount > 0 && (
                 <span className="text-xs text-amber-600 dark:text-amber-400">
                   {t("taskQueueModal.missingSetupCount", { count: missingSetupCount })}
@@ -409,13 +582,13 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
             <p className="text-sm text-gray-500 dark:text-gray-400">{t("taskQueueModal.empty")}</p>
           ) : (
             <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
-              {entries.map((entry) => {
+              {entries.map((entry, index) => {
                 const locked = Boolean(entry.launchedAt) || status?.launching === entry.key;
                 const available = projects.filter((p) => !entry.repos.includes(p.path));
                 return (
-                  <li key={entry.key} className="flex flex-col gap-1.5 px-3 py-2.5">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <div className="flex w-56 shrink-0 flex-wrap items-center gap-1.5">
+                  <li key={entry.key} className="flex flex-col gap-2 px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                         {entry.link ? (
                           <a
                             href={entry.link}
@@ -432,105 +605,202 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
                           </span>
                         )}
                         {renderState(entry)}
-                      </div>
-
-                      <div className="flex flex-1 flex-wrap items-center gap-1.5">
-                        {entry.repos.length === 0 && (
-                          <span className="text-xs text-amber-600 dark:text-amber-400">
-                            {t("taskQueueModal.missingRepo")}
+                        {locked && entry.kind === "test" && (
+                          <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700 dark:bg-teal-950/50 dark:text-teal-300">
+                            {t("taskQueueModal.kind.test")}
                           </span>
                         )}
-                        {entry.repos.map((repo, index) => (
-                          <span
-                            key={repo}
-                            title={repo}
-                            className="flex items-center gap-1 rounded-md bg-gray-100 py-0.5 pl-2 pr-1 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                          >
-                            {repoLabel(repo)}
-                            {index === 0 && entry.repos.length > 1 && (
-                              <span className="text-gray-400 dark:text-gray-500">
-                                ({t("taskQueueModal.mainRepo")})
-                              </span>
-                            )}
-                            {!locked && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  updateEntry(entry.key, {
-                                    repos: entry.repos.filter((r) => r !== repo),
-                                  })
-                                }
-                                aria-label={t("taskQueueModal.removeRepo")}
-                                className="rounded p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            )}
-                          </span>
-                        ))}
-                        {!locked && available.length > 0 && (
-                          <div className="w-40">
-                            <Select
-                              icon={<FolderPlus className="h-4 w-4" />}
-                              value=""
-                              onChange={(event) => {
-                                if (event.target.value) {
-                                  updateEntry(entry.key, {
-                                    repos: [...entry.repos, event.target.value],
-                                  });
-                                }
-                              }}
-                              className={
-                                entry.repos.length === 0
-                                  ? "border-amber-400 py-1 dark:border-amber-600"
-                                  : "py-1"
-                              }
-                            >
-                              <option value="">{t("taskQueueModal.addRepo")}</option>
-                              {available.map((project) => (
-                                <option key={project.path} value={project.path}>
-                                  {project.label}
-                                </option>
-                              ))}
-                            </Select>
-                          </div>
-                        )}
+                        {locked && renderRepoChips(entry, false)}
                       </div>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          setEntries((current) => current.filter((e) => e.key !== entry.key))
-                        }
-                        disabled={status?.launching === entry.key}
-                        aria-label={t("taskQueueModal.removeTask")}
-                        title={t("taskQueueModal.removeTask")}
-                        icon={<Trash2 className="h-4 w-4" />}
-                      />
+                      <div className="flex shrink-0 items-center">
+                        {!locked && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moveEntry(entry.key, -1)}
+                              disabled={neighborIndex(entries, index, -1) === -1}
+                              aria-label={t("taskQueueModal.moveUp")}
+                              title={t("taskQueueModal.moveUp")}
+                              icon={<ArrowUp className="h-4 w-4" />}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moveEntry(entry.key, 1)}
+                              disabled={neighborIndex(entries, index, 1) === -1}
+                              aria-label={t("taskQueueModal.moveDown")}
+                              title={t("taskQueueModal.moveDown")}
+                              icon={<ArrowDown className="h-4 w-4" />}
+                            />
+                          </>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            setEntries((current) => current.filter((e) => e.key !== entry.key))
+                          }
+                          disabled={status?.launching === entry.key}
+                          aria-label={t("taskQueueModal.removeTask")}
+                          title={t("taskQueueModal.removeTask")}
+                          icon={<Trash2 className="h-4 w-4" />}
+                        />
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                      <span>{t("taskQueueModal.branchLabel")}</span>
-                      {!locked && (
-                        <div className="w-44">
-                          {renderPrefixSelect(
-                            entry.branchPrefix,
-                            (branchPrefix) => updateEntry(entry.key, { branchPrefix }),
+                    {locked ? (
+                      <p className="flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-gray-400">
+                        {entry.kind === "test" ? (
+                          <span>
+                            {t("taskQueueModal.testBranchLabel")}:{" "}
+                            <code className="font-mono text-gray-700 dark:text-gray-300">
+                              {entry.branch ?? t("taskQueueModal.testBranchPlaceholder")}
+                            </code>
+                          </span>
+                        ) : (
+                          <>
+                            <span>
+                              {t("taskQueueModal.branchLabel")}:{" "}
+                              <code className="font-mono text-gray-700 dark:text-gray-300">
+                                {branchNameFor(entry)}
+                              </code>
+                            </span>
+                            <span>
+                              {t("taskQueueModal.baseLabel")}:{" "}
+                              <code className="font-mono text-gray-700 dark:text-gray-300">
+                                {entry.baseBranch ?? t("taskQueueModal.basePlaceholder")}
+                                {entry.useLocalBaseBranch && ` (${t("taskQueueModal.baseLocal")})`}
+                              </code>
+                            </span>
+                          </>
+                        )}
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        <span>{t("taskQueueModal.kindLabel")}</span>
+                        <div className="w-48">
+                          {renderKindSelect(
+                            entry.kind,
+                            (kind) => updateEntry(entry.key, { kind }),
                             "py-1",
                           )}
                         </div>
-                      )}
-                      {entry.branchPrefix === null ? (
-                        <span className="text-amber-600 dark:text-amber-400">
-                          {t("taskQueueModal.missingPrefix")}
-                        </span>
-                      ) : (
-                        <code className="font-mono text-gray-700 dark:text-gray-300">
-                          {branchNameFor(entry)}
-                        </code>
-                      )}
-                    </div>
+
+                        <span>{t("taskQueueModal.reposLabel")}</span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {renderRepoChips(entry, true)}
+                          {available.length > 0 && (
+                            <div className="w-48">
+                              <Select
+                                icon={<FolderPlus className="h-4 w-4" />}
+                                value=""
+                                onChange={(event) => {
+                                  if (event.target.value) {
+                                    updateEntry(entry.key, {
+                                      repos: [...entry.repos, event.target.value],
+                                    });
+                                  }
+                                }}
+                                aria-label={t("taskQueueModal.addRepo")}
+                                className={
+                                  entry.repos.length === 0
+                                    ? "border-amber-400 py-1 dark:border-amber-600"
+                                    : "py-1"
+                                }
+                              >
+                                <option value="">{t("taskQueueModal.addRepo")}</option>
+                                {available.map((project) => (
+                                  <option key={project.path} value={project.path}>
+                                    {project.label}
+                                  </option>
+                                ))}
+                              </Select>
+                            </div>
+                          )}
+                          {entry.repos.length === 0 && (
+                            <span className="text-amber-600 dark:text-amber-400">
+                              {t("taskQueueModal.missingRepo")}
+                            </span>
+                          )}
+                        </div>
+
+                        {entry.kind === "test" ? (
+                          <>
+                            <span>{t("taskQueueModal.testBranchLabel")}</span>
+                            <div className="w-72">
+                              <Input
+                                type="text"
+                                value={entry.branch ?? ""}
+                                onChange={(event) =>
+                                  updateEntry(entry.key, {
+                                    branch: event.target.value.trim() || null,
+                                  })
+                                }
+                                placeholder={t("taskQueueModal.testBranchPlaceholder")}
+                                aria-label={t("taskQueueModal.testBranchLabel")}
+                                className="py-1 font-mono text-xs"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <span>{t("taskQueueModal.branchLabel")}</span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="w-48">
+                                {renderPrefixSelect(
+                                  entry.branchPrefix,
+                                  (branchPrefix) => updateEntry(entry.key, { branchPrefix }),
+                                  "py-1",
+                                )}
+                              </div>
+                              {entry.branchPrefix === null ? (
+                                <span className="text-amber-600 dark:text-amber-400">
+                                  {t("taskQueueModal.missingPrefix")}
+                                </span>
+                              ) : (
+                                <code className="font-mono text-gray-700 dark:text-gray-300">
+                                  {branchNameFor(entry)}
+                                </code>
+                              )}
+                            </div>
+
+                            <span>{t("taskQueueModal.baseLabel")}</span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="w-48">
+                                <Input
+                                  type="text"
+                                  value={entry.baseBranch ?? ""}
+                                  onChange={(event) =>
+                                    updateEntry(entry.key, {
+                                      baseBranch: event.target.value.trim() || null,
+                                    })
+                                  }
+                                  placeholder={t("taskQueueModal.basePlaceholder")}
+                                  aria-label={t("newTaskModal.baseBranchLabel")}
+                                  className="py-1 font-mono text-xs"
+                                />
+                              </div>
+                              {entry.baseBranch && (
+                                <label className="flex items-center gap-1.5">
+                                  <input
+                                    type="checkbox"
+                                    checked={entry.useLocalBaseBranch}
+                                    onChange={(event) =>
+                                      updateEntry(entry.key, {
+                                        useLocalBaseBranch: event.target.checked,
+                                      })
+                                    }
+                                    className="h-3.5 w-3.5 accent-gray-900 dark:accent-gray-100"
+                                  />
+                                  {t("taskQueueModal.baseLocalLong")}
+                                </label>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
 
                     {entry.error && (
                       <div

@@ -1,6 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { stat } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import {
   directoryExists,
@@ -13,7 +11,6 @@ import {
   updateUserPreferences,
   type TerminalLayout,
 } from "./preferencesService.js";
-import { getUserSkillsDir } from "./skillsHubService.js";
 import { expandHome, findReposIn } from "./workspaceService.js";
 import { prepareWorktreeBestEffort, type WorktreeSetupResult } from "./worktreeSetupService.js";
 import { markWorktreeTrustAccepted } from "../utils/claudeTrust.js";
@@ -177,7 +174,7 @@ export async function getRepoInfo(folderPath: string): Promise<RepoInfo> {
 
 /** Narrower than git's branch-name rules; a leading `-` is rejected since git would read it as a
  *  flag. */
-const SAFE_BRANCH_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
+export const SAFE_BRANCH_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 
 /** "New task" step: resolves the new branch's starting ref — a freshly fetched
  *  `origin/<baseBranch>` unless `useLocalBranch`. */
@@ -334,6 +331,8 @@ type LaunchTaskOptions = {
   addDirs?: string[];
   /** Where it opens; omitted = the `terminalLayout` preference. */
   layout?: TerminalLayout;
+  /** The new session's id, when the caller needs it before launching (e.g. inside the prompt). */
+  sessionId?: string;
 };
 
 export async function launchTaskTerminal({
@@ -346,6 +345,7 @@ export async function launchTaskTerminal({
   destinationBranch = "",
   addDirs = [],
   layout,
+  sessionId,
 }: LaunchTaskOptions): Promise<{ sessionId: string | null }> {
   const trimmedWorktreePath = worktreePath.trim();
   const trimmedPrompt = prompt.trim();
@@ -356,8 +356,8 @@ export async function launchTaskTerminal({
   let sessionIdFlag = "";
   let newSessionId: string | null = null;
   const hasBranches = Boolean(originBranch.trim() || destinationBranch.trim());
-  if (trimmedNickname || hasBranches) {
-    newSessionId = randomUUID();
+  if (trimmedNickname || hasBranches || sessionId) {
+    newSessionId = sessionId ?? randomUUID();
     if (trimmedNickname) await setNickname(newSessionId, trimmedNickname);
     if (hasBranches) await setSessionBranchOverride(newSessionId, originBranch, destinationBranch);
     sessionIdFlag = `--session-id ${newSessionId} `;
@@ -390,53 +390,4 @@ export async function launchTaskTerminal({
     await recordUsedProjectPath(trimmedRepoRoot);
   }
   return { sessionId: newSessionId };
-}
-
-/** A skill folder name as `/<name>` takes it — also keeps it from smuggling anything into the
- *  shell command or out of the skills folder. */
-const SKILL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
-
-/** "Test task": opens a terminal in the first existing workspace dir (else `~`) running
- *  `claude "/<taskTestSkill> <ticket link>"`. The skill finds the project itself and only reads. */
-export async function launchTaskTest(
-  ticketLink: string,
-  permissionModeAuto: boolean,
-  nickname = "",
-  layout?: TerminalLayout,
-): Promise<void> {
-  const link = ticketLink.trim();
-  if (!link) throw new BadRequestError("TASK_TEST_LINK_REQUIRED", "A ticket link is required.");
-
-  const prefs = await getUserPreferences();
-  const skill = prefs.taskTestSkill.trim();
-  if (!skill || !SKILL_NAME_PATTERN.test(skill)) {
-    throw new AppError("TASK_TEST_SKILL_NOT_CONFIGURED", "No task test skill is configured.");
-  }
-  try {
-    await stat(path.join(getUserSkillsDir(), skill, "SKILL.md"));
-  } catch (err) {
-    throw new AppError(
-      "TASK_TEST_SKILL_NOT_INSTALLED",
-      `The task test skill "${skill}" isn't installed in ${getUserSkillsDir()}.`,
-      { cause: err },
-    );
-  }
-
-  let cwd = os.homedir();
-  for (const dir of prefs.workspaceDirs ?? []) {
-    const expanded = expandHome(dir);
-    if (await directoryExists(expanded)) {
-      cwd = expanded;
-      break;
-    }
-  }
-
-  await launchTaskTerminal({
-    worktreePath: cwd,
-    prompt: `/${skill} ${link}`,
-    permissionModeAuto,
-    repoRoot: "",
-    nickname,
-    layout,
-  });
 }
