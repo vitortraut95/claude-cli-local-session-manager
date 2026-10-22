@@ -20,7 +20,6 @@ import {
   forgetCachedSession,
   getClaudeProjectsDir,
   readFullSessionPrompts,
-  readSessionActiveTimeMs,
   readSessionHead,
   readSessionLatestGitBranch,
   readSessionPrompts,
@@ -135,11 +134,10 @@ type BuiltSession = Omit<
 
 async function buildSession(filePath: string): Promise<BuiltSession | null> {
   try {
-    const [head, fileStat, prompts, activeTimeMs, recap, latestGitBranch] = await Promise.all([
+    const [head, fileStat, prompts, recap, latestGitBranch] = await Promise.all([
       readSessionHead(filePath),
       stat(filePath),
       readSessionPrompts(filePath),
-      readSessionActiveTimeMs(filePath),
       readSessionRecap(filePath),
       readSessionLatestGitBranch(filePath),
     ]);
@@ -166,7 +164,6 @@ async function buildSession(filePath: string): Promise<BuiltSession | null> {
       directoryMissing,
       missingWorktreeRepoRoot,
       sizeBytes: fileStat.size,
-      activeTimeMs,
     };
   } catch {
     return null;

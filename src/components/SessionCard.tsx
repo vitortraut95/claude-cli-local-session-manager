@@ -1,5 +1,4 @@
 import {
-  Clock,
   Code2,
   Folder,
   GitBranch,
@@ -39,14 +38,12 @@ import { NicknameModal } from "./NicknameModal";
 import { SessionBranchesModal } from "./SessionBranchesModal";
 import { OpenPrBaseChoiceModal } from "./OpenPrBaseChoiceModal";
 import { ResetRootConfirmModal } from "./ResetRootConfirmModal";
-import { SessionSizeMeter } from "./SessionSizeMeter";
 import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
 import { PreviewLinks } from "./PreviewLinks";
 import { TaskHistoryModal } from "./TaskHistoryModal";
 import { WorkStatusSelect } from "./WorkStatusSelect";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
-import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
 import { DEFAULT_BRANCHES } from "../utils/branches";
 import { getTaskJenkinsGroups } from "../utils/jenkins";
@@ -264,7 +261,7 @@ export function SessionCard({
 
   return (
     <div
-      className={`relative flex flex-col gap-2 justify-between rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-900 ${
+      className={`relative flex flex-col gap-3 justify-between rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-900 ${
         selected
           ? "border-gray-900 ring-2 ring-gray-900/20 dark:border-gray-100 dark:ring-gray-100/20"
           : "border-gray-200 dark:border-gray-800"
@@ -321,7 +318,7 @@ export function SessionCard({
       </div>
 
       <div className="mt-2 flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-col gap-0.5">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <h2
             className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
             title={session.title}
@@ -368,15 +365,19 @@ export function SessionCard({
               </Tooltip>
             </div>
           )}
-          <PreviewLinks
-            previews={session.previews ?? []}
-            onChanged={() => onWorktreeSyncComplete(session)}
-          />
-          <TaskReposLine
-            session={session}
-            onFilterByTask={onFilterByTask}
-            onAddRepo={() => setTaskModal({ addRepo: true })}
-          />
+          {(Boolean(session.taskKey) || (session.previews?.length ?? 0) > 0) && (
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+              <TaskReposLine
+                session={session}
+                onFilterByTask={onFilterByTask}
+                onAddRepo={() => setTaskModal({ addRepo: true })}
+              />
+              <PreviewLinks
+                previews={session.previews ?? []}
+                onChanged={() => onWorktreeSyncComplete(session)}
+              />
+            </div>
+          )}
         </div>
         <Tooltip
           content={
@@ -452,7 +453,7 @@ export function SessionCard({
       )}
 
       <div className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <Tooltip
             content={
               session.isWorktree
@@ -542,18 +543,6 @@ export function SessionCard({
           )}
         </div>
       </div>
-
-      <p className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-        {t("sessionCard.updatedPrefix")} {formatUpdatedAt(session.updatedAt)}
-        {session.activeTimeMs > 0 && (
-          <Tooltip content={t("sessionCard.activeTimeTooltip")}>
-            <span className="inline-flex items-center gap-0.5">
-              · <Clock className="h-3 w-3" /> {formatActiveTime(session.activeTimeMs)}{" "}
-              {t("sessionCard.activeSuffix")}
-            </span>
-          </Tooltip>
-        )}
-      </p>
 
       {/* Each action uses its own ToolbarIconButtonColor; pick an unused one for a new action. */}
       <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 pt-3 dark:border-gray-800">
@@ -654,10 +643,6 @@ export function SessionCard({
         ) : (
           deleteButton
         )}
-      </div>
-
-      <div className="-mx-4 -mb-4 mt-1">
-        <SessionSizeMeter sizeBytes={session.sizeBytes} />
       </div>
 
       <PromptPreviewModal

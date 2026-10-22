@@ -1,6 +1,8 @@
 import { dict } from "../dict";
 
 export const preview = {
+  "preview.menu": dict("{count} local URL(s)", "{count} URL(s) local(is)"),
+  "preview.menuRunning": dict("({count} running)", "({count} no ar)"),
   "preview.open": dict("Open {name}'s local URL", "Abrir a URL local de {name}"),
   "preview.stop": dict(
     "Stop this worktree preview ({name}) and free its memory",

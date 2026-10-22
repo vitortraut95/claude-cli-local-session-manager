@@ -19,8 +19,6 @@ export type Session = {
   missingWorktreeRepoRoot: string | null;
   /** Size of the session's `.jsonl` file in bytes. */
   sizeBytes: number;
-  /** Sum of the CLI's `turn_duration` entries (time actually spent processing). */
-  activeTimeMs: number;
   /** Base branch recorded in `tasks.json` (`repoBranches`) for a "New task" branch; only set when
    *  it differs from the repo's default. */
   baseBranch: string | null;

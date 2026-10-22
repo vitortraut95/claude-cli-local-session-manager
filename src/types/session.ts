@@ -22,8 +22,6 @@ export type Session = {
   missingWorktreeRepoRoot: string | null;
   /** Size of the session's `.jsonl` file. */
   sizeBytes: number;
-  /** Sum of the transcript's `turn_duration` entries. */
-  activeTimeMs: number;
   /** Base branch recorded by "New task" (`tasks.json` `repoBranches`); only set when it differs
    *  from the repo's default. */
   baseBranch: string | null;
