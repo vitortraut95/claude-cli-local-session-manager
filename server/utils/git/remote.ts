@@ -2,11 +2,13 @@ import { runGit } from "./core.js";
 
 type GitHostInfo = { host: "github" | "bitbucket"; slug: string };
 
-/** `origin` URLs (SSH or HTTPS) on github.com/bitbucket.org; captures the `owner/repo` slug. */
+/** `origin` URLs (SSH or HTTPS) on github.com/bitbucket.org; captures the `owner/repo` slug.
+ *  Bitbucket SSH may use the `ssh.bitbucket.org` host (directly or via `url.*.insteadOf`). */
 const REMOTE_URL_PATTERNS: { host: GitHostInfo["host"]; pattern: RegExp }[] = [
   { host: "github", pattern: /^git@github\.com:([^/]+\/[^/]+?)(?:\.git)?$/ },
   { host: "github", pattern: /^https:\/\/github\.com\/([^/]+\/[^/]+?)(?:\.git)?$/ },
-  { host: "bitbucket", pattern: /^git@bitbucket\.org:([^/]+\/[^/]+?)(?:\.git)?$/ },
+  { host: "bitbucket", pattern: /^git@(?:ssh\.)?bitbucket\.org:([^/]+\/[^/]+?)(?:\.git)?$/ },
+  { host: "bitbucket", pattern: /^ssh:\/\/git@(?:ssh\.)?bitbucket\.org\/([^/]+\/[^/]+?)(?:\.git)?$/ },
   { host: "bitbucket", pattern: /^https:\/\/[^/@]+@bitbucket\.org\/([^/]+\/[^/]+?)(?:\.git)?$/ },
   { host: "bitbucket", pattern: /^https:\/\/bitbucket\.org\/([^/]+\/[^/]+?)(?:\.git)?$/ },
 ];
