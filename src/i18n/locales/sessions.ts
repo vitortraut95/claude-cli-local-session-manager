@@ -128,15 +128,6 @@ export const sessions = {
   ),
   "sessionCard.worktreeTooltip": dict("Git worktree — {path}", "Worktree do git — {path}"),
   "sessionCard.worktreeNameLabel": dict("Worktree name: {name}", "Nome do worktree: {name}"),
-  "sessionCard.worktreeToRoot.ariaLabel": dict(
-    "Sync worktree into the root folder",
-    "Sincronizar worktree com a pasta raiz",
-  ),
-  "sessionCard.worktreeToRootButton": dict("worktree → root", "worktree → raiz"),
-  "sessionCard.worktreeToRoot.tooltip": dict(
-    "Sync this worktree's code into the project's root folder — copy files only, or remove the worktree and check out its branch there instead.",
-    "Sincroniza o código deste worktree com a pasta raiz do projeto — copie só os arquivos, ou remova o worktree e faça checkout da branch dele ali.",
-  ),
   "sessionCard.previewTooltip": dict(
     "Preview prompts sent in this session",
     "Veja os prompts enviados nesta sessão",
@@ -144,11 +135,6 @@ export const sessions = {
   "sessionCard.previewAriaLabel": dict("Preview prompts", "Ver prompts"),
   "sessionCard.exportTooltip": dict("Export session as a file", "Exportar sessão como arquivo"),
   "sessionCard.exportAriaLabel": dict("Export session", "Exportar sessão"),
-  "sessionCard.resetRootTooltip": dict(
-    "Reset root — stashes (recoverable) then discards any uncommitted changes in the project's root folder, without touching this worktree. For the copy → test → reset → repeat loop, without opening the full worktree → root wizard each time.",
-    "Reset root — guarda no stash (recuperável) e depois descarta as alterações não commitadas na pasta raiz do projeto, sem tocar neste worktree. Serve pro ciclo copiar → testar → resetar → repetir, sem abrir o assistente completo de worktree → root toda vez.",
-  ),
-  "sessionCard.resetRootAriaLabel": dict("Reset root folder", "Resetar pasta raiz"),
   "sessionCard.openJenkinsTooltip": dict(
     "Jenkins links for this project and branch",
     "Links do Jenkins deste projeto e branch",

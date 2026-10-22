@@ -33,8 +33,6 @@ export const history = {
   "history.stat.testWait": dict("Tests waiting for a slot/RAM", "Testes esperando vaga/RAM"),
   "history.stat.overCap": dict("Over the memory cap", "Estouros de memória"),
   "history.stat.hookBlocks": dict("Blocked by the hook", "Barrados pelo hook"),
-  "history.stat.rootHeld": dict("Holding the root", "Ocupando a raiz"),
-  "history.stat.rootRefused": dict("Root refusals", "Recusas da raiz"),
   "history.event.queueAdded": dict(
     "Added to the queue (prefix {prefix})",
     "Entrou na fila (prefixo {prefix})",
@@ -58,22 +56,6 @@ export const history = {
   "history.event.statusByScheduler": dict(
     "Status: {from} → {to} (scheduler)",
     "Status: {from} → {to} (agendador)",
-  ),
-  "history.event.rootCopy": dict(
-    "Took the root (files copied)",
-    "Ocupou a raiz (arquivos copiados)",
-  ),
-  "history.event.rootCheckout": dict(
-    "Took the root (branch moved there)",
-    "Ocupou a raiz (branch movida)",
-  ),
-  "history.event.rootReleased": dict(
-    "Released the root after {held}",
-    "Liberou a raiz após {held}",
-  ),
-  "history.event.rootRefused": dict(
-    "Root refused: in use by {holder}",
-    "Raiz recusada: em uso pela {holder}",
   ),
   "history.event.cleanupExecuted": dict("Worktree cleaned up", "Worktree removido na limpeza"),
   "history.event.cleanupFailed": dict("Cleanup failed: {error}", "Falha na limpeza: {error}"),

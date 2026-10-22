@@ -77,12 +77,6 @@ function describe(event: HistoryEvent, t: T): string {
         event.source === "scheduler" ? "history.event.statusByScheduler" : "history.event.status",
         { from: statusLabel(event.from, t), to: statusLabel(event.to, t) },
       );
-    case "root.locked":
-      return t(event.mode === "checkout" ? "history.event.rootCheckout" : "history.event.rootCopy");
-    case "root.released":
-      return t("history.event.rootReleased", { held: ms(event.heldMs) });
-    case "root.refused":
-      return t("history.event.rootRefused", { holder: str(event.heldBy) });
     case "cleanup.executed":
       return t("history.event.cleanupExecuted");
     case "cleanup.failed":
@@ -124,7 +118,6 @@ function describe(event: HistoryEvent, t: T): string {
 function isProblem(event: HistoryEvent): boolean {
   return (
     event.type.endsWith(".failed") ||
-    event.type === "root.refused" ||
     event.type === "heavy.timeout" ||
     (event.type === "heavy.run" && event.status !== 0)
   );
@@ -172,12 +165,6 @@ function SummaryStats({ summary, t }: { summary: HistorySummary; t: T }) {
   }
   if (summary.heavyBlocked > 0) {
     stats.push({ label: t("history.stat.hookBlocks"), value: String(summary.heavyBlocked) });
-  }
-  if (summary.rootHeldMs > 0) {
-    stats.push({ label: t("history.stat.rootHeld"), value: formatDuration(summary.rootHeldMs) });
-  }
-  if (summary.rootRefused > 0) {
-    stats.push({ label: t("history.stat.rootRefused"), value: String(summary.rootRefused) });
   }
 
   return (

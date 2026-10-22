@@ -78,8 +78,6 @@ export type HistorySummary = {
   heavyMemoryWaitS: number;
   heavyDurationS: number;
   heavyBlocked: number;
-  rootHeldMs: number;
-  rootRefused: number;
   errors: { ts: string; type: string; message: string }[];
 };
 
@@ -166,10 +164,6 @@ export function summarize(
     heavyMemoryWaitS: heavy.reduce((sum, e) => sum + num(e.memoryWaitS), 0),
     heavyDurationS: heavy.reduce((sum, e) => sum + num(e.durationS), 0),
     heavyBlocked: events.filter((e) => e.type === "heavy.blocked").length,
-    rootHeldMs: events
-      .filter((e) => e.type === "root.released")
-      .reduce((sum, e) => sum + num(e.heldMs), 0),
-    rootRefused: events.filter((e) => e.type === "root.refused").length,
     errors,
   };
 }

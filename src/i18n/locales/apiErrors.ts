@@ -12,10 +12,6 @@ export const apiErrors = {
     "Limux isn't installed (github.com/am-will/limux) — install it, or set sessions to open in tabs in Settings.",
     "O Limux não está instalado (github.com/am-will/limux) — instale, ou volte as sessões pra abas nas Configurações.",
   ),
-  "apiError.rootInUse": dict(
-    "The root of this repo is in use by another task — reset the root before bringing a new one there.",
-    "A raiz deste repo está em uso por outra tarefa — resete a raiz antes de trazer uma nova.",
-  ),
   "apiError.taskFolderRequired": dict(
     "A project folder is required.",
     "É necessário informar a pasta do projeto.",
@@ -198,20 +194,6 @@ export const apiErrors = {
   "apiError.protectedBranchDeleteForbidden": dict(
     "Refusing to delete that branch — it looks like the repo's primary branch.",
     "Não é possível excluir essa branch — ela parece ser a branch principal do repositório.",
-  ),
-  "apiError.repoRootUnresolved": dict(
-    "Could not resolve the repo root for this session's directory.",
-    "Não foi possível resolver a raiz do repositório para o diretório desta sessão.",
-  ),
-  "apiError.worktreeBranchUnknown": dict(
-    "Could not determine the worktree's branch before removing it.",
-    "Não foi possível determinar a branch do worktree antes de removê-lo.",
-  ),
-  "apiError.worktreeToRootCheckoutFailed": dict(
-    "The worktree was removed, but checking out its branch in the root folder failed — the " +
-      "branch's commits are safe, finish the checkout by hand from a terminal there.",
-    "O worktree foi removido, mas o checkout da branch na pasta raiz falhou — os commits da " +
-      "branch estão seguros, finalize o checkout manualmente por um terminal ali.",
   ),
   "apiError.importInvalidBundle": dict(
     "This file isn't a session exported by Claude Session Manager.",

@@ -3,7 +3,7 @@ import path from "node:path";
 import { REPO_ROOT } from "./repoRoot.js";
 
 /**
- * Append-only event log of the task flow (queue, scheduler, status changes, root lock, cleanup,
+ * Append-only event log of the task flow (queue, scheduler, status changes, cleanup,
  * launches), one JSON object per line in the gitignored `history.jsonl` at the repo root, for
  * measuring where time goes and finding errors. `scripts/heavy-run` and its hook append to the
  * same file. Each line: `{ "ts": ISO time, "type": "<area>.<event>", ...data }`.

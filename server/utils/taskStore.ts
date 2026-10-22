@@ -22,9 +22,6 @@ import { REPO_ROOT } from "./repoRoot.js";
  *   the main repo, the others join its session via `--add-dir`), in the order they were added.
  *   The scheduler sets `launchedAt`/`sessionId` once it starts one, or `error` when that failed
  *   (skipped until cleared).
- * - `rootLocks[<repo root>]`: which task's worktree was last brought to the main checkout to be
- *   tested there (`mode` copy = files copied, root dirty; checkout = the branch moved there), so
- *   another task can't land on top of it. See `rootLockService.ts`.
  *
  * `migrateLegacySidecars` builds this file once from `custom-titles.json`, `session-branches.json`
  * and `task-base-branches.json` when it doesn't exist yet; the old files are deleted on a later
@@ -101,22 +98,12 @@ export type QueueEntryInput = Pick<
   | "error"
 >;
 
-export type RootLock = {
-  mode: "copy" | "checkout";
-  branch: string;
-  taskKey: string | null;
-  /** The worktree copied from (copy mode); null once the branch was moved to the root. */
-  worktreePath: string | null;
-  since: string;
-};
-
 export type TaskStore = {
   version: 1;
   tasks: Record<string, TaskEntry>;
   sessions: Record<string, SessionEntry>;
   repoBranches: Record<string, Record<string, RepoBranchEntry>>;
   queue: QueueEntry[];
-  rootLocks: Record<string, RootLock>;
 };
 
 const STORE_FILE = "tasks.json";
@@ -126,7 +113,7 @@ function storePath(): string {
 }
 
 function emptyStore(): TaskStore {
-  return { version: 1, tasks: {}, sessions: {}, repoBranches: {}, queue: [], rootLocks: {} };
+  return { version: 1, tasks: {}, sessions: {}, repoBranches: {}, queue: [] };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -228,20 +215,6 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
         sessionId: asTextOrNull(raw.sessionId),
         error: asTextOrNull(raw.error),
       });
-    }
-  }
-
-  if (isRecord(parsed.rootLocks)) {
-    for (const [repoRoot, raw] of Object.entries(parsed.rootLocks)) {
-      if (!isRecord(raw) || typeof raw.branch !== "string" || !raw.branch) continue;
-      if (raw.mode !== "copy" && raw.mode !== "checkout") continue;
-      store.rootLocks[repoRoot] = {
-        mode: raw.mode,
-        branch: raw.branch,
-        taskKey: asTextOrNull(raw.taskKey),
-        worktreePath: asTextOrNull(raw.worktreePath),
-        since: typeof raw.since === "string" ? raw.since : "",
-      };
     }
   }
 
@@ -611,19 +584,6 @@ export function updateQueueEntry(
     const entry = store.queue.find((e) => e.key === key);
     if (!entry) return false;
     Object.assign(entry, patch);
-    return true;
-  });
-}
-
-/** `null` releases the root. */
-export function setRootLock(repoRoot: string, lock: RootLock | null): Promise<void> {
-  return mutateStore((store) => {
-    if (!lock) {
-      if (!store.rootLocks[repoRoot]) return false;
-      delete store.rootLocks[repoRoot];
-      return true;
-    }
-    store.rootLocks[repoRoot] = lock;
     return true;
   });
 }
