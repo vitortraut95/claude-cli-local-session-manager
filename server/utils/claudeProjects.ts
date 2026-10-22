@@ -51,7 +51,6 @@ export type SessionHead = {
 type JsonlEntry = {
   type?: string;
   subtype?: string;
-  durationMs?: number;
   sessionId?: string;
   cwd?: string;
   gitBranch?: string;
@@ -222,16 +221,14 @@ const RECAP_HINT_SUFFIX = / \(disable recaps in \/config\)$/;
 type FullScanResult = {
   /** Untruncated, capped at MAX_PROMPTS_EXTRACTED. */
   prompts: string[];
-  activeTimeMs: number;
   recap: string | null;
   latestGitBranch: string | null;
 };
 
-/** One full pass over the transcript: activeTimeMs/recap/latestGitBranch need the *last*
+/** One full pass over the transcript: recap/latestGitBranch need the *last*
  *  matching entries, so there's no early exit. */
 async function scanFullTranscript(filePath: string): Promise<FullScanResult> {
   const prompts: string[] = [];
-  let activeTimeMs = 0;
   let recap: string | null = null;
   let latestGitBranch: string | null = null;
 
@@ -263,10 +260,6 @@ async function scanFullTranscript(filePath: string): Promise<FullScanResult> {
         }
       }
 
-      if (entry.type === "system" && entry.subtype === "turn_duration" && entry.durationMs) {
-        activeTimeMs += entry.durationMs;
-      }
-
       if (entry.type === "system" && entry.subtype === "away_summary" && entry.content) {
         recap = entry.content.replace(RECAP_HINT_SUFFIX, "").trim();
       }
@@ -277,7 +270,7 @@ async function scanFullTranscript(filePath: string): Promise<FullScanResult> {
     rl.close();
   }
 
-  return { prompts, activeTimeMs, recap, latestGitBranch };
+  return { prompts, recap, latestGitBranch };
 }
 
 async function getFullScan(filePath: string): Promise<FullScanResult> {
@@ -298,11 +291,6 @@ export async function readSessionPrompts(filePath: string): Promise<string[]> {
 /** Untruncated prompts, for `GET /sessions/:id/prompts`. */
 export async function readFullSessionPrompts(filePath: string): Promise<string[]> {
   return (await getFullScan(filePath)).prompts;
-}
-
-/** Sum of the CLI's `{"type":"system","subtype":"turn_duration","durationMs":...}` entries. */
-export async function readSessionActiveTimeMs(filePath: string): Promise<number> {
-  return (await getFullScan(filePath)).activeTimeMs;
 }
 
 /** The *last* `gitBranch` logged in the transcript (a session can switch branches mid-way). */

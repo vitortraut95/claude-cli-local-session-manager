@@ -37,8 +37,6 @@ export const sessions = {
     "Couldn't load the full prompt text — showing a possibly truncated version.",
     "Não foi possível carregar o texto completo do prompt — mostrando uma versão possivelmente truncada.",
   ),
-  "sessionSizeMeter.tooltip": dict("{size} session — {message}", "Sessão de {size} — {message}"),
-  "sessionSizeMeter.label": dict("Session size: {size}", "Tamanho da sessão: {size}"),
   "sessionCard.copyCommand.error": dict(
     "Could not copy the command.",
     "Não foi possível copiar o comando.",
@@ -52,6 +50,7 @@ export const sessions = {
   "sessionCard.task.filter": dict("Search for this task", "Buscar esta tarefa"),
   "sessionCard.task.inferred": dict("Detected from the branch name", "Deduzida do nome da branch"),
   "sessionCard.task.alsoIn": dict("also in:", "também em:"),
+  "sessionCard.task.alsoInCount": dict("also in {count} repos", "também em {count} repos"),
   "sessionCard.task.repoSessions.one": dict(
     "{branch} · {count} session — click to search for the task",
     "{branch} · {count} sessão — clique para buscar a tarefa",
@@ -146,12 +145,6 @@ export const sessions = {
     "Sync this worktree's code into the project's root folder — copy files only, or remove the worktree and check out its branch there instead.",
     "Sincroniza o código deste worktree com a pasta raiz do projeto — copie só os arquivos, ou remova o worktree e faça checkout da branch dele ali.",
   ),
-  "sessionCard.updatedPrefix": dict("Updated", "Atualizada"),
-  "sessionCard.activeTimeTooltip": dict(
-    "Actual time Claude spent processing this session, summed across turns",
-    "Tempo real que o Claude gastou processando esta sessão, somado entre os turnos",
-  ),
-  "sessionCard.activeSuffix": dict("active", "ativa"),
   "sessionCard.previewTooltip": dict(
     "Preview prompts sent in this session",
     "Veja os prompts enviados nesta sessão",
