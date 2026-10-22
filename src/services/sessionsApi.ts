@@ -4,6 +4,7 @@ import type {
   Session,
   SessionImportPreview,
   SessionImportResult,
+  WorkStatus,
   WorktreeToRootPreview,
 } from "../types/session";
 import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
@@ -38,8 +39,35 @@ export async function deleteSession(id: string): Promise<void> {
   await withServerErrorMessage(() => client.delete(`/${encodeURIComponent(id)}`));
 }
 
-export async function continueSession(id: string): Promise<void> {
-  await withServerErrorMessage(() => client.post(`/${encodeURIComponent(id)}/continue`));
+/** `layout` overrides the `terminalLayout` preference for this resume. */
+export async function continueSession(id: string, layout?: "tabs" | "limux-grid"): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.post(`/${encodeURIComponent(id)}/continue`, layout ? { layout } : undefined),
+  );
+}
+
+/** Shows the Limux grid pane already running this session; false when the grid isn't the layout
+ *  or no pane runs it. */
+export async function focusSessionInGrid(id: string): Promise<boolean> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ focused: boolean }>(`/${encodeURIComponent(id)}/grid-focus`),
+  );
+  return data.focused;
+}
+
+export type ResumeOpenResult = {
+  resumed: { id: string; taskKey: string | null }[];
+  skippedForLimit: number;
+  failed: { id: string; message: string }[];
+};
+
+/** Resumes the latest session of every in-progress / waiting task with nothing running, up to
+ *  the session limit (in the grid when that's the terminal layout). */
+export async function resumeOpenTasks(): Promise<ResumeOpenResult> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<ResumeOpenResult>("/resume-open"),
+  );
+  return data;
 }
 
 export async function openInVSCode(id: string): Promise<void> {
@@ -82,6 +110,12 @@ export async function setNickname(id: string, nickname: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.patch(`/${encodeURIComponent(id)}/nickname`, { nickname }),
   );
+}
+
+/** For a session with no task (a task's status goes through `tasksApi.setTaskStatus`); null
+ *  clears it. */
+export async function setStatus(id: string, status: WorkStatus | null): Promise<void> {
+  await withServerErrorMessage(() => client.patch(`/${encodeURIComponent(id)}/status`, { status }));
 }
 
 /** Blank clears that side; both blank removes the saved branches. */
@@ -136,10 +170,16 @@ export async function openWorktreeRootInVSCode(id: string): Promise<void> {
 
 /** Stashes every uncommitted change in the repo's main checkout; returns the stash ref (null if
  *  nothing was dirty). */
-export async function resetRootWorkingTree(id: string): Promise<{ stashRef: string | null }> {
+/** `force` (the standalone "Reset root") also frees a root another task holds; without it the
+ *  server refuses with `ROOT_IN_USE`. */
+export async function resetRootWorkingTree(
+  id: string,
+  force = false,
+): Promise<{ stashRef: string | null }> {
   const { data } = await withServerErrorMessage(() =>
     client.post<{ success: true; stashRef: string | null }>(
       `/${encodeURIComponent(id)}/worktree-to-root/reset-root`,
+      { force },
     ),
   );
   return { stashRef: data.stashRef };
@@ -246,6 +286,39 @@ export async function importSession(
       headers: RAW_BUNDLE_HEADERS,
       params: { targetDir, checkoutBranch, ...(onConflict ? { onConflict } : {}) },
     }),
+  );
+  return data;
+}
+
+/** One `history.jsonl` line: `{ ts, type, ...data }` (see server/utils/history.ts). */
+export type HistoryEvent = { ts: string; type: string } & Record<string, unknown>;
+
+export type HistorySummary = {
+  queuedMs: number | null;
+  queueBlocks: { reason: string; durationMs: number }[];
+  statusMs: Record<string, number>;
+  currentStatus: string | null;
+  totalMs: number | null;
+  heavyRuns: number;
+  heavyFailed: number;
+  heavyOverCap: number;
+  heavySlotWaitS: number;
+  heavyMemoryWaitS: number;
+  heavyDurationS: number;
+  heavyBlocked: number;
+  rootHeldMs: number;
+  rootRefused: number;
+  errors: { ts: string; type: string; message: string }[];
+};
+
+/** The card's "info": this session's (and its task's) history events and their summary. */
+export async function fetchSessionHistory(
+  id: string,
+): Promise<{ events: HistoryEvent[]; summary: HistorySummary }> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ events: HistoryEvent[]; summary: HistorySummary }>(
+      `/${encodeURIComponent(id)}/history`,
+    ),
   );
   return data;
 }

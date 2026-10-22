@@ -8,6 +8,7 @@ import { LoadingState } from "../components/LoadingState";
 import { Pagination } from "../components/Pagination";
 import { PerPageSelect } from "../components/PerPageSelect";
 import { ProjectFilter } from "../components/ProjectFilter";
+import { WorkStatusFilter } from "../components/WorkStatusFilter";
 import { ResumeConflictModal } from "../components/ResumeConflictModal";
 import { SearchBar } from "../components/SearchBar";
 import { SessionCard } from "../components/SessionCard";
@@ -30,6 +31,8 @@ export function SessionsPage() {
     projectLabels,
     projectFilter,
     setProjectFilter,
+    statusFilter,
+    setStatusFilter,
     page,
     pageCount,
     perPage,
@@ -47,6 +50,7 @@ export function SessionsPage() {
     resumeSession,
     setNickname,
     setBranches,
+    setStatus,
     openInVSCode,
     openInCursor,
     openMissingWorktreeRootInVSCode,
@@ -65,10 +69,11 @@ export function SessionsPage() {
   const [cleanupBranchOnDelete, setCleanupBranchOnDelete] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
-  // Isolates one card by searching for its (unique) id and clearing the project filter.
+  // Isolates one card by searching for its (unique) id and clearing the other filters.
   const handleJumpToSession = (id: string) => {
     setSearchQuery(id);
     setProjectFilter("");
+    setStatusFilter("");
   };
 
   // A task's sessions span several projects, so the project filter would hide the other repos'.
@@ -76,6 +81,7 @@ export function SessionsPage() {
   const handleFilterByTask = (taskKey: string) => {
     setSearchQuery(taskKey);
     setProjectFilter("");
+    setStatusFilter("");
   };
 
   const handleDeleteRequest = (session: Session) => {
@@ -167,10 +173,11 @@ export function SessionsPage() {
               pendingAction={pendingActions[session.id]}
               selected={selectedIds.has(session.id)}
               onToggleSelect={toggleSelect}
-              onContinue={(s) => resumeSession(s.id)}
+              onContinue={(s, layout) => resumeSession(s.id, layout)}
               onDeleteRequest={handleDeleteRequest}
               onSetNickname={(s, nickname) => setNickname(s.id, nickname)}
               onSetBranches={(s, origin, destination) => setBranches(s.id, origin, destination)}
+              onSetStatus={setStatus}
               onOpenInVSCode={(s) => openInVSCode(s.id)}
               onOpenInCursor={(s) => openInCursor(s.id)}
               onOpenMissingWorktreeRootInVSCode={(s) => openMissingWorktreeRootInVSCode(s.id)}
@@ -211,6 +218,7 @@ export function SessionsPage() {
             value={projectFilter}
             onChange={setProjectFilter}
           />
+          <WorkStatusFilter value={statusFilter} onChange={setStatusFilter} />
 
           <Button
             variant="outline"

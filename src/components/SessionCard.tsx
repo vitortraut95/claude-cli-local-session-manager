@@ -1,4 +1,5 @@
 import {
+  ChevronDown,
   Clock,
   Code2,
   Folder,
@@ -7,22 +8,26 @@ import {
   GitMerge,
   GitPullRequest,
   Layers,
+  LayoutGrid,
   Loader2,
   MessageSquare,
   Pencil,
   Play,
   RotateCcw,
   Share,
+  SquareTerminal,
   Trash2,
   TriangleAlert,
+  Info,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import jenkinsIcon from "../assets/jenkins.svg";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
+import * as cleanupApi from "../services/cleanupApi";
 import * as sessionsApi from "../services/sessionsApi";
-import type { Session } from "../types/session";
+import type { Session, WorkStatus } from "../types/session";
 import { Button } from "./Button";
 import { ExportSessionModal } from "./ExportSessionModal";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -38,24 +43,36 @@ import { ResetRootConfirmModal } from "./ResetRootConfirmModal";
 import { SessionSizeMeter } from "./SessionSizeMeter";
 import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
+import { PreviewLinks } from "./PreviewLinks";
+import { TaskHistoryModal } from "./TaskHistoryModal";
+import { WorkStatusSelect } from "./WorkStatusSelect";
 import { WorktreeToRootModal } from "./WorktreeToRootModal";
 import { formatActiveTime, formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
 import { DEFAULT_BRANCHES } from "../utils/branches";
-import { getEnvPreviewGroups, getJenkinsLinks } from "../utils/jenkins";
+import { getTaskJenkinsGroups } from "../utils/jenkins";
 import { useTeamLinks } from "../hooks/useTeamLinks";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+
+const DONE_WORKTREE_KEPT_KEYS = {
+  "not-pushed": "sessionCard.doneWorktree.keptNotPushed",
+  "uncommitted-changes": "sessionCard.doneWorktree.keptDirty",
+  "active-session": "sessionCard.doneWorktree.keptActive",
+} as const;
 
 type SessionCardProps = {
   session: Session;
   pendingAction?: PendingAction;
   selected: boolean;
   onToggleSelect: (id: string) => void;
-  onContinue: (session: Session) => void;
+  /** `layout` = where the user picked to open it; omitted = the `terminalLayout` preference. */
+  onContinue: (session: Session, layout?: "tabs" | "limux-grid") => void;
   onDeleteRequest: (session: Session) => void;
   onSetNickname: (session: Session, nickname: string) => void;
   onSetBranches: (session: Session, origin: string, destination: string) => void;
+  /** Resolves true once saved. */
+  onSetStatus: (session: Session, status: WorkStatus | null) => Promise<boolean>;
   onOpenInVSCode: (session: Session) => void;
   onOpenInCursor: (session: Session) => void;
   onOpenMissingWorktreeRootInVSCode: (session: Session) => void;
@@ -75,6 +92,7 @@ export function SessionCard({
   onDeleteRequest,
   onSetNickname,
   onSetBranches,
+  onSetStatus,
   onOpenInVSCode,
   onOpenInCursor,
   onOpenMissingWorktreeRootInVSCode,
@@ -101,6 +119,12 @@ export function SessionCard({
   // null = closed; otherwise whether it opens straight on the "add repo" form.
   const [taskModal, setTaskModal] = useState<{ addRepo: boolean } | null>(null);
   const [showDeleteWorktreeConfirm, setShowDeleteWorktreeConfirm] = useState(false);
+  // Offered right after the card is marked done: the cleanup that removing its worktree means.
+  const [doneWorktreeFinding, setDoneWorktreeFinding] = useState<cleanupApi.CleanupFinding | null>(
+    null,
+  );
+  const [removingDoneWorktree, setRemovingDoneWorktree] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [showWorktreeToRootModal, setShowWorktreeToRootModal] = useState(false);
   const [showResetRootConfirm, setShowResetRootConfirm] = useState(false);
   const [showOpenPrBaseChoice, setShowOpenPrBaseChoice] = useState(false);
@@ -115,16 +139,52 @@ export function SessionCard({
   const { origin: originBranch, destination: taskBranch } = resolveSessionBranches(session);
   // `gitBranch` is null when the folder isn't a git repo, where a job link would be meaningless.
   const teamLinks = useTeamLinks();
-  const jenkinsLinks =
+  const jenkinsGroups =
     session.directoryMissing || session.gitBranch === null || session.isAppRepo
       ? null
-      : getJenkinsLinks(
+      : getTaskJenkinsGroups(
           teamLinks.jenkinsBaseUrl,
-          session.project,
+          teamLinks.envPreviews,
+          session,
           taskBranch ?? null,
           originBranch,
-          teamLinks.branchTypes,
         );
+
+  /** Marking a worktree session done offers to remove its worktree when that's safe now (merged,
+   *  or every commit on origin); otherwise says why it stays. */
+  const handleStatusChange = async (status: WorkStatus | null) => {
+    const saved = await onSetStatus(session, status);
+    if (!saved || status !== "done" || !session.isWorktree || session.directoryMissing) return;
+    try {
+      const result = await cleanupApi.fetchWorktreeCleanupForSession(session.id);
+      if (result?.finding) {
+        setDoneWorktreeFinding(result.finding);
+      } else if (
+        result?.reason === "not-pushed" ||
+        result?.reason === "uncommitted-changes" ||
+        result?.reason === "active-session"
+      ) {
+        showToast(t(DONE_WORKTREE_KEPT_KEYS[result.reason]), "error");
+      }
+    } catch {
+      // Only an offer: the Cleanup window still lists it later.
+    }
+  };
+
+  const handleRemoveDoneWorktree = async () => {
+    if (!doneWorktreeFinding) return;
+    setRemovingDoneWorktree(true);
+    try {
+      await cleanupApi.executeCleanupFinding(doneWorktreeFinding);
+      showToast(t("sessionCard.doneWorktree.removed"), "success");
+      setDoneWorktreeFinding(null);
+      onWorktreeSyncComplete(session);
+    } catch (err) {
+      showToast(resolveApiErrorMessage(err, t, "cleanupModal.runError"), "error");
+    } finally {
+      setRemovingDoneWorktree(false);
+    }
+  };
 
   // The URL needs a server-side git call, so it's fetched on click. A non-default base branch
   // goes through OpenPrBaseChoiceModal, since the plain link diffs against the default branch.
@@ -174,18 +234,30 @@ export function SessionCard({
 
   const continueButton = (
     <span className="flex flex-1">
-      <Button
-        variant="primary"
-        size="sm"
-        fullWidth
-        onClick={() => onContinue(session)}
-        disabled={isBusy || continueDisabledReason !== null}
-        icon={
-          isContinuing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />
-        }
-      >
-        {t("sessionCard.resumeButton")}
-      </Button>
+      {teamLinks.gridLayout ? (
+        <ResumeLayoutMenu
+          disabled={isBusy || continueDisabledReason !== null}
+          busy={isContinuing}
+          onPick={(layout) => onContinue(session, layout)}
+        />
+      ) : (
+        <Button
+          variant="primary"
+          size="sm"
+          fullWidth
+          onClick={() => onContinue(session, "tabs")}
+          disabled={isBusy || continueDisabledReason !== null}
+          icon={
+            isContinuing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )
+          }
+        >
+          {t("sessionCard.resumeButton")}
+        </Button>
+      )}
     </span>
   );
 
@@ -211,7 +283,7 @@ export function SessionCard({
           : "border-gray-200 dark:border-gray-800"
       }`}
     >
-      <div className="absolute -top-2 -left-1.5 flex items-center gap-1">
+      <div className="absolute -left-1.5 top-0 flex -translate-y-1/2 items-center gap-1">
         <input
           type="checkbox"
           checked={selected}
@@ -240,9 +312,27 @@ export function SessionCard({
             }`}
           />
         </Tooltip>
+        <WorkStatusSelect
+          value={session.status ?? null}
+          taskKey={session.taskKey ?? null}
+          saving={pendingAction === "status"}
+          onChange={(status) => void handleStatusChange(status)}
+        />
+        {session.hasHistory && (
+          <Tooltip content={t("history.open")}>
+            <button
+              type="button"
+              onClick={() => setShowHistory(true)}
+              aria-label={t("history.open")}
+              className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-500 shadow-sm hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+            >
+              <Info className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
+        )}
       </div>
 
-      <div className="flex items-start justify-between gap-2">
+      <div className="mt-2 flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2
             className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
@@ -290,6 +380,10 @@ export function SessionCard({
               </Tooltip>
             </div>
           )}
+          <PreviewLinks
+            previews={session.previews ?? []}
+            onChanged={() => onWorktreeSyncComplete(session)}
+          />
           <TaskReposLine
             session={session}
             onFilterByTask={onFilterByTask}
@@ -514,7 +608,7 @@ export function SessionCard({
             icon={<RotateCcw className="h-4 w-4" />}
           />
         )}
-        {jenkinsLinks && (
+        {jenkinsGroups && (
           <ToolbarIconButton
             tooltip={t("sessionCard.openJenkinsTooltip")}
             ariaLabel={t("sessionCard.openJenkinsAriaLabel")}
@@ -631,16 +725,8 @@ export function SessionCard({
       {showResetRootConfirm && (
         <ResetRootConfirmModal session={session} onClose={() => setShowResetRootConfirm(false)} />
       )}
-      {showJenkinsModal && jenkinsLinks && (
-        <JenkinsLinksModal
-          project={session.project}
-          links={jenkinsLinks}
-          envPreviews={getEnvPreviewGroups(teamLinks.envPreviews, session.project, [
-            taskBranch ?? null,
-            originBranch,
-          ])}
-          onClose={() => setShowJenkinsModal(false)}
-        />
+      {showJenkinsModal && jenkinsGroups && (
+        <JenkinsLinksModal groups={jenkinsGroups} onClose={() => setShowJenkinsModal(false)} />
       )}
       {showExportModal && (
         <ExportSessionModal session={session} onClose={() => setShowExportModal(false)} />
@@ -648,6 +734,22 @@ export function SessionCard({
       {showOpenPrBaseChoice && (
         <OpenPrBaseChoiceModal session={session} onClose={() => setShowOpenPrBaseChoice(false)} />
       )}
+      {showHistory && <TaskHistoryModal session={session} onClose={() => setShowHistory(false)} />}
+      <ConfirmDialog
+        open={doneWorktreeFinding !== null}
+        title={t("sessionCard.doneWorktree.title")}
+        message={t(
+          doneWorktreeFinding?.kind === "remove-merged-worktree"
+            ? "sessionCard.doneWorktree.mergedMessage"
+            : "sessionCard.doneWorktree.message",
+          { branch: doneWorktreeFinding?.branch ?? "?" },
+        )}
+        confirmLabel={t("sessionCard.doneWorktree.confirm")}
+        cancelLabel={t("sessionCard.doneWorktree.keep")}
+        isLoading={removingDoneWorktree}
+        onConfirm={() => void handleRemoveDoneWorktree()}
+        onCancel={() => setDoneWorktreeFinding(null)}
+      />
       <ConfirmDialog
         open={showDeleteWorktreeConfirm}
         title={t("sessionCard.deleteWorktreeConfirm.title")}
@@ -660,6 +762,84 @@ export function SessionCard({
         }}
         onCancel={() => setShowDeleteWorktreeConfirm(false)}
       />
+    </div>
+  );
+}
+
+/** Resume when sessions open in the Limux grid: asks whether this one goes to the grid or to a
+ *  terminal of its own. */
+function ResumeLayoutMenu({
+  disabled,
+  busy,
+  onPick,
+}: {
+  disabled: boolean;
+  busy: boolean;
+  onPick: (layout: "tabs" | "limux-grid") => void;
+}) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
+
+  const options = [
+    {
+      layout: "limux-grid" as const,
+      label: t("sessionCard.resumeIn.grid"),
+      icon: <LayoutGrid className="h-4 w-4" />,
+    },
+    {
+      layout: "tabs" as const,
+      label: t("sessionCard.resumeIn.terminal"),
+      icon: <SquareTerminal className="h-4 w-4" />,
+    },
+  ];
+
+  return (
+    <div ref={containerRef} className="relative flex flex-1">
+      <Button
+        variant="primary"
+        size="sm"
+        fullWidth
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        icon={busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+      >
+        {t("sessionCard.resumeIn.button")}
+        <ChevronDown className="h-3.5 w-3.5" />
+      </Button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute bottom-full left-0 z-20 mb-1 w-full min-w-44 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900"
+        >
+          {options.map((option) => (
+            <button
+              key={option.layout}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onPick(option.layout);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-900 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-800"
+            >
+              <span className="text-gray-500 dark:text-gray-400">{option.icon}</span>
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

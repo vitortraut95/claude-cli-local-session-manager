@@ -32,6 +32,9 @@ function findingTitle(finding: CleanupFinding, t: ReturnType<typeof useLanguage>
   if (finding.kind === "remove-abandoned-worktree") {
     return t("cleanupModal.finding.abandoned.title", { branch: finding.branch ?? "?", project });
   }
+  if (finding.kind === "remove-done-task-worktree") {
+    return t("cleanupModal.finding.done.title", { branch: finding.branch ?? "?", project });
+  }
   return t("cleanupModal.finding.merged.title", { branch: finding.branch ?? "?" });
 }
 
@@ -55,6 +58,9 @@ function findingDescription(
   }
   if (finding.kind === "remove-abandoned-worktree") {
     return t("cleanupModal.finding.abandoned.description", { branch: finding.branch ?? "?" });
+  }
+  if (finding.kind === "remove-done-task-worktree") {
+    return t("cleanupModal.finding.done.description", { branch: finding.branch ?? "?" });
   }
   return t("cleanupModal.finding.merged.description", {
     branch: finding.branch ?? "?",
@@ -139,6 +145,10 @@ export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalP
           <li>
             <strong>{t("cleanupModal.finding.abandonedWorktree.label")}</strong>{" "}
             {t("cleanupModal.finding.abandonedWorktree.body")}
+          </li>
+          <li>
+            <strong>{t("cleanupModal.finding.doneTask.label")}</strong>{" "}
+            {t("cleanupModal.finding.doneTask.body")}
           </li>
           <li>
             <strong>{t("cleanupModal.finding.oldSessions.label")}</strong>{" "}

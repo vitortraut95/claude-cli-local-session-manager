@@ -20,7 +20,11 @@ import {
   openWorktreeRootInVSCode,
   removeWorktreeAndCheckoutRoot,
   resetRootWorkingTree,
+  resumeOpenTasks,
+  getSessionHistory,
+  focusSessionInGrid,
   setSessionNickname,
+  setSessionWorkStatus,
   setSessionBranches,
   startFreshSessionAtMissingWorktreeRoot,
   stopSiblingAndResume,
@@ -31,7 +35,7 @@ import {
   inspectSessionBundle,
 } from "../services/sessionTransferService.js";
 import { getSessionTask, setSessionTask } from "../services/taskGroupService.js";
-import { extractStringField } from "../utils/httpBody.js";
+import { extractBooleanField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
 import { sendErrorResponse } from "../utils/httpError.js";
 
 export const sessionsRouter = Router();
@@ -62,6 +66,11 @@ const rawBundleBody = express.raw({ type: "application/octet-stream", limit: "1g
 function bundleFromBody(body: unknown): Buffer {
   return Buffer.isBuffer(body) ? body : Buffer.alloc(0);
 }
+
+/** Resumes the latest session of every in-progress / waiting task with nothing running. */
+sessionsRouter.post("/resume-open", async (_req, res) => {
+  res.json(await resumeOpenTasks());
+});
 
 sessionsRouter.post("/import/inspect", rawBundleBody, async (req, res) => {
   const preview = await inspectSessionBundle(bundleFromBody(req.body));
@@ -103,6 +112,11 @@ sessionsRouter.patch("/:id/nickname", async (req, res) => {
   res.json({ success: true });
 });
 
+sessionsRouter.patch("/:id/status", async (req, res) => {
+  await setSessionWorkStatus(req.params.id, parseWorkStatus(req.body));
+  res.json({ success: true });
+});
+
 sessionsRouter.patch("/:id/branches", async (req, res) => {
   await setSessionBranches(
     req.params.id,
@@ -126,6 +140,10 @@ sessionsRouter.put("/:id/task", async (req, res) => {
   res.json({ success: true });
 });
 
+sessionsRouter.get("/:id/history", async (req, res) => {
+  res.json(await getSessionHistory(req.params.id));
+});
+
 sessionsRouter.get("/:id/prompts", async (req, res) => {
   const prompts = await getSessionPrompts(req.params.id);
   res.json({ prompts });
@@ -144,8 +162,14 @@ sessionsRouter.get("/:id/pr-url", async (req, res) => {
   res.json({ url });
 });
 
+/** Optional `{ layout: "tabs" | "limux-grid" }` picks where it opens instead of the preference. */
 sessionsRouter.post("/:id/continue", async (req, res) => {
-  await continueSession(req.params.id);
+  const layout = (req.body as { layout?: unknown } | undefined)?.layout;
+  await continueSession(
+    req.params.id,
+    null,
+    layout === "tabs" || layout === "limux-grid" ? layout : undefined,
+  );
   res.json({ success: true });
 });
 
@@ -179,7 +203,10 @@ sessionsRouter.get("/:id/worktree-to-root/root-status", async (req, res) => {
 });
 
 sessionsRouter.post("/:id/worktree-to-root/reset-root", async (req, res) => {
-  const stashRef = await resetRootWorkingTree(req.params.id);
+  const stashRef = await resetRootWorkingTree(
+    req.params.id,
+    extractBooleanField(req.body, "force", false),
+  );
   res.json({ success: true, stashRef });
 });
 
@@ -191,6 +218,11 @@ sessionsRouter.post("/:id/worktree-to-root/copy", async (req, res) => {
 sessionsRouter.post("/:id/worktree-to-root/remove-and-checkout", async (req, res) => {
   const { previousRootBranch, newBranch } = await removeWorktreeAndCheckoutRoot(req.params.id);
   res.json({ success: true, previousRootBranch, newBranch });
+});
+
+/** Shows the grid pane running this session; `{ focused: false }` when there's none. */
+sessionsRouter.post("/:id/grid-focus", async (req, res) => {
+  res.json({ focused: await focusSessionInGrid(req.params.id) });
 });
 
 sessionsRouter.post("/:id/vscode", async (req, res) => {

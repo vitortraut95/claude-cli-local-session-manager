@@ -7,6 +7,23 @@ const client = axios.create({
 
 export type Language = "en" | "pt";
 
+/** The task queue's scheduler; mirrors the server's `OrchestratorPreferences`. */
+export type OrchestratorPreferences = {
+  enabled: boolean;
+  maxSessions: number;
+  minFreeMemoryPercent: number;
+  maxUsagePercent: number;
+  /** `scripts/heavy-run` limits. Optional: older backend. */
+  testSlots?: number;
+  testMemoryMaxGb?: number;
+  testCpuPercent?: number;
+  /** `heavy-run --preview` limits. Optional: older backend. */
+  previewSlots?: number;
+  previewMemoryMaxGb?: number;
+  /** Minutes between two launches (0 = none). Optional: older backend. */
+  launchSpacingMinutes?: number;
+};
+
 export type UserPreferences = {
   defaultPrompt: string;
   /** NewSessionModal's pre-filled prompt. Optional: older backend. */
@@ -41,7 +58,17 @@ export type UserPreferences = {
   taskTestPermissionModeAuto?: boolean;
   /** UI theme; null = follow the system. Optional: older backend. */
   theme?: "light" | "dark" | null;
+  /** Task queue scheduler. Optional: older backend. */
+  orchestrator?: OrchestratorPreferences;
+  /** Optional: older backend. */
+  worktreeSetup?: WorktreeSetup;
+  /** Where Claude sessions open: a terminal tab each, or panes of one Limux grid. Optional: older
+   *  backend. */
+  terminalLayout?: "tabs" | "limux-grid";
 };
+
+/** Per repo folder name: what a new task worktree gets from the main checkout. */
+export type WorktreeSetup = Record<string, { linkNodeModules: boolean; copyEnvFiles: boolean }>;
 
 export type EnvPreviewTemplate = { label: string; url: string };
 export type EnvPreviews = Record<string, EnvPreviewTemplate[]>;

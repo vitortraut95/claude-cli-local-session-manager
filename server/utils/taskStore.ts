@@ -1,28 +1,45 @@
 import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { recordEvent } from "./history.js";
 import { REPO_ROOT } from "./repoRoot.js";
 
 /**
  * This app's per-session/per-task data, in the gitignored `tasks.json` at the repo root (never in
  * `~/.claude/projects/`, which is the CLI's data).
  *
- * - `tasks[<ticket key>]`: task metadata (`link`). Membership lives on the entries' own `taskKey`.
+ * - `tasks[<ticket key>]`: task metadata (`link`, the hand-set work `status`). Membership lives on the entries' own `taskKey`.
  * - `sessions[<session id>]`: `nickname` (a local label, never replaces the real title),
- *   `origin`/`destination` (the session's base/task branches, either may be null). A `taskKey`
+ *   `origin`/`destination` (the session's base/task branches, either may be null), and a work
+ *   `status` for a session with no task (a task's status lives on the task, shared by its sessions). A `taskKey`
  *   here comes from older versions and is moved to the branch entry on the next listing.
  * - `repoBranches[<repo root>][<branch>]`: the base a "New task" branch was created off (only when
  *   it differs from the repo default), its `taskKey` (the only place a task link is kept; none =
  *   inferred from the branch, see `taskKeys.ts`) and worktree. Keyed by `(repoRoot, branch)`
  *   because the session id doesn't exist yet at creation and a non-worktree task shares the repo
  *   root. Forgotten once the branch is deleted.
+ * - `queue`: tasks waiting to be started, each with the repos it'll be worked in (the first one is
+ *   the main repo, the others join its session via `--add-dir`), in the order they were added.
+ *   The scheduler sets `launchedAt`/`sessionId` once it starts one, or `error` when that failed
+ *   (skipped until cleared).
+ * - `rootLocks[<repo root>]`: which task's worktree was last brought to the main checkout to be
+ *   tested there (`mode` copy = files copied, root dirty; checkout = the branch moved there), so
+ *   another task can't land on top of it. See `rootLockService.ts`.
  *
  * `migrateLegacySidecars` builds this file once from `custom-titles.json`, `session-branches.json`
  * and `task-base-branches.json` when it doesn't exist yet; the old files are deleted on a later
  * start. All writes go through one in-process queue with an atomic temp-file + rename.
  */
 
+export const WORK_STATUSES = ["todo", "in_progress", "waiting_user", "done"] as const;
+export type WorkStatus = (typeof WORK_STATUSES)[number];
+
+export function isWorkStatus(value: unknown): value is WorkStatus {
+  return typeof value === "string" && (WORK_STATUSES as readonly string[]).includes(value);
+}
+
 type TaskEntry = {
   link: string | null;
+  status: WorkStatus | null;
   createdAt: string;
 };
 
@@ -31,6 +48,7 @@ type SessionEntry = {
   origin: string | null;
   destination: string | null;
   taskKey: string | null;
+  status: WorkStatus | null;
 };
 
 type RepoBranchEntry = {
@@ -40,11 +58,38 @@ type RepoBranchEntry = {
   worktreePath: string | null;
 };
 
+export type QueueEntry = {
+  key: string;
+  link: string | null;
+  repos: string[];
+  /** The task branch is `<prefix>/<key>`; "" = just `<key>`; null = not chosen yet (not
+   *  launched until it is). */
+  branchPrefix: string | null;
+  addedAt: string;
+  launchedAt: string | null;
+  sessionId: string | null;
+  error: string | null;
+};
+
+/** What the queue modal saves; the launch fields are only ever set by the scheduler. */
+export type QueueEntryInput = Pick<QueueEntry, "key" | "link" | "repos" | "branchPrefix" | "error">;
+
+export type RootLock = {
+  mode: "copy" | "checkout";
+  branch: string;
+  taskKey: string | null;
+  /** The worktree copied from (copy mode); null once the branch was moved to the root. */
+  worktreePath: string | null;
+  since: string;
+};
+
 export type TaskStore = {
   version: 1;
   tasks: Record<string, TaskEntry>;
   sessions: Record<string, SessionEntry>;
   repoBranches: Record<string, Record<string, RepoBranchEntry>>;
+  queue: QueueEntry[];
+  rootLocks: Record<string, RootLock>;
 };
 
 const STORE_FILE = "tasks.json";
@@ -54,7 +99,7 @@ function storePath(): string {
 }
 
 function emptyStore(): TaskStore {
-  return { version: 1, tasks: {}, sessions: {}, repoBranches: {} };
+  return { version: 1, tasks: {}, sessions: {}, repoBranches: {}, queue: [], rootLocks: {} };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -66,7 +111,7 @@ function asTextOrNull(value: unknown): string | null {
 }
 
 function isEmptySession(entry: SessionEntry): boolean {
-  return !entry.nickname && !entry.origin && !entry.destination && !entry.taskKey;
+  return !entry.nickname && !entry.origin && !entry.destination && !entry.taskKey && !entry.status;
 }
 
 function isEmptyRepoBranch(entry: RepoBranchEntry): boolean {
@@ -82,6 +127,7 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
       if (!isRecord(raw)) continue;
       store.tasks[key] = {
         link: asTextOrNull(raw.link),
+        status: isWorkStatus(raw.status) ? raw.status : null,
         createdAt: typeof raw.createdAt === "string" ? raw.createdAt : "",
       };
     }
@@ -95,6 +141,7 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
         origin: asTextOrNull(raw.origin),
         destination: asTextOrNull(raw.destination),
         taskKey: asTextOrNull(raw.taskKey),
+        status: isWorkStatus(raw.status) ? raw.status : null,
       };
       if (!isEmptySession(entry)) store.sessions[id] = entry;
     }
@@ -113,6 +160,39 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
         };
         if (!isEmptyRepoBranch(entry)) (store.repoBranches[repoRoot] ??= {})[branch] = entry;
       }
+    }
+  }
+
+  if (Array.isArray(parsed.queue)) {
+    for (const raw of parsed.queue) {
+      if (!isRecord(raw) || typeof raw.key !== "string" || !raw.key.trim()) continue;
+      if (store.queue.some((entry) => entry.key === raw.key)) continue;
+      store.queue.push({
+        key: raw.key.trim(),
+        link: asTextOrNull(raw.link),
+        repos: Array.isArray(raw.repos)
+          ? [...new Set(raw.repos.filter((r): r is string => typeof r === "string" && !!r.trim()))]
+          : [],
+        branchPrefix: typeof raw.branchPrefix === "string" ? raw.branchPrefix.trim() : null,
+        addedAt: typeof raw.addedAt === "string" ? raw.addedAt : "",
+        launchedAt: asTextOrNull(raw.launchedAt),
+        sessionId: asTextOrNull(raw.sessionId),
+        error: asTextOrNull(raw.error),
+      });
+    }
+  }
+
+  if (isRecord(parsed.rootLocks)) {
+    for (const [repoRoot, raw] of Object.entries(parsed.rootLocks)) {
+      if (!isRecord(raw) || typeof raw.branch !== "string" || !raw.branch) continue;
+      if (raw.mode !== "copy" && raw.mode !== "checkout") continue;
+      store.rootLocks[repoRoot] = {
+        mode: raw.mode,
+        branch: raw.branch,
+        taskKey: asTextOrNull(raw.taskKey),
+        worktreePath: asTextOrNull(raw.worktreePath),
+        since: typeof raw.since === "string" ? raw.since : "",
+      };
     }
   }
 
@@ -240,6 +320,7 @@ function updateSession(id: string, patch: Partial<SessionEntry>): Promise<void> 
       origin: null,
       destination: null,
       taskKey: null,
+      status: null,
       ...store.sessions[id],
       ...patch,
     };
@@ -385,8 +466,99 @@ export function upsertTask(key: string, link: string | null): Promise<void> {
     if (current && (!trimmedLink || current.link === trimmedLink)) return false;
     store.tasks[key] = {
       link: trimmedLink ?? current?.link ?? null,
+      status: current?.status ?? null,
       createdAt: current?.createdAt ?? new Date().toISOString(),
     };
+    return true;
+  });
+}
+
+/** Who changed a status, for the history: the user on a card, or the scheduler on launch. */
+export type StatusSource = "user" | "scheduler";
+
+/** `null` clears it. */
+export async function setSessionStatus(
+  id: string,
+  status: WorkStatus | null,
+  source: StatusSource = "user",
+): Promise<void> {
+  const from = (await readStore()).sessions[id]?.status ?? null;
+  await updateSession(id, { status });
+  if (from !== status) recordEvent("status.changed", { sessionId: id, from, to: status, source });
+}
+
+/** Creates the task entry if missing (a key only inferred from a branch has none yet). */
+export async function setTaskStatus(
+  key: string,
+  status: WorkStatus | null,
+  source: StatusSource = "user",
+): Promise<void> {
+  let from: WorkStatus | null = null;
+  let changed = false;
+  await mutateStore((store) => {
+    const current = store.tasks[key];
+    from = current?.status ?? null;
+    if (current?.status === status) return false;
+    store.tasks[key] = {
+      link: current?.link ?? null,
+      status,
+      createdAt: current?.createdAt ?? new Date().toISOString(),
+    };
+    changed = true;
+    return true;
+  });
+  if (changed) recordEvent("status.changed", { key, from, to: status, source });
+}
+
+export async function getQueue(): Promise<QueueEntry[]> {
+  return (await readStore()).queue;
+}
+
+/**
+ * Replaces the whole queue. An entry already queued keeps its `addedAt`, and one the scheduler
+ * already launched keeps its launch fields and repos — a modal opened before the launch can't
+ * put it back in line.
+ */
+export function setQueue(entries: QueueEntryInput[]): Promise<void> {
+  return mutateStore((store) => {
+    const previous = new Map(store.queue.map((entry) => [entry.key, entry]));
+    const now = new Date().toISOString();
+    store.queue = entries.map((entry) => {
+      const stored = previous.get(entry.key);
+      if (stored?.launchedAt) return stored;
+      return {
+        ...entry,
+        addedAt: stored?.addedAt ?? now,
+        launchedAt: null,
+        sessionId: null,
+      };
+    });
+    return true;
+  });
+}
+
+/** Patches one entry in place (no-op when it was removed meanwhile). */
+export function updateQueueEntry(
+  key: string,
+  patch: Partial<Pick<QueueEntry, "launchedAt" | "sessionId" | "error">>,
+): Promise<void> {
+  return mutateStore((store) => {
+    const entry = store.queue.find((e) => e.key === key);
+    if (!entry) return false;
+    Object.assign(entry, patch);
+    return true;
+  });
+}
+
+/** `null` releases the root. */
+export function setRootLock(repoRoot: string, lock: RootLock | null): Promise<void> {
+  return mutateStore((store) => {
+    if (!lock) {
+      if (!store.rootLocks[repoRoot]) return false;
+      delete store.rootLocks[repoRoot];
+      return true;
+    }
+    store.rootLocks[repoRoot] = lock;
     return true;
   });
 }

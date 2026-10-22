@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { TaskRepoRef } from "../types/session";
+import type { TaskRepoRef, WorkStatus } from "../types/session";
 import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
 
 const client = axios.create({
@@ -60,9 +60,9 @@ export async function createTaskWorktree(
   useWorktree: boolean,
   taskKey = "",
   taskLink = "",
-): Promise<{ worktreePath: string }> {
+): Promise<{ worktreePath: string; setup?: WorktreeSetupResult }> {
   const { data } = await withServerErrorMessage(() =>
-    client.post<{ worktreePath: string }>("/worktree", {
+    client.post<{ worktreePath: string; setup?: WorktreeSetupResult }>("/worktree", {
       folderPath,
       branchName,
       baseBranchRef,
@@ -74,6 +74,10 @@ export async function createTaskWorktree(
   );
   return data;
 }
+
+/** What a new worktree got from its repo's `worktreeSetup` preference (worktree-relative paths).
+ *  Absent from an older backend. */
+export type WorktreeSetupResult = { linked: string[]; copied: string[] };
 
 /** Opens a terminal in `worktreePath` running `claude <prompt>`. `repoRoot` ("" if unknown) is
  *  remembered for the folder dropdown. A non-blank `nickname` and `originBranch`/`destinationBranch`
@@ -137,6 +141,7 @@ export type AddRepoResult = {
   baseBranch: string;
   /** Where the branch is checked out — what to `/add-dir`. */
   workingDirectory: string;
+  setup?: WorktreeSetupResult;
   completedSteps: AddRepoStep[];
 };
 
@@ -161,6 +166,13 @@ export async function addRepoToTask(taskKey: string, input: AddRepoInput): Promi
     }
     throw err;
   }
+}
+
+/** Shared by every session of the task; null clears it. */
+export async function setTaskStatus(taskKey: string, status: WorkStatus | null): Promise<void> {
+  await withServerErrorMessage(() =>
+    client.put(`/by-key/${encodeURIComponent(taskKey)}/status`, { status }),
+  );
 }
 
 /** Only drops the link — the branch, worktree and sessions stay. */
@@ -203,3 +215,90 @@ export async function launchTaskTest(
 }
 
 // ---------------------------------------------------------------------------------------------
+// Task queue: tickets waiting to be worked on, each with its repos (first = main repo).
+
+export type QueueEntry = {
+  key: string;
+  link: string | null;
+  /** Repo roots; empty = still to be chosen. */
+  repos: string[];
+  /** Task branch = `<prefix>/<key>`; "" = just the key; null = not chosen (won't launch).
+   *  Optional: older backend. */
+  branchPrefix?: string | null;
+  addedAt: string;
+  /** Set by the scheduler once it opened the task's session. Optional: older backend. */
+  launchedAt?: string | null;
+  sessionId?: string | null;
+  /** Why the launch failed (skipped until cleared), or — once launched — which extra repo
+   *  couldn't be added. Optional: older backend. */
+  error?: string | null;
+};
+
+/** What the modal saves; the launch fields are the scheduler's. */
+export type QueueEntryInput = Pick<QueueEntry, "key" | "link" | "repos" | "branchPrefix" | "error">;
+
+export async function fetchTaskQueue(): Promise<QueueEntry[]> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ entries: QueueEntry[] }>("/queue"),
+  );
+  return data.entries;
+}
+
+/** Replaces the whole queue; returns it as stored (repos resolved to their roots, launched entries
+ *  kept as the scheduler left them). */
+export async function saveTaskQueue(entries: QueueEntryInput[]): Promise<QueueEntry[]> {
+  const { data } = await withServerErrorMessage(() =>
+    client.put<{ entries: QueueEntry[] }>("/queue", { entries }),
+  );
+  return data.entries;
+}
+
+export type SchedulerBlock =
+  "paused" | "max_sessions" | "recent_launch" | "low_memory" | "memory_pressure" | "usage_limit";
+
+export type SchedulerStatus = {
+  enabled: boolean;
+  activeSessions: number;
+  maxSessions: number;
+  freeMemoryPercent: number | null;
+  minFreeMemoryPercent: number;
+  memoryPressure: number | null;
+  usagePercent: number | null;
+  maxUsagePercent: number;
+  waiting: number;
+  blockedBy: SchedulerBlock | null;
+  launching: string | null;
+};
+
+export async function fetchSchedulerStatus(): Promise<SchedulerStatus> {
+  const { data } = await withServerErrorMessage(() => client.get<SchedulerStatus>("/queue/status"));
+  return data;
+}
+
+/** Runs a scheduler check right away instead of waiting for its next tick. */
+export async function runSchedulerNow(): Promise<SchedulerStatus> {
+  const { data } = await withServerErrorMessage(() => client.post<SchedulerStatus>("/queue/run"));
+  return data;
+}
+
+/** The PreToolUse hook that routes every session's test commands through `scripts/heavy-run`. */
+export type HeavyRunHookStatus = {
+  installed: boolean;
+  settingsPath: string;
+  heavyRunPath: string;
+};
+
+export async function fetchHeavyRunHookStatus(): Promise<HeavyRunHookStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<HeavyRunHookStatus>("/heavy-run/hook"),
+  );
+  return data;
+}
+
+/** Edits `~/.claude/settings.json` (only this hook's entry); new sessions pick it up. */
+export async function setHeavyRunHookInstalled(installed: boolean): Promise<HeavyRunHookStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.put<HeavyRunHookStatus>("/heavy-run/hook", { installed }),
+  );
+  return data;
+}

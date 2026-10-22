@@ -6,11 +6,11 @@ type TeamLinks = {
   /** Null = no Jenkins configured (button hidden). */
   jenkinsBaseUrl: string | null;
   envPreviews: EnvPreviews;
-  /** The user's branch types, used as Jenkins branch variations. */
-  branchTypes: string[];
+  /** `terminalLayout` is the Limux grid: Resume offers grid or terminal. */
+  gridLayout: boolean;
 };
 
-const EMPTY: TeamLinks = { jenkinsBaseUrl: null, envPreviews: {}, branchTypes: [] };
+const EMPTY: TeamLinks = { jenkinsBaseUrl: null, envPreviews: {}, gridLayout: false };
 
 let snapshot: TeamLinks = EMPTY;
 const listeners = new Set<() => void>();
@@ -24,7 +24,7 @@ function load() {
       snapshot = {
         jenkinsBaseUrl: base === "" ? null : base,
         envPreviews: prefs.envPreviews ?? {},
-        branchTypes: prefs.branchTypes,
+        gridLayout: prefs.terminalLayout === "limux-grid",
       };
       listeners.forEach((listener) => listener());
     })
@@ -41,7 +41,7 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-/** Jenkins/preview-link config for the session cards — fetched once for all of them and reloaded
+/** Jenkins/preview-link/terminal config for the session cards — fetched once for all of them and reloaded
  *  on `PREFERENCES_CHANGED_EVENT`. */
 export function useTeamLinks(): TeamLinks {
   return useSyncExternalStore(subscribe, () => snapshot);

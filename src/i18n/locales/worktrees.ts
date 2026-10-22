@@ -29,6 +29,22 @@ export const worktrees = {
     '(created by Claude/"New task" under .claude/worktrees/ but never used by any session) with no pending changes and no commit of its own — removing it loses nothing.',
     '(criado pelo Claude/"Nova tarefa" em .claude/worktrees/ mas nunca usado por nenhuma sessão) sem mudanças pendentes e sem nenhum commit próprio — removê-lo não perde nada.',
   ),
+  "cleanupModal.finding.doneTask.label": dict(
+    "Worktree of a done task",
+    "Worktree de tarefa concluída",
+  ),
+  "cleanupModal.finding.doneTask.body": dict(
+    '(status "Done" on its card) not merged yet, with no pending changes, no active session and every commit already pushed to origin — only the worktree is removed; the branch stays, locally and on origin, until it\'s merged.',
+    '(status "Concluída" no card) ainda não mergeada, sem mudanças pendentes, sem sessão ativa e com todos os commits já no origin — só o worktree é removido; a branch fica, local e no origin, até ser mergeada.',
+  ),
+  "cleanupModal.finding.done.title": dict(
+    'Done task worktree "{branch}" in "{project}"',
+    'Worktree da tarefa concluída "{branch}" em "{project}"',
+  ),
+  "cleanupModal.finding.done.description": dict(
+    'The task is marked done, the worktree has no pending changes or active session, and every commit of "{branch}" is on origin. Only the worktree is removed — the branch stays until it\'s merged.',
+    'A tarefa está marcada como concluída, o worktree não tem alterações pendentes nem sessão ativa, e todos os commits de "{branch}" estão no origin. Só o worktree é removido — a branch fica até ser mergeada.',
+  ),
   "cleanupModal.finding.oldSessions.label": dict("Old local sessions", "Sessões locais antigas"),
   "cleanupModal.finding.oldSessions.body": dict(
     "once a project has more sessions than the configured limit (10 by default — edit " +
@@ -168,6 +184,14 @@ export const worktrees = {
   "worktreeToRootModal.preview.checkoutWarning": dict(
     "The worktree's folder will be deleted (its branch and commits are kept). This session's transcript is tied to that exact folder, so it won't be resumable from this app afterward — the code itself isn't lost, it's just in the root folder now.",
     "A pasta do worktree será excluída (a branch e os commits dele são mantidos). A transcrição desta sessão está vinculada exatamente a essa pasta, então ela não poderá ser retomada a partir deste app depois — o código em si não é perdido, só que fica na pasta raiz agora.",
+  ),
+  "worktreeToRootModal.preview.rootLockedCopy": dict(
+    'The root is in use by {owner} (files copied from {branch}) — finish testing it and use "Reset root" before bringing another task there.',
+    'A raiz está em uso pela {owner} (arquivos copiados de {branch}) — termine o teste dela e use "Resetar raiz" antes de trazer outra tarefa.',
+  ),
+  "worktreeToRootModal.preview.rootLockedCheckout": dict(
+    "The root is in use by {owner} (branch {branch} checked out there) — switch the root back to another branch before bringing another task there.",
+    "A raiz está em uso pela {owner} (branch {branch} em checkout lá) — volte a raiz pra outra branch antes de trazer outra tarefa.",
   ),
   "worktreeToRootModal.preview.rootActiveWarning": dict(
     "A session is currently active in the root folder — close its terminal before continuing.",

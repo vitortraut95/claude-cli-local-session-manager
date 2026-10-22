@@ -59,6 +59,11 @@ export const newTask = {
   ),
   "newTaskModal.jiraLinkLabel": dict("Task link (Jira)", "Link da tarefa (Jira)"),
   "newTaskModal.taskPrefix": dict("Task", "Tarefa"),
+  // Mirrored in server/services/taskSchedulerService.ts (the queue composes the same prompt).
+  "newTaskModal.sharedNodeModulesNote": dict(
+    "node_modules here is a symlink to the main checkout's, shared with other tasks: {dirs}. Don't run yarn/npm/pnpm install or add in this worktree. If the task changes dependencies, delete just the link (rm node_modules, no -r) and install inside the worktree.",
+    "O node_modules aqui é um link para o da raiz do repo, compartilhado com outras tarefas: {dirs}. Não rode yarn/npm/pnpm install nem add neste worktree. Se a tarefa mudar dependências, apague só o link (rm node_modules, sem -r) e instale dentro do worktree.",
+  ),
   "newTaskModal.projectLabel": dict("Project (folder)", "Projeto (pasta)"),
   "newTaskModal.loadingProjects": dict("Loading projects…", "Carregando projetos…"),
   "newTaskModal.selectProject": dict("Select a project", "Selecione um projeto"),

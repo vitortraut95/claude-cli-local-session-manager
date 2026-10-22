@@ -1,3 +1,6 @@
+/** Hand-set work status — mirrors `WORK_STATUSES` in `server/utils/taskStore.ts`. */
+export type WorkStatus = "todo" | "in_progress" | "waiting_user" | "done";
+
 export type Session = {
   id: string;
   title: string;
@@ -41,6 +44,30 @@ export type Session = {
   taskKeyInferred?: boolean;
   /** Every repo/branch of that task, this session's included. Only set when `taskKey` is. */
   taskRepos?: TaskRepoRef[];
+  /** The task's status when `taskKey` is set, else the session's own; null = never set.
+   *  Optional: older backend. */
+  status?: WorkStatus | null;
+  /** `history.jsonl` has events tied to this session or its task (the card's "info"). Optional:
+   *  older backend. */
+  hasHistory?: boolean;
+  /** Local preview servers serving this session's folder or its task's worktrees. Optional:
+   *  older backend. */
+  previews?: SessionPreview[];
+};
+
+/** Mirrors `server/types/session.ts`. */
+export type SessionPreview = {
+  kind: "docker" | "process";
+  /** Container name, or pid. */
+  id: string;
+  name: string;
+  port: number;
+  url: string;
+  /** Serves a task worktree (stoppable from the card), not a repo's main checkout. */
+  inWorktree: boolean;
+  /** false = a task worktree's stopped container, which the card can start again. Optional:
+   *  older backend (always running). */
+  running?: boolean;
 };
 
 /** One repo/branch of a multi-repo task — mirrors `server/utils/taskRepos.ts`. */
@@ -50,6 +77,9 @@ export type TaskRepoRef = {
   branch: string;
   /** Recorded only when it differs from the repo's default. */
   baseBranch: string | null;
+  /** The repo's default branch (the base when `baseBranch` is null); null = unknown. Optional:
+   *  older backend. */
+  defaultBranch?: string | null;
   /** The linked worktree the branch lives in; null = the repo root, or not known. */
   worktreePath: string | null;
   /** True when linked in `tasks.json`; false when only implied by a session's (inferred) key. */
@@ -75,6 +105,15 @@ export type WorktreeToRootPreview = {
   fileDiff: WorktreeToRootFileDiff;
   rootHasActiveSession: boolean;
   worktreeHasActiveSession: boolean;
+  /** Another task already holding the root (files copied or branch moved there); bringing this
+   *  worktree is refused until it's released. Optional: older backend. */
+  rootLock?: {
+    mode: "copy" | "checkout";
+    branch: string;
+    taskKey: string | null;
+    worktreePath: string | null;
+    since: string;
+  } | null;
 };
 
 /** `GET /sessions/:id/worktree-to-root/root-status` — root's branch and dirty files, without the
