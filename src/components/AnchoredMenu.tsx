@@ -6,6 +6,7 @@ type AnchoredMenuProps = {
   /** The button's content (a chevron is appended). */
   label: ReactNode;
   buttonClassName: string;
+  disabled?: boolean;
   /** The menu's content; `close` hides it (e.g. after a pick). */
   children: (close: () => void) => ReactNode;
 };
@@ -15,7 +16,12 @@ type AnchoredMenuProps = {
  * card it would sit under the next card of the grid (the card's hover transform makes it a
  * stacking context). Closes on an outside click, Escape, scroll or resize.
  */
-export function AnchoredMenu({ label, buttonClassName, children }: AnchoredMenuProps) {
+export function AnchoredMenu({
+  label,
+  buttonClassName,
+  disabled = false,
+  children,
+}: AnchoredMenuProps) {
   const [menuAt, setMenuAt] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -63,7 +69,8 @@ export function AnchoredMenu({ label, buttonClassName, children }: AnchoredMenuP
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={menuAt !== null}
-        className={`flex items-center gap-1 ${buttonClassName}`}
+        disabled={disabled}
+        className={`flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-60 ${buttonClassName}`}
       >
         {label}
         <ChevronDown className="h-3 w-3 text-gray-400" />

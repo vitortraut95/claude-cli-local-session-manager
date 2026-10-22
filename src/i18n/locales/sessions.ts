@@ -112,6 +112,9 @@ export const sessions = {
     "Abrir a raiz do projeto no VS Code",
   ),
   "sessionCard.codeButton": dict("code .", "code ."),
+  "sessionCard.openEditor": dict("Open code", "Abrir code"),
+  "sessionCard.openEditor.vscode": dict("VS Code", "VS Code"),
+  "sessionCard.openEditor.cursor": dict("Cursor", "Cursor"),
   "sessionCard.directoryMissing.newSessionTooltip": dict(
     "The old transcript can't be resumed from a different folder — this starts a brand-new " +
       "conversation right here at the root, seeded with a recap of what the old session did.",
@@ -125,17 +128,6 @@ export const sessions = {
   ),
   "sessionCard.worktreeTooltip": dict("Git worktree — {path}", "Worktree do git — {path}"),
   "sessionCard.worktreeNameLabel": dict("Worktree name: {name}", "Nome do worktree: {name}"),
-  "sessionCard.openInVSCodeTooltip": dict(
-    "Open this folder in VS Code",
-    "Abrir esta pasta no VS Code",
-  ),
-  "sessionCard.openInVSCodeAriaLabel": dict("Open in VS Code", "Abrir no VS Code"),
-  "sessionCard.cursorButton": dict("cursor .", "cursor ."),
-  "sessionCard.openInCursorTooltip": dict(
-    "Open this folder in Cursor",
-    "Abrir esta pasta no Cursor",
-  ),
-  "sessionCard.openInCursorAriaLabel": dict("Open in Cursor", "Abrir no Cursor"),
   "sessionCard.worktreeToRoot.ariaLabel": dict(
     "Sync worktree into the root folder",
     "Sincronizar worktree com a pasta raiz",
