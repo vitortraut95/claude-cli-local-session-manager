@@ -8,6 +8,7 @@ import {
   isLimuxAvailable,
   presentLimuxGrid,
 } from "../services/limuxGridService.js";
+import { getLimuxStatus, installLimux } from "../services/limuxInstallService.js";
 import { getUserPreferences } from "../services/preferencesService.js";
 import {
   removePreviewById,
@@ -39,6 +40,16 @@ systemRouter.post("/terminal-grid/open", async (_req, res) => {
   // Panes Limux restored empty and no session took: only clutter now.
   await closeIdleGridPanes().catch(() => 0);
   res.json(result);
+});
+
+/** Limux install: version, newest release, missing system libraries. */
+systemRouter.get("/limux", async (_req, res) => {
+  res.json(await getLimuxStatus());
+});
+
+/** Installs Limux, or updates it to the newest release, under `~/.local` (no sudo). */
+systemRouter.post("/limux/install", async (_req, res) => {
+  res.json(await installLimux());
 });
 
 /** The card's stop button on a task worktree's preview (container stopped / process ended). */

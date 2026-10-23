@@ -9,8 +9,12 @@ export const apiErrors = {
   ),
   "apiError.invalidSessionId": dict("Invalid session id.", "Id de sessão inválido."),
   "apiError.limuxNotInstalled": dict(
-    "Limux isn't installed (github.com/am-will/limux) — install it, or set sessions to open in tabs in Settings.",
-    "O Limux não está instalado (github.com/am-will/limux) — instale, ou volte as sessões pra abas nas Configurações.",
+    "Limux isn't installed — install it in Settings → Where sessions open, or set sessions to open in tabs there.",
+    "O Limux não está instalado — instale em Configurações → Onde as sessões abrem, ou volte as sessões pra abas ali.",
+  ),
+  "apiError.limuxUnsupportedArch": dict(
+    "Limux only ships x86_64 builds; this machine is another architecture.",
+    "O Limux só tem versão x86_64; esta máquina é de outra arquitetura.",
   ),
   "apiError.taskFolderRequired": dict(
     "A project folder is required.",

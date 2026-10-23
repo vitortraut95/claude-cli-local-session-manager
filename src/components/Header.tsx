@@ -36,7 +36,7 @@ import { UsageLimitsBadge } from "./UsageLimitsBadge";
 import * as preferencesApi from "../services/preferencesApi";
 import * as sessionsApi from "../services/sessionsApi";
 import * as systemApi from "../services/systemApi";
-import { resolveApiErrorMessage } from "../utils/apiClient";
+import { resolveApiErrorMessage, type ApiError } from "../utils/apiClient";
 
 type HeaderProps = {
   /** Fired after a new task/session is created, so the session list can refresh. */
@@ -136,6 +136,8 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
       }
     } catch (err) {
       showToast(resolveApiErrorMessage(err, t, "header.grid.error"), "error");
+      // Where its install button is.
+      if ((err as ApiError).code === "LIMUX_NOT_INSTALLED") setShowSettings(true);
     } finally {
       setResumingOpen(false);
     }

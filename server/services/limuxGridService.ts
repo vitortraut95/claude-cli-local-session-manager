@@ -31,10 +31,12 @@ const STARTUP_TIMEOUT_MS = 15_000;
  *  server restart forgets it, and Resume then just adds a pane as usual. */
 const surfaceBySession = new Map<string, string>();
 
-async function limuxBin(): Promise<string | null> {
-  const local = path.join(os.homedir(), ".local", "bin", "limux");
+/** Where `limuxInstallService` puts it (checked first: it may shadow an older system install). */
+export const LOCAL_LIMUX_BIN = path.join(os.homedir(), ".local", "bin", "limux");
+
+export async function limuxBin(): Promise<string | null> {
   for (const candidate of [
-    local,
+    LOCAL_LIMUX_BIN,
     ...(process.env.PATH ?? "").split(path.delimiter).map((d) => path.join(d, "limux")),
   ]) {
     try {
@@ -65,7 +67,7 @@ export async function isLimuxAvailable(): Promise<boolean> {
 type Workspace = { ref: string; name: string; title: string };
 type Panel = { pane_ref: string; surface_ref: string };
 
-async function isRunning(): Promise<boolean> {
+export async function isLimuxRunning(): Promise<boolean> {
   return limux(["list-workspaces"]).then(
     () => true,
     () => false,
@@ -74,14 +76,14 @@ async function isRunning(): Promise<boolean> {
 
 /** Starts the app when it isn't running (its socket answers once it's up). */
 async function ensureRunning(): Promise<void> {
-  if (await isRunning()) return;
+  if (await isLimuxRunning()) return;
   const bin = await limuxBin();
   if (!bin) throw new Error("limux isn't installed");
   spawn(bin, [], { detached: true, stdio: "ignore", env: sanitizedSpawnEnv() }).unref();
   const deadline = Date.now() + STARTUP_TIMEOUT_MS;
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 500));
-    if (await isRunning()) return;
+    if (await isLimuxRunning()) return;
   }
   throw new Error("limux didn't start in time");
 }
@@ -256,7 +258,7 @@ async function showSurface(workspace: string, surface: string): Promise<void> {
 /** Brings up the pane already running `sessionId`; false when the grid has none for it. */
 export async function focusLimuxSession(sessionId: string): Promise<boolean> {
   const surface = surfaceBySession.get(sessionId);
-  if (!surface || !(await isRunning())) return false;
+  if (!surface || !(await isLimuxRunning())) return false;
   const workspace = await findGridWorkspace();
   if (!workspace || !(await listPanels(workspace)).some((p) => p.surface_ref === surface)) {
     surfaceBySession.delete(sessionId);
@@ -281,7 +283,7 @@ export type GridStatus = { available: boolean; running: boolean; panes: number }
 
 export async function getGridStatus(): Promise<GridStatus> {
   if (!(await isLimuxAvailable())) return { available: false, running: false, panes: 0 };
-  if (!(await isRunning())) return { available: true, running: false, panes: 0 };
+  if (!(await isLimuxRunning())) return { available: true, running: false, panes: 0 };
   const workspace = await findGridWorkspace();
   return {
     available: true,
