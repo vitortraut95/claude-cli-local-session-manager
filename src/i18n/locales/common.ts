@@ -137,6 +137,25 @@ export const common = {
     "{count} novos commits em {branch} — clique para atualizar",
   ),
   "updateButton.label": dict("Update app", "Atualizar app"),
+  "updateButton.localChanges": dict(
+    "Automatic update is off: this copy has local changes (uncommitted files or unpushed commits) an update would discard.",
+    "Atualização automática desativada: esta cópia tem mudanças locais (arquivos sem commit ou commits sem push) que o update apagaria.",
+  ),
+  "updateButton.confirm.title": dict("Discard local changes?", "Apagar as mudanças locais?"),
+  "updateButton.confirm.message": dict(
+    "Updating resets this copy to {branch}: the changes below are discarded for good — edited and new files are lost, and unpushed commits leave the branch (git reflog still has them for a while). Commit and push first to keep them.",
+    "Atualizar volta esta cópia para {branch}: as mudanças abaixo são apagadas de vez — arquivos editados e novos se perdem, e commits sem push saem da branch (o git reflog ainda guarda por um tempo). Faça commit e push antes para manter.",
+  ),
+  "updateButton.confirm.files": dict(
+    "{count} changed or new file(s):",
+    "{count} arquivo(s) alterado(s) ou novo(s):",
+  ),
+  "updateButton.confirm.more": dict("… and {count} more", "… e mais {count}"),
+  "updateButton.confirm.commits": dict(
+    "{count} commit(s) not on {branch}",
+    "{count} commit(s) que não estão em {branch}",
+  ),
+  "updateButton.confirm.confirm": dict("Discard and update", "Apagar e atualizar"),
   "updateOverlay.title": dict("Updating the app…", "Atualizando o aplicativo…"),
   "updateOverlay.subtitle": dict(
     "A new version was found and is being installed automatically. This should only take a moment — please don't close this window.",

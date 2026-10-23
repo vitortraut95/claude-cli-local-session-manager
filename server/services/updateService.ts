@@ -12,7 +12,15 @@ export type UpdateStatus = {
   ahead: number;
   behind: number;
   updateAvailable: boolean;
+  /** Uncommitted or untracked files, or commits not on origin/main: the update would discard
+   *  them, so it never runs on its own and needs `force`. Optional: older backend. */
+  hasLocalChanges?: boolean;
+  /** `git status --porcelain` lines (first `MAX_LISTED_FILES`). */
+  changedFiles?: string[];
+  changedFileCount?: number;
 };
+
+const MAX_LISTED_FILES = 20;
 
 export type UpdateJobStatus =
   | { state: "idle" }
@@ -51,7 +59,20 @@ export async function getUpdateStatus(): Promise<UpdateStatus> {
   const ahead = Number(aheadStr);
   const behind = Number(behindStr);
 
-  return { branch, tracking: UPDATE_TARGET_REF, ahead, behind, updateAvailable: behind > 0 };
+  const changed = (await runGit(["status", "--porcelain"], repoRoot))
+    .split("\n")
+    .filter((line) => line.trim() !== "");
+
+  return {
+    branch,
+    tracking: UPDATE_TARGET_REF,
+    ahead,
+    behind,
+    updateAvailable: behind > 0,
+    hasLocalChanges: changed.length > 0 || ahead > 0,
+    changedFiles: changed.slice(0, MAX_LISTED_FILES),
+    changedFileCount: changed.length,
+  };
 }
 
 const UPDATE_SCRIPT = fileURLToPath(new URL("../scripts/run-update.mjs", import.meta.url));
@@ -74,9 +95,17 @@ export async function getUpdateJobStatus(): Promise<UpdateJobStatus> {
  * Launches the forced update (fetch + hard reset, discarding local changes, + `yarn install`) as
  * a detached process and returns immediately: `tsx watch` restarts this process as soon as the
  * reset rewrites a source file. The frontend polls getUpdateJobStatus() (a status file) instead.
+ * With local changes it's refused unless `force` (the user confirmed discarding them).
  */
-export async function startUpdate(): Promise<void> {
+export async function startUpdate(force: boolean): Promise<void> {
   const repoRoot = REPO_ROOT;
+
+  if (!force && (await getUpdateStatus()).hasLocalChanges) {
+    throw new ConflictError(
+      "UPDATE_LOCAL_CHANGES",
+      "There are local changes (uncommitted files or unpushed commits) the update would discard.",
+    );
+  }
 
   const existingJob = await getUpdateJobStatus();
   if (existingJob.state === "running") {
