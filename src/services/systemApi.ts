@@ -88,6 +88,37 @@ export async function openTerminalGrid(): Promise<ResumeOpenResult> {
   return data;
 }
 
+/** Limux install, as `GET /system/limux` reports it. */
+export type LimuxStatus = {
+  installed: boolean;
+  version: string | null;
+  /** Installed by this app under `~/.local`, not a system package. */
+  managed: boolean;
+  /** GitHub's latest release, or the bundled copy's version when offline. */
+  latest: string;
+  minVersion: string;
+  updateAvailable: boolean;
+  running: boolean;
+  missingLibs: string[];
+  /** `sudo apt install …` for `missingLibs`; null when nothing is missing. */
+  aptCommand: string | null;
+};
+
+export type LimuxInstallResult = LimuxStatus & { source: "github" | "bundled" };
+
+export async function fetchLimuxStatus(): Promise<LimuxStatus> {
+  const { data } = await withServerErrorMessage(() => client.get<LimuxStatus>("/limux"));
+  return data;
+}
+
+/** Installs Limux, or updates it to the newest release, under `~/.local` (no sudo). */
+export async function installLimux(): Promise<LimuxInstallResult> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<LimuxInstallResult>("/limux/install"),
+  );
+  return data;
+}
+
 /** Stops a task worktree's preview (container stopped / process ended). */
 export async function stopPreview(id: string): Promise<void> {
   await withServerErrorMessage(() => client.post(`/previews/${encodeURIComponent(id)}/stop`));

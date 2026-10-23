@@ -22,6 +22,7 @@ import { downloadPreferences } from "../utils/preferencesFile";
 import { Button } from "./Button";
 import { ImportPreferencesButton } from "./ImportPreferencesButton";
 import { Input } from "./Input";
+import { LimuxSetup } from "./LimuxSetup";
 import { Modal } from "./Modal";
 import { Select } from "./Select";
 import { TaskTestSkillSelect } from "./TaskTestSkillSelect";
@@ -275,6 +276,7 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
               title={t("settings.terminalLayout.title")}
               description={t("settings.terminalLayout.description")}
               keyName="terminalLayout"
+              extra={<LimuxSetup />}
               control={
                 <Select
                   value={prefs.terminalLayout}
@@ -670,12 +672,15 @@ function SettingRow({
   description,
   keyName,
   preview,
+  extra,
   control,
 }: {
   title: string;
   description: string;
   keyName: keyof UserPreferences;
   preview?: ReactNode;
+  /** Block under the description (status, actions) — unlike `preview`, not cut to one line. */
+  extra?: ReactNode;
   control: ReactNode;
 }) {
   return (
@@ -693,6 +698,7 @@ function SettingRow({
             {preview}
           </p>
         )}
+        {extra}
       </div>
       <div className="shrink-0">{control}</div>
     </li>

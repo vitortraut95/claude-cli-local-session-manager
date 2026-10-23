@@ -16,7 +16,11 @@ and clean them up. Everything runs on your machine — no external server involv
   closing the Limux window ends the sessions in it (they stay resumable). Reopened, Limux restores
   its panes as empty shells: "Open grid" resumes each session into the idle pane of a tab named
   after its task (one dragged out of the grid), else an idle grid pane, and closes the grid's
-  leftover empty panes
+  leftover empty panes. The same setting installs or updates Limux with one click, no sudo: the
+  latest release's tarball (checked against its SHA256SUMS) goes to `~/.local/opt/limux`, with a
+  `~/.local/bin/limux` wrapper and an app-menu entry; offline, the copy kept in `vendor/limux/` is
+  used. Missing system libraries (GTK4, libadwaita, WebKitGTK) are listed with the `apt` command
+  to copy
 - **Preview URLs** — each card lists the local URLs serving its folder and its task's worktrees,
   found with no config: docker dev-server containers (declaring PORT / BASE_URL / `-p`, tied by
   their bind mounts or compose dir — e.g. a worktree's own `mainsite<country>-<task>` container)
@@ -182,6 +186,8 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | POST   | `/system/previews/:id/remove`         | Remove a task worktree's preview container                                     |
 | GET    | `/system/terminal-grid`               | The Limux grid: Limux installed, running, pane count                           |
 | POST   | `/system/terminal-grid/open`          | Bring Limux up and resume every open task into the grid                        |
+| GET    | `/system/limux`                       | Limux install: version, latest release, missing system libraries               |
+| POST   | `/system/limux/install`               | Install Limux, or update it to the latest release, under `~/.local`            |
 | GET    | `/cleanup/worktree-for-session/:id`   | What removing a session's worktree would mean now (finding, or why not)        |
 | POST   | `/tasks/test-task`                    | Open a terminal running `/<taskTestSkill> <ticketLink>` ("Test task" button)   |
 | GET    | `/tasks/skills-hub/status`            | Team skills: hub location/branch, catalogs, link state per skill               |

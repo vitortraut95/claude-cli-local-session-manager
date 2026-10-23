@@ -42,6 +42,8 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   TASK_WORKTREE_PATH_REQUIRED: "apiError.taskWorktreePathRequired",
   TASK_INVALID_KEY: "apiError.taskInvalidKey",
   LIMUX_NOT_INSTALLED: "apiError.limuxNotInstalled",
+  LIMUX_UNSUPPORTED_ARCH: "apiError.limuxUnsupportedArch",
+  // LIMUX_INSTALL_FAILED unmapped: its message carries the reason.
   TASK_REPO_NOT_FOUND: "apiError.taskRepoNotFound",
   TASK_TEST_LINK_REQUIRED: "apiError.taskTestLinkRequired",
   TASK_TEST_SKILL_NOT_CONFIGURED: "apiError.taskTestSkillNotConfigured",
