@@ -253,8 +253,8 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
             status={updateStatus}
             checking={checking}
             updating={updating}
-            onUpdate={() => {
-              void applyUpdate();
+            onUpdate={(force) => {
+              void applyUpdate({ force });
             }}
           />
         </div>

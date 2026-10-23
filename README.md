@@ -93,7 +93,9 @@ and clean them up. Everything runs on your machine — no external server involv
   templates are per-machine settings (asked on first start / Settings), never part of this repo
 - Initial setup on first start (repo folders, Jenkins URL, team skills repo) and full settings
   export/import in Settings — share a `userPreferences.json` with your team to set everything up
-- Self-update button from the header
+- Self-update button from the header (and silently on start): resets the checkout to
+  `origin/main`. With local changes (uncommitted/new files or unpushed commits) it never runs on
+  its own — the button turns amber and asks before discarding them
 - pt/en language switcher
 
 ## Prerequisites

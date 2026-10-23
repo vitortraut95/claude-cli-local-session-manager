@@ -94,9 +94,10 @@ export function useUpdate() {
     };
   }, [refreshStatus]);
 
-  /** `silent: true` = startup auto-update: no toast; success reloads the page. */
+  /** `silent: true` = startup auto-update: no toast; success reloads the page. `force: true` =
+   *  discard local changes (the user confirmed). */
   const applyUpdate = useCallback(
-    async (options?: { silent?: boolean }) => {
+    async (options?: { silent?: boolean; force?: boolean }) => {
       const silent = options?.silent ?? false;
       setUpdating(true);
       if (silent) {
@@ -104,7 +105,7 @@ export function useUpdate() {
         setAutoUpdateError(null);
       }
       try {
-        await systemApi.applyUpdate();
+        await systemApi.applyUpdate(options?.force ?? false);
         const job = await waitForUpdateJob(t("useUpdate.timeoutError"));
         if (job.state === "error") throw Object.assign(new Error(job.message), { code: job.code });
         if (silent) {
@@ -130,12 +131,13 @@ export function useUpdate() {
     [showToast, refreshStatus, t],
   );
 
-  // Startup auto-update: applies an available update silently after the first status check.
+  // Startup auto-update: applies an available update silently after the first status check —
+  // never over local changes (it would discard them): then only the button, which asks first.
   useEffect(() => {
     if (checking) return;
     if (initialCheckDoneRef.current) return;
     initialCheckDoneRef.current = true;
-    if (!status?.updateAvailable) return;
+    if (!status?.updateAvailable || status.hasLocalChanges) return;
     // 0ms timer keeps applyUpdate's setState calls out of the effect body.
     const timer = setTimeout(() => {
       void applyUpdate({ silent: true });

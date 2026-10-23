@@ -15,6 +15,7 @@ import {
   startPreviewById,
   stopPreviewById,
 } from "../services/previewService.js";
+import { extractBooleanField } from "../utils/httpBody.js";
 import { AppError, NotFoundError } from "../utils/httpError.js";
 
 export const systemRouter = Router();
@@ -83,8 +84,9 @@ systemRouter.get("/update-status", async (_req, res) => {
   res.json(status);
 });
 
-systemRouter.post("/update", async (_req, res) => {
-  await startUpdate();
+/** `{ force: true }` = discard local changes (the user confirmed). */
+systemRouter.post("/update", async (req, res) => {
+  await startUpdate(extractBooleanField(req.body, "force", false));
   res.json({ success: true, started: true });
 });
 

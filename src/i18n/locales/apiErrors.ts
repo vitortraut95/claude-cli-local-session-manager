@@ -105,6 +105,10 @@ export const apiErrors = {
     "An update is already in progress.",
     "Uma atualização já está em andamento.",
   ),
+  "apiError.updateLocalChanges": dict(
+    "This copy has local changes the update would discard. Click Update app again to review them.",
+    "Esta cópia tem mudanças locais que a atualização apagaria. Clique em Atualizar app de novo para revisar.",
+  ),
   "apiError.updateFetchFailed": dict(
     "Could not reach the remote repository.",
     "Não foi possível acessar o repositório remoto.",

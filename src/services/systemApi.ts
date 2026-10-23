@@ -12,6 +12,12 @@ export type UpdateStatus = {
   ahead: number;
   behind: number;
   updateAvailable: boolean;
+  /** Uncommitted/untracked files or unpushed commits the update would discard: no auto-update,
+   *  and "Update app" asks before forcing. Optional: older backend. */
+  hasLocalChanges?: boolean;
+  /** `git status --porcelain` lines (only the first ones). */
+  changedFiles?: string[];
+  changedFileCount?: number;
 };
 
 export async function fetchUpdateStatus(): Promise<UpdateStatus> {
@@ -25,8 +31,9 @@ export type UpdateJobStatus =
   | { state: "success"; branch: string; pullSummary: string; finishedAt: string }
   | { state: "error"; message: string; code?: string; finishedAt: string };
 
-export async function applyUpdate(): Promise<void> {
-  await client.post("/update");
+/** `force` = discard local changes (the user confirmed); without it the server refuses them. */
+export async function applyUpdate(force = false): Promise<void> {
+  await withServerErrorMessage(() => client.post("/update", { force }));
 }
 
 export async function fetchUpdateJobStatus(): Promise<UpdateJobStatus> {

@@ -31,7 +31,8 @@ async function writeStatus(status) {
 }
 
 try {
-  // Forced on purpose: local commits/edits must never stop the update. Targets origin/main, not
+  // Forced: the server only starts it with local changes once the user confirmed discarding them
+  // (`startUpdate(force)`), so local commits/edits never stop it here. Targets origin/main, not
   // `@{u}`, since the checkout may be a `--no-track` worktree branch; resets the current branch
   // (a `checkout main` fails in a linked worktree). `clean -fd` without `-x` keeps gitignored
   // files such as the sidecar JSON files.
