@@ -38,6 +38,10 @@ export type OrchestratorPreferences = {
   /** Minutes between two launches, so a session's memory shows up before the next one starts
    *  (0 = no spacing). */
   launchSpacingMinutes: number;
+  /** With the usage-pause hook on, running sessions wait before their next tool once the 5h
+   *  window or a weekly limit reaches this % (until it resets, or "destravar" in that session). */
+  pauseSessionPercent: number;
+  pauseWeeklyPercent: number;
 };
 
 export type TerminalLayout = "tabs" | "limux-grid";

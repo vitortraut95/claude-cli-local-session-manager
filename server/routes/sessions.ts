@@ -31,6 +31,7 @@ import {
 import { getSessionTask, setSessionTask } from "../services/taskGroupService.js";
 import { extractLayoutField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
 import { sendErrorResponse } from "../utils/httpError.js";
+import { checkUsageGate, unlockUsageGate } from "../services/usagePauseService.js";
 
 export const sessionsRouter = Router();
 
@@ -41,6 +42,17 @@ sessionsRouter.param("id", (_req, res, next, id: string) => {
     return;
   }
   sendErrorResponse(res, invalidSessionIdError(id));
+});
+
+/** Asked by the usage-pause hook before each of the session's tool calls. */
+sessionsRouter.get("/:id/usage-gate", async (req, res) => {
+  res.json(await checkUsageGate(req.params.id));
+});
+
+/** "destravar" typed in the session: no more pauses for it until the limit resets. */
+sessionsRouter.post("/:id/usage-gate/unlock", (req, res) => {
+  unlockUsageGate(req.params.id);
+  res.json({ success: true });
 });
 
 sessionsRouter.get("/", async (_req, res) => {
