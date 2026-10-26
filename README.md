@@ -4,6 +4,40 @@ Local web app for managing [Claude CLI](https://claude.com/claude-code) sessions
 `*.jsonl` files `claude` writes to `~/.claude/projects` and lets you browse, resume, organize,
 and clean them up. Everything runs on your machine — no external server involved.
 
+## Install & run
+
+Needs Linux, [Node.js](https://nodejs.org/) 20+ and the [Claude CLI](https://claude.com/claude-code)
+logged in (`claude --version` works in a new terminal).
+
+```bash
+git clone https://github.com/vitortraut95/claude-cli-local-session-manager.git
+cd claude-cli-local-session-manager
+corepack enable && yarn install
+./install-shortcut.sh
+```
+
+Then click the **Claude Session Manager** icon (Desktop or application menu). It opens a terminal
+running the app and the browser at http://localhost:58230; clicking it again while it's up just
+opens the browser. Stop the app by closing that terminal.
+
+> Clone it wherever you like, but **don't move or rename the folder afterwards**: the Claude CLI
+> ties each session to the exact path it was started in, and the shortcut points at that path too.
+> If you do move it, rerun `./install-shortcut.sh` from the new place.
+
+<details>
+<summary>Without the shortcut, ports, and removing the shortcut</summary>
+
+- Run it by hand: `yarn dev` in the repo folder (Ctrl+C stops it).
+- Frontend: http://localhost:58230 · Backend: http://localhost:58231 (Vite proxies the API to it).
+- Remove the shortcut:
+
+  ```bash
+  rm -f ~/.local/share/applications/claude-session-manager.desktop ~/Desktop/claude-session-manager.desktop
+  update-desktop-database ~/.local/share/applications 2>/dev/null
+  ```
+
+</details>
+
 ## Features
 
 - **Session list** — title, project, branch, last-updated/active time, and a session-size meter
@@ -97,54 +131,6 @@ and clean them up. Everything runs on your machine — no external server involv
   `origin/main`. With local changes (uncommitted/new files or unpushed commits) it never runs on
   its own — the button turns amber and asks before discarding them
 - pt/en language switcher
-
-## Prerequisites
-
-- **Linux.** Windows/macOS aren't supported.
-- [Node.js](https://nodejs.org/) 20+ with [Corepack](https://nodejs.org/api/corepack.html) enabled
-- [Claude CLI](https://claude.com/claude-code) installed, logged in, and working from your
-  terminal as the `claude` command — confirm with `claude --version` before running this app. Every
-  feature here (listing sessions, resuming, "New task", etc.) either reads `~/.claude/projects`
-  directly or shells out to this same `claude` binary, so if it's not on `PATH` in a fresh shell,
-  nothing in this app will work either.
-
-## Install & run
-
-```bash
-git clone https://github.com/vitortraut95/claude-cli-local-session-manager.git
-cd claude-cli-local-session-manager
-corepack enable
-yarn install
-yarn dev
-```
-
-- Frontend: http://localhost:58230
-- Backend: http://localhost:58231 (Vite proxies `/sessions` to this port)
-
-Stop the app by closing the terminal running `yarn dev`.
-
-> Clone it wherever you like — nesting depth doesn't matter, `yarn dev` works the same from
-> `~/claude-cli-local-session-manager` or `~/dev/tools/claude-cli-local-session-manager`. The one
-> real rule: **don't move or rename the folder after that.** The Claude CLI ties each session to
-> the exact absolute path it was started in, so moving it orphans existing sessions
-> ("directory missing" in the list). If you've also run `./install-shortcut.sh` (below), its
-> desktop icon/Warp config bakes in that same absolute path — if you do move the folder, just
-> rerun `./install-shortcut.sh` from the new location to regenerate it.
-
-## Desktop shortcut Linux (optional)
-
-```bash
-./install-shortcut.sh
-```
-
-Adds a **Claude Session Manager** icon to the Desktop and application menu.
-
-Remove code:
-
-```bash
-rm -f ~/.local/share/applications/claude-session-manager.desktop ~/Desktop/claude-session-manager.desktop
-update-desktop-database ~/.local/share/applications 2>/dev/null
-```
 
 ## Structure
 
