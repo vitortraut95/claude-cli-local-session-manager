@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { stat } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import type { UserPreferences } from "./preferencesService.js";
 import { stopPreviewsIn } from "./previewService.js";
 import { directoryExists, getActiveResumeSessionIds } from "./sessionService.js";
 import { getUserSkillsDir } from "./skillsHubService.js";
 import { launchTaskTerminal } from "./taskService.js";
-import { expandHome } from "./workspaceService.js";
+import { firstWorkspaceDir } from "./workspaceService.js";
 import { prepareWorktreeBestEffort } from "./worktreeSetupService.js";
 import { API_PORT } from "../utils/apiPort.js";
 import {
@@ -55,15 +54,6 @@ async function resolveTestSkill(prefs: UserPreferences): Promise<string> {
     );
   }
   return skill;
-}
-
-/** Where test sessions open: the first existing workspace dir, else the home dir. */
-async function testSessionDir(prefs: UserPreferences): Promise<string> {
-  for (const dir of prefs.workspaceDirs ?? []) {
-    const expanded = expandHome(dir);
-    if (await directoryExists(expanded)) return expanded;
-  }
-  return os.homedir();
 }
 
 function escapeRegExp(text: string): string {
@@ -211,20 +201,21 @@ export type TestLaunchOutcome = {
 };
 
 /** Launches a queue entry of kind "test". A repo after the first that can't be prepared doesn't
- *  stop the test (its error is returned); the first one does. */
+ *  stop the test (its error is returned); the first one does. With `noRepo`, the skill runs with
+ *  no worktree at all. */
 export async function launchTestEntry(
   entry: QueueEntry,
   prefs: UserPreferences,
 ): Promise<TestLaunchOutcome | null> {
-  const [mainFolder, ...extraFolders] = entry.repos;
-  if (!mainFolder) return null;
+  const [mainFolder] = entry.repos;
+  if (!mainFolder && !entry.noRepo) return null;
   const skill = await resolveTestSkill(prefs);
 
   const worktrees: string[] = [];
   const linked: string[] = [];
   const extraErrors: string[] = [];
   let mainBranch = "";
-  for (const folder of [mainFolder, ...extraFolders]) {
+  for (const folder of entry.repos) {
     try {
       const repoRoot = (await getRepoRoot(folder)) ?? folder;
       const branch = await resolveTestBranch(repoRoot, entry.key, entry.branch);
@@ -249,7 +240,7 @@ export async function launchTestEntry(
     `-H 'Content-Type: application/json' -d '{"status":"done"}'`;
   const prompt = [
     `/${skill} ${link}`,
-    text.worktrees.replace("{dirs}", worktrees.join(", ")),
+    worktrees.length > 0 ? text.worktrees.replace("{dirs}", worktrees.join(", ")) : "",
     linked.length > 0 ? text.sharedNodeModules.replace("{dirs}", linked.join(", ")) : "",
     extraErrors.length > 0 ? text.failedRepos.replace("{errors}", extraErrors.join("; ")) : "",
     text.result,
@@ -262,7 +253,7 @@ export async function launchTestEntry(
   await markTestSession(sessionId, entry.key, worktrees);
   try {
     await launchTaskTerminal({
-      worktreePath: await testSessionDir(prefs),
+      worktreePath: await firstWorkspaceDir(prefs),
       prompt,
       permissionModeAuto: prefs.taskTestPermissionModeAuto,
       repoRoot: "",

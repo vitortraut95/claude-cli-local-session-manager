@@ -1,5 +1,8 @@
 import {
+  Code2,
   ExternalLink,
+  FlaskConical,
+  FolderOpen,
   FolderPlus,
   GripVertical,
   ListTodo,
@@ -37,6 +40,7 @@ const POLL_MS = 10_000;
 /** The optional (older-backend) fields resolved, so the rows never deal with `undefined`. */
 type DraftEntry = Pick<QueueEntry, "key" | "link" | "repos"> & {
   kind: QueueKind;
+  noRepo: boolean;
   branchPrefix: string | null;
   branch: string | null;
   baseBranch: string | null;
@@ -62,16 +66,39 @@ function branchNameFor(entry: { key: string; branchPrefix?: string | null }): st
   return entry.branchPrefix ? `${entry.branchPrefix}/${entry.key}` : entry.key;
 }
 
-/** A test needs no branch prefix: it tests the branch the task already has. */
+/** Repo select value for "no repo": the session opens in the folder the repos live in. */
+const NO_REPO_VALUE = "__no_repo__";
+
+/** A test needs no branch prefix (it tests the branch the task already has), and neither does a
+ *  task with no repo (no branch is made). */
 function isMissingSetup(entry: DraftEntry): boolean {
+  if (entry.noRepo) return false;
   return entry.repos.length === 0 || (entry.kind === "dev" && entry.branchPrefix === null);
 }
+
+const KIND_STYLES: Record<QueueKind, { icon: typeof Code2; active: string; badge: string }> = {
+  dev: {
+    icon: Code2,
+    active:
+      "border-indigo-500 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500/20 " +
+      "dark:border-indigo-400 dark:bg-indigo-950/50 dark:text-indigo-300",
+    badge: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300",
+  },
+  test: {
+    icon: FlaskConical,
+    active:
+      "border-teal-500 bg-teal-50 text-teal-700 ring-2 ring-teal-500/20 " +
+      "dark:border-teal-400 dark:bg-teal-950/50 dark:text-teal-300",
+    badge: "bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300",
+  },
+};
 
 function toDraft({
   key,
   link,
   kind,
   repos,
+  noRepo,
   branchPrefix,
   branch,
   baseBranch,
@@ -85,6 +112,7 @@ function toDraft({
     link,
     kind: kind ?? "dev",
     repos,
+    noRepo: noRepo ?? false,
     branchPrefix: branchPrefix ?? null,
     branch: branch ?? null,
     baseBranch: baseBranch ?? null,
@@ -122,7 +150,8 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
   const [pasteRepo, setPasteRepo] = useState("");
   // No default on purpose: env/feature/fix/none changes what the pipeline does with the branch.
   const [pastePrefix, setPastePrefix] = useState<string | null>(null);
-  const [pasteKind, setPasteKind] = useState<QueueKind>("dev");
+  // Chosen first: the other fields only show up once it is.
+  const [pasteKind, setPasteKind] = useState<QueueKind | null>(null);
   // "" = each repo's default branch.
   const [pasteBase, setPasteBase] = useState("");
   const [pasteUseLocalBase, setPasteUseLocalBase] = useState(false);
@@ -181,6 +210,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
           return {
             ...entry,
             repos: server.launchedAt ? server.repos : entry.repos,
+            noRepo: server.launchedAt ? (server.noRepo ?? false) : entry.noRepo,
             kind: server.launchedAt ? (server.kind ?? "dev") : entry.kind,
             branchPrefix: server.launchedAt ? (server.branchPrefix ?? null) : entry.branchPrefix,
             branch: server.launchedAt ? (server.branch ?? null) : entry.branch,
@@ -260,6 +290,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
     (status?.launchingKeys?.includes(key) ?? false);
 
   const handleAdd = () => {
+    if (!pasteKind) return;
     const pasted = parsePastedTasks(pasteText);
     if (pasted.length === 0) {
       showToast(t("taskQueueModal.noneFound"), "error");
@@ -273,7 +304,8 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
       ...fresh.map((task) => ({
         ...task,
         kind: pasteKind,
-        repos: pasteRepo ? [pasteRepo] : [],
+        repos: pasteRepo && pasteRepo !== NO_REPO_VALUE ? [pasteRepo] : [],
+        noRepo: pasteRepo === NO_REPO_VALUE,
         branchPrefix: pasteKind === "dev" ? pastePrefix : null,
         branch: null,
         baseBranch: pasteKind === "dev" ? pasteBase.trim() || null : null,
@@ -300,6 +332,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
           link,
           kind,
           repos,
+          noRepo,
           branchPrefix,
           branch,
           baseBranch,
@@ -310,6 +343,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
           link,
           kind,
           repos,
+          noRepo,
           branchPrefix,
           branch,
           baseBranch,
@@ -449,20 +483,74 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
     );
   };
 
-  const renderKindSelect = (
-    value: QueueKind,
+  /** Big cards (with what each kind does) for the paste form, a compact toggle in the rows. */
+  const renderKindPicker = (
+    value: QueueKind | null,
     onChange: (kind: QueueKind) => void,
-    className = "",
+    large: boolean,
   ) => (
-    <Select
-      value={value}
-      onChange={(event) => onChange(event.target.value as QueueKind)}
+    <div
+      role="radiogroup"
       aria-label={t("taskQueueModal.kindAriaLabel")}
-      className={className}
+      className={large ? "grid grid-cols-2 gap-3" : "flex gap-1.5"}
     >
-      <option value="dev">{t("taskQueueModal.kind.dev")}</option>
-      <option value="test">{t("taskQueueModal.kind.test")}</option>
-    </Select>
+      {(["dev", "test"] as const).map((kind) => {
+        const { icon: Icon, active } = KIND_STYLES[kind];
+        const selected = value === kind;
+        return (
+          <button
+            key={kind}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(kind)}
+            className={`flex items-center rounded-lg border text-left transition-colors ${
+              selected
+                ? active
+                : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800/60"
+            } ${large ? "gap-3 p-3" : "gap-1.5 px-2 py-1 text-xs font-medium"}`}
+          >
+            <Icon className={large ? "h-7 w-7 shrink-0" : "h-3.5 w-3.5"} />
+            {large ? (
+              <span className="flex flex-col">
+                <span className="text-sm font-semibold">{t(`taskQueueModal.kind.${kind}`)}</span>
+                <span className="text-xs opacity-80">{t(`taskQueueModal.kind.${kind}.hint`)}</span>
+              </span>
+            ) : (
+              t(`taskQueueModal.kind.${kind}`)
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const renderKindBadge = (kind: QueueKind) => {
+    const { icon: Icon, badge } = KIND_STYLES[kind];
+    return (
+      <span
+        className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${badge}`}
+      >
+        <Icon className="h-3 w-3" /> {t(`taskQueueModal.kind.${kind}`)}
+      </span>
+    );
+  };
+
+  const renderNoRepoChip = (entry: DraftEntry, removable: boolean) => (
+    <span className="flex items-center gap-1 rounded-md bg-gray-100 py-0.5 pl-2 pr-1 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+      <FolderOpen className="h-3 w-3" />
+      {t("taskQueueModal.noRepo")}
+      {removable && (
+        <button
+          type="button"
+          onClick={() => updateEntry(entry.key, { noRepo: false })}
+          aria-label={t("taskQueueModal.removeRepo")}
+          className="rounded p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </span>
   );
 
   return (
@@ -492,86 +580,95 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
         />
 
         <div className="flex flex-col gap-3">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-              {t("taskQueueModal.pasteLabel")}
+          <div>
+            <span className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">
+              {t("taskQueueModal.kindLabel")}
             </span>
-            <textarea
-              value={pasteText}
-              onChange={(event) => setPasteText(event.target.value)}
-              placeholder={t("taskQueueModal.pastePlaceholder")}
-              rows={4}
-              className={TEXTAREA_CLASSNAME}
-              autoFocus
-            />
-          </label>
-          <div className="flex flex-col gap-2.5">
-            <SettingRow
-              controlWidth="w-64"
-              label={t("taskQueueModal.pasteRepo")}
-              description={t("taskQueueModal.pasteRepo.hint")}
-              control={
-                <Select
-                  value={pasteRepo}
-                  onChange={(event) => setPasteRepo(event.target.value)}
-                  aria-label={t("taskQueueModal.pasteRepo")}
-                >
-                  <option value="">{t("taskQueueModal.pasteRepoNone")}</option>
-                  {projects.map((project) => (
-                    <option key={project.path} value={project.path}>
-                      {project.label}
-                    </option>
-                  ))}
-                </Select>
-              }
-            />
-            <SettingRow
-              controlWidth="w-64"
-              label={t("taskQueueModal.kindLabel")}
-              description={t("taskQueueModal.kind.hint")}
-              control={renderKindSelect(pasteKind, setPasteKind)}
-            />
-            {pasteKind === "dev" && (
-              <>
-                <SettingRow
-                  controlWidth="w-64"
-                  label={t("taskQueueModal.pastePrefix")}
-                  description={t("taskQueueModal.pastePrefix.hint")}
-                  control={renderPrefixSelect(pastePrefix, setPastePrefix)}
+            {renderKindPicker(pasteKind, setPasteKind, true)}
+          </div>
+          {pasteKind === null ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {t("taskQueueModal.chooseKindFirst")}
+            </p>
+          ) : (
+            <>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {t("taskQueueModal.pasteLabel")}
+                </span>
+                <textarea
+                  value={pasteText}
+                  onChange={(event) => setPasteText(event.target.value)}
+                  placeholder={t("taskQueueModal.pastePlaceholder")}
+                  rows={4}
+                  className={TEXTAREA_CLASSNAME}
+                  autoFocus
                 />
+              </label>
+              <div className="flex flex-col gap-2.5">
                 <SettingRow
                   controlWidth="w-64"
-                  label={t("newTaskModal.baseBranchLabel")}
-                  description={t("taskQueueModal.pasteBase.hint")}
+                  label={t("taskQueueModal.pasteRepo")}
+                  description={t("taskQueueModal.pasteRepo.hint")}
                   control={
-                    <Input
-                      type="text"
-                      value={pasteBase}
-                      onChange={(event) => setPasteBase(event.target.value)}
-                      placeholder={t("taskQueueModal.basePlaceholder")}
-                      aria-label={t("newTaskModal.baseBranchLabel")}
-                    />
+                    <Select
+                      value={pasteRepo}
+                      onChange={(event) => setPasteRepo(event.target.value)}
+                      aria-label={t("taskQueueModal.pasteRepo")}
+                    >
+                      <option value="">{t("taskQueueModal.pasteRepoNone")}</option>
+                      <option value={NO_REPO_VALUE}>{t("taskQueueModal.noRepoOption")}</option>
+                      {projects.map((project) => (
+                        <option key={project.path} value={project.path}>
+                          {project.label}
+                        </option>
+                      ))}
+                    </Select>
                   }
                 />
-                {pasteBase.trim() && (
-                  <label className="flex items-start gap-2 pl-[17rem] text-xs text-gray-500 dark:text-gray-400">
-                    <input
-                      type="checkbox"
-                      checked={pasteUseLocalBase}
-                      onChange={(event) => setPasteUseLocalBase(event.target.checked)}
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-gray-900 dark:accent-gray-100"
+                {pasteKind === "dev" && pasteRepo !== NO_REPO_VALUE && (
+                  <>
+                    <SettingRow
+                      controlWidth="w-64"
+                      label={t("taskQueueModal.pastePrefix")}
+                      description={t("taskQueueModal.pastePrefix.hint")}
+                      control={renderPrefixSelect(pastePrefix, setPastePrefix)}
                     />
-                    {t("newTaskModal.useLocalBaseBranchLabel")}
-                  </label>
+                    <SettingRow
+                      controlWidth="w-64"
+                      label={t("newTaskModal.baseBranchLabel")}
+                      description={t("taskQueueModal.pasteBase.hint")}
+                      control={
+                        <Input
+                          type="text"
+                          value={pasteBase}
+                          onChange={(event) => setPasteBase(event.target.value)}
+                          placeholder={t("taskQueueModal.basePlaceholder")}
+                          aria-label={t("newTaskModal.baseBranchLabel")}
+                        />
+                      }
+                    />
+                    {pasteBase.trim() && (
+                      <label className="flex items-start gap-2 pl-[17rem] text-xs text-gray-500 dark:text-gray-400">
+                        <input
+                          type="checkbox"
+                          checked={pasteUseLocalBase}
+                          onChange={(event) => setPasteUseLocalBase(event.target.checked)}
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-gray-900 dark:accent-gray-100"
+                        />
+                        {t("newTaskModal.useLocalBaseBranchLabel")}
+                      </label>
+                    )}
+                  </>
                 )}
-              </>
-            )}
-          </div>
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={handleAdd} disabled={!pasteText.trim()}>
-              {t("taskQueueModal.add")}
-            </Button>
-          </div>
+              </div>
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={handleAdd} disabled={!pasteText.trim()}>
+                  {t("taskQueueModal.add")}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
 
         <div>
@@ -675,11 +772,8 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
                           </span>
                         )}
                         {renderState(entry)}
-                        {locked && entry.kind === "test" && (
-                          <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700 dark:bg-teal-950/50 dark:text-teal-300">
-                            {t("taskQueueModal.kind.test")}
-                          </span>
-                        )}
+                        {locked && renderKindBadge(entry.kind)}
+                        {locked && entry.noRepo && renderNoRepoChip(entry, false)}
                         {locked && renderRepoChips(entry, false)}
                       </div>
                       <div className="flex shrink-0 items-center">
@@ -711,56 +805,59 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
                     </div>
 
                     {locked ? (
-                      <p className="flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-gray-400">
-                        {entry.kind === "test" ? (
-                          <span>
-                            {t("taskQueueModal.testBranchLabel")}:{" "}
-                            <code className="font-mono text-gray-700 dark:text-gray-300">
-                              {entry.branch ?? t("taskQueueModal.testBranchPlaceholder")}
-                            </code>
-                          </span>
-                        ) : (
-                          <>
+                      !entry.noRepo && (
+                        <p className="flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-gray-400">
+                          {entry.kind === "test" ? (
                             <span>
-                              {t("taskQueueModal.branchLabel")}:{" "}
+                              {t("taskQueueModal.testBranchLabel")}:{" "}
                               <code className="font-mono text-gray-700 dark:text-gray-300">
-                                {branchNameFor(entry)}
+                                {entry.branch ?? t("taskQueueModal.testBranchPlaceholder")}
                               </code>
                             </span>
-                            <span>
-                              {t("taskQueueModal.baseLabel")}:{" "}
-                              <code className="font-mono text-gray-700 dark:text-gray-300">
-                                {entry.baseBranch ?? t("taskQueueModal.basePlaceholder")}
-                                {entry.useLocalBaseBranch && ` (${t("taskQueueModal.baseLocal")})`}
-                              </code>
-                            </span>
-                          </>
-                        )}
-                      </p>
+                          ) : (
+                            <>
+                              <span>
+                                {t("taskQueueModal.branchLabel")}:{" "}
+                                <code className="font-mono text-gray-700 dark:text-gray-300">
+                                  {branchNameFor(entry)}
+                                </code>
+                              </span>
+                              <span>
+                                {t("taskQueueModal.baseLabel")}:{" "}
+                                <code className="font-mono text-gray-700 dark:text-gray-300">
+                                  {entry.baseBranch ?? t("taskQueueModal.basePlaceholder")}
+                                  {entry.useLocalBaseBranch &&
+                                    ` (${t("taskQueueModal.baseLocal")})`}
+                                </code>
+                              </span>
+                            </>
+                          )}
+                        </p>
+                      )
                     ) : (
                       <div className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 text-xs text-gray-500 dark:text-gray-400">
                         <span>{t("taskQueueModal.kindLabel")}</span>
-                        <div className="w-48">
-                          {renderKindSelect(
-                            entry.kind,
-                            (kind) => updateEntry(entry.key, { kind }),
-                            "py-1",
-                          )}
-                        </div>
+                        {renderKindPicker(
+                          entry.kind,
+                          (kind) => updateEntry(entry.key, { kind }),
+                          false,
+                        )}
 
                         <span>{t("taskQueueModal.reposLabel")}</span>
                         <div className="flex flex-wrap items-center gap-1.5">
+                          {entry.noRepo && renderNoRepoChip(entry, true)}
                           {renderRepoChips(entry, true)}
-                          {available.length > 0 && (
+                          {!entry.noRepo && (available.length > 0 || entry.repos.length === 0) && (
                             <div className="w-48">
                               <Select
                                 icon={<FolderPlus className="h-4 w-4" />}
                                 value=""
                                 onChange={(event) => {
-                                  if (event.target.value) {
-                                    updateEntry(entry.key, {
-                                      repos: [...entry.repos, event.target.value],
-                                    });
+                                  const value = event.target.value;
+                                  if (value === NO_REPO_VALUE) {
+                                    updateEntry(entry.key, { noRepo: true, repos: [] });
+                                  } else if (value) {
+                                    updateEntry(entry.key, { repos: [...entry.repos, value] });
                                   }
                                 }}
                                 aria-label={t("taskQueueModal.addRepo")}
@@ -771,6 +868,11 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
                                 }
                               >
                                 <option value="">{t("taskQueueModal.addRepo")}</option>
+                                {entry.repos.length === 0 && (
+                                  <option value={NO_REPO_VALUE}>
+                                    {t("taskQueueModal.noRepoOption")}
+                                  </option>
+                                )}
                                 {available.map((project) => (
                                   <option key={project.path} value={project.path}>
                                     {project.label}
@@ -779,14 +881,14 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
                               </Select>
                             </div>
                           )}
-                          {entry.repos.length === 0 && (
+                          {entry.repos.length === 0 && !entry.noRepo && (
                             <span className="text-amber-600 dark:text-amber-400">
                               {t("taskQueueModal.missingRepo")}
                             </span>
                           )}
                         </div>
 
-                        {entry.kind === "test" ? (
+                        {entry.noRepo ? null : entry.kind === "test" ? (
                           <>
                             <span>{t("taskQueueModal.testBranchLabel")}</span>
                             <div className="w-72">
