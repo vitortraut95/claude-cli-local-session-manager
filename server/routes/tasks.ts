@@ -31,10 +31,6 @@ import {
   resolveBaseBranch,
 } from "../services/taskService.js";
 import { getHeavyRunHookStatus, setHeavyRunHookInstalled } from "../services/heavyRunService.js";
-import {
-  getUsagePauseHookStatus,
-  setUsagePauseHookInstalled,
-} from "../services/usagePauseService.js";
 import { stopPreviewsIn, taskWorktrees } from "../services/previewService.js";
 import { getTaskQueue, saveTaskQueue } from "../services/taskQueueService.js";
 import {
@@ -269,15 +265,6 @@ tasksRouter.get("/heavy-run/hook", async (_req, res) => {
 
 tasksRouter.put("/heavy-run/hook", async (req, res) => {
   res.json(await setHeavyRunHookInstalled(extractBooleanField(req.body, "installed", true)));
-});
-
-/** The hook that pauses running sessions near the plan limits (`usagePauseService.ts`). */
-tasksRouter.get("/usage-pause/hook", async (_req, res) => {
-  res.json(await getUsagePauseHookStatus());
-});
-
-tasksRouter.put("/usage-pause/hook", async (req, res) => {
-  res.json(await setUsagePauseHookInstalled(extractBooleanField(req.body, "installed", true)));
 });
 
 // Tasks spanning several repos. `:key` may also be a ticket URL.

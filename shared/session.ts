@@ -55,9 +55,6 @@ export type Session = {
   /** Local preview servers (docker containers / listening processes) serving this session's
    *  folder or its task's worktrees — the card's URLs. */
   previews?: SessionPreview[];
-  /** The usage-pause hook is holding this session until the plan limit resets. Optional: an
-   *  older backend omits it. */
-  usagePaused?: boolean;
 };
 
 export type SessionPreview = {

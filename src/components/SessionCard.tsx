@@ -4,15 +4,14 @@ import {
   GitBranch,
   GitFork,
   GitPullRequest,
-  Info,
   Layers,
   Loader2,
   MessageSquare,
-  PauseCircle,
   Pencil,
   Play,
   Share,
   Trash2,
+  Info,
 } from "lucide-react";
 import { useState } from "react";
 import jenkinsIcon from "../assets/jenkins.svg";
@@ -314,14 +313,6 @@ export function SessionCard({
             >
               <Info className="h-3.5 w-3.5" />
             </button>
-          </Tooltip>
-        )}
-        {session.usagePaused && (
-          <Tooltip content={t("sessionCard.usagePaused.tooltip")}>
-            <span className="flex h-5 items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 text-xs font-medium text-amber-800 shadow-sm dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300">
-              <PauseCircle className="h-3.5 w-3.5" />
-              {t("sessionCard.usagePaused.label")}
-            </span>
           </Tooltip>
         )}
       </div>

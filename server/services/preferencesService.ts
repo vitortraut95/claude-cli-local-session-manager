@@ -51,8 +51,6 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     previewSlots: 5,
     previewMemoryMaxGb: 4,
     launchSpacingMinutes: 5,
-    pauseSessionPercent: 90,
-    pauseWeeklyPercent: 98,
   },
   worktreeSetup: {},
   terminalLayout: "tabs",
@@ -138,12 +136,6 @@ function parseOrchestrator(value: unknown): OrchestratorPreferences {
     launchSpacingMinutes: isIntInRange(raw.launchSpacingMinutes, 0, 60)
       ? raw.launchSpacingMinutes
       : fallback.launchSpacingMinutes,
-    pauseSessionPercent: isIntInRange(raw.pauseSessionPercent, 1, 100)
-      ? raw.pauseSessionPercent
-      : fallback.pauseSessionPercent,
-    pauseWeeklyPercent: isIntInRange(raw.pauseWeeklyPercent, 1, 100)
-      ? raw.pauseWeeklyPercent
-      : fallback.pauseWeeklyPercent,
   };
 }
 
@@ -161,9 +153,7 @@ export function isOrchestratorPreferences(value: unknown): value is Orchestrator
     (raw.testCpuPercent === undefined || isIntInRange(raw.testCpuPercent, 50, 6400)) &&
     (raw.previewSlots === undefined || isIntInRange(raw.previewSlots, 1, 16)) &&
     (raw.previewMemoryMaxGb === undefined || isIntInRange(raw.previewMemoryMaxGb, 1, 64)) &&
-    (raw.launchSpacingMinutes === undefined || isIntInRange(raw.launchSpacingMinutes, 0, 60)) &&
-    (raw.pauseSessionPercent === undefined || isIntInRange(raw.pauseSessionPercent, 1, 100)) &&
-    (raw.pauseWeeklyPercent === undefined || isIntInRange(raw.pauseWeeklyPercent, 1, 100))
+    (raw.launchSpacingMinutes === undefined || isIntInRange(raw.launchSpacingMinutes, 0, 60))
   );
 }
 

@@ -141,8 +141,3 @@ export type HeavyRunHookStatus = {
   /** What `heavy-run` is called as — the path the hook tells Claude to use. */
   heavyRunPath: string;
 };
-
-export type UsagePauseHookStatus = { installed: boolean };
-
-/** What the usage-pause hook asks before each tool call: wait (and why) or go ahead. */
-export type UsageGate = { pause: boolean; reason: string | null };

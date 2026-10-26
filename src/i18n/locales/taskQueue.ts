@@ -210,32 +210,6 @@ export const taskQueue = {
     "Each preview also gets 2 CPUs.",
     "Cada preview também fica com 2 CPUs.",
   ),
-  "scheduler.usagePause.title": dict("Pause at the plan limit", "Pausa no limite do plano"),
-  "scheduler.usagePause.on": dict(
-    "On — running sessions wait near the limit and carry on once it resets.",
-    "Ligado — sessões rodando esperam perto do limite e seguem quando a cota reseta.",
-  ),
-  "scheduler.usagePause.off": dict(
-    "Off — only new launches wait for the limit; running sessions keep going.",
-    "Desligado — só novas aberturas esperam o limite; sessões rodando seguem.",
-  ),
-  "scheduler.usagePause.explanation": dict(
-    'A hook makes every Claude session wait before its next tool once a limit below is reached (the plan usage is re-read every 5 min); it carries on by itself when the limit resets or you raise the %. To go on anyway, press Esc in that session and type "destravar" — it unlocks that session until the reset, then send what you want.',
-    'Um hook faz toda sessão do Claude esperar antes da próxima ferramenta quando um limite abaixo é atingido (o uso do plano é relido a cada 5 min); ela segue sozinha quando a cota reseta ou você aumenta o %. Para seguir mesmo assim, aperte Esc na sessão e digite "destravar" — destrava aquela sessão até o reset; depois mande o que quiser.',
-  ),
-  "scheduler.setting.pauseSession": dict("Pause at 5h usage (%)", "Pausar com uso 5h em (%)"),
-  "scheduler.setting.pauseSession.hint": dict(
-    "The 5-hour window of the plan.",
-    "A janela de 5 horas do plano.",
-  ),
-  "scheduler.setting.pauseWeekly": dict(
-    "Pause at weekly usage (%)",
-    "Pausar com uso semanal em (%)",
-  ),
-  "scheduler.setting.pauseWeekly.hint": dict(
-    "Any weekly limit of the plan.",
-    "Qualquer limite semanal do plano.",
-  ),
   "scheduler.tests.title": dict("Heavy commands", "Comandos pesados"),
   "scheduler.tests.on": dict(
     "On — every session's heavy commands go through heavy-run.",
