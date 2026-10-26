@@ -4,6 +4,7 @@ import path from "node:path";
 import { getUserPreferences, type UserPreferences } from "./preferencesService.js";
 import { directoryExists } from "./sessionService.js";
 import { getKnownProjectFolders } from "./taskService.js";
+import type { WorkspaceDirStatus, WorkspaceDirSuggestion } from "../../shared/preferences.js";
 
 /**
  * "Workspace dirs" — the folders a user keeps their repos in (e.g. `~/git`). Each is scanned one
@@ -49,16 +50,6 @@ export async function findReposIn(dir: string): Promise<string[]> {
   return repos.filter((repo): repo is string => repo !== null).sort();
 }
 
-export type WorkspaceDirSuggestion = {
-  dir: string;
-  /** Repos found inside it right now. */
-  repoCount: number;
-  /** How many repos you've already used with Claude (sessions / "New task") live directly in it. */
-  knownRepoCount: number;
-  /** Preselected in the UI — see `suggestWorkspaceDirs`. */
-  recommended: boolean;
-};
-
 /** Parent folders of the repos this app already knows about, most-used first. `~` is offered but
  *  never preselected. */
 export async function suggestWorkspaceDirs(): Promise<WorkspaceDirSuggestion[]> {
@@ -88,8 +79,6 @@ export async function suggestWorkspaceDirs(): Promise<WorkspaceDirSuggestion[]> 
     recommended: s.dir !== home && (s === top || s.knownRepoCount >= 2),
   }));
 }
-
-export type WorkspaceDirStatus = { dir: string; exists: boolean; repoCount: number };
 
 /** Normalizes (`~` expanded, absolute) and checks each folder for the editor's per-row hint. */
 export async function inspectWorkspaceDirs(dirs: string[]): Promise<WorkspaceDirStatus[]> {

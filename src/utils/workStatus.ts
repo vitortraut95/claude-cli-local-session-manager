@@ -1,8 +1,7 @@
 import type { TranslationKey } from "../i18n/translations";
-import type { WorkStatus } from "../types/session";
+import { WORK_STATUSES, type WorkStatus } from "../../shared/session";
 
-/** In the order a task moves through them. */
-export const WORK_STATUSES: WorkStatus[] = ["todo", "in_progress", "waiting_user", "done"];
+export { WORK_STATUSES };
 
 export const WORK_STATUS_LABEL_KEYS: Record<WorkStatus, TranslationKey> = {
   todo: "workStatus.todo",
@@ -26,7 +25,7 @@ export const WORK_STATUS_CLASSES: Record<WorkStatus | "none", string> = {
 export type WorkStatusFilter = "" | "open" | "none" | WorkStatus;
 
 export function parseWorkStatusFilter(raw: string): WorkStatusFilter {
-  return raw === "open" || raw === "none" || (WORK_STATUSES as string[]).includes(raw)
+  return raw === "open" || raw === "none" || (WORK_STATUSES as readonly string[]).includes(raw)
     ? (raw as WorkStatusFilter)
     : "";
 }

@@ -1,35 +1,31 @@
 import axios from "axios";
 import { withServerErrorMessage } from "../utils/apiClient";
 import type { ResumeOpenResult } from "./sessionsApi";
+import type {
+  ClaudeUsageStatus,
+  LimuxInstallResult,
+  LimuxStatus,
+  UpdateJobStatus,
+  UpdateStatus,
+} from "../../shared/system";
+export type {
+  ClaudeExtraUsage,
+  ClaudeUsageLimit,
+  ClaudeUsageStatus,
+  LimuxInstallResult,
+  LimuxStatus,
+  UpdateJobStatus,
+  UpdateStatus,
+} from "../../shared/system";
 
 const client = axios.create({
   baseURL: "/system",
 });
 
-export type UpdateStatus = {
-  branch: string;
-  tracking: string;
-  ahead: number;
-  behind: number;
-  updateAvailable: boolean;
-  /** Uncommitted/untracked files or unpushed commits the update would discard: no auto-update,
-   *  and "Update app" asks before forcing. Optional: older backend. */
-  hasLocalChanges?: boolean;
-  /** `git status --porcelain` lines (only the first ones). */
-  changedFiles?: string[];
-  changedFileCount?: number;
-};
-
 export async function fetchUpdateStatus(): Promise<UpdateStatus> {
   const { data } = await client.get<UpdateStatus>("/update-status");
   return data;
 }
-
-export type UpdateJobStatus =
-  | { state: "idle" }
-  | { state: "running"; startedAt: string }
-  | { state: "success"; branch: string; pullSummary: string; finishedAt: string }
-  | { state: "error"; message: string; code?: string; finishedAt: string };
 
 /** `force` = discard local changes (the user confirmed); without it the server refuses them. */
 export async function applyUpdate(force = false): Promise<void> {
@@ -40,32 +36,6 @@ export async function fetchUpdateJobStatus(): Promise<UpdateJobStatus> {
   const { data } = await client.get<UpdateJobStatus>("/update-job");
   return data;
 }
-
-export type ClaudeUsageLimit = {
-  kind: string;
-  group: string;
-  percent: number;
-  severity: string;
-  resetsAt: string | null;
-  isActive: boolean;
-};
-
-export type ClaudeExtraUsage = {
-  isEnabled: boolean;
-  monthlyLimit: number;
-  usedCredits: number;
-  utilization: number | null;
-  currency: string;
-};
-
-export type ClaudeUsageStatus = {
-  limits: ClaudeUsageLimit[];
-  extraUsage: ClaudeExtraUsage | null;
-  /** When this reading was fetched. Optional: older backend. */
-  fetchedAt?: string;
-  /** Anthropic is rate-limiting the usage endpoint: the last good reading, kept meanwhile. */
-  stale?: boolean;
-};
 
 /** `forceRefresh` bypasses the server's short cache. */
 export async function fetchUsageLimits(forceRefresh = false): Promise<ClaudeUsageStatus> {
@@ -94,24 +64,6 @@ export async function openTerminalGrid(): Promise<ResumeOpenResult> {
   );
   return data;
 }
-
-/** Limux install, as `GET /system/limux` reports it. */
-export type LimuxStatus = {
-  installed: boolean;
-  version: string | null;
-  /** Installed by this app under `~/.local`, not a system package. */
-  managed: boolean;
-  /** GitHub's latest release, or the bundled copy's version when offline. */
-  latest: string;
-  minVersion: string;
-  updateAvailable: boolean;
-  running: boolean;
-  missingLibs: string[];
-  /** `sudo apt install …` for `missingLibs`; null when nothing is missing. */
-  aptCommand: string | null;
-};
-
-export type LimuxInstallResult = LimuxStatus & { source: "github" | "bundled" };
 
 export async function fetchLimuxStatus(): Promise<LimuxStatus> {
   const { data } = await withServerErrorMessage(() => client.get<LimuxStatus>("/limux"));

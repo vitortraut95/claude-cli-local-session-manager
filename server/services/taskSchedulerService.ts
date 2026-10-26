@@ -21,6 +21,7 @@ import {
   updateQueueEntry,
   type QueueEntry,
 } from "../utils/taskStore.js";
+import type { SchedulerBlock, SchedulerStatus } from "../../shared/tasks.js";
 
 /**
  * Launches the task queue on its own: every `TICK_MS` it checks for room (live sessions, free
@@ -38,29 +39,6 @@ const TICK_MS = 15_000;
 const LAUNCH_GRACE_MS = 90_000;
 /** PSI `some avg10` above this = the machine is already stalling on memory. */
 const MAX_MEMORY_PRESSURE = 10;
-
-export type SchedulerBlock =
-  "paused" | "max_sessions" | "recent_launch" | "low_memory" | "memory_pressure" | "usage_limit";
-
-export type SchedulerStatus = {
-  enabled: boolean;
-  activeSessions: number;
-  maxSessions: number;
-  freeMemoryPercent: number | null;
-  minFreeMemoryPercent: number;
-  memoryPressure: number | null;
-  /** Highest Claude plan limit in use; null when it couldn't be read (not a block then). */
-  usagePercent: number | null;
-  maxUsagePercent: number;
-  /** Entries ready to launch (repo and branch prefix chosen, not launched, no error). */
-  waiting: number;
-  /** Why nothing would launch right now; null = there's room. */
-  blockedBy: SchedulerBlock | null;
-  /** An entry being launched at this moment, if any. */
-  launching: string | null;
-  /** Every entry being launched (the tick's and any "Start now"). */
-  launchingKeys: string[];
-};
 
 const pendingLaunches = new Map<string, number>();
 /** Entries being launched right now: the tick's and any "Start now". */

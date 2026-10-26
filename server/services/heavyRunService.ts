@@ -4,6 +4,7 @@ import path from "node:path";
 import { AppError } from "../utils/httpError.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import { posixShellQuote } from "./sessionService.js";
+import type { HeavyRunHookStatus } from "../../shared/tasks.js";
 
 /**
  * The `scripts/heavy-run-hook.mjs` PreToolUse hook in the user's `~/.claude/settings.json`, which
@@ -20,13 +21,6 @@ type ClaudeSettings = { hooks?: Record<string, HookMatcher[] | undefined> } & Re
   string,
   unknown
 >;
-
-export type HeavyRunHookStatus = {
-  installed: boolean;
-  settingsPath: string;
-  /** What `heavy-run` is called as — the path the hook tells Claude to use. */
-  heavyRunPath: string;
-};
 
 function settingsPath(): string {
   return path.join(os.homedir(), ".claude", "settings.json");

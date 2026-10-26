@@ -1,7 +1,7 @@
 import { GitFork, Loader2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
-import type { Session } from "../types/session";
+import type { Session } from "../../shared/session";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { Modal } from "./Modal";

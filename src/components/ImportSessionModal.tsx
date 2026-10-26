@@ -13,7 +13,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import * as sessionsApi from "../services/sessionsApi";
 import type { ImportConflictResolution } from "../services/sessionsApi";
-import type { SessionImportCandidate, SessionImportPreview } from "../types/session";
+import type { SessionImportCandidate, SessionImportPreview } from "../../shared/session";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { formatUpdatedAt } from "../utils/formatDate";
 import { formatBytes } from "../utils/sessionSize";

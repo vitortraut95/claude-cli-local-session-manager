@@ -2,6 +2,8 @@ import { appendFile, copyFile, lstat, readFile, readdir, stat, symlink } from "n
 import path from "node:path";
 import { getUserPreferences } from "./preferencesService.js";
 import { runGit } from "../utils/git.js";
+import type { WorktreeSetupResult } from "../../shared/tasks.js";
+export type { WorktreeSetupResult } from "../../shared/tasks.js";
 
 /**
  * Gives a fresh task worktree what git doesn't check out, per the repo's `worktreeSetup`
@@ -13,13 +15,6 @@ import { runGit } from "../utils/git.js";
 /** Deep enough for `packages/<name>` / `apps/<name>` workspaces. */
 const MAX_DEPTH = 3;
 const ENV_FILE = /^\.env(\..+)?$/;
-
-export type WorktreeSetupResult = {
-  /** Worktree-relative `node_modules` paths now linked to the main checkout's. */
-  linked: string[];
-  /** Worktree-relative `.env*` files copied over. */
-  copied: string[];
-};
 
 async function exists(target: string): Promise<boolean> {
   try {

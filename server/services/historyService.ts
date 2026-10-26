@@ -1,14 +1,14 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { HISTORY_FILE } from "../utils/history.js";
+import type { HistoryEvent, HistorySummary } from "../../shared/session.js";
+export type { HistoryEvent, HistorySummary } from "../../shared/session.js";
 
 /**
  * Reads `history.jsonl` back for a session card: the events tied to it and a summary of where
  * its task's time went. An event belongs to a session when it carries its task key or session id,
  * or — for heavy-run events, which only know their folder — ran inside its worktree.
  */
-
-export type HistoryEvent = { ts: string; type: string } & Record<string, unknown>;
 
 export async function readHistory(): Promise<HistoryEvent[]> {
   let raw: string;
@@ -60,26 +60,6 @@ export function belongsTo(event: HistoryEvent, target: HistoryTarget): boolean {
   }
   return false;
 }
-
-export type HistorySummary = {
-  /** From entering the queue to its session opening. */
-  queuedMs: number | null;
-  /** Scheduler blocks (any task's) while this one was waiting in line, by reason. */
-  queueBlocks: { reason: string; durationMs: number }[];
-  /** Time spent in each status, from its changes up to now. */
-  statusMs: Record<string, number>;
-  currentStatus: string | null;
-  /** First event to "done", when it got there. */
-  totalMs: number | null;
-  heavyRuns: number;
-  heavyFailed: number;
-  heavyOverCap: number;
-  heavySlotWaitS: number;
-  heavyMemoryWaitS: number;
-  heavyDurationS: number;
-  heavyBlocked: number;
-  errors: { ts: string; type: string; message: string }[];
-};
 
 const num = (value: unknown): number => (typeof value === "number" ? value : 0);
 

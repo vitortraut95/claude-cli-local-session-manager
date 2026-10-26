@@ -33,14 +33,7 @@ import {
   setSessionBranchOverride,
   upsertTask,
 } from "../utils/taskStore.js";
-
-export type ProjectFolderOption = {
-  path: string;
-  label: string;
-  /** In `recentProjectPaths` (vs. only found in a workspace dir). Only set by
-   *  `getRecentProjectFolders`. */
-  recent?: boolean;
-};
+import type { ProjectFolderOption, RepoInfo } from "../../shared/tasks.js";
 
 /** `<parent>/<name>` display label (a bare repo name can be ambiguous); just the name when there's
  *  no parent segment. */
@@ -141,15 +134,6 @@ async function recordUsedProjectPath(repoRoot: string): Promise<void> {
     // Best-effort.
   }
 }
-
-export type RepoInfo = {
-  repoRoot: string;
-  defaultBaseBranch: string;
-  /** A session is active with its working directory exactly at `repoRoot` (not a worktree) — the
-   *  one case where checking the branch out in the root would collide. Drives the worktree
-   *  checkbox's default. */
-  hasActiveSessionInRoot: boolean;
-};
 
 /** Prefills the "new task" source-branch field and the worktree checkbox's default. */
 export async function getRepoInfo(folderPath: string): Promise<RepoInfo> {

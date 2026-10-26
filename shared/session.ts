@@ -1,3 +1,8 @@
+/** In the order a task moves through them. */
+export const WORK_STATUSES = ["todo", "in_progress", "waiting_user", "done"] as const;
+/** Hand-set work status of a session or task. */
+export type WorkStatus = (typeof WORK_STATUSES)[number];
+
 export type Session = {
   id: string;
   title: string;
@@ -44,7 +49,7 @@ export type Session = {
   /** Every repo/branch of that task, this session's included. Only set when `taskKey` is. */
   taskRepos?: TaskRepoRef[];
   /** Hand-set work status: the task's when the session has a key, else the session's own. */
-  status?: "todo" | "in_progress" | "waiting_user" | "done" | null;
+  status?: WorkStatus | null;
   /** `history.jsonl` has events tied to this session or its task (the card's "info"). */
   hasHistory?: boolean;
   /** Local preview servers (docker containers / listening processes) serving this session's
@@ -54,6 +59,7 @@ export type Session = {
 
 export type SessionPreview = {
   kind: "docker" | "process";
+  /** Container name, or pid. */
   id: string;
   name: string;
   port: number;
@@ -65,7 +71,7 @@ export type SessionPreview = {
   running?: boolean;
 };
 
-/** One repo/branch of a multi-repo task — mirrors `server/utils/taskRepos.ts`. */
+/** One repo/branch of a multi-repo task (`server/utils/taskRepos.ts`). */
 export type TaskRepoRef = {
   repoRoot: string;
   project: string;
@@ -132,4 +138,37 @@ export type SessionImportResult = {
   importedAsCopy: boolean;
   overwritten: boolean;
   checkedOutBranch: string | null;
+};
+
+export type ImportConflictResolution = "overwrite" | "copy";
+
+export type ResumeOpenResult = {
+  resumed: { id: string; taskKey: string | null }[];
+  /** Left out because the session limit (`orchestrator.maxSessions`) was reached. */
+  skippedForLimit: number;
+  failed: { id: string; message: string }[];
+};
+
+export type ScanProgress = { total: number; done: number; scanning: boolean };
+
+export type HistoryEvent = { ts: string; type: string } & Record<string, unknown>;
+
+export type HistorySummary = {
+  /** From entering the queue to its session opening. */
+  queuedMs: number | null;
+  /** Scheduler blocks (any task's) while this one was waiting in line, by reason. */
+  queueBlocks: { reason: string; durationMs: number }[];
+  /** Time spent in each status, from its changes up to now. */
+  statusMs: Record<string, number>;
+  currentStatus: string | null;
+  /** First event to "done", when it got there. */
+  totalMs: number | null;
+  heavyRuns: number;
+  heavyFailed: number;
+  heavyOverCap: number;
+  heavySlotWaitS: number;
+  heavyMemoryWaitS: number;
+  heavyDurationS: number;
+  heavyBlocked: number;
+  errors: { ts: string; type: string; message: string }[];
 };

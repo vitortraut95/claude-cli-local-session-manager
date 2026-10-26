@@ -2,39 +2,23 @@ import { getDefaultBaseBranch } from "../utils/git.js";
 import { AppError, BadRequestError } from "../utils/httpError.js";
 import { isTaskKey, normalizeTaskKey } from "../utils/taskKeys.js";
 import { getTaskStore, linkRepoBranchToTask, upsertTask } from "../utils/taskStore.js";
-import type { Session, TaskRepoRef } from "../types/session.js";
+import type { Session } from "../../shared/session.js";
 import { collectTaskRepos } from "../utils/taskRepos.js";
 import { buildPrUrl, listSessions, SessionNotFoundError } from "./sessionService.js";
 import { createTaskWorktree, getRepoInfo, resolveBaseBranch } from "./taskService.js";
-import type { WorktreeSetupResult } from "./worktreeSetupService.js";
+import type {
+  AddRepoInput,
+  AddRepoResult,
+  AddRepoStep,
+  TaskDetails,
+  TaskRepo,
+} from "../../shared/tasks.js";
 
 /**
  * Tasks that span several repos: one ticket key (`PROJ-123`) grouping branches in different repos.
  * Each repo keeps its own branch, base, PR and session; this records that they belong together and
  * adds repos to a task.
  */
-
-export type TaskRepo = TaskRepoRef & { defaultBranch: string | null };
-
-type TaskSessionSummary = Pick<
-  Session,
-  | "id"
-  | "title"
-  | "nickname"
-  | "workingDirectory"
-  | "gitBranch"
-  | "isActive"
-  | "updatedAt"
-  | "repoRoot"
-  | "taskKeyInferred"
->;
-
-export type TaskDetails = {
-  key: string;
-  link: string | null;
-  repos: TaskRepo[];
-  sessions: TaskSessionSummary[];
-};
 
 function invalidTaskKeyError(raw: string): AppError {
   return new BadRequestError("TASK_INVALID_KEY", `"${raw}" isn't a ticket key (e.g. PROJ-123).`);
@@ -149,8 +133,6 @@ export async function setTaskLink(key: string, link: string): Promise<void> {
   await upsertTask(key, link);
 }
 
-export type AddRepoStep = "repo" | "base" | "worktree";
-
 /** Carries which step failed and which had already finished — nothing is rolled back. */
 export class TaskStepError extends AppError {
   constructor(
@@ -174,30 +156,6 @@ export class TaskStepError extends AppError {
     return { failedStep: this.step, completedSteps: this.completedSteps };
   }
 }
-
-export type AddRepoInput = {
-  folderPath: string;
-  /** Blank = the branch name the task already uses in its other repos. */
-  branchName: string;
-  /** Blank = the repo's default branch. */
-  baseBranch: string;
-  useLocalBranch: boolean;
-  /** null = a worktree only when the root already has an active session. */
-  useWorktree: boolean | null;
-  taskLink: string | null;
-};
-
-export type AddRepoResult = {
-  repoRoot: string;
-  branch: string;
-  baseBranch: string;
-  /** Where the branch is checked out (worktree or the repo root) — what to `/add-dir`. */
-  workingDirectory: string;
-  /** What the new worktree got from the repo's `worktreeSetup`. */
-  setup: WorktreeSetupResult;
-  completedSteps: AddRepoStep[];
-  task: TaskDetails;
-};
 
 /** Creates the task's branch in another repo and links it to the task. Opens no session: the repo
  *  joins the task's existing one via `/add-dir <path>` or `--add-dir`. */

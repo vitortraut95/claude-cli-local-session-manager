@@ -5,15 +5,15 @@ import path from "node:path";
 
 /**
  * Fails when `open-terminal.sh`'s TERMINAL_LAUNCHERS array drifts from the one in
- * `server/services/sessionService.ts` (same binaries, same order). The script must run before
+ * `server/services/session/terminal.ts` (same binaries, same order). The script must run before
  * Node is on PATH, so it can't import the TS list.
  */
 
 const rootDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const sessionServicePath = path.join(rootDir, "server/services/sessionService.ts");
+const terminalPath = path.join(rootDir, "server/services/session/terminal.ts");
 const openTerminalPath = path.join(rootDir, "open-terminal.sh");
 
-function extractFromSessionService(source) {
+function extractFromTerminal(source) {
   return [...source.matchAll(/bin:\s*"([^"]+)"/g)].map((match) => match[1]);
 }
 
@@ -25,11 +25,11 @@ function extractFromOpenTerminal(source) {
   return match[1].trim().split(/\s+/);
 }
 
-const fromTs = extractFromSessionService(readFileSync(sessionServicePath, "utf8"));
+const fromTs = extractFromTerminal(readFileSync(terminalPath, "utf8"));
 const fromSh = extractFromOpenTerminal(readFileSync(openTerminalPath, "utf8"));
 
 if (fromTs.length === 0) {
-  throw new Error(`Could not find any TERMINAL_LAUNCHERS entries in ${sessionServicePath}`);
+  throw new Error(`Could not find any TERMINAL_LAUNCHERS entries in ${terminalPath}`);
 }
 
 const tsList = fromTs.join(", ");
@@ -37,8 +37,8 @@ const shList = fromSh.join(", ");
 
 if (tsList !== shList) {
   console.error("Terminal launcher lists have drifted out of sync:\n");
-  console.error(`  server/services/sessionService.ts: [${tsList}]`);
-  console.error(`  open-terminal.sh:                  [${shList}]`);
+  console.error(`  server/services/session/terminal.ts: [${tsList}]`);
+  console.error(`  open-terminal.sh:                    [${shList}]`);
   console.error(
     "\nThese must stay identical (same binaries, same order) until they're unified into a " +
       "single implementation. Update whichever one is stale.",

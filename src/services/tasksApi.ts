@@ -1,18 +1,40 @@
 import axios from "axios";
-import type { TaskRepoRef, WorkStatus } from "../types/session";
+import type { WorkStatus } from "../../shared/session";
 import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
 import type { TerminalLayout } from "./preferencesApi";
+import type {
+  AddRepoInput,
+  AddRepoResult,
+  AddRepoStep,
+  HeavyRunHookStatus,
+  ProjectFolderOption,
+  QueueEntry,
+  QueueEntryInput,
+  RepoInfo,
+  SchedulerStatus,
+  TaskDetails,
+  WorktreeSetupResult,
+} from "../../shared/tasks";
+export type {
+  AddRepoInput,
+  AddRepoResult,
+  AddRepoStep,
+  HeavyRunHookStatus,
+  ProjectFolderOption,
+  QueueEntry,
+  QueueEntryInput,
+  QueueKind,
+  RepoInfo,
+  SchedulerBlock,
+  SchedulerStatus,
+  TaskDetails,
+  TaskRepo,
+  WorktreeSetupResult,
+} from "../../shared/tasks";
 
 const client = axios.create({
   baseURL: "/tasks",
 });
-
-export type ProjectFolderOption = {
-  path: string;
-  label: string;
-  /** False for repos only found in a workspace dir. Absent (older backend) = recent. */
-  recent?: boolean;
-};
 
 export async function fetchProjectFolders(): Promise<ProjectFolderOption[]> {
   const { data } = await withServerErrorMessage(() =>
@@ -20,14 +42,6 @@ export async function fetchProjectFolders(): Promise<ProjectFolderOption[]> {
   );
   return data.projects;
 }
-
-export type RepoInfo = {
-  repoRoot: string;
-  defaultBaseBranch: string;
-  /** A session is active with its working directory exactly at `repoRoot` — drives the "use a
-   *  worktree" default. */
-  hasActiveSessionInRoot: boolean;
-};
 
 export async function fetchRepoInfo(folderPath: string): Promise<RepoInfo> {
   const { data } = await withServerErrorMessage(() =>
@@ -76,10 +90,6 @@ export async function createTaskWorktree(
   return data;
 }
 
-/** What a new worktree got from its repo's `worktreeSetup` preference (worktree-relative paths).
- *  Absent from an older backend. */
-export type WorktreeSetupResult = { linked: string[]; copied: string[] };
-
 /** Opens a terminal (or a grid pane, per `layout` / the preference) in `worktreePath` running
  *  `claude <prompt>`. `repoRoot` ("" if unknown) is
  *  remembered for the folder dropdown. A non-blank `nickname` and `originBranch`/`destinationBranch`
@@ -110,44 +120,12 @@ export async function launchTaskTerminal(
   );
 }
 
-/** One repo of a task as `GET /tasks/by-key/:key` returns it. */
-export type TaskRepo = TaskRepoRef & { defaultBranch: string | null };
-
-export type TaskDetails = {
-  key: string;
-  link: string | null;
-  repos: TaskRepo[];
-  sessions: { id: string; title: string; nickname: string | null; isActive: boolean }[];
-};
-
 export async function fetchTask(taskKey: string): Promise<TaskDetails> {
   const { data } = await withServerErrorMessage(() =>
     client.get<TaskDetails>(`/by-key/${encodeURIComponent(taskKey)}`),
   );
   return data;
 }
-
-export type AddRepoStep = "repo" | "base" | "worktree";
-
-export type AddRepoInput = {
-  folderPath: string;
-  branchName: string;
-  baseBranch: string;
-  useLocalBranch: boolean;
-  /** Omitted = the server's smart default (a worktree only when the root has an active session). */
-  useWorktree?: boolean;
-  taskLink: string;
-};
-
-export type AddRepoResult = {
-  repoRoot: string;
-  branch: string;
-  baseBranch: string;
-  /** Where the branch is checked out — what to `/add-dir`. */
-  workingDirectory: string;
-  setup?: WorktreeSetupResult;
-  completedSteps: AddRepoStep[];
-};
 
 /** A failed add-repo also says which step failed and which had already finished (nothing is
  *  rolled back server-side). */
@@ -206,57 +184,6 @@ export async function fetchTaskRepoPrUrl(
   return data.url;
 }
 
-// ---------------------------------------------------------------------------------------------
-// Task queue: tickets waiting to be worked on, each with its repos (first = main repo).
-
-/** "dev" = develop the task (new branch); "test" = test its existing branch with `taskTestSkill`. */
-export type QueueKind = "dev" | "test";
-
-export type QueueEntry = {
-  key: string;
-  link: string | null;
-  /** Optional: older backend (= "dev"). */
-  kind?: QueueKind;
-  /** Repo roots; empty = still to be chosen (or none, with `noRepo`). */
-  repos: string[];
-  /** No repo on purpose: opens in the folder the repos live in, no branch. Optional: older
-   *  backend. */
-  noRepo?: boolean;
-  /** Task branch = `<prefix>/<key>`; "" = just the key; null = not chosen (won't launch).
-   *  Optional: older backend. */
-  branchPrefix?: string | null;
-  /** Test only: the branch to test; null = the origin branch with the key in its name.
-   *  Optional: older backend. */
-  branch?: string | null;
-  /** Dev only: what the task branch starts from in the main repo; null = the repo's default.
-   *  `useLocalBaseBranch` = the local branch instead of a fresh origin one. Optional: older
-   *  backend. */
-  baseBranch?: string | null;
-  useLocalBaseBranch?: boolean;
-  addedAt: string;
-  /** Set by the scheduler once it opened the task's session. Optional: older backend. */
-  launchedAt?: string | null;
-  sessionId?: string | null;
-  /** Why the launch failed (skipped until cleared), or — once launched — which extra repo
-   *  couldn't be added. Optional: older backend. */
-  error?: string | null;
-};
-
-/** What the modal saves; the launch fields are the scheduler's. */
-export type QueueEntryInput = Pick<
-  QueueEntry,
-  | "key"
-  | "link"
-  | "kind"
-  | "repos"
-  | "noRepo"
-  | "branchPrefix"
-  | "branch"
-  | "baseBranch"
-  | "useLocalBaseBranch"
-  | "error"
->;
-
 export async function fetchTaskQueue(): Promise<QueueEntry[]> {
   const { data } = await withServerErrorMessage(() =>
     client.get<{ entries: QueueEntry[] }>("/queue"),
@@ -272,25 +199,6 @@ export async function saveTaskQueue(entries: QueueEntryInput[]): Promise<QueueEn
   );
   return data.entries;
 }
-
-export type SchedulerBlock =
-  "paused" | "max_sessions" | "recent_launch" | "low_memory" | "memory_pressure" | "usage_limit";
-
-export type SchedulerStatus = {
-  enabled: boolean;
-  activeSessions: number;
-  maxSessions: number;
-  freeMemoryPercent: number | null;
-  minFreeMemoryPercent: number;
-  memoryPressure: number | null;
-  usagePercent: number | null;
-  maxUsagePercent: number;
-  waiting: number;
-  blockedBy: SchedulerBlock | null;
-  launching: string | null;
-  /** Every entry being launched (the tick's and any "Start now"). Optional: older backend. */
-  launchingKeys?: string[];
-};
 
 export async function fetchSchedulerStatus(): Promise<SchedulerStatus> {
   const { data } = await withServerErrorMessage(() => client.get<SchedulerStatus>("/queue/status"));
@@ -310,13 +218,6 @@ export async function startQueueEntryNow(key: string): Promise<void> {
     client.post(`/queue/${encodeURIComponent(key)}/start-now`, undefined, { timeout: 0 }),
   );
 }
-
-/** The PreToolUse hook that routes every session's test commands through `scripts/heavy-run`. */
-export type HeavyRunHookStatus = {
-  installed: boolean;
-  settingsPath: string;
-  heavyRunPath: string;
-};
 
 export async function fetchHeavyRunHookStatus(): Promise<HeavyRunHookStatus> {
   const { data } = await withServerErrorMessage(() =>

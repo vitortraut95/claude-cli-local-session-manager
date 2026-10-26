@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { AppError, errorMessage } from "../utils/httpError.js";
+import type { ClaudeExtraUsage, ClaudeUsageLimit, ClaudeUsageStatus } from "../../shared/system.js";
 
 type RawLimit = {
   kind?: string;
@@ -23,33 +24,6 @@ type RawExtraUsage = {
 type RawUsageResponse = {
   limits?: RawLimit[];
   extra_usage?: RawExtraUsage | null;
-};
-
-export type ClaudeUsageLimit = {
-  /** e.g. "session", "weekly_all", "weekly_opus" — whatever the usage API reports (not an enum). */
-  kind: string;
-  group: string;
-  percent: number;
-  severity: string;
-  resetsAt: string | null;
-  isActive: boolean;
-};
-
-export type ClaudeExtraUsage = {
-  isEnabled: boolean;
-  monthlyLimit: number;
-  usedCredits: number;
-  utilization: number | null;
-  currency: string;
-};
-
-export type ClaudeUsageStatus = {
-  limits: ClaudeUsageLimit[];
-  extraUsage: ClaudeExtraUsage | null;
-  /** When this reading was fetched. */
-  fetchedAt: string;
-  /** The endpoint is rate-limiting us: this is the last good reading, kept meanwhile. */
-  stale: boolean;
 };
 
 const ANTHROPIC_BETA_HEADER = "oauth-2025-04-20";

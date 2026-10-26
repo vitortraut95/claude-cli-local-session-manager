@@ -7,7 +7,7 @@ import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
 import * as sessionsApi from "../services/sessionsApi";
 import * as tasksApi from "../services/tasksApi";
-import type { Session } from "../types/session";
+import type { Session } from "../../shared/session";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import { Button } from "./Button";

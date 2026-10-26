@@ -92,11 +92,11 @@ opens the browser. Stop the app by closing that terminal.
   usage under a limit. Pause/resume and the limits live in the queue window; a launched task gets
   the "in progress" status. Kept in the local `tasks.json`
 - **Heavy commands** — optional (Task queue window → "Turn on"): a PreToolUse hook in
-  `~/.claude/settings.json` blocks tests, typecheck, lint, builds and `git commit` (its pre-commit
-  hooks) run directly and has Claude rerun them through `scripts/heavy-run`, which waits for a
+  `~/.claude/settings.json` blocks tests, typecheck, lint, builds, installs and `git commit`/`push`
+  (their hooks) run directly and has Claude rerun them through `scripts/heavy-run`, which waits for a
   free slot across every session (default 1 at a time) and for that much free RAM, runs each one
   in its own cgroup with a RAM/CPU cap (`systemd-run --user --scope`) at low CPU/IO priority, and
-  caps Node's heap at ~85% of the RAM cap — so a runaway run fails alone (137 = RAM cap, 134 =
+  caps Node's heap at ~85% of the RAM cap (a `docker run` gets the same caps as flags) — so a runaway run fails alone (137 = RAM cap, 134 =
   heap cap) instead of freezing the machine. Dev-server containers (`docker run … next dev`,
   `yarn dev`, vite, storybook) are blocked too and started as `heavy-run --preview docker run …`:
   at most N previews at once across sessions (default 5, counted by a container label), each with

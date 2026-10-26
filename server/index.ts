@@ -8,7 +8,7 @@ import { autoUpdateSkillsHubOnStart } from "./services/skillsHubService.js";
 import { startTaskScheduler } from "./services/taskSchedulerService.js";
 import { API_PORT } from "./utils/apiPort.js";
 import { errorHandler } from "./utils/httpError.js";
-import { migrateLegacySidecars } from "./utils/taskStore.js";
+import { migrateTaskStore } from "./utils/taskStore.js";
 
 const app = express();
 app.use(cors());
@@ -26,10 +26,15 @@ app.listen(API_PORT, () => {
   void autoUpdateSkillsHubOnStart();
   startTaskScheduler();
   // Also runs lazily on the first read/write, so a request arriving first can't miss it.
-  migrateLegacySidecars()
-    .then(({ migrated, sessions, branches }) => {
+  migrateTaskStore()
+    .then(({ migrated, sessions, branches, nicknameBranches }) => {
       if (migrated) {
         console.log(`[tasks.json] Migrated ${sessions} session(s) and ${branches} branch base(s).`);
+      }
+      if (nicknameBranches > 0) {
+        console.log(
+          `[tasks.json] Saved the nickname's branches of ${nicknameBranches} session(s).`,
+        );
       }
     })
     .catch((err: unknown) => console.warn("[tasks.json] Migration failed:", err));

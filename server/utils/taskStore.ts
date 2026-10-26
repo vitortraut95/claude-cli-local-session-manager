@@ -2,6 +2,10 @@ import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { recordEvent } from "./history.js";
 import { REPO_ROOT } from "./repoRoot.js";
+import { WORK_STATUSES, type WorkStatus } from "../../shared/session.js";
+import type { QueueEntry, QueueEntryInput } from "../../shared/tasks.js";
+export { WORK_STATUSES, type WorkStatus } from "../../shared/session.js";
+export type { QueueEntry, QueueEntryInput } from "../../shared/tasks.js";
 
 /**
  * This app's per-session/per-task data, in the gitignored `tasks.json` at the repo root (never in
@@ -23,13 +27,10 @@ import { REPO_ROOT } from "./repoRoot.js";
  *   The scheduler sets `launchedAt`/`sessionId` once it starts one, or `error` when that failed
  *   (skipped until cleared).
  *
- * `migrateLegacySidecars` builds this file once from `custom-titles.json`, `session-branches.json`
+ * `migrateTaskStore` builds this file once from `custom-titles.json`, `session-branches.json`
  * and `task-base-branches.json` when it doesn't exist yet; the old files are deleted on a later
  * start. All writes go through one in-process queue with an atomic temp-file + rename.
  */
-
-export const WORK_STATUSES = ["todo", "in_progress", "waiting_user", "done"] as const;
-export type WorkStatus = (typeof WORK_STATUSES)[number];
 
 export function isWorkStatus(value: unknown): value is WorkStatus {
   return typeof value === "string" && (WORK_STATUSES as readonly string[]).includes(value);
@@ -61,52 +62,15 @@ type RepoBranchEntry = {
   worktreePath: string | null;
 };
 
-/** "dev" = develop the task (new branch and worktree); "test" = test someone else's branch. */
-export type QueueKind = "dev" | "test";
-
-export type QueueEntry = {
-  key: string;
-  link: string | null;
-  kind: QueueKind;
-  repos: string[];
-  /** No repo on purpose: the session opens in the first workspace dir, with no branch. */
-  noRepo: boolean;
-  /** The task branch is `<prefix>/<key>`; "" = just `<key>`; null = not chosen yet (not
-   *  launched until it is). */
-  branchPrefix: string | null;
-  /** Test only: the branch to test; null = the one on origin whose name has the key. */
-  branch: string | null;
-  /** Dev only: what the task branch starts from in the main repo; null = the repo's default.
-   *  `useLocalBaseBranch` takes the local branch instead of a freshly fetched origin one. */
-  baseBranch: string | null;
-  useLocalBaseBranch: boolean;
-  addedAt: string;
-  launchedAt: string | null;
-  sessionId: string | null;
-  error: string | null;
-};
-
-/** What the queue modal saves; the launch fields are only ever set by the scheduler. */
-export type QueueEntryInput = Pick<
-  QueueEntry,
-  | "key"
-  | "link"
-  | "kind"
-  | "repos"
-  | "noRepo"
-  | "branchPrefix"
-  | "branch"
-  | "baseBranch"
-  | "useLocalBaseBranch"
-  | "error"
->;
-
 export type TaskStore = {
   version: 1;
   tasks: Record<string, TaskEntry>;
   sessions: Record<string, SessionEntry>;
   repoBranches: Record<string, Record<string, RepoBranchEntry>>;
   queue: QueueEntry[];
+  /** Branches encoded in nicknames were copied into `origin`/`destination` (done once per file;
+   *  the nickname is only a label after that). */
+  nicknameBranchesBackfilled: boolean;
 };
 
 const STORE_FILE = "tasks.json";
@@ -116,7 +80,14 @@ function storePath(): string {
 }
 
 function emptyStore(): TaskStore {
-  return { version: 1, tasks: {}, sessions: {}, repoBranches: {}, queue: [] };
+  return {
+    version: 1,
+    tasks: {},
+    sessions: {},
+    repoBranches: {},
+    queue: [],
+    nicknameBranchesBackfilled: true,
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -155,6 +126,7 @@ function normalizeTestInfo(raw: unknown): TestSessionInfo | null {
 /** Tolerant of a hand-edited file: unknown fields are dropped, missing ones default to null. */
 function normalizeStore(parsed: Record<string, unknown>): TaskStore {
   const store = emptyStore();
+  store.nicknameBranchesBackfilled = parsed.nicknameBranchesBackfilled === true;
 
   if (isRecord(parsed.tasks)) {
     for (const [key, raw] of Object.entries(parsed.tasks)) {
@@ -274,33 +246,94 @@ async function buildFromLegacyFiles(): Promise<TaskStore | null> {
   return normalizeStore({ sessions, repoBranches: bases ?? {} });
 }
 
-type MigrationResult = { migrated: boolean; sessions: number; branches: number };
+type MigrationResult = {
+  migrated: boolean;
+  sessions: number;
+  branches: number;
+  /** Sessions whose saved branches were filled from their nickname. */
+  nicknameBranches: number;
+};
+
+/** When `tasks.json` doesn't exist yet, fills it from the legacy files. */
+async function migrateLegacySidecars(): Promise<Omit<MigrationResult, "nicknameBranches">> {
+  const existing = await readFile(storePath(), "utf8").catch((err: NodeJS.ErrnoException) =>
+    err.code === "ENOENT" ? null : "",
+  );
+  if (existing !== null) {
+    await deleteLegacySidecars();
+    return { migrated: false, sessions: 0, branches: 0 };
+  }
+
+  const store = await buildFromLegacyFiles();
+  if (!store) return { migrated: false, sessions: 0, branches: 0 };
+
+  await writeStore(store);
+  const branches = Object.values(store.repoBranches).reduce(
+    (sum, byBranch) => sum + Object.keys(byBranch).length,
+    0,
+  );
+  return { migrated: true, sessions: Object.keys(store.sessions).length, branches };
+}
+
+const ARROW_SEPARATOR = " -> ";
+const LINK_SEPARATOR = " - ";
+const BRANCH_LIKE = /^[\w][\w./-]*\/[\w][\w./-]*$/;
+
+function asBranch(text: string): string | null {
+  const trimmed = text.trim();
+  return BRANCH_LIKE.test(trimmed) ? trimmed : null;
+}
+
+/** Branches encoded in a nickname: "<origin> -> <destination>[ - <link>]", or just a destination
+ *  branch. Free-form text yields nulls. */
+function parseNicknameBranches(nickname: string | null): {
+  origin: string | null;
+  destination: string | null;
+} {
+  if (!nickname) return { origin: null, destination: null };
+  const arrowIndex = nickname.indexOf(ARROW_SEPARATOR);
+  if (arrowIndex === -1) return { origin: null, destination: asBranch(nickname) };
+  const afterArrow = nickname.slice(arrowIndex + ARROW_SEPARATOR.length);
+  const linkIndex = afterArrow.indexOf(LINK_SEPARATOR);
+  return {
+    origin: asBranch(nickname.slice(0, arrowIndex)),
+    destination: asBranch(linkIndex === -1 ? afterArrow : afterArrow.slice(0, linkIndex)),
+  };
+}
+
+/** Fills each empty saved branch from the session's nickname, once per file. */
+async function backfillNicknameBranches(): Promise<number> {
+  const parsed = await readJsonRecord(storePath());
+  if (!parsed || parsed.nicknameBranchesBackfilled === true) return 0;
+  const store = normalizeStore(parsed);
+  let filled = 0;
+  for (const entry of Object.values(store.sessions)) {
+    const fromNickname = parseNicknameBranches(entry.nickname);
+    const origin = entry.origin ?? fromNickname.origin;
+    const destination = entry.destination ?? fromNickname.destination;
+    if (origin !== entry.origin || destination !== entry.destination) filled++;
+    entry.origin = origin;
+    entry.destination = destination;
+  }
+  store.nicknameBranchesBackfilled = true;
+  await writeStore(store);
+  return filled;
+}
 
 let migration: Promise<MigrationResult> | null = null;
 
 /**
- * Runs at most once per process: when `tasks.json` doesn't exist yet, fills it from the legacy
- * files. Awaited by every read/write so nothing sees a half-migrated state.
+ * Runs at most once per process: the legacy-file migration, then the nickname-branch backfill.
+ * Awaited by every read/write so nothing sees a half-migrated state.
  */
-export function migrateLegacySidecars(): Promise<MigrationResult> {
+export function migrateTaskStore(): Promise<MigrationResult> {
   migration ??= (async () => {
-    const existing = await readFile(storePath(), "utf8").catch((err: NodeJS.ErrnoException) =>
-      err.code === "ENOENT" ? null : "",
-    );
-    if (existing !== null) {
-      await deleteLegacySidecars();
-      return { migrated: false, sessions: 0, branches: 0 };
-    }
-
-    const store = await buildFromLegacyFiles();
-    if (!store) return { migrated: false, sessions: 0, branches: 0 };
-
-    await writeStore(store);
-    const branches = Object.values(store.repoBranches).reduce(
-      (sum, byBranch) => sum + Object.keys(byBranch).length,
-      0,
-    );
-    return { migrated: true, sessions: Object.keys(store.sessions).length, branches };
+    const legacy = await migrateLegacySidecars();
+    const nicknameBranches = await backfillNicknameBranches().catch((err: unknown) => {
+      console.warn("[tasks.json] Nickname branch backfill failed:", err);
+      return 0;
+    });
+    return { ...legacy, nicknameBranches };
   })();
   return migration;
 }
@@ -308,7 +341,7 @@ export function migrateLegacySidecars(): Promise<MigrationResult> {
 /** An unparseable `tasks.json` is moved aside (`tasks.json.broken-<time>`) rather than
  *  overwritten, so a bad hand edit stays recoverable. */
 async function readStore(): Promise<TaskStore> {
-  await migrateLegacySidecars();
+  await migrateTaskStore();
   let raw: string;
   try {
     raw = await readFile(storePath(), "utf8");

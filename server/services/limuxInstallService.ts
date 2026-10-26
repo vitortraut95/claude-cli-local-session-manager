@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { AppError, errorMessage } from "../utils/httpError.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import { isLimuxRunning, limuxBin, LOCAL_LIMUX_BIN } from "./limuxGridService.js";
+import type { LimuxInstallResult, LimuxStatus } from "../../shared/system.js";
 
 /**
  * Installs or updates Limux for the current user, no sudo: the release's Linux tarball goes to
@@ -40,24 +41,6 @@ const APT_PACKAGES: Record<string, string> = {
 };
 
 type Release = { version: string; tarballUrl: string; sumsUrl: string };
-
-export type LimuxStatus = {
-  installed: boolean;
-  version: string | null;
-  /** Installed by this app (`~/.local/opt/limux`), not a system package. */
-  managed: boolean;
-  /** Newest version known: GitHub's latest release, or the bundled copy's when offline. */
-  latest: string;
-  minVersion: string;
-  updateAvailable: boolean;
-  running: boolean;
-  /** System libraries the managed install can't find (empty for other installs). */
-  missingLibs: string[];
-  /** `sudo apt install …` for `missingLibs`; null when nothing is missing. */
-  aptCommand: string | null;
-};
-
-export type LimuxInstallResult = LimuxStatus & { source: "github" | "bundled" };
 
 function compareVersions(a: string, b: string): number {
   const pa = a.split(".").map(Number);

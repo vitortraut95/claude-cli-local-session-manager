@@ -8,7 +8,10 @@ const REMOTE_URL_PATTERNS: { host: GitHostInfo["host"]; pattern: RegExp }[] = [
   { host: "github", pattern: /^git@github\.com:([^/]+\/[^/]+?)(?:\.git)?$/ },
   { host: "github", pattern: /^https:\/\/github\.com\/([^/]+\/[^/]+?)(?:\.git)?$/ },
   { host: "bitbucket", pattern: /^git@(?:ssh\.)?bitbucket\.org:([^/]+\/[^/]+?)(?:\.git)?$/ },
-  { host: "bitbucket", pattern: /^ssh:\/\/git@(?:ssh\.)?bitbucket\.org\/([^/]+\/[^/]+?)(?:\.git)?$/ },
+  {
+    host: "bitbucket",
+    pattern: /^ssh:\/\/git@(?:ssh\.)?bitbucket\.org\/([^/]+\/[^/]+?)(?:\.git)?$/,
+  },
   { host: "bitbucket", pattern: /^https:\/\/[^/@]+@bitbucket\.org\/([^/]+\/[^/]+?)(?:\.git)?$/ },
   { host: "bitbucket", pattern: /^https:\/\/bitbucket\.org\/([^/]+\/[^/]+?)(?:\.git)?$/ },
 ];

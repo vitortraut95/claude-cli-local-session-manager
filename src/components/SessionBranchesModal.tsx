@@ -1,7 +1,7 @@
 import { GitBranch } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
-import type { Session } from "../types/session";
+import type { Session } from "../../shared/session";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
@@ -14,7 +14,7 @@ type SessionBranchesModalProps = {
 
 /**
  * Edits the session's saved origin/destination branches. Prefilled with the branches in use; a
- * blank field isn't saved and falls back to the nickname/transcript value (its placeholder).
+ * blank field isn't saved and falls back to the transcript value (its placeholder).
  */
 export function SessionBranchesModal({ session, onSave, onCancel }: SessionBranchesModalProps) {
   const { t } = useLanguage();

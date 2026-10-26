@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import * as sessionsApi from "../services/sessionsApi";
-import type { Session } from "../types/session";
+import type { Session } from "../../shared/session";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Modal } from "./Modal";
 
