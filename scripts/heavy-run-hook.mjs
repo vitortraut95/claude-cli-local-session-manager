@@ -36,6 +36,9 @@ const HEAVY_COMMAND = new RegExp(
     ")",
 );
 
+/** Quoted strings (`grep -E "a|jest"`), so a `|`, `;` or `&` inside one doesn't start a command. */
+const QUOTED = /'[^']*'|"(?:\\.|[^"\\])*"/g;
+
 /** `docker run` of a dev server (next dev, yarn/npm/pnpm dev, vite, storybook) — the command may
  *  be quoted for the container's shell (`sh -c "yarn && yarn dev"`). */
 const PREVIEW_COMMAND = new RegExp(
@@ -57,7 +60,7 @@ try {
 
 if (typeof command !== "string" || command.includes("heavy-run")) process.exit(0);
 const isPreview = PREVIEW_COMMAND.test(command);
-if (!isPreview && !HEAVY_COMMAND.test(command)) process.exit(0);
+if (!isPreview && !HEAVY_COMMAND.test(command.replace(QUOTED, '""'))) process.exit(0);
 
 // For the app's history (server/utils/history.ts); best-effort.
 try {
