@@ -22,7 +22,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 const SAFE_BRANCH_PREFIX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /** Each repo is stored as its repo root, so a subfolder and the root don't count twice. A task
- *  with no repo yet is kept (still to be chosen). */
+ *  with no repo yet is kept (still to be chosen); `noRepo` = none on purpose (repos ignored). */
 async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
   const rawKey = isRecord(raw) && typeof raw.key === "string" ? raw.key : "";
   const key = normalizeTaskKey(rawKey);
@@ -34,7 +34,8 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
   }
   const link =
     isRecord(raw) && typeof raw.link === "string" && raw.link.trim() ? raw.link.trim() : null;
-  const folders = isRecord(raw) && Array.isArray(raw.repos) ? raw.repos : [];
+  const noRepo = isRecord(raw) && raw.noRepo === true;
+  const folders = !noRepo && isRecord(raw) && Array.isArray(raw.repos) ? raw.repos : [];
 
   const repos: string[] = [];
   for (const folder of folders) {
@@ -77,6 +78,7 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
     link,
     kind,
     repos,
+    noRepo,
     branchPrefix,
     branch: rawBranch || null,
     baseBranch: rawBase || null,
@@ -111,6 +113,7 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
         link: entry.link,
         kind: entry.kind,
         repos: entry.repos,
+        noRepo: entry.noRepo,
         branchPrefix: entry.branchPrefix,
         branch: entry.branch,
         baseBranch: entry.baseBranch,
@@ -120,6 +123,7 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
     if (entry.launchedAt) continue;
     if (
       before.kind !== entry.kind ||
+      before.noRepo !== entry.noRepo ||
       before.branchPrefix !== entry.branchPrefix ||
       before.branch !== entry.branch ||
       before.baseBranch !== entry.baseBranch ||
@@ -130,6 +134,7 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
         key: entry.key,
         kind: entry.kind,
         repos: entry.repos,
+        noRepo: entry.noRepo,
         branchPrefix: entry.branchPrefix,
         branch: entry.branch,
         baseBranch: entry.baseBranch,

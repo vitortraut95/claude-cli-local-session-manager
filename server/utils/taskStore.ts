@@ -69,6 +69,8 @@ export type QueueEntry = {
   link: string | null;
   kind: QueueKind;
   repos: string[];
+  /** No repo on purpose: the session opens in the first workspace dir, with no branch. */
+  noRepo: boolean;
   /** The task branch is `<prefix>/<key>`; "" = just `<key>`; null = not chosen yet (not
    *  launched until it is). */
   branchPrefix: string | null;
@@ -91,6 +93,7 @@ export type QueueEntryInput = Pick<
   | "link"
   | "kind"
   | "repos"
+  | "noRepo"
   | "branchPrefix"
   | "branch"
   | "baseBranch"
@@ -206,6 +209,7 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
         repos: Array.isArray(raw.repos)
           ? [...new Set(raw.repos.filter((r): r is string => typeof r === "string" && !!r.trim()))]
           : [],
+        noRepo: raw.noRepo === true,
         branchPrefix: typeof raw.branchPrefix === "string" ? raw.branchPrefix.trim() : null,
         branch: asTextOrNull(raw.branch),
         baseBranch: asTextOrNull(raw.baseBranch),

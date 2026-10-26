@@ -39,6 +39,23 @@ export const taskQueue = {
   "taskQueueModal.kind.dev": dict("Development", "Desenvolvimento"),
   "taskQueueModal.kind.test": dict("Test", "Teste"),
   "taskQueueModal.kindLabel": dict("Kind", "Tipo"),
+  "taskQueueModal.kind.dev.hint": dict(
+    "New branch in its own worktree, with the default prompt",
+    "Branch nova em worktree próprio, com o prompt padrão",
+  ),
+  "taskQueueModal.kind.test.hint": dict(
+    "The test skill on the branch the task already has",
+    "A skill de teste na branch que a tarefa já tem",
+  ),
+  "taskQueueModal.chooseKindFirst": dict(
+    "Choose the kind to paste the tasks.",
+    "Escolha o tipo pra colar as tarefas.",
+  ),
+  "taskQueueModal.noRepo": dict("No repo (repos folder)", "Sem repo (pasta dos repos)"),
+  "taskQueueModal.noRepoOption": dict(
+    "No repo — open in the repos folder",
+    "Sem repo — abrir na pasta dos repos",
+  ),
   "taskQueueModal.kindAriaLabel": dict("Development or test", "Desenvolvimento ou teste"),
   "taskQueueModal.testBranchLabel": dict("Branch to test", "Branch a testar"),
   "taskQueueModal.testBranchPlaceholder": dict(
@@ -79,8 +96,8 @@ export const taskQueue = {
   "taskQueueModal.loadError": dict("Couldn't load the queue.", "Não foi possível carregar a fila."),
   "taskQueueModal.missingRepo": dict("Choose a repo", "Escolha um repo"),
   "taskQueueModal.missingSetupCount": dict(
-    "{count} task(s) still without a repo (or, to develop, a branch prefix) — they won't launch.",
-    "{count} tarefa(s) ainda sem repo (ou, pra desenvolver, prefixo de branch) — não serão lançadas.",
+    '{count} task(s) won\'t launch yet: choose a repo (or "No repo") and, to develop, the branch prefix.',
+    '{count} tarefa(s) ainda não vão ser lançadas: escolha um repo (ou "Sem repo") e, pra desenvolver, o prefixo.',
   ),
   "taskQueueModal.pastePrefix": dict("Branch prefix", "Prefixo da branch"),
   "taskQueueModal.pasteBase.hint": dict(
@@ -90,10 +107,6 @@ export const taskQueue = {
   "taskQueueModal.pastePrefix.hint": dict(
     "The task branch is <prefix>/<key>.",
     "A branch da tarefa fica <prefixo>/<chave>.",
-  ),
-  "taskQueueModal.kind.hint": dict(
-    "Develop the task, or test the branch someone else made.",
-    "Desenvolver a tarefa, ou testar a branch que outra pessoa fez.",
   ),
   "taskQueueModal.prefixAriaLabel": dict("Branch prefix", "Prefixo da branch"),
   "taskQueueModal.prefixUnset": dict("Choose a prefix…", "Escolha o prefixo…"),

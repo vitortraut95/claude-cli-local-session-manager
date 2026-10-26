@@ -10,6 +10,7 @@ import {
 } from "./taskService.js";
 import { cleanupFinishedTests, launchTestEntry } from "./taskTestService.js";
 import { getClaudeUsageStatus } from "./usageService.js";
+import { firstWorkspaceDir } from "./workspaceService.js";
 import { recordEvent } from "../utils/history.js";
 import { BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
 import { getFreeMemoryPercent, getMemoryPressure } from "../utils/systemResources.js";
@@ -67,13 +68,14 @@ const launchingKeys = new Set<string>();
 let lastLaunchAt = 0;
 let ticking = false;
 
-/** A test entry needs no branch prefix (it tests a branch that already exists). */
+/** A test entry needs no branch prefix (it tests a branch that already exists), and neither does
+ *  one with no repo (no branch is made). */
 function isReady(entry: QueueEntry): boolean {
   return (
     !entry.launchedAt &&
     !entry.error &&
-    entry.repos.length > 0 &&
-    (entry.kind === "test" || entry.branchPrefix !== null)
+    (entry.noRepo || entry.repos.length > 0) &&
+    (entry.kind === "test" || entry.noRepo || entry.branchPrefix !== null)
   );
 }
 
@@ -145,6 +147,9 @@ function errorMessage(err: unknown): string {
 const PROMPT_TEXT = {
   en: {
     task: "Task",
+    noRepo:
+      "No repo was picked for this task: this is the folder the repos live in ({dir}). If it " +
+      "needs code changes, find the repo(s) here first.",
     extraDirs: "This task also spans these folders (already added with --add-dir): {dirs}",
     sharedNodeModules:
       "node_modules here is a symlink to the main checkout's, shared with other tasks: {dirs}. " +
@@ -153,6 +158,9 @@ const PROMPT_TEXT = {
   },
   pt: {
     task: "Tarefa",
+    noRepo:
+      "Nenhum repo foi escolhido para esta tarefa: esta é a pasta onde ficam os repos ({dir}). " +
+      "Se ela precisar mudar código, ache o(s) repo(s) aqui antes.",
     extraDirs: "Esta tarefa também envolve estas pastas (já adicionadas com --add-dir): {dirs}",
     sharedNodeModules:
       "O node_modules aqui é um link para o da raiz do repo, compartilhado com outras tarefas: " +
@@ -162,17 +170,20 @@ const PROMPT_TEXT = {
 };
 
 /** Same message "New task" composes: `Task: <link>`, the default prompt, the extra-dirs note and
- *  the shared node_modules warning. `linked` = absolute paths of the linked node_modules. */
+ *  the shared node_modules warning. `linked` = absolute paths of the linked node_modules;
+ *  `noRepoDir` = where a task with no repo opens. */
 function composePrompt(
   prefs: UserPreferences,
   entry: QueueEntry,
   addDirs: string[],
   linked: string[],
+  noRepoDir: string | null = null,
 ): string {
   const text = PROMPT_TEXT[prefs.language ?? "en"];
   return [
     `${text.task}: ${entry.link ?? entry.key}`,
     prefs.defaultPrompt.trim(),
+    noRepoDir ? text.noRepo.replace("{dir}", noRepoDir) : "",
     addDirs.length > 0 ? text.extraDirs.replace("{dirs}", addDirs.join(", ")) : "",
     linked.length > 0 ? text.sharedNodeModules.replace("{dirs}", linked.join(", ")) : "",
   ]
@@ -222,7 +233,41 @@ async function launchEntry(
   entry: QueueEntry,
   prefs: UserPreferences,
 ): Promise<LaunchOutcome | null> {
-  return entry.kind === "test" ? launchTest(entry, prefs) : launchDevEntry(entry, prefs);
+  if (entry.kind === "test") return launchTest(entry, prefs);
+  return entry.noRepo ? launchNoRepoEntry(entry, prefs) : launchDevEntry(entry, prefs);
+}
+
+/** A task with no repo: just the session, in the first workspace dir — no branch, no worktree. */
+async function launchNoRepoEntry(
+  entry: QueueEntry,
+  prefs: UserPreferences,
+): Promise<LaunchOutcome> {
+  const dir = await firstWorkspaceDir(prefs);
+  const { sessionId } = await launchTaskTerminal({
+    worktreePath: dir,
+    prompt: composePrompt(prefs, entry, [], [], dir),
+    permissionModeAuto: prefs.useAutoPermissionModeByDefault,
+    repoRoot: "",
+    nickname: entry.link ?? entry.key,
+  });
+  if (sessionId) {
+    pendingLaunches.set(sessionId, Date.now());
+    await waitForSessionStart(sessionId);
+  }
+  await updateQueueEntry(entry.key, {
+    launchedAt: new Date().toISOString(),
+    sessionId,
+    error: null,
+  });
+  await setTaskStatus(entry.key, "in_progress", "scheduler");
+  return {
+    sessionId,
+    branch: "",
+    worktreePath: dir,
+    addDirs: [],
+    extraErrors: [],
+    linkedNodeModules: 0,
+  };
 }
 
 /** Same waiting and bookkeeping as a dev entry, but the task's own status is left alone (the task
@@ -446,7 +491,7 @@ export async function launchQueueEntryNow(key: string): Promise<LaunchOutcome | 
   if (!isReady(fresh)) {
     throw new BadRequestError(
       "QUEUE_ENTRY_NOT_READY",
-      `${key} still needs a repo${entry.kind === "dev" ? " and a branch prefix" : ""}.`,
+      `${key} still needs a repo (or "no repo")${entry.kind === "dev" ? " and a branch prefix" : ""}.`,
     );
   }
   return launchTracked(fresh, prefs, true);

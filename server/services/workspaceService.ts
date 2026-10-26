@@ -1,7 +1,7 @@
 import { readdir, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { getUserPreferences } from "./preferencesService.js";
+import { getUserPreferences, type UserPreferences } from "./preferencesService.js";
 import { directoryExists } from "./sessionService.js";
 import { getKnownProjectFolders } from "./taskService.js";
 
@@ -13,6 +13,16 @@ import { getKnownProjectFolders } from "./taskService.js";
 export function expandHome(dir: string): string {
   const trimmed = dir.trim();
   return path.resolve(trimmed.replace(/^~(?=$|\/)/, os.homedir()));
+}
+
+/** Where sessions not tied to one repo open (tests, tasks queued with no repo): the first existing
+ *  workspace dir, else the home dir. */
+export async function firstWorkspaceDir(prefs: UserPreferences): Promise<string> {
+  for (const dir of prefs.workspaceDirs ?? []) {
+    const expanded = expandHome(dir);
+    if (await directoryExists(expanded)) return expanded;
+  }
+  return os.homedir();
 }
 
 /** Absolute paths of every repo directly inside `dir` (hidden folders skipped), sorted. */

@@ -217,8 +217,11 @@ export type QueueEntry = {
   link: string | null;
   /** Optional: older backend (= "dev"). */
   kind?: QueueKind;
-  /** Repo roots; empty = still to be chosen. */
+  /** Repo roots; empty = still to be chosen (or none, with `noRepo`). */
   repos: string[];
+  /** No repo on purpose: opens in the folder the repos live in, no branch. Optional: older
+   *  backend. */
+  noRepo?: boolean;
   /** Task branch = `<prefix>/<key>`; "" = just the key; null = not chosen (won't launch).
    *  Optional: older backend. */
   branchPrefix?: string | null;
@@ -246,6 +249,7 @@ export type QueueEntryInput = Pick<
   | "link"
   | "kind"
   | "repos"
+  | "noRepo"
   | "branchPrefix"
   | "branch"
   | "baseBranch"
