@@ -1,5 +1,6 @@
 import { rm } from "node:fs/promises";
 import path from "node:path";
+import { reclaimForeignFiles } from "../foreignFiles.js";
 import { AppError, errorMessage } from "../httpError.js";
 import { getGitDirs, runGit } from "./core.js";
 
@@ -60,6 +61,20 @@ export async function pruneWorktrees(repoRoot: string): Promise<void> {
 }
 
 /**
+ * `git worktree remove` failed on files the user doesn't own (written by a root preview
+ * container): takes them back and finishes the removal. Throws `err` when that wasn't it.
+ */
+async function removeAfterForeignFiles(
+  worktreePath: string,
+  mainRoot: string,
+  err: unknown,
+): Promise<void> {
+  if (!(await reclaimForeignFiles(worktreePath))) throw err;
+  await rm(worktreePath, { recursive: true, force: true });
+  await runGit(["worktree", "prune"], mainRoot).catch(() => undefined);
+}
+
+/**
  * Removes the linked worktree at `worktreePath`, run from the main root (a worktree can't remove
  * itself). Unlocks first: the CLI's `--worktree` lock persists after the process exits. No
  * `--force`, so uncommitted changes still block removal.
@@ -87,7 +102,7 @@ async function unlockAndRemoveWorktree(
         { cause: err },
       );
     }
-    throw err;
+    await removeAfterForeignFiles(worktreePath, mainRoot, err);
   }
 
   return { branch, mainRoot };
@@ -120,9 +135,14 @@ export async function forceRemoveWorktree(worktreePath: string): Promise<void> {
   if (dirs && dirs.gitDir !== dirs.commonGitDir) {
     const mainRoot = path.dirname(dirs.commonGitDir);
     await runGit(["worktree", "unlock", worktreePath], mainRoot).catch(() => undefined);
-    await runGit(["worktree", "remove", "--force", "--force", worktreePath], mainRoot);
+    try {
+      await runGit(["worktree", "remove", "--force", "--force", worktreePath], mainRoot);
+    } catch (err) {
+      await removeAfterForeignFiles(worktreePath, mainRoot, err);
+    }
     await runGit(["worktree", "prune"], mainRoot).catch(() => undefined);
     return;
   }
+  await reclaimForeignFiles(worktreePath);
   await rm(worktreePath, { recursive: true, force: true });
 }
