@@ -109,17 +109,6 @@ function describe(event: HistoryEvent, t: T): string {
         wait: secs((Number(event.slotWaitS) || 0) + (Number(event.memoryWaitS) || 0)),
         status: String(event.status),
       });
-    case "usage.paused":
-      return t("history.event.usagePaused", { reason: str(event.reason) });
-    case "usage.resumed":
-      return t(
-        event.cause === "unlocked"
-          ? "history.event.usageResumedUnlocked"
-          : "history.event.usageResumedReset",
-        { wait: secs(event.waitedS) },
-      );
-    case "usage.unlocked":
-      return t("history.event.usageUnlocked");
     default:
       return event.type;
   }

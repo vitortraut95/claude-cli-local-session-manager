@@ -14,7 +14,6 @@ import type {
   SchedulerStatus,
   TaskDetails,
   WorktreeSetupResult,
-  UsagePauseHookStatus,
 } from "../../shared/tasks";
 export type {
   AddRepoInput,
@@ -31,7 +30,6 @@ export type {
   TaskDetails,
   TaskRepo,
   WorktreeSetupResult,
-  UsagePauseHookStatus,
 } from "../../shared/tasks";
 
 const client = axios.create({
@@ -219,22 +217,6 @@ export async function startQueueEntryNow(key: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.post(`/queue/${encodeURIComponent(key)}/start-now`, undefined, { timeout: 0 }),
   );
-}
-
-export async function fetchUsagePauseHookStatus(): Promise<UsagePauseHookStatus> {
-  const { data } = await withServerErrorMessage(() =>
-    client.get<UsagePauseHookStatus>("/usage-pause/hook"),
-  );
-  return data;
-}
-
-export async function setUsagePauseHookInstalled(
-  installed: boolean,
-): Promise<UsagePauseHookStatus> {
-  const { data } = await withServerErrorMessage(() =>
-    client.put<UsagePauseHookStatus>("/usage-pause/hook", { installed }),
-  );
-  return data;
 }
 
 export async function fetchHeavyRunHookStatus(): Promise<HeavyRunHookStatus> {

@@ -2,7 +2,6 @@ import { realpathSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import type { ScanProgress, Session, SessionPreview } from "../../../shared/session.js";
-import { isWaitingForUsage } from "../usagePauseService.js";
 import { listPreviewServers, previewsFor, type PreviewServer } from "../previewService.js";
 import {
   belongsTo,
@@ -235,7 +234,6 @@ async function listSessionsUncached(): Promise<Session[]> {
       ...withRepos,
       hasHistory: history.some((event) => belongsTo(event, target)),
       previews: sessionPreviews(withRepos, servers),
-      usagePaused: isWaitingForUsage(session.id),
     };
   });
 }

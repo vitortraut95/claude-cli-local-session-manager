@@ -103,11 +103,6 @@ opens the browser. Stop the app by closing that terminal.
   a RAM cap (default 4 GB) and 2 CPUs. Each task keeps one preview running for you to validate
   its worktree. A run or preview that waits over 15 min gives up (exit 75,
   nothing ran) instead of hanging the session
-- **Pause at the plan limit** — optional (Task queue window → "Turn on"): a hook makes every
-  running Claude session wait before its next tool once the 5-hour window reaches 90% or a weekly
-  limit 98% (both editable), spending nothing meanwhile, and carry on by itself when the limit
-  resets or you raise the %. To go on anyway: Esc in that session and type `destravar` (unlocks
-  it until the reset). The card shows "Paused (plan limit)"; pauses and resumes appear in its history
 - **Task worktree setup** — per repo (Settings → "Task worktree setup"), a new task worktree gets
   a symlink to each of the main checkout's `node_modules` (root and workspaces) and a copy of its
   gitignored `.env*` files, since git only checks out tracked files. The link is added to the repo's

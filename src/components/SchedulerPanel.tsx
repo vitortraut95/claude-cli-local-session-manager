@@ -1,4 +1,4 @@
-import { ChevronRight, FlaskConical, Pause, PauseCircle, Play, RefreshCw } from "lucide-react";
+import { ChevronRight, FlaskConical, Pause, Play, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -6,12 +6,7 @@ import type { TranslationKey } from "../i18n/translations";
 import * as preferencesApi from "../services/preferencesApi";
 import type { OrchestratorPreferences } from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
-import type {
-  HeavyRunHookStatus,
-  SchedulerBlock,
-  SchedulerStatus,
-  UsagePauseHookStatus,
-} from "../services/tasksApi";
+import type { HeavyRunHookStatus, SchedulerBlock, SchedulerStatus } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Button } from "./Button";
 import { Input } from "./Input";
@@ -37,8 +32,6 @@ const LIMITS: Record<Exclude<keyof OrchestratorPreferences, "enabled">, [number,
   previewSlots: [1, 16],
   previewMemoryMaxGb: [1, 64],
   launchSpacingMinutes: [0, 60],
-  pauseSessionPercent: [1, 100],
-  pauseWeeklyPercent: [1, 100],
 };
 
 type SchedulerPanelProps = {
@@ -58,8 +51,6 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
   const [drafts, setDrafts] = useState<Partial<Record<keyof typeof LIMITS, string>>>({});
   const [hook, setHook] = useState<HeavyRunHookStatus | null>(null);
   const [savingHook, setSavingHook] = useState(false);
-  const [pauseHook, setPauseHook] = useState<UsagePauseHookStatus | null>(null);
-  const [savingPauseHook, setSavingPauseHook] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,12 +58,6 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
       .fetchHeavyRunHookStatus()
       .then((result) => {
         if (!cancelled) setHook(result);
-      })
-      .catch(() => undefined);
-    tasksApi
-      .fetchUsagePauseHookStatus()
-      .then((result) => {
-        if (!cancelled) setPauseHook(result);
       })
       .catch(() => undefined);
     preferencesApi
@@ -155,23 +140,6 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
       showToast(resolveApiErrorMessage(err, t, "scheduler.tests.hookError"), "error");
     } finally {
       setSavingHook(false);
-    }
-  };
-
-  const togglePauseHook = async () => {
-    if (!pauseHook) return;
-    setSavingPauseHook(true);
-    try {
-      const next = await tasksApi.setUsagePauseHookInstalled(!pauseHook.installed);
-      setPauseHook(next);
-      showToast(
-        t(next.installed ? "scheduler.tests.hookInstalled" : "scheduler.tests.hookRemoved"),
-        "success",
-      );
-    } catch (err) {
-      showToast(resolveApiErrorMessage(err, t, "scheduler.tests.hookError"), "error");
-    } finally {
-      setSavingPauseHook(false);
     }
   };
 
@@ -274,50 +242,6 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
               "scheduler.setting.launchSpacing",
               "scheduler.setting.launchSpacing.hint",
             )}
-          </div>
-
-          <div className="flex flex-col gap-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  <PauseCircle className="h-3.5 w-3.5" /> {t("scheduler.usagePause.title")}
-                </p>
-                <p
-                  className={`text-xs ${
-                    pauseHook?.installed
-                      ? "text-green-700 dark:text-green-400"
-                      : "text-amber-600 dark:text-amber-400"
-                  }`}
-                >
-                  {pauseHook === null
-                    ? "…"
-                    : pauseHook.installed
-                      ? t("scheduler.usagePause.on")
-                      : t("scheduler.usagePause.off")}
-                </p>
-              </div>
-              <Button
-                variant={pauseHook?.installed ? "outline" : "primary"}
-                size="sm"
-                onClick={() => void togglePauseHook()}
-                disabled={!pauseHook || savingPauseHook}
-              >
-                {pauseHook?.installed ? t("scheduler.tests.remove") : t("scheduler.tests.install")}
-              </Button>
-            </div>
-            {numberField(
-              "pauseSessionPercent",
-              "scheduler.setting.pauseSession",
-              "scheduler.setting.pauseSession.hint",
-            )}
-            {numberField(
-              "pauseWeeklyPercent",
-              "scheduler.setting.pauseWeekly",
-              "scheduler.setting.pauseWeekly.hint",
-            )}
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {t("scheduler.usagePause.explanation")}
-            </p>
           </div>
 
           <div className="flex flex-col gap-2.5">

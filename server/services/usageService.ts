@@ -30,9 +30,10 @@ const ANTHROPIC_BETA_HEADER = "oauth-2025-04-20";
 const USAGE_ENDPOINT = "https://api.anthropic.com/api/oauth/usage";
 /** Undocumented account-usage endpoint used by Claude Code's status line; reading it doesn't
  *  consume usage. */
-/** Usage moves slowly, and the scheduler and queue window read it all day: one fetch per window.
- *  The badge's refresh button bypasses it (not the rate-limit backoff). */
-const CACHE_TTL_MS = 5 * 60_000;
+/** One fetch per window, however many readers (scheduler, badge); longer once
+ *  the endpoint has rate-limited us. The badge's refresh button bypasses it (not the backoff). */
+const CACHE_TTL_MS = 3 * 60_000;
+const CACHE_TTL_AFTER_429_MS = 5 * 60_000;
 /** After a 429 (whose Retry-After is 0, i.e. no hint), no request for this long, doubling while it
  *  keeps happening. Retrying every tick is what keeps the limit from ever lifting. */
 const BACKOFF_MIN_MS = 5 * 60_000;
@@ -40,6 +41,7 @@ const BACKOFF_MAX_MS = 30 * 60_000;
 
 let cache: { status: ClaudeUsageStatus; fetchedAt: number } | null = null;
 let backoff: { until: number; ms: number } | null = null;
+let cacheTtlMs = CACHE_TTL_MS;
 
 /** The last good reading while rate-limited, or the error when there's none yet. */
 function rateLimited(): ClaudeUsageStatus {
@@ -85,10 +87,15 @@ async function readAccessToken(): Promise<string> {
   return token;
 }
 
-/** Current usage-limit status (percentages, reset times, extra-usage credits), cached for 5 min
- *  unless `forceRefresh`. */
+/** The last reading, without fetching (null before the first one). */
+export function getCachedClaudeUsageStatus(): ClaudeUsageStatus | null {
+  return cache?.status ?? null;
+}
+
+/** Current usage-limit status (percentages, reset times, extra-usage credits), cached for 3 min
+ *  (5 after a 429) unless `forceRefresh`. */
 export async function getClaudeUsageStatus(forceRefresh = false): Promise<ClaudeUsageStatus> {
-  if (!forceRefresh && cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
+  if (!forceRefresh && cache && Date.now() - cache.fetchedAt < cacheTtlMs) {
     return cache.status;
   }
   if (backoff && Date.now() < backoff.until) return rateLimited();
@@ -123,6 +130,7 @@ export async function getClaudeUsageStatus(forceRefresh = false): Promise<Claude
     if (response.status === 429) {
       const ms = Math.min(BACKOFF_MAX_MS, Math.max(BACKOFF_MIN_MS, (backoff?.ms ?? 0) * 2));
       backoff = { until: Date.now() + ms, ms };
+      cacheTtlMs = CACHE_TTL_AFTER_429_MS;
       console.warn(`[usage] Rate-limited (429) — no request for ${ms / 60_000} min.`);
       return rateLimited();
     }

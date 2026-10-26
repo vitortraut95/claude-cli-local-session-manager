@@ -9,7 +9,7 @@ import {
   resolveBaseBranch,
 } from "./taskService.js";
 import { cleanupFinishedTests, launchTestEntry } from "./taskTestService.js";
-import { getClaudeUsageStatus } from "./usageService.js";
+import { getCachedClaudeUsageStatus, getClaudeUsageStatus } from "./usageService.js";
 import { firstWorkspaceDir } from "./workspaceService.js";
 import { recordEvent } from "../utils/history.js";
 import { BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
@@ -67,9 +67,11 @@ async function countActiveSessions(): Promise<number> {
   return active.size + pendingLaunches.size;
 }
 
-async function getUsagePercent(): Promise<number | null> {
+/** Only fetched when something is ready to launch; otherwise the last reading, if any. */
+async function getUsagePercent(fetch: boolean): Promise<number | null> {
   try {
-    const { limits } = await getClaudeUsageStatus();
+    const status = fetch ? await getClaudeUsageStatus() : getCachedClaudeUsageStatus();
+    const limits = status?.limits ?? [];
     return limits.length > 0 ? Math.max(...limits.map((limit) => limit.percent)) : null;
   } catch {
     return null;
@@ -77,15 +79,15 @@ async function getUsagePercent(): Promise<number | null> {
 }
 
 export async function getSchedulerStatus(): Promise<SchedulerStatus> {
-  const [prefs, queue, activeSessions, freeMemoryPercent, memoryPressure, usagePercent] =
-    await Promise.all([
-      getUserPreferences(),
-      getQueue(),
-      countActiveSessions(),
-      getFreeMemoryPercent(),
-      getMemoryPressure(),
-      getUsagePercent(),
-    ]);
+  const [prefs, queue, activeSessions, freeMemoryPercent, memoryPressure] = await Promise.all([
+    getUserPreferences(),
+    getQueue(),
+    countActiveSessions(),
+    getFreeMemoryPercent(),
+    getMemoryPressure(),
+  ]);
+  const waiting = queue.filter(isReady).length;
+  const usagePercent = await getUsagePercent(waiting > 0);
   const { enabled, maxSessions, minFreeMemoryPercent, maxUsagePercent, launchSpacingMinutes } =
     prefs.orchestrator;
 
@@ -109,7 +111,7 @@ export async function getSchedulerStatus(): Promise<SchedulerStatus> {
     memoryPressure,
     usagePercent,
     maxUsagePercent,
-    waiting: queue.filter(isReady).length,
+    waiting,
     blockedBy,
     launching: launchingKeys.values().next().value ?? null,
     launchingKeys: [...launchingKeys],
