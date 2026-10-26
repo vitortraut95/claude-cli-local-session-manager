@@ -4,9 +4,23 @@ import type {
   SessionImportPreview,
   SessionImportResult,
   WorkStatus,
-} from "../types/session";
+} from "../../shared/session";
 import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
 import type { TerminalLayout } from "./preferencesApi";
+import type {
+  HistoryEvent,
+  HistorySummary,
+  ImportConflictResolution,
+  ResumeOpenResult,
+  ScanProgress,
+} from "../../shared/session";
+export type {
+  HistoryEvent,
+  HistorySummary,
+  ImportConflictResolution,
+  ResumeOpenResult,
+  ScanProgress,
+} from "../../shared/session";
 
 const client = axios.create({
   baseURL: "/sessions",
@@ -24,8 +38,6 @@ export async function fetchSessions(): Promise<Session[]> {
   const { data } = await client.get<Session[]>("/");
   return data;
 }
-
-export type ScanProgress = { total: number; done: number; scanning: boolean };
 
 /** Scan progress, polled while the initial `fetchSessions()` is in flight. Best-effort: callers
  *  swallow errors. */
@@ -54,12 +66,6 @@ export async function focusSessionInGrid(id: string): Promise<boolean> {
   );
   return data.focused;
 }
-
-export type ResumeOpenResult = {
-  resumed: { id: string; taskKey: string | null }[];
-  skippedForLimit: number;
-  failed: { id: string; message: string }[];
-};
 
 /** Resumes the latest session of every in-progress / waiting task with nothing running, up to
  *  the session limit (in the grid when that's the terminal layout). */
@@ -222,8 +228,6 @@ export async function inspectSessionImport(file: Blob): Promise<SessionImportPre
   return data.preview;
 }
 
-export type ImportConflictResolution = "overwrite" | "copy";
-
 /** `onConflict` is required by the server only when the session id already exists locally
  *  (`SessionImportPreview.existingSession`); null otherwise. */
 export async function importSession(
@@ -240,25 +244,6 @@ export async function importSession(
   );
   return data;
 }
-
-/** One `history.jsonl` line: `{ ts, type, ...data }` (see server/utils/history.ts). */
-export type HistoryEvent = { ts: string; type: string } & Record<string, unknown>;
-
-export type HistorySummary = {
-  queuedMs: number | null;
-  queueBlocks: { reason: string; durationMs: number }[];
-  statusMs: Record<string, number>;
-  currentStatus: string | null;
-  totalMs: number | null;
-  heavyRuns: number;
-  heavyFailed: number;
-  heavyOverCap: number;
-  heavySlotWaitS: number;
-  heavyMemoryWaitS: number;
-  heavyDurationS: number;
-  heavyBlocked: number;
-  errors: { ts: string; type: string; message: string }[];
-};
 
 /** The card's "info": this session's (and its task's) history events and their summary. */
 export async function fetchSessionHistory(

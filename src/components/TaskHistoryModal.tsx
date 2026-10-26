@@ -4,7 +4,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import type { TranslationKey } from "../i18n/translations";
 import * as sessionsApi from "../services/sessionsApi";
 import type { HistoryEvent, HistorySummary } from "../services/sessionsApi";
-import type { Session, WorkStatus } from "../types/session";
+import type { Session, WorkStatus } from "../../shared/session";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { formatActiveTime } from "../utils/formatDate";
 import { WORK_STATUS_LABEL_KEYS } from "../utils/workStatus";

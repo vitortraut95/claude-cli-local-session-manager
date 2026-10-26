@@ -1,6 +1,6 @@
 import { ChevronDown, FlaskConical, Loader2 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
-import type { WorkStatus } from "../types/session";
+import type { WorkStatus } from "../../shared/session";
 import { WORK_STATUS_CLASSES, WORK_STATUS_LABEL_KEYS, WORK_STATUSES } from "../utils/workStatus";
 import { Tooltip } from "./Tooltip";
 

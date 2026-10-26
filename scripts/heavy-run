@@ -2,11 +2,13 @@
 # Usage: heavy-run <command> [args...]
 #        heavy-run --preview docker run [docker run options] <image> [command...]
 #
-# Runs a heavy command (tests, typecheck, lint, builds) so parallel Claude sessions can't freeze the machine:
+# Runs a heavy command (tests, typecheck, lint, builds, installs, git commit/push) so parallel
+# Claude sessions can't freeze the machine:
 #   - at most N of them at once across every session (`flock` slots — released by the kernel when
 #     the process ends, so a killed run never leaves a slot taken);
-#   - inside its own cgroup (`systemd-run --user --scope`) with a RAM and CPU cap: a run that goes
-#     over is killed on its own (exit 137) instead of dragging the whole machine into swap;
+#   - inside its own cgroup (`systemd-run --user --scope`; a `docker run` gets `--memory`/`--cpus`)
+#     with a RAM and CPU cap: a run that goes over is killed on its own (exit 137) instead of
+#     dragging the whole machine into swap;
 #   - with Node's heap capped below that (NODE_OPTIONS --max-old-space-size), so tsc/jest fail with
 #     a clear "heap out of memory" instead of crawling in GC right at the cgroup limit;
 #   - at low CPU/IO priority (nice, ionice, cgroup weights), so the desktop stays responsive;
@@ -171,6 +173,15 @@ else
   node_options="${node_options:+$node_options }--max-old-space-size=$heap_mb"
 fi
 export NODE_OPTIONS="$node_options"
+
+# A container runs in dockerd's cgroup, outside the scope below: the caps go on `docker run` itself,
+# right after `run` so an explicit flag later in the command still wins.
+if [ "${1:-}" = docker ] && [ "${2:-}" = run ]; then
+  shift 2
+  set -- docker run --memory="${MEMORY_GB}g" --memory-swap="${MEMORY_GB}g" \
+    --cpus="$((CPU_PERCENT / 100)).$((CPU_PERCENT % 100 / 10))" --cpu-shares=256 \
+    --env NODE_OPTIONS="--max-old-space-size=$heap_mb" "$@"
+fi
 
 low_priority=(nice -n 10)
 command -v ionice >/dev/null 2>&1 && low_priority+=(ionice -c 2 -n 7)

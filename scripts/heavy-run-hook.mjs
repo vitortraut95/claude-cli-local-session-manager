@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 /**
  * Claude CLI PreToolUse hook (matcher "Bash"), installed by the Task queue window: blocks a heavy
- * command (tests, typecheck, lint, builds, git commit) run directly and tells Claude to rerun it
+ * command (tests, typecheck, lint, builds, installs, git commit/push) run directly and tells Claude to rerun it
  * through `heavy-run`, which queues it among every session's tests and caps its RAM/CPU; and a
  * dev-server container (`docker run … next dev`), to be started with `heavy-run --preview`, which
  * caps how many run at once and each one's RAM/CPU. Exit 2 = the call is blocked and stderr goes back
@@ -22,9 +22,10 @@ const HEAVY_BINARIES = ["jest", "vitest", "tsc", "vue-tsc", "eslint"];
 const HEAVY_SCRIPTS = ["test", "typecheck", "type-check", "tsc", "lint", "build"];
 
 /**
- * Tests, typecheck, lint, builds and `git commit` (whose pre-commit hooks — husky/lint-staged —
- * usually lint and typecheck), as the command itself; a mere mention (`cat jest.config.js`,
- * `git log --grep=lint`) doesn't count. `git commit --no-verify` runs no hooks, so it passes.
+ * Tests, typecheck, lint, builds, dependency installs and `git commit`/`git push` (whose
+ * pre-commit/pre-push hooks — husky/lint-staged — usually lint, typecheck or test), as the command
+ * itself; a mere mention (`cat jest.config.js`, `git log --grep=lint`) doesn't count.
+ * `--no-verify` runs no hooks, so it passes.
  */
 const HEAVY_COMMAND = new RegExp(
   COMMAND_START +
@@ -32,7 +33,8 @@ const HEAVY_COMMAND = new RegExp(
     String.raw`(?:npx\s+|yarn\s+(?:run\s+)?|pnpm\s+(?:exec\s+|run\s+)?)?(?:\S*/)?(?:${HEAVY_BINARIES.join("|")})(?![\w.-])` +
     String.raw`|(?:yarn|npm|pnpm)\s+(?:run\s+)?(?:${HEAVY_SCRIPTS.join("|")})(?::[\w-]+)?(?![\w-])` +
     String.raw`|(?:npx\s+)?next\s+build\b` +
-    String.raw`|git\s+(?:-C\s+\S+\s+)?commit\b(?!.*--no-verify)` +
+    String.raw`|(?:yarn|npm|pnpm)\s+(?:install|ci|i)\b|yarn\s*(?:$|[;&|)\n])` +
+    String.raw`|git\s+(?:-C\s+\S+\s+)?(?:commit|push)\b(?!.*--no-verify)` +
     ")",
 );
 
@@ -96,7 +98,7 @@ if (isPreview) {
 }
 
 process.stderr.write(
-  `Tests, typecheck, lint, builds and git commit (its pre-commit hooks) must go through ` +
+  `Tests, typecheck, lint, builds, installs and git commit/push (their hooks) must go through ` +
     `heavy-run so parallel sessions don't freeze the machine (it waits for a free slot and free ` +
     `RAM, caps RAM/CPU and Node's heap, and runs at low priority). Rerun it as:\n\n` +
     `  ${HEAVY_RUN} <the same command>\n\n` +
@@ -104,7 +106,8 @@ process.stderr.write(
     `narrowest run (the changed files) and fewer workers (--maxWorkers=2); don't set ` +
     `--max-old-space-size yourself, heavy-run sets it. If other sessions hold every slot it ` +
     `waits (up to 15 min, then exit 75 with nothing run — retry later); for a long run use ` +
-    `run_in_background. Exit 137 = over the RAM cap, 134 = over the heap cap — neither is a ` +
+    `run_in_background. A \`docker run\` (build/test in a container) gets the same caps. In a ` +
+    `worktree, don't install dependencies unless the run really needs them. Exit 137 = over the RAM cap, 134 = over the heap cap — neither is a ` +
     `failing test.\n`,
 );
 process.exit(2);

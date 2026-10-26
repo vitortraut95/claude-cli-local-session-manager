@@ -25,7 +25,7 @@ export const history = {
   "history.stat.total": dict("Until done", "Até concluir"),
   "history.stat.queued": dict("Waiting in line", "Esperando na fila"),
   "history.stat.inStatus": dict("In “{status}”", "Em “{status}”"),
-  "history.stat.tests": dict("Heavy runs", "Testes pesados"),
+  "history.stat.tests": dict("Heavy runs", "Comandos pesados"),
   "history.stat.testsValue": dict(
     "{runs} ({failed} failed) · {duration}",
     "{runs} ({failed} falharam) · {duration}",

@@ -5,28 +5,9 @@ import { fileURLToPath } from "node:url";
 import { runGit } from "../utils/git.js";
 import { AppError, ConflictError, errorMessage } from "../utils/httpError.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
-
-export type UpdateStatus = {
-  branch: string;
-  tracking: string;
-  ahead: number;
-  behind: number;
-  updateAvailable: boolean;
-  /** Uncommitted or untracked files, or commits not on origin/main: the update would discard
-   *  them, so it never runs on its own and needs `force`. Optional: older backend. */
-  hasLocalChanges?: boolean;
-  /** `git status --porcelain` lines (first `MAX_LISTED_FILES`). */
-  changedFiles?: string[];
-  changedFileCount?: number;
-};
+import type { UpdateJobStatus, UpdateStatus } from "../../shared/system.js";
 
 const MAX_LISTED_FILES = 20;
-
-export type UpdateJobStatus =
-  | { state: "idle" }
-  | { state: "running"; startedAt: string }
-  | { state: "success"; branch: string; pullSummary: string; finishedAt: string }
-  | { state: "error"; message: string; code?: string; finishedAt: string };
 
 /** Not `@{u}`: this process may run from a `--no-track` worktree branch with no upstream. */
 const UPDATE_TARGET_REF = "origin/main";

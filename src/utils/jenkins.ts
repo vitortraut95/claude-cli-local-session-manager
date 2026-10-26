@@ -1,5 +1,5 @@
 import type { EnvPreviews } from "../services/preferencesApi";
-import type { Session } from "../types/session";
+import type { Session } from "../../shared/session";
 
 // Jenkins multibranch pipeline links. The job name is the repo folder name (`session.project`);
 // the base URL is per-machine config (`jenkinsBaseUrl` in userPreferences.json).

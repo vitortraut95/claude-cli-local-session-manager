@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import * as tasksApi from "../services/tasksApi";
-import type { Session, TaskRepoRef } from "../types/session";
+import type { Session, TaskRepoRef } from "../../shared/session";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { AnchoredMenu } from "./AnchoredMenu";
 import { Tooltip } from "./Tooltip";

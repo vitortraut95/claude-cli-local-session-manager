@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TerminalLayout } from "../services/preferencesApi";
 import * as sessionsApi from "../services/sessionsApi";
 import * as tasksApi from "../services/tasksApi";
-import type { Session, WorkStatus } from "../types/session";
+import type { Session, WorkStatus } from "../../shared/session";
 import { resolveProjectParentSegment } from "../utils/formatPath";
 import { useLanguage } from "./useLanguage";
 import { useUrlParam } from "./useUrlState";

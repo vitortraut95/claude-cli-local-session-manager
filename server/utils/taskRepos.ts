@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { Session, TaskRepoRef } from "../types/session.js";
+import type { Session, TaskRepoRef } from "../../shared/session.js";
 import type { TaskStore } from "./taskStore.js";
 
 type SessionForRepos = Pick<

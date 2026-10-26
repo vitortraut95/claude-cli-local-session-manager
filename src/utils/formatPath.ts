@@ -1,4 +1,4 @@
-import type { Session } from "../types/session";
+import type { Session } from "../../shared/session";
 
 type WorktreePathParts = {
   /** `<repo>/.claude/worktrees` (or the parent dir for a non-standard path). */

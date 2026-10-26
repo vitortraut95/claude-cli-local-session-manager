@@ -8,7 +8,7 @@ import type {
   SessionImportCandidate,
   SessionImportPreview,
   SessionImportResult,
-} from "../types/session.js";
+} from "../../shared/session.js";
 import { forgetCachedSession, getClaudeProjectsDir } from "../utils/claudeProjects.js";
 import { branchExists, runGit, tryGit } from "../utils/git.js";
 import { AppError, BadRequestError, ConflictError, errorMessage } from "../utils/httpError.js";
@@ -23,6 +23,7 @@ import {
 } from "./sessionService.js";
 import { getKnownProjectFolders } from "./taskService.js";
 import { withWorkspaceRepos } from "./workspaceService.js";
+import type { ImportConflictResolution } from "../../shared/session.js";
 
 /**
  * Session export/import. A bundle is one gzipped JSON file (plain JSON so `zcat` can review it)
@@ -385,8 +386,6 @@ function rewriteJsonl(text: string, rewrite: Rewriter): string {
     })
     .join("\n");
 }
-
-export type ImportConflictResolution = "overwrite" | "copy";
 
 type ImportSessionOptions = {
   targetDir: string;

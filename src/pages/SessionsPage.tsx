@@ -14,7 +14,7 @@ import { SearchBar } from "../components/SearchBar";
 import { SessionCard } from "../components/SessionCard";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSessions } from "../hooks/useSessions";
-import type { Session } from "../types/session";
+import type { Session } from "../../shared/session";
 import { DEFAULT_BRANCHES } from "../utils/branches";
 import { RefreshCw, Trash2, X } from "lucide-react";
 
@@ -210,7 +210,7 @@ export function SessionsPage() {
         }}
       />
       <main className="px-4 py-6 sm:px-6">
-        <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center max-w-375 mx-auto">
+        <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center max-w-5xl mx-auto">
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
           <ProjectFilter
             projects={projects}

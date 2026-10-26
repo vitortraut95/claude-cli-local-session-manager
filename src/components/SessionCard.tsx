@@ -11,7 +11,6 @@ import {
   Play,
   Share,
   Trash2,
-  TriangleAlert,
   Info,
 } from "lucide-react";
 import { useState } from "react";
@@ -22,7 +21,7 @@ import type { PendingAction } from "../hooks/useSessions";
 import * as cleanupApi from "../services/cleanupApi";
 import * as sessionsApi from "../services/sessionsApi";
 import type { TerminalLayout } from "../services/preferencesApi";
-import type { Session, WorkStatus } from "../types/session";
+import type { Session, WorkStatus } from "../../shared/session";
 import { AnchoredMenu } from "./AnchoredMenu";
 import { Button } from "./Button";
 import { ExportSessionModal } from "./ExportSessionModal";
@@ -30,6 +29,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { JenkinsLinksModal } from "./JenkinsLinksModal";
 import { LaunchLayoutButton } from "./LaunchLayoutButton";
 import { LinkifiedText } from "./LinkifiedText";
+import { MissingDirectoryNotice } from "./MissingDirectoryNotice";
 import { TaskModal } from "./TaskModal";
 import { TaskReposLine } from "./TaskReposLine";
 import { PromptPreviewModal } from "./PromptPreviewModal";
@@ -53,6 +53,21 @@ const DONE_WORKTREE_KEPT_KEYS = {
   "uncommitted-changes": "sessionCard.doneWorktree.keptDirty",
   "active-session": "sessionCard.doneWorktree.keptActive",
 } as const;
+
+/** The one dialog a card can have open. `task.addRepo` opens it straight on the "add repo" form;
+ *  `doneWorktree` is offered right after the card is marked done (the cleanup that removing its
+ *  worktree means). */
+type CardModal =
+  | { kind: "preview" }
+  | { kind: "nickname" }
+  | { kind: "branches" }
+  | { kind: "task"; addRepo: boolean }
+  | { kind: "history" }
+  | { kind: "export" }
+  | { kind: "jenkins" }
+  | { kind: "openPrBase" }
+  | { kind: "deleteWorktree" }
+  | { kind: "doneWorktree"; finding: cleanupApi.CleanupFinding };
 
 type SessionCardProps = {
   session: Session;
@@ -108,22 +123,10 @@ export function SessionCard({
   const isDeletingWorktree = pendingAction === "worktree-delete";
   const isResumingAtMissingWorktreeRoot = pendingAction === "missing-root-resume";
   const isBusy = isDeleting || isContinuing || isSettingNickname;
-  const [resumingAtRoot, setResumingAtRoot] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [showNicknameModal, setShowNicknameModal] = useState(false);
-  const [showBranchesModal, setShowBranchesModal] = useState(false);
-  // null = closed; otherwise whether it opens straight on the "add repo" form.
-  const [taskModal, setTaskModal] = useState<{ addRepo: boolean } | null>(null);
-  const [showDeleteWorktreeConfirm, setShowDeleteWorktreeConfirm] = useState(false);
-  // Offered right after the card is marked done: the cleanup that removing its worktree means.
-  const [doneWorktreeFinding, setDoneWorktreeFinding] = useState<cleanupApi.CleanupFinding | null>(
-    null,
-  );
+  const [openModal, setOpenModal] = useState<CardModal | null>(null);
+  const closeModal = () => setOpenModal(null);
+  const doneWorktreeFinding = openModal?.kind === "doneWorktree" ? openModal.finding : null;
   const [removingDoneWorktree, setRemovingDoneWorktree] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [showOpenPrBaseChoice, setShowOpenPrBaseChoice] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [showJenkinsModal, setShowJenkinsModal] = useState(false);
   const [openingPrUrl, setOpeningPrUrl] = useState(false);
   const { showToast } = useToast();
   const worktreePathParts =
@@ -152,7 +155,9 @@ export function SessionCard({
     try {
       const result = await cleanupApi.fetchWorktreeCleanupForSession(session.id);
       if (result?.finding) {
-        setDoneWorktreeFinding(result.finding);
+        const finding = result.finding;
+        // Never replaces a dialog the user opened meanwhile.
+        setOpenModal((current) => current ?? { kind: "doneWorktree", finding });
       } else if (
         result?.reason === "not-pushed" ||
         result?.reason === "uncommitted-changes" ||
@@ -171,7 +176,7 @@ export function SessionCard({
     try {
       await cleanupApi.executeCleanupFinding(doneWorktreeFinding);
       showToast(t("sessionCard.doneWorktree.removed"), "success");
-      setDoneWorktreeFinding(null);
+      closeModal();
       onWorktreeSyncComplete(session);
     } catch (err) {
       showToast(resolveApiErrorMessage(err, t, "cleanupModal.runError"), "error");
@@ -190,7 +195,7 @@ export function SessionCard({
       originBranch !== session.defaultBranch &&
       !DEFAULT_BRANCHES.has(originBranch)
     ) {
-      setShowOpenPrBaseChoice(true);
+      setOpenModal({ kind: "openPrBase" });
       return;
     }
     setOpeningPrUrl(true);
@@ -208,7 +213,7 @@ export function SessionCard({
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setShowNicknameModal(true)}
+      onClick={() => setOpenModal({ kind: "nickname" })}
       disabled={isBusy}
       aria-label={session.nickname ? t("sessionCard.nickname.edit") : t("sessionCard.nickname.add")}
       icon={
@@ -302,7 +307,7 @@ export function SessionCard({
           <Tooltip content={t("history.open")}>
             <button
               type="button"
-              onClick={() => setShowHistory(true)}
+              onClick={() => setOpenModal({ kind: "history" })}
               aria-label={t("history.open")}
               className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-500 shadow-sm hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
             >
@@ -346,7 +351,7 @@ export function SessionCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setShowBranchesModal(true)}
+                  onClick={() => setOpenModal({ kind: "branches" })}
                   disabled={isSettingBranches}
                   aria-label={t("sessionCard.branches.edit")}
                   icon={
@@ -365,7 +370,7 @@ export function SessionCard({
               <TaskReposLine
                 session={session}
                 onFilterByTask={onFilterByTask}
-                onAddRepo={() => setTaskModal({ addRepo: true })}
+                onAddRepo={() => setOpenModal({ kind: "task", addRepo: true })}
               />
               <PreviewLinks
                 previews={session.previews ?? []}
@@ -384,67 +389,13 @@ export function SessionCard({
       </div>
 
       {session.directoryMissing && (
-        <div className="flex flex-col gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-          <div
-            className="flex items-center gap-1.5"
-            title={
-              session.workingDirectory
-                ? t("sessionCard.directoryMissing.tooltipWithPath", {
-                    path: session.workingDirectory,
-                  })
-                : t("sessionCard.directoryMissing.tooltipNoPath")
-            }
-          >
-            <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
-            {t("sessionCard.directoryMissing.title")}
-          </div>
-
-          {session.missingWorktreeRepoRoot && (
-            <div className="flex flex-col gap-1.5 pl-0.5 font-normal text-gray-600 dark:text-gray-400">
-              <span className="break-all">
-                {t("sessionCard.directoryMissing.removedWorktree")}{" "}
-                <span className="font-mono">{session.missingWorktreeRepoRoot}</span>
-              </span>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onOpenMissingWorktreeRootInVSCode(session)}
-                  disabled={isOpeningVSCode}
-                  aria-label={t("sessionCard.directoryMissing.openRootAriaLabel")}
-                  icon={
-                    isOpeningVSCode ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Code2 className="h-3.5 w-3.5" />
-                    )
-                  }
-                >
-                  {t("sessionCard.codeButton")}
-                </Button>
-                <Tooltip content={t("sessionCard.directoryMissing.newSessionTooltip")}>
-                  <span className="inline-flex">
-                    <LaunchLayoutButton
-                      variant="outline"
-                      size="sm"
-                      label={t("sessionCard.newSessionAtRootButton")}
-                      icon={<Play className="h-3.5 w-3.5" />}
-                      busy={resumingAtRoot || isResumingAtMissingWorktreeRoot}
-                      onLaunch={async (layout) => {
-                        setResumingAtRoot(true);
-                        try {
-                          await onStartNewSessionAtMissingWorktreeRoot(session, layout);
-                        } finally {
-                          setResumingAtRoot(false);
-                        }
-                      }}
-                    />
-                  </span>
-                </Tooltip>
-              </div>
-            </div>
-          )}
-        </div>
+        <MissingDirectoryNotice
+          session={session}
+          isOpeningVSCode={isOpeningVSCode}
+          isResumingAtMissingWorktreeRoot={isResumingAtMissingWorktreeRoot}
+          onOpenMissingWorktreeRootInVSCode={onOpenMissingWorktreeRootInVSCode}
+          onStartNewSessionAtMissingWorktreeRoot={onStartNewSessionAtMissingWorktreeRoot}
+        />
       )}
 
       <div className="flex flex-col gap-1">
@@ -488,7 +439,7 @@ export function SessionCard({
             tooltip={t("sessionCard.previewTooltip")}
             ariaLabel={t("sessionCard.previewAriaLabel")}
             color="blue"
-            onClick={() => setShowPreview(true)}
+            onClick={() => setOpenModal({ kind: "preview" })}
             icon={<MessageSquare className="h-4 w-4" />}
           />
         )}
@@ -497,7 +448,7 @@ export function SessionCard({
             tooltip={t("taskModal.open")}
             ariaLabel={t("taskModal.open")}
             color="violet"
-            onClick={() => setTaskModal({ addRepo: false })}
+            onClick={() => setOpenModal({ kind: "task", addRepo: false })}
             icon={<Layers className="h-4 w-4" />}
           />
         )}
@@ -505,7 +456,7 @@ export function SessionCard({
           tooltip={t("sessionCard.exportTooltip")}
           ariaLabel={t("sessionCard.exportAriaLabel")}
           color="teal"
-          onClick={() => setShowExportModal(true)}
+          onClick={() => setOpenModal({ kind: "export" })}
           icon={<Share className="h-4 w-4" />}
         />
         {jenkinsGroups && (
@@ -513,7 +464,7 @@ export function SessionCard({
             tooltip={t("sessionCard.openJenkinsTooltip")}
             ariaLabel={t("sessionCard.openJenkinsAriaLabel")}
             color="neutral"
-            onClick={() => setShowJenkinsModal(true)}
+            onClick={() => setOpenModal({ kind: "jenkins" })}
             // Multi-color logo: the button color only drives the hover background.
             icon={<img src={jenkinsIcon} alt="" className="h-6 w-6" />}
           />
@@ -544,7 +495,7 @@ export function SessionCard({
             ariaLabel={t("sessionCard.cleanupWorktreeAriaLabel")}
             color="red"
             disabled={session.isActive || isDeletingWorktree}
-            onClick={() => setShowDeleteWorktreeConfirm(true)}
+            onClick={() => setOpenModal({ kind: "deleteWorktree" })}
             icon={
               isDeletingWorktree ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -612,49 +563,49 @@ export function SessionCard({
 
       <PromptPreviewModal
         session={session}
-        open={showPreview}
-        onClose={() => setShowPreview(false)}
+        open={openModal?.kind === "preview"}
+        onClose={closeModal}
       />
-      {taskModal && (
+      {openModal?.kind === "task" && (
         <TaskModal
           session={session}
-          startAddingRepo={taskModal.addRepo}
-          onClose={() => setTaskModal(null)}
+          startAddingRepo={openModal.addRepo}
+          onClose={closeModal}
           onChanged={onTaskChanged}
           onSetNickname={(nickname) => onSetNickname(session, nickname)}
           onSetBranches={(origin, destination) => onSetBranches(session, origin, destination)}
         />
       )}
-      {showBranchesModal && (
+      {openModal?.kind === "branches" && (
         <SessionBranchesModal
           session={session}
           onSave={(origin, destination) => {
-            setShowBranchesModal(false);
+            closeModal();
             onSetBranches(session, origin, destination);
           }}
-          onCancel={() => setShowBranchesModal(false)}
+          onCancel={closeModal}
         />
       )}
-      {showNicknameModal && (
+      {openModal?.kind === "nickname" && (
         <NicknameModal
           currentNickname={session.nickname ?? ""}
           onSave={(nickname) => {
-            setShowNicknameModal(false);
+            closeModal();
             onSetNickname(session, nickname);
           }}
-          onCancel={() => setShowNicknameModal(false)}
+          onCancel={closeModal}
         />
       )}
-      {showJenkinsModal && jenkinsGroups && (
-        <JenkinsLinksModal groups={jenkinsGroups} onClose={() => setShowJenkinsModal(false)} />
+      {openModal?.kind === "jenkins" && jenkinsGroups && (
+        <JenkinsLinksModal groups={jenkinsGroups} onClose={closeModal} />
       )}
-      {showExportModal && (
-        <ExportSessionModal session={session} onClose={() => setShowExportModal(false)} />
+      {openModal?.kind === "export" && (
+        <ExportSessionModal session={session} onClose={closeModal} />
       )}
-      {showOpenPrBaseChoice && (
-        <OpenPrBaseChoiceModal session={session} onClose={() => setShowOpenPrBaseChoice(false)} />
+      {openModal?.kind === "openPrBase" && (
+        <OpenPrBaseChoiceModal session={session} onClose={closeModal} />
       )}
-      {showHistory && <TaskHistoryModal session={session} onClose={() => setShowHistory(false)} />}
+      {openModal?.kind === "history" && <TaskHistoryModal session={session} onClose={closeModal} />}
       <ConfirmDialog
         open={doneWorktreeFinding !== null}
         title={t("sessionCard.doneWorktree.title")}
@@ -668,19 +619,19 @@ export function SessionCard({
         cancelLabel={t("sessionCard.doneWorktree.keep")}
         isLoading={removingDoneWorktree}
         onConfirm={() => void handleRemoveDoneWorktree()}
-        onCancel={() => setDoneWorktreeFinding(null)}
+        onCancel={closeModal}
       />
       <ConfirmDialog
-        open={showDeleteWorktreeConfirm}
+        open={openModal?.kind === "deleteWorktree"}
         title={t("sessionCard.deleteWorktreeConfirm.title")}
         message={t("sessionCard.deleteWorktreeConfirm.message")}
         confirmLabel={t("sessionCard.deleteButton")}
         cancelLabel={t("sessionCard.cancelButton")}
         onConfirm={() => {
-          setShowDeleteWorktreeConfirm(false);
+          closeModal();
           onDeleteWorktree(session);
         }}
-        onCancel={() => setShowDeleteWorktreeConfirm(false)}
+        onCancel={closeModal}
       />
     </div>
   );

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
 import { useLanguage } from "../hooks/useLanguage";
 import * as sessionsApi from "../services/sessionsApi";
-import type { Session } from "../types/session";
+import type { Session } from "../../shared/session";
 
 type PromptPreviewModalProps = {
   session: Session;

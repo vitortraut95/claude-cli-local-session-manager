@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import * as systemApi from "../services/systemApi";
-import type { SessionPreview } from "../types/session";
+import type { SessionPreview } from "../../shared/session";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { AnchoredMenu } from "./AnchoredMenu";
 import { ConfirmDialog } from "./ConfirmDialog";

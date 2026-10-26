@@ -54,7 +54,7 @@ if command -v warp-terminal >/dev/null 2>&1; then
 fi
 
 # Opens start.sh in the first emulator found (the .desktop's `Terminal=true` sometimes does
-# nothing from the GNOME dock). Must match sessionService.ts's TERMINAL_LAUNCHERS — checked by
+# nothing from the GNOME dock). Must match session/terminal.ts's TERMINAL_LAUNCHERS — checked by
 # `yarn lint` (scripts/check-terminal-launchers-sync.mjs).
 TERMINAL_LAUNCHERS=(x-terminal-emulator gnome-terminal konsole xfce4-terminal xterm)
 
@@ -63,7 +63,7 @@ SHELL_CMD="'$PROJECT_DIR/start.sh'; echo; read -p 'Press Enter to close...' _"
 
 for bin in "${TERMINAL_LAUNCHERS[@]}"; do
   if command -v "$bin" >/dev/null 2>&1; then
-    # Each emulator's "run this command" flag differs; matches sessionService.ts.
+    # Each emulator's "run this command" flag differs; matches session/terminal.ts.
     case "$bin" in
       gnome-terminal) exec "$bin" -- bash -c "$SHELL_CMD" ;;
       xfce4-terminal) exec "$bin" -x bash -c "$SHELL_CMD" ;;
