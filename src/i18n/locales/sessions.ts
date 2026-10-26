@@ -362,4 +362,9 @@ export const sessions = {
   ),
   "resumeConflictModal.stop.confirmButton": dict("Stop & continue", "Parar e continuar"),
   "resumeConflictModal.cancel": dict("Cancel", "Cancelar"),
+  "sessionCard.usagePaused.label": dict("Paused (plan limit)", "Pausada (limite do plano)"),
+  "sessionCard.usagePaused.tooltip": dict(
+    'Waiting for the plan limit to reset; it carries on by itself. To go on now: Esc in the terminal, then type "destravar".',
+    'Esperando a cota do plano resetar; segue sozinha. Para seguir agora: Esc no terminal e digite "destravar".',
+  ),
 };

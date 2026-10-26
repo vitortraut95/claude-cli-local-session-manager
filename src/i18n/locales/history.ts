@@ -61,6 +61,22 @@ export const history = {
   "history.event.cleanupFailed": dict("Cleanup failed: {error}", "Falha na limpeza: {error}"),
   "history.event.sessionStarted": dict("Session started", "Sessão iniciada"),
   "history.event.sessionResumed": dict("Session resumed", "Sessão retomada"),
+  "history.event.usagePaused": dict(
+    "Paused at the plan limit ({reason})",
+    "Pausada no limite do plano ({reason})",
+  ),
+  "history.event.usageResumedReset": dict(
+    "Carried on after the limit reset (waited {wait})",
+    "Seguiu depois que a cota resetou (esperou {wait})",
+  ),
+  "history.event.usageResumedUnlocked": dict(
+    'Unlocked by hand with "destravar" (waited {wait})',
+    'Destravada à mão com "destravar" (esperou {wait})',
+  ),
+  "history.event.usageUnlocked": dict(
+    'Limits unlocked by hand ("destravar")',
+    'Limites destravados à mão ("destravar")',
+  ),
   "history.event.resumeOpen": dict(
     "Resumed by “Open grid” / “Resume open tasks”",
     "Retomada pelo “Abrir grade” / “Retomar não concluídas”",
