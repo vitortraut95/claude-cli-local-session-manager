@@ -83,8 +83,8 @@ export type UserPreferences = {
   /** Preview sites an `env/*` branch deploys, per project folder name; `{env}` in a URL becomes
    *  the branch slug (`env/PROJ-1` → `env-proj-1`). */
   envPreviews: EnvPreviews;
-  /** Installed skill the "Test task" button runs as `/<skill> <ticket link>`; "" = button hidden.
-   *  Optional: older files lack it. */
+  /** Installed skill queued tests run as `/<skill> <ticket link>`; "" = no skill, the prompt starts
+   *  with "Test the task <ticket link>". Optional: older files lack it. */
   taskTestSkill: string;
   /** The "Test task" modal's "--permission-mode auto" checkbox, remembered as last left (default
    *  on). Optional: older files lack it. */

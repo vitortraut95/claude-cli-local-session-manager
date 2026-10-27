@@ -232,8 +232,8 @@ export const newTask = {
   "newSessionModal.activeSessionConfirm": dict("Start anyway", "Iniciar mesmo assim"),
   "taskTestSkill.title": dict("Task test skill", "Skill de teste da tarefa"),
   "taskTestSkill.description": dict(
-    "The skill the task queue's test entries run with the task's link.",
-    "A skill que os testes da fila de tarefas rodam com o link da tarefa.",
+    "The skill the task queue's test entries run with the task's link. None = \"Test the task <link>\".",
+    'A skill que os testes da fila de tarefas rodam com o link da tarefa. Nenhuma = "Teste a tarefa <link>".',
   ),
   "taskTestSkill.none": dict("None", "Nenhuma"),
   "taskTestSkill.missing": dict("{skill} (not installed)", "{skill} (não instalada)"),

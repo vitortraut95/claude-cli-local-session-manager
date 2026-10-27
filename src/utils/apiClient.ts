@@ -46,7 +46,6 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   // LIMUX_INSTALL_FAILED unmapped: its message carries the reason.
   TASK_REPO_NOT_FOUND: "apiError.taskRepoNotFound",
   TASK_TEST_LINK_REQUIRED: "apiError.taskTestLinkRequired",
-  TASK_TEST_SKILL_NOT_CONFIGURED: "apiError.taskTestSkillNotConfigured",
   TASK_TEST_SKILL_NOT_INSTALLED: "apiError.taskTestSkillNotInstalled",
   MALFORMED_PREFERENCES: "apiError.malformedPreferences",
   SKILLS_HUB_NOT_FOUND: "apiError.skillsHubNotFound",

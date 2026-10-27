@@ -61,10 +61,6 @@ export const apiErrors = {
     "É necessário informar o caminho do worktree.",
   ),
   "apiError.taskTestLinkRequired": dict("Paste the task's link.", "Cole o link da tarefa."),
-  "apiError.taskTestSkillNotConfigured": dict(
-    "No test skill is configured. Choose one in Settings or in the Skills window.",
-    "Nenhuma skill de teste configurada. Escolha uma em Configurações ou na janela de Skills.",
-  ),
   "apiError.taskTestSkillNotInstalled": dict(
     "The configured test skill isn't installed on this machine anymore. Choose another one or install it again.",
     "A skill de teste configurada não está mais instalada nesta máquina. Escolha outra ou instale de novo.",

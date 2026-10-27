@@ -27,7 +27,8 @@ import {
 } from "../utils/taskStore.js";
 
 /**
- * Test entries of the task queue: someone else's task branch, tested by `taskTestSkill`. Each repo
+ * Test entries of the task queue: someone else's task branch, tested by `taskTestSkill` (none = a
+ * plain "test the task" prompt). Each repo
  * gets a disposable worktree detached at `origin/<branch>` (`.claude/worktrees/test-<key>`), so the
  * test can run locally and change files without touching the main checkouts. The session itself
  * opens in the first workspace dir with those worktrees as `--add-dir`, so it can still be resumed
@@ -38,13 +39,12 @@ import {
  *  shell command or out of the skills folder. */
 const SKILL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 
-/** The configured `taskTestSkill`, checked to be installed. */
-async function resolveTestSkill(prefs: UserPreferences): Promise<string> {
+/** The configured `taskTestSkill`, checked to be installed; null when none is chosen. */
+async function resolveTestSkill(prefs: UserPreferences): Promise<string | null> {
   const skill = prefs.taskTestSkill.trim();
-  if (!skill || !SKILL_NAME_PATTERN.test(skill)) {
-    throw new AppError("TASK_TEST_SKILL_NOT_CONFIGURED", "No task test skill is configured.");
-  }
+  if (!skill) return null;
   try {
+    if (!SKILL_NAME_PATTERN.test(skill)) throw new Error(`Invalid skill name: ${skill}`);
     await stat(path.join(getUserSkillsDir(), skill, "SKILL.md"));
   } catch (err) {
     throw new AppError(
@@ -156,6 +156,7 @@ const PROMPT_TEXT = {
   en: {
     nickname: "Test - {link}",
     name: "Test {key}",
+    noSkill: "Test the task {link}",
     worktrees:
       "Test worktrees (already added with --add-dir), each detached at the task branch from " +
       "origin: {dirs}. They're disposable and get deleted once this test is marked done: if the " +
@@ -175,6 +176,7 @@ const PROMPT_TEXT = {
   pt: {
     nickname: "Teste - {link}",
     name: "Teste {key}",
+    noSkill: "Teste a tarefa {link}",
     worktrees:
       "Worktrees de teste (já adicionados com --add-dir), cada um detached na branch da tarefa " +
       "do origin: {dirs}. São descartáveis e apagados quando este teste for marcado como " +
@@ -241,7 +243,7 @@ export async function launchTestEntry(
     `curl -s -X PATCH http://localhost:${API_PORT}/sessions/${sessionId}/status ` +
     `-H 'Content-Type: application/json' -d '{"status":"done"}'`;
   const prompt = [
-    `/${skill} ${link}`,
+    skill ? `/${skill} ${link}` : text.noSkill.replace("{link}", link),
     worktrees.length > 0 ? text.worktrees.replace("{dirs}", worktrees.join(", ")) : "",
     linked.length > 0 ? text.sharedNodeModules.replace("{dirs}", linked.join(", ")) : "",
     extraErrors.length > 0 ? text.failedRepos.replace("{errors}", extraErrors.join("; ")) : "",
