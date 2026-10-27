@@ -155,6 +155,7 @@ async function createTestWorktree(
 const PROMPT_TEXT = {
   en: {
     nickname: "Test - {link}",
+    name: "Test {key}",
     worktrees:
       "Test worktrees (already added with --add-dir), each detached at the task branch from " +
       "origin: {dirs}. They're disposable and get deleted once this test is marked done: if the " +
@@ -173,6 +174,7 @@ const PROMPT_TEXT = {
   },
   pt: {
     nickname: "Teste - {link}",
+    name: "Teste {key}",
     worktrees:
       "Worktrees de teste (já adicionados com --add-dir), cada um detached na branch da tarefa " +
       "do origin: {dirs}. São descartáveis e apagados quando este teste for marcado como " +
@@ -258,6 +260,7 @@ export async function launchTestEntry(
       permissionModeAuto: prefs.taskTestPermissionModeAuto,
       repoRoot: "",
       nickname: text.nickname.replace("{link}", link),
+      name: text.name.replace("{key}", entry.key),
       addDirs: worktrees,
       sessionId,
     });

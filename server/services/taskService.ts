@@ -309,6 +309,8 @@ type LaunchTaskOptions = {
   permissionModeAuto: boolean;
   repoRoot: string;
   nickname?: string;
+  /** Session name (`claude --name`): the title in the CLI's picker, the terminal and this app. */
+  name?: string;
   originBranch?: string;
   destinationBranch?: string;
   /** Other folders the session gets tool access to (`--add-dir`); each must exist. */
@@ -325,6 +327,7 @@ export async function launchTaskTerminal({
   permissionModeAuto,
   repoRoot,
   nickname = "",
+  name = "",
   originBranch = "",
   destinationBranch = "",
   addDirs = [],
@@ -347,6 +350,8 @@ export async function launchTaskTerminal({
     sessionIdFlag = `--session-id ${newSessionId} `;
   }
 
+  const trimmedName = name.trim();
+  const nameFlag = trimmedName ? `--name ${posixShellQuote(trimmedName)} ` : "";
   const permissionFlag = permissionModeAuto ? "--permission-mode auto " : "";
   // A blank prompt (the "New session" modal allows one) just opens an interactive session.
   const promptArg = trimmedPrompt ? posixShellQuote(trimmedPrompt) : "";
@@ -357,7 +362,7 @@ export async function launchTaskTerminal({
   // After the prompt: `--add-dir` is variadic and would swallow a following prompt as a directory.
   const addDirArgs = dirs.length > 0 ? ` --add-dir ${dirs.map(posixShellQuote).join(" ")}` : "";
   await launchInTerminal(
-    `claude ${sessionIdFlag}${permissionFlag}${promptArg}`.trimEnd() + addDirArgs,
+    `claude ${sessionIdFlag}${nameFlag}${permissionFlag}${promptArg}`.trimEnd() + addDirArgs,
     trimmedWorktreePath,
     null,
     layout,

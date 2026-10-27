@@ -229,6 +229,7 @@ async function launchNoRepoEntry(
     permissionModeAuto: prefs.useAutoPermissionModeByDefault,
     repoRoot: "",
     nickname: entry.link ?? entry.key,
+    name: entry.key,
   });
   if (sessionId) {
     pendingLaunches.set(sessionId, Date.now());
@@ -330,6 +331,7 @@ async function launchDevEntry(
     permissionModeAuto: prefs.useAutoPermissionModeByDefault,
     repoRoot: repo.repoRoot,
     nickname: entry.link ?? entry.key,
+    name: entry.key,
     originBranch: base,
     destinationBranch: branch,
     addDirs,
