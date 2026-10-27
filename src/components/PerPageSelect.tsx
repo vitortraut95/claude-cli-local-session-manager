@@ -11,7 +11,7 @@ export function PerPageSelect({ value, onChange }: PerPageSelectProps) {
   const { t } = useLanguage();
   return (
     <Select
-      value={value}
+      value={String(value)}
       onChange={(event) => onChange(Number(event.target.value))}
       aria-label={t("perPageSelect.ariaLabel")}
       className="sm:w-auto"

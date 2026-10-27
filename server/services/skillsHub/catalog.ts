@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import type { HubCatalog, HubSkill, InstalledSkill } from "../../../shared/skillsHub.js";
 import { getUserSkillsDir } from "./common.js";
@@ -98,6 +98,14 @@ export async function listCatalogs(hubPath: string): Promise<HubCatalog[]> {
 
 /** Skills in `~/.claude/skills`: real folders or links (broken ones skipped, via `stat`) holding a
  *  SKILL.md. */
+/** The hub catalog an installed skill folder (usually a link) resolves into; null outside a hub. */
+async function skillCatalog(skillDir: string): Promise<string | null> {
+  const real = await realpath(skillDir).catch(() => skillDir);
+  const parts = real.split(path.sep);
+  const index = parts.lastIndexOf("catalog");
+  return index >= 0 && index < parts.length - 2 ? (parts[index + 1] ?? null) : null;
+}
+
 export async function listInstalledSkills(): Promise<InstalledSkill[]> {
   const dir = getUserSkillsDir();
   let names: string[];
@@ -109,14 +117,18 @@ export async function listInstalledSkills(): Promise<InstalledSkill[]> {
   const skills = await Promise.all(
     names
       .filter((name) => !name.startsWith("."))
-      .map(async (name) => {
+      .map(async (name): Promise<InstalledSkill | null> => {
         const skillMd = path.join(dir, name, "SKILL.md");
         try {
           await stat(skillMd);
         } catch {
           return null;
         }
-        return { name, description: await readSkillDescription(skillMd) };
+        return {
+          name,
+          description: await readSkillDescription(skillMd),
+          catalog: await skillCatalog(path.join(dir, name)),
+        };
       }),
   );
   return skills

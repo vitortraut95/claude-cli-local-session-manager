@@ -38,6 +38,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   jenkinsBaseUrl: null,
   envPreviews: {},
   taskTestSkill: "",
+  taskRefinementSkill: "",
   taskTestPermissionModeAuto: true,
   theme: null,
   orchestrator: {
@@ -232,6 +233,10 @@ function normalizePreferences(value: unknown): UserPreferences {
       typeof parsed.taskTestSkill === "string"
         ? parsed.taskTestSkill.trim()
         : DEFAULT_PREFERENCES.taskTestSkill,
+    taskRefinementSkill:
+      typeof parsed.taskRefinementSkill === "string"
+        ? parsed.taskRefinementSkill.trim()
+        : DEFAULT_PREFERENCES.taskRefinementSkill,
     taskTestPermissionModeAuto:
       typeof parsed.taskTestPermissionModeAuto === "boolean"
         ? parsed.taskTestPermissionModeAuto

@@ -1,4 +1,4 @@
-import { Loader2, Wand2 } from "lucide-react";
+import { FlaskConical, Loader2, Scale, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
@@ -9,7 +9,7 @@ import { SkillsCatalogPicker } from "./SkillsCatalogPicker";
 import { SkillsHubCloneStatus } from "./SkillsHubCloneStatus";
 import { SkillsHubInstallSection } from "./SkillsHubInstallSection";
 import { SkillsHubRepoUrlSection } from "./SkillsHubRepoUrlSection";
-import { TaskTestSkillSelect } from "./TaskTestSkillSelect";
+import { SkillPreferenceSelect } from "./SkillPreferenceSelect";
 
 type SkillsHubModalProps = {
   onClose: () => void;
@@ -97,7 +97,29 @@ function ManageSection({
           <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
             {t("taskTestSkill.description")}
           </p>
-          <TaskTestSkillSelect installedSkills={status.installedSkills} />
+          <SkillPreferenceSelect
+            preference="taskTestSkill"
+            icon={<FlaskConical className="h-3.5 w-3.5" />}
+            label={t("taskTestSkill.title")}
+            skillsHub={status}
+          />
+        </section>
+      )}
+
+      {status.installedSkills && (
+        <section className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+          <h3 className="mb-1 font-medium text-gray-900 dark:text-gray-100">
+            {t("taskRefinementSkill.title")}
+          </h3>
+          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+            {t("taskRefinementSkill.description")}
+          </p>
+          <SkillPreferenceSelect
+            preference="taskRefinementSkill"
+            icon={<Scale className="h-3.5 w-3.5" />}
+            label={t("taskRefinementSkill.title")}
+            skillsHub={status}
+          />
         </section>
       )}
 

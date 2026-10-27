@@ -7,6 +7,7 @@ import {
   ListTodo,
   MessageSquarePlus,
   Plus,
+  Scale,
   Settings,
   Sparkles,
 } from "lucide-react";
@@ -23,6 +24,7 @@ import { CleanupModal } from "./CleanupModal";
 import { ImportSessionModal } from "./ImportSessionModal";
 import { NewSessionModal } from "./NewSessionModal";
 import { NewTaskModal } from "./NewTaskModal";
+import { RefinementModal } from "./RefinementModal";
 import { SettingsModal } from "./SettingsModal";
 import { SetupModal } from "./SetupModal";
 import { TaskQueueModal } from "./TaskQueueModal";
@@ -68,6 +70,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   const { language, setLanguage, loaded, t } = useLanguage();
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
+  const [showRefinementModal, setShowRefinementModal] = useState(false);
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -151,6 +154,7 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
     !showSettings &&
     !showNewTaskModal &&
     !showNewSessionModal &&
+    !showRefinementModal &&
     !showTaskQueueModal &&
     !showSkillsModal;
 
@@ -205,6 +209,13 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
             icon={<MessageSquarePlus className="h-4 w-4" />}
           >
             {t("header.newSession")}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowRefinementModal(true)}
+            icon={<Scale className="h-4 w-4" />}
+          >
+            {t("header.refineTasks")}
           </Button>
           <Button
             variant="outline"
@@ -268,6 +279,11 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
       <NewSessionModal
         open={showNewSessionModal}
         onClose={() => setShowNewSessionModal(false)}
+        onSessionCreated={onSessionCreated}
+      />
+      <RefinementModal
+        open={showRefinementModal}
+        onClose={() => setShowRefinementModal(false)}
         onSessionCreated={onSessionCreated}
       />
       {showTaskQueueModal && (

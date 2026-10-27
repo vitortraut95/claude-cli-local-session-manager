@@ -10,6 +10,7 @@ import type {
   ProjectFolderOption,
   QueueEntry,
   QueueEntryInput,
+  RefinementInput,
   RepoInfo,
   SchedulerStatus,
   TaskDetails,
@@ -24,6 +25,7 @@ export type {
   QueueEntry,
   QueueEntryInput,
   QueueKind,
+  RefinementInput,
   RepoInfo,
   SchedulerBlock,
   SchedulerStatus,
@@ -232,4 +234,12 @@ export async function setHeavyRunHookInstalled(installed: boolean): Promise<Heav
     client.put<HeavyRunHookStatus>("/heavy-run/hook", { installed }),
   );
   return data;
+}
+
+/** "Refine tasks": opens a session running `taskRefinementSkill` on the pasted tickets. */
+export async function launchRefinement(
+  input: RefinementInput,
+  layout?: TerminalLayout,
+): Promise<void> {
+  await withServerErrorMessage(() => client.post("/refinement", { ...input, layout }));
 }
