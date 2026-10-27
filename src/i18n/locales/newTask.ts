@@ -235,6 +235,44 @@ export const newTask = {
     "The skill the task queue's test entries run with the task's link. None = \"Test the task <link>\".",
     'A skill que os testes da fila de tarefas rodam com o link da tarefa. Nenhuma = "Teste a tarefa <link>".',
   ),
-  "taskTestSkill.none": dict("None", "Nenhuma"),
-  "taskTestSkill.missing": dict("{skill} (not installed)", "{skill} (não instalada)"),
+  "taskRefinementSkill.title": dict("Refinement skill", "Skill de refinamento"),
+  "taskRefinementSkill.description": dict(
+    "The skill \"Refine tasks\" runs with the pasted tasks to estimate them and draft the questions for the PO.",
+    "A skill que o \"Refinar tarefas\" roda com as tarefas coladas pra pontuar e levantar as perguntas pro PO.",
+  ),
+  "refinementModal.title": dict("Refine tasks", "Refinar tarefas"),
+  "refinementModal.intro": dict(
+    "Paste one or more tasks (link or key, one per line; \"- 3\" after one is the current estimate). A new session reads each one, estimates it, suggests merging or splitting and drafts the questions for the PO. Nothing is written to Jira without your OK.",
+    "Cole uma ou mais tarefas (link ou chave, uma por linha; \"- 3\" depois de uma é a pontuação atual). Uma sessão nova lê cada uma, pontua, sugere juntar ou separar e levanta as perguntas pro PO. Nada vai pro Jira sem o seu OK.",
+  ),
+  "refinementModal.skillLabel": dict("Skill", "Skill"),
+  "refinementModal.skillRequired": dict(
+    "Choose the refinement skill to paste the tasks.",
+    "Escolha a skill de refinamento pra colar as tarefas.",
+  ),
+  "refinementModal.tasksLabel": dict("Tasks", "Tarefas"),
+  "refinementModal.tasksPlaceholder": dict(
+    "https://your-site.atlassian.net/browse/PROJ-123 - 3\nPROJ-124",
+    "https://seu-site.atlassian.net/browse/PROJ-123 - 3\nPROJ-124",
+  ),
+  "refinementModal.detected": dict("{count} task(s): {keys}", "{count} tarefa(s): {keys}"),
+  "refinementModal.notesLabel": dict("Additional notes", "Observações adicionais"),
+  "refinementModal.notesPlaceholder": dict(
+    "Exceptions the skill doesn't cover, e.g. \"PROJ-123 already has the backend ready\". Sent along with the tasks; the first line also goes into the session name.",
+    "Exceções que a skill não cobre, ex.: \"PROJ-123 já tem o backend pronto\". Vai junto com as tarefas; a primeira linha também entra no nome da sessão.",
+  ),
+  "refinementModal.confirm": dict("Open session", "Abrir sessão"),
+  "refinementModal.launched": dict("Refinement session opened.", "Sessão de refinamento aberta."),
+  "refinementModal.launchFailed": dict(
+    "Couldn't open the session: {message}",
+    "Não foi possível abrir a sessão: {message}",
+  ),
+  "skillSelect.none": dict("None", "Nenhuma"),
+  "skillSelect.other": dict("Outside the hub", "Fora do hub"),
+  "skillSelect.notInstalled": dict("{skill} (install)", "{skill} (instalar)"),
+  "skillSelect.installFailed": dict(
+    "Couldn't install {skill}: another skill already uses that name ({conflicts}).",
+    "Não foi possível instalar {skill}: outra skill já usa esse nome ({conflicts}).",
+  ),
+  "skillSelect.missing": dict("{skill} (not installed)", "{skill} (não instalada)"),
 };

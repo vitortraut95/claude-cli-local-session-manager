@@ -24,7 +24,13 @@ export type SkillStatus = {
   conflictWith?: string;
 };
 
-export type InstalledSkill = { name: string; description: string };
+export type InstalledSkill = {
+  name: string;
+  description: string;
+  /** Hub catalog (team) its folder lives in, from a link into `catalog/<name>/`; null = not from a
+   *  hub. Optional: an older backend doesn't send it. */
+  catalog?: string | null;
+};
 
 export type SkillsHubStatus = {
   found: boolean;

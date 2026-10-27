@@ -33,6 +33,7 @@ import {
 import { getHeavyRunHookStatus, setHeavyRunHookInstalled } from "../services/heavyRunService.js";
 import { stopPreviewsIn, taskWorktrees } from "../services/previewService.js";
 import { getTaskQueue, saveTaskQueue } from "../services/taskQueueService.js";
+import { launchRefinement } from "../services/taskRefinementService.js";
 import {
   getSchedulerStatus,
   launchQueueEntryNow,
@@ -65,6 +66,7 @@ type LateFields =
   | "jenkinsBaseUrl"
   | "envPreviews"
   | "taskTestSkill"
+  | "taskRefinementSkill"
   | "taskTestPermissionModeAuto"
   | "theme"
   | "orchestrator"
@@ -106,6 +108,8 @@ function isValidPreferences(
       typeof candidate.jenkinsBaseUrl === "string") &&
     (candidate.envPreviews === undefined || isEnvPreviews(candidate.envPreviews)) &&
     (candidate.taskTestSkill === undefined || typeof candidate.taskTestSkill === "string") &&
+    (candidate.taskRefinementSkill === undefined ||
+      typeof candidate.taskRefinementSkill === "string") &&
     (candidate.taskTestPermissionModeAuto === undefined ||
       typeof candidate.taskTestPermissionModeAuto === "boolean") &&
     (candidate.theme === undefined ||
@@ -141,7 +145,8 @@ tasksRouter.put("/preferences", async (req, res) => {
         "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
         "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
         "autoUpdateOnStart? }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
-        "{ label, url }[] }, taskTestSkill?: string, taskTestPermissionModeAuto?: boolean, " +
+        "{ label, url }[] }, taskTestSkill?: string, taskRefinementSkill?: string, " +
+        "taskTestPermissionModeAuto?: boolean, " +
         'theme?: "light"|"dark"|null, orchestrator?: { enabled, maxSessions, ' +
         "minFreeMemoryPercent, maxUsagePercent }, worktreeSetup?: { [project]: " +
         '{ linkNodeModules, copyEnvFiles } }, terminalLayout?: "tabs"|"limux-grid" }.',
@@ -235,6 +240,18 @@ function extractStringArray(body: unknown, key: string): string[] {
     ? value.filter((item): item is string => typeof item === "string")
     : [];
 }
+
+/** "Refine tasks": pasted tickets + notes, handed to `taskRefinementSkill` in a new session. */
+tasksRouter.post("/refinement", async (req, res) => {
+  const { sessionId } = await launchRefinement(
+    {
+      tasks: extractStringField(req.body, "tasks"),
+      notes: extractStringField(req.body, "notes"),
+    },
+    extractLayoutField(req.body),
+  );
+  res.json({ success: true, sessionId });
+});
 
 // Task queue: tickets waiting to be worked on, each with its repos.
 

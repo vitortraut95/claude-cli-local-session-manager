@@ -1,3 +1,4 @@
+import { FlaskConical, Scale } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { Theme } from "../hooks/useTheme";
 import type { UserPreferences } from "../services/preferencesApi";
@@ -6,7 +7,7 @@ import { LimuxSetup } from "./LimuxSetup";
 import { Select } from "./Select";
 import type { BigEditorKey } from "./SettingsBigEditor";
 import { EditButton, NumberField, PreferenceRow, Toggle } from "./SettingsControls";
-import { TaskTestSkillSelect } from "./TaskTestSkillSelect";
+import { SkillPreferenceSelect } from "./SkillPreferenceSelect";
 import { ThemeToggle } from "./ThemeToggle";
 
 type SettingsListProps = {
@@ -128,8 +129,27 @@ export function SettingsList({
           description={t("taskTestSkill.description")}
           keyName="taskTestSkill"
           control={
-            <TaskTestSkillSelect
-              installedSkills={skillsHub.installedSkills}
+            <SkillPreferenceSelect
+              preference="taskTestSkill"
+              icon={<FlaskConical className="h-3.5 w-3.5" />}
+              label={t("taskTestSkill.title")}
+              skillsHub={skillsHub}
+              showDescription={false}
+            />
+          }
+        />
+      )}
+      {skillsHub?.installedSkills && (
+        <PreferenceRow
+          title={t("taskRefinementSkill.title")}
+          description={t("taskRefinementSkill.description")}
+          keyName="taskRefinementSkill"
+          control={
+            <SkillPreferenceSelect
+              preference="taskRefinementSkill"
+              icon={<Scale className="h-3.5 w-3.5" />}
+              label={t("taskRefinementSkill.title")}
+              skillsHub={skillsHub}
               showDescription={false}
             />
           }

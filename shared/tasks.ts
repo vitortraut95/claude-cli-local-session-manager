@@ -1,5 +1,12 @@
 import type { Session, TaskRepoRef } from "./session.js";
 
+/** "Refine tasks" modal: the pasted tickets (links or keys, one or more per line, any text around
+ *  them) and free-form notes appended to the prompt. */
+export type RefinementInput = {
+  tasks: string;
+  notes: string;
+};
+
 export type ProjectFolderOption = {
   path: string;
   label: string;

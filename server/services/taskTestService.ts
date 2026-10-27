@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { stat } from "node:fs/promises";
 import path from "node:path";
 import type { UserPreferences } from "./preferencesService.js";
 import { stopPreviewsIn } from "./previewService.js";
+import { resolveInstalledSkill } from "./installedSkillService.js";
 import { directoryExists, getActiveResumeSessionIds } from "./sessionService.js";
-import { getUserSkillsDir } from "./skillsHubService.js";
 import { launchTaskTerminal } from "./taskService.js";
 import { firstWorkspaceDir } from "./workspaceService.js";
 import { prepareWorktreeBestEffort } from "./worktreeSetupService.js";
@@ -34,27 +33,6 @@ import {
  * opens in the first workspace dir with those worktrees as `--add-dir`, so it can still be resumed
  * after they're removed — once the session is marked done and closed (`cleanupFinishedTests`).
  */
-
-/** A skill folder name as `/<name>` takes it — also keeps it from smuggling anything into the
- *  shell command or out of the skills folder. */
-const SKILL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
-
-/** The configured `taskTestSkill`, checked to be installed; null when none is chosen. */
-async function resolveTestSkill(prefs: UserPreferences): Promise<string | null> {
-  const skill = prefs.taskTestSkill.trim();
-  if (!skill) return null;
-  try {
-    if (!SKILL_NAME_PATTERN.test(skill)) throw new Error(`Invalid skill name: ${skill}`);
-    await stat(path.join(getUserSkillsDir(), skill, "SKILL.md"));
-  } catch (err) {
-    throw new AppError(
-      "TASK_TEST_SKILL_NOT_INSTALLED",
-      `The task test skill "${skill}" isn't installed in ${getUserSkillsDir()}.`,
-      { cause: err },
-    );
-  }
-  return skill;
-}
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -213,7 +191,7 @@ export async function launchTestEntry(
 ): Promise<TestLaunchOutcome | null> {
   const [mainFolder] = entry.repos;
   if (!mainFolder && !entry.noRepo) return null;
-  const skill = await resolveTestSkill(prefs);
+  const skill = await resolveInstalledSkill(prefs.taskTestSkill, "TASK_TEST_SKILL_NOT_INSTALLED");
 
   const worktrees: string[] = [];
   const linked: string[] = [];
