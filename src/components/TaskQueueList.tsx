@@ -12,7 +12,6 @@ type TaskQueueListProps = {
   loading: boolean;
   loadFailed: boolean;
   /** No test skill configured: test entries would fail to launch. */
-  testSkillMissing: boolean;
   isLaunching: (key: string) => boolean;
   projects: ProjectFolderOption[];
   branchTypes: string[];
@@ -27,7 +26,6 @@ export function TaskQueueList({
   setEntries,
   loading,
   loadFailed,
-  testSkillMissing,
   isLaunching,
   projects,
   branchTypes,
@@ -73,11 +71,6 @@ export function TaskQueueList({
           {t("taskQueueModal.listTitle", { count: entries.length })}
         </h3>
         <div className="flex items-center gap-3">
-          {testSkillMissing && (
-            <span className="text-xs text-amber-600 dark:text-amber-400">
-              {t("taskQueueModal.testSkillMissing")}
-            </span>
-          )}
           {missingSetupCount > 0 && (
             <span className="text-xs text-amber-600 dark:text-amber-400">
               {t("taskQueueModal.missingSetupCount", { count: missingSetupCount })}

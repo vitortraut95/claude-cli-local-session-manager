@@ -36,8 +36,6 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [branchTypes, setBranchTypes] = useState<string[]>([]);
-  // "" = no test skill chosen: test entries would fail to launch.
-  const [taskTestSkill, setTaskTestSkill] = useState<string | null>(null);
   const [status, setStatus] = useState<SchedulerStatus | null>(null);
   const [runningNow, setRunningNow] = useState(false);
   // Keys whose error the user cleared to retry: a poll mustn't bring the old error back.
@@ -50,7 +48,6 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
       .then((prefs) => {
         if (cancelled) return;
         setBranchTypes(prefs.branchTypes);
-        setTaskTestSkill(prefs.taskTestSkill?.trim() ?? "");
       })
       .catch(() => undefined);
     tasksApi
@@ -213,9 +210,6 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
     }
   };
 
-  const testSkillMissing =
-    taskTestSkill === "" && entries.some((e) => !e.launchedAt && e.kind === "test");
-
   return (
     <Modal
       open
@@ -254,7 +248,6 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
           setEntries={setEntries}
           loading={loading}
           loadFailed={loadFailed}
-          testSkillMissing={testSkillMissing}
           isLaunching={isLaunching}
           projects={projects}
           branchTypes={branchTypes}

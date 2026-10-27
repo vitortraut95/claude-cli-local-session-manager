@@ -28,7 +28,8 @@ import type { SchedulerBlock, SchedulerStatus } from "../../shared/tasks.js";
  * RAM, memory pressure, Claude plan usage) and starts the next ready entry exactly like "New
  * task" does — task branch (`<prefix>/<key>`, or just the key) off the entry's base (else the
  * repo's default), always in its own worktree, extra repos via
- * `--add-dir`, the default prompt — in a new terminal; a test entry runs `taskTestSkill` on the
+ * `--add-dir`, the default prompt — in a new terminal; a test entry runs `taskTestSkill` (or a plain
+ * "test the task" prompt) on the
  * task's existing branch instead (`taskTestService.ts`). Launches are `launchSpacingMinutes` apart:
  * a session's memory (tests, preview servers) only shows up minutes after it opens, so free RAM at
  * launch time alone would let the whole queue start at once.

@@ -62,10 +62,6 @@ export const taskQueue = {
     "found on origin by the key",
     "achada no origin pela chave",
   ),
-  "taskQueueModal.testSkillMissing": dict(
-    "No test skill is chosen — the tests won't launch. Pick one in Settings.",
-    "Nenhuma skill de teste escolhida — os testes não vão ser lançados. Escolha uma nas Configurações.",
-  ),
   "taskQueueModal.pasteLabel": dict(
     "Tasks (links or keys, one per line)",
     "Tarefas (links ou chaves, uma por linha)",
