@@ -212,12 +212,15 @@ tasksRouter.post("/worktree", async (req, res) => {
 });
 
 tasksRouter.post("/launch", async (req, res) => {
+  const nickname = extractStringField(req.body, "nickname");
   const { sessionId } = await launchTaskTerminal({
     worktreePath: extractStringField(req.body, "worktreePath"),
     prompt: extractStringField(req.body, "prompt"),
     permissionModeAuto: extractBooleanField(req.body, "permissionModeAuto", false),
     repoRoot: extractStringField(req.body, "repoRoot"),
-    nickname: extractStringField(req.body, "nickname"),
+    nickname,
+    // "New task" nicknames the session with the ticket link: its key names the session.
+    name: normalizeTaskKey(nickname) ?? "",
     originBranch: extractStringField(req.body, "originBranch"),
     destinationBranch: extractStringField(req.body, "destinationBranch"),
     addDirs: extractStringArray(req.body, "addDirs"),

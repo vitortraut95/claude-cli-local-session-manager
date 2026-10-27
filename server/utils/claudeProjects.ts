@@ -54,6 +54,7 @@ type JsonlEntry = {
   sessionId?: string;
   cwd?: string;
   gitBranch?: string;
+  customTitle?: string;
   aiTitle?: string;
   summary?: string;
   content?: string;
@@ -222,14 +223,17 @@ type FullScanResult = {
   /** Untruncated, capped at MAX_PROMPTS_EXTRACTED. */
   prompts: string[];
   recap: string | null;
+  /** Set by `claude --name` and by every `/rename` (appended where it happens). */
+  customTitle: string | null;
   latestGitBranch: string | null;
 };
 
-/** One full pass over the transcript: recap/latestGitBranch need the *last*
+/** One full pass over the transcript: recap/customTitle/latestGitBranch need the *last*
  *  matching entries, so there's no early exit. */
 async function scanFullTranscript(filePath: string): Promise<FullScanResult> {
   const prompts: string[] = [];
   let recap: string | null = null;
+  let customTitle: string | null = null;
   let latestGitBranch: string | null = null;
 
   const rl = createInterface({
@@ -264,13 +268,15 @@ async function scanFullTranscript(filePath: string): Promise<FullScanResult> {
         recap = entry.content.replace(RECAP_HINT_SUFFIX, "").trim();
       }
 
+      if (entry.type === "custom-title" && entry.customTitle) customTitle = entry.customTitle;
+
       if (entry.gitBranch) latestGitBranch = entry.gitBranch;
     }
   } finally {
     rl.close();
   }
 
-  return { prompts, recap, latestGitBranch };
+  return { prompts, recap, customTitle, latestGitBranch };
 }
 
 async function getFullScan(filePath: string): Promise<FullScanResult> {
@@ -301,4 +307,9 @@ export async function readSessionLatestGitBranch(filePath: string): Promise<stri
 /** The most recent `{"type":"system","subtype":"away_summary"}` recap the CLI logged. */
 export async function readSessionRecap(filePath: string): Promise<string | null> {
   return (await getFullScan(filePath)).recap;
+}
+
+/** The session's latest name (`claude --name` or `/rename`). */
+export async function readSessionCustomTitle(filePath: string): Promise<string | null> {
+  return (await getFullScan(filePath)).customTitle;
 }

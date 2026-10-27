@@ -15,6 +15,7 @@ import {
   findJsonlFiles,
   getClaudeProjectsDir,
   readFullSessionPrompts,
+  readSessionCustomTitle,
   readSessionHead,
   readSessionLatestGitBranch,
   readSessionPrompts,
@@ -42,9 +43,9 @@ function cleanTitle(raw: string): string {
     : collapsed;
 }
 
-/** `aiTitle` > `summaryTitle` > the CLI's away-summary recap > the first prompt. */
-function resolveTitle(head: SessionHead, recap: string | null): string {
-  const source = head.aiTitle ?? head.summaryTitle ?? recap ?? head.firstUserText;
+/** `customTitle` > `aiTitle` > `summaryTitle` > the CLI's away-summary recap > the first prompt. */
+function resolveTitle(head: SessionHead, customTitle: string | null, recap: string | null): string {
+  const source = customTitle ?? head.aiTitle ?? head.summaryTitle ?? recap ?? head.firstUserText;
   return source ? cleanTitle(source) : UNTITLED;
 }
 
@@ -67,10 +68,11 @@ type BuiltSession = Omit<
 
 async function buildSession(filePath: string): Promise<BuiltSession | null> {
   try {
-    const [head, fileStat, prompts, recap, latestGitBranch] = await Promise.all([
+    const [head, fileStat, prompts, customTitle, recap, latestGitBranch] = await Promise.all([
       readSessionHead(filePath),
       stat(filePath),
       readSessionPrompts(filePath),
+      readSessionCustomTitle(filePath),
       readSessionRecap(filePath),
       readSessionLatestGitBranch(filePath),
     ]);
@@ -84,7 +86,7 @@ async function buildSession(filePath: string): Promise<BuiltSession | null> {
 
     return {
       id,
-      title: resolveTitle(head, recap),
+      title: resolveTitle(head, customTitle, recap),
       project: resolveProject(head, filePath),
       path: filePath,
       workingDirectory: head.cwd,
