@@ -12,6 +12,7 @@ import {
   setSessionStatus,
   type WorkStatus,
 } from "../../utils/taskStore.js";
+import { TEST_WORK_STATUSES } from "../../../shared/session.js";
 import { getActiveResumeSessionIds } from "./activeSessions.js";
 import {
   branchNameRequiredError,
@@ -85,15 +86,15 @@ export async function setSessionNickname(id: string, nickname: string): Promise<
 }
 
 /** For a session with no task — a task's status is set on the task (`PUT /tasks/by-key/:key/status`).
- *  A test session only goes in progress or done; done + closed removes its worktrees
- *  (`cleanupFinishedTests`). */
+ *  A test session is in progress, waiting (on someone else; its worktrees stay) or done; done +
+ *  closed removes its worktrees (`cleanupFinishedTests`). */
 export async function setSessionWorkStatus(id: string, status: WorkStatus | null): Promise<void> {
   if (!isSafeSessionId(id)) throw invalidSessionIdError(id);
   const isTest = Boolean((await getTaskStore()).sessions[id]?.test);
-  if (isTest && status !== "in_progress" && status !== "done") {
+  if (isTest && (status === null || !TEST_WORK_STATUSES.includes(status))) {
     throw new BadRequestError(
       "TEST_STATUS_INVALID",
-      'A test session is either "in_progress" or "done".',
+      'A test session is "in_progress", "waiting_user" or "done".',
     );
   }
   await setSessionStatus(id, status);

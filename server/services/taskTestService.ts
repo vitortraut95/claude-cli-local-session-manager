@@ -147,9 +147,13 @@ const PROMPT_TEXT = {
     result:
       "Also save the final text (verdict and the text to paste in the task) as result.md in this " +
       "task's evidence folder, so it outlives this session.",
+    waiting:
+      "If the test ends waiting on someone else (a fix from the developer, a decision from the " +
+      "product owner), mark it waiting instead, so the worktrees stay for the re-test: {command}",
     done:
-      "When the test is finished, mark it done (the worktrees are deleted once this session " +
-      "closes): {command}",
+      "Mark it done only when there's nothing left for this test (final verdict delivered and, " +
+      "if asked, published in the task); the worktrees are deleted once this session closes: " +
+      "{command}",
   },
   pt: {
     nickname: "Teste - {link}",
@@ -167,9 +171,13 @@ const PROMPT_TEXT = {
     result:
       "Salve também o texto final (veredito e o texto pra colar na tarefa) como resultado.md na " +
       "pasta de evidências desta tarefa, pra ele não depender desta sessão.",
+    waiting:
+      "Se o teste terminar dependendo de alguém (ajuste do dev, decisão do PO), marque como " +
+      "aguardando em vez de concluído, pra os worktrees ficarem pro reteste: {command}",
     done:
-      "Quando o teste terminar, marque como concluído (os worktrees são apagados quando esta " +
-      "sessão fechar): {command}",
+      "Marque como concluído só quando não sobrar nada deste teste (veredito final entregue e, " +
+      "se pedido, publicado na tarefa); os worktrees são apagados quando esta sessão fechar: " +
+      "{command}",
   },
 };
 
@@ -217,16 +225,17 @@ export async function launchTestEntry(
   const text = PROMPT_TEXT[prefs.language ?? "en"];
   const link = entry.link ?? entry.key;
   const sessionId = randomUUID();
-  const doneCommand =
+  const statusCommand = (status: "waiting_user" | "done") =>
     `curl -s -X PATCH http://localhost:${API_PORT}/sessions/${sessionId}/status ` +
-    `-H 'Content-Type: application/json' -d '{"status":"done"}'`;
+    `-H 'Content-Type: application/json' -d '{"status":"${status}"}'`;
   const prompt = [
     skill ? `/${skill} ${link}` : text.noSkill.replace("{link}", link),
     worktrees.length > 0 ? text.worktrees.replace("{dirs}", worktrees.join(", ")) : "",
     linked.length > 0 ? text.sharedNodeModules.replace("{dirs}", linked.join(", ")) : "",
     extraErrors.length > 0 ? text.failedRepos.replace("{errors}", extraErrors.join("; ")) : "",
     text.result,
-    text.done.replace("{command}", doneCommand),
+    text.waiting.replace("{command}", statusCommand("waiting_user")),
+    text.done.replace("{command}", statusCommand("done")),
   ]
     .filter(Boolean)
     .join("\n\n");
