@@ -239,18 +239,6 @@ export function useSessions() {
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
-  // Selection survives page/filter changes, so a bulk delete can span pages.
-  const selectAllOnPage = useCallback(() => {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      // Active sessions can't be selected (their checkboxes are disabled).
-      for (const session of paginatedSessions) {
-        if (!session.isActive) next.add(session.id);
-      }
-      return next;
-    });
-  }, [paginatedSessions]);
-
   const setPending = useCallback((id: string, action: PendingAction | null) => {
     setPendingActions((current) => {
       if (action === null) {
@@ -608,7 +596,6 @@ export function useSessions() {
     selectedIds,
     toggleSelect,
     clearSelection,
-    selectAllOnPage,
     refresh,
     refreshSoon,
     removeSession,
