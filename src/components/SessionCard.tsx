@@ -258,7 +258,7 @@ export function SessionCard({
 
   return (
     <div
-      className={`relative flex flex-col gap-3 justify-between rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-900 ${
+      className={`relative flex flex-col gap-3 rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-900 ${
         selected
           ? "border-gray-900 ring-2 ring-gray-900/20 dark:border-gray-100 dark:ring-gray-100/20"
           : "border-gray-200 dark:border-gray-800"
@@ -430,7 +430,7 @@ export function SessionCard({
       </div>
 
       {/* Each action uses its own ToolbarIconButtonColor; pick an unused one for a new action. */}
-      <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 pt-3 dark:border-gray-800">
+      <div className="mt-auto flex flex-wrap items-center gap-4 border-t border-gray-100 pt-3 dark:border-gray-800">
         {session.prompts.length > 0 && (
           <ToolbarIconButton
             tooltip={t("sessionCard.previewTooltip")}

@@ -68,11 +68,6 @@ export const common = {
     "{done} of {total} sessions processed",
     "{done} de {total} sessões processadas",
   ),
-  "sessionsPage.showingRange": dict(
-    "Showing {start}–{end} of {total}",
-    "Mostrando {start}–{end} de {total}",
-  ),
-  "sessionsPage.selectAllOnPage": dict("Select all on this page", "Selecionar todas nesta página"),
   "sessionsPage.selectedCount": dict("{count} selected", "{count} selecionada(s)"),
   "sessionsPage.clearSelection": dict("Clear", "Limpar"),
   "sessionsPage.deleteSelected": dict("Delete selected", "Excluir selecionadas"),

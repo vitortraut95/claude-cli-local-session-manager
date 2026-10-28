@@ -29,65 +29,68 @@ export function MissingDirectoryNotice({
   const { t } = useLanguage();
   const [resumingAtRoot, setResumingAtRoot] = useState(false);
 
+  const pathTooltip = session.workingDirectory
+    ? t("sessionCard.directoryMissing.tooltipWithPath", { path: session.workingDirectory })
+    : t("sessionCard.directoryMissing.tooltipNoPath");
+
   return (
-    <div className="flex flex-col gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-      <div
-        className="flex items-center gap-1.5"
-        title={
-          session.workingDirectory
-            ? t("sessionCard.directoryMissing.tooltipWithPath", {
-                path: session.workingDirectory,
-              })
-            : t("sessionCard.directoryMissing.tooltipNoPath")
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+      <Tooltip
+        content={
+          <span className="flex flex-col gap-1 break-all">
+            <span>{pathTooltip}</span>
+            {session.missingWorktreeRepoRoot && (
+              <span>
+                {t("sessionCard.directoryMissing.removedWorktree")}{" "}
+                <span className="font-mono">{session.missingWorktreeRepoRoot}</span>
+              </span>
+            )}
+          </span>
         }
       >
-        <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
-        {t("sessionCard.directoryMissing.title")}
-      </div>
+        <span className="flex items-center gap-1.5">
+          <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+          {t("sessionCard.directoryMissing.title")}
+        </span>
+      </Tooltip>
 
       {session.missingWorktreeRepoRoot && (
-        <div className="flex flex-col gap-1.5 pl-0.5 font-normal text-gray-600 dark:text-gray-400">
-          <span className="break-all">
-            {t("sessionCard.directoryMissing.removedWorktree")}{" "}
-            <span className="font-mono">{session.missingWorktreeRepoRoot}</span>
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenMissingWorktreeRootInVSCode(session)}
-              disabled={isOpeningVSCode}
-              aria-label={t("sessionCard.directoryMissing.openRootAriaLabel")}
-              icon={
-                isOpeningVSCode ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Code2 className="h-3.5 w-3.5" />
-                )
-              }
-            >
-              {t("sessionCard.codeButton")}
-            </Button>
-            <Tooltip content={t("sessionCard.directoryMissing.newSessionTooltip")}>
-              <span className="inline-flex">
-                <LaunchLayoutButton
-                  variant="outline"
-                  size="sm"
-                  label={t("sessionCard.newSessionAtRootButton")}
-                  icon={<Play className="h-3.5 w-3.5" />}
-                  busy={resumingAtRoot || isResumingAtMissingWorktreeRoot}
-                  onLaunch={async (layout) => {
-                    setResumingAtRoot(true);
-                    try {
-                      await onStartNewSessionAtMissingWorktreeRoot(session, layout);
-                    } finally {
-                      setResumingAtRoot(false);
-                    }
-                  }}
-                />
-              </span>
-            </Tooltip>
-          </div>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenMissingWorktreeRootInVSCode(session)}
+            disabled={isOpeningVSCode}
+            aria-label={t("sessionCard.directoryMissing.openRootAriaLabel")}
+            icon={
+              isOpeningVSCode ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Code2 className="h-3.5 w-3.5" />
+              )
+            }
+          >
+            {t("sessionCard.codeButton")}
+          </Button>
+          <Tooltip content={t("sessionCard.directoryMissing.newSessionTooltip")}>
+            <span className="inline-flex">
+              <LaunchLayoutButton
+                variant="outline"
+                size="sm"
+                label={t("sessionCard.newSessionAtRootButton")}
+                icon={<Play className="h-3.5 w-3.5" />}
+                busy={resumingAtRoot || isResumingAtMissingWorktreeRoot}
+                onLaunch={async (layout) => {
+                  setResumingAtRoot(true);
+                  try {
+                    await onStartNewSessionAtMissingWorktreeRoot(session, layout);
+                  } finally {
+                    setResumingAtRoot(false);
+                  }
+                }}
+              />
+            </span>
+          </Tooltip>
         </div>
       )}
     </div>

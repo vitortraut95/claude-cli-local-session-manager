@@ -42,7 +42,6 @@ export function SessionsPage() {
     selectedIds,
     toggleSelect,
     clearSelection,
-    selectAllOnPage,
     refresh,
     refreshSoon,
     removeSession,
@@ -114,24 +113,8 @@ export function SessionsPage() {
     if (error) return <ErrorState message={error} onRetry={refresh} />;
     if (filteredCount === 0) return <EmptyState hasSearchQuery={hasActiveFilter} />;
 
-    const rangeStart = (page - 1) * perPage + 1;
-    const rangeEnd = Math.min(page * perPage, filteredCount);
-
     return (
       <>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {t("sessionsPage.showingRange", {
-              start: rangeStart,
-              end: rangeEnd,
-              total: filteredCount,
-            })}
-          </p>
-          <Button variant="link" size="none" onClick={selectAllOnPage}>
-            {t("sessionsPage.selectAllOnPage")}
-          </Button>
-        </div>
-
         {selectedIds.size > 0 && (
           <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -198,7 +181,7 @@ export function SessionsPage() {
         onSessionCreated={refreshSoon}
         onSessionsChanged={refreshSoon}
       />
-      <main className="px-4 py-6 sm:px-6">
+      <main className="px-4 pt-3 pb-6 sm:px-6">
         <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center max-w-5xl mx-auto">
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
           <ProjectFilter
