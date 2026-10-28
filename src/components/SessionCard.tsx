@@ -9,7 +9,6 @@ import {
   MessageSquare,
   Pencil,
   Play,
-  Share,
   Trash2,
   Info,
 } from "lucide-react";
@@ -24,7 +23,6 @@ import type { TerminalLayout } from "../services/preferencesApi";
 import type { Session, WorkStatus } from "../../shared/session";
 import { AnchoredMenu } from "./AnchoredMenu";
 import { Button } from "./Button";
-import { ExportSessionModal } from "./ExportSessionModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { JenkinsLinksModal } from "./JenkinsLinksModal";
 import { LaunchLayoutButton } from "./LaunchLayoutButton";
@@ -63,7 +61,6 @@ type CardModal =
   | { kind: "branches" }
   | { kind: "task"; addRepo: boolean }
   | { kind: "history" }
-  | { kind: "export" }
   | { kind: "jenkins" }
   | { kind: "openPrBase" }
   | { kind: "deleteWorktree" }
@@ -452,13 +449,6 @@ export function SessionCard({
             icon={<Layers className="h-4 w-4" />}
           />
         )}
-        <ToolbarIconButton
-          tooltip={t("sessionCard.exportTooltip")}
-          ariaLabel={t("sessionCard.exportAriaLabel")}
-          color="teal"
-          onClick={() => setOpenModal({ kind: "export" })}
-          icon={<Share className="h-4 w-4" />}
-        />
         {jenkinsGroups && (
           <ToolbarIconButton
             tooltip={t("sessionCard.openJenkinsTooltip")}
@@ -598,9 +588,6 @@ export function SessionCard({
       )}
       {openModal?.kind === "jenkins" && jenkinsGroups && (
         <JenkinsLinksModal groups={jenkinsGroups} onClose={closeModal} />
-      )}
-      {openModal?.kind === "export" && (
-        <ExportSessionModal session={session} onClose={closeModal} />
       )}
       {openModal?.kind === "openPrBase" && (
         <OpenPrBaseChoiceModal session={session} onClose={closeModal} />

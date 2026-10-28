@@ -1,23 +1,16 @@
 import axios from "axios";
-import type {
-  Session,
-  SessionImportPreview,
-  SessionImportResult,
-  WorkStatus,
-} from "../../shared/session";
-import { type ApiError, withServerErrorMessage } from "../utils/apiClient";
+import type { Session, WorkStatus } from "../../shared/session";
+import { withServerErrorMessage } from "../utils/apiClient";
 import type { TerminalLayout } from "./preferencesApi";
 import type {
   HistoryEvent,
   HistorySummary,
-  ImportConflictResolution,
   ResumeOpenResult,
   ScanProgress,
 } from "../../shared/session";
 export type {
   HistoryEvent,
   HistorySummary,
-  ImportConflictResolution,
   ResumeOpenResult,
   ScanProgress,
 } from "../../shared/session";
@@ -175,74 +168,6 @@ export async function startFreshSessionAtMissingWorktreeRoot(
   await withServerErrorMessage(() =>
     client.post(`/${encodeURIComponent(id)}/missing-worktree-root/resume`, { layout }),
   );
-}
-
-/** `withServerErrorMessage` for a `responseType: "blob"` request, whose JSON error body also
- *  arrives as a Blob. */
-async function withBlobServerErrorMessage<T>(request: () => Promise<T>): Promise<T> {
-  try {
-    return await request();
-  } catch (err) {
-    if (axios.isAxiosError(err) && err.response?.data instanceof Blob) {
-      const body = await err.response.data
-        .text()
-        .then((text) => JSON.parse(text) as { error?: unknown; code?: unknown })
-        .catch(() => null);
-      if (typeof body?.error === "string") {
-        const apiError: ApiError = new Error(body.error, { cause: err });
-        if (typeof body.code === "string") apiError.code = body.code;
-        throw apiError;
-      }
-    }
-    throw err;
-  }
-}
-
-/** Downloads the session as a `.claude-session.json.gz` file. Fetched via axios (not
- *  `<a download>`) so a server error becomes a toast, not a downloaded error file. */
-export async function exportSession(id: string): Promise<void> {
-  const response = await withBlobServerErrorMessage(() =>
-    client.get<Blob>(`/${encodeURIComponent(id)}/export`, { responseType: "blob" }),
-  );
-  const disposition = String(response.headers["content-disposition"] ?? "");
-  const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `${id}.claude-session.json.gz`;
-  const url = URL.createObjectURL(response.data);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-const RAW_BUNDLE_HEADERS = { "Content-Type": "application/octet-stream" };
-
-/** Reports an exported session file's contents and local candidates; writes nothing. */
-export async function inspectSessionImport(file: Blob): Promise<SessionImportPreview> {
-  const { data } = await withServerErrorMessage(() =>
-    client.post<{ preview: SessionImportPreview }>("/import/inspect", file, {
-      headers: RAW_BUNDLE_HEADERS,
-    }),
-  );
-  return data.preview;
-}
-
-/** `onConflict` is required by the server only when the session id already exists locally
- *  (`SessionImportPreview.existingSession`); null otherwise. */
-export async function importSession(
-  file: Blob,
-  targetDir: string,
-  checkoutBranch: boolean,
-  onConflict: ImportConflictResolution | null,
-): Promise<SessionImportResult> {
-  const { data } = await withServerErrorMessage(() =>
-    client.post<SessionImportResult & { success: true }>("/import", file, {
-      headers: RAW_BUNDLE_HEADERS,
-      params: { targetDir, checkoutBranch, ...(onConflict ? { onConflict } : {}) },
-    }),
-  );
-  return data;
 }
 
 /** The card's "info": this session's (and its task's) history events and their summary. */

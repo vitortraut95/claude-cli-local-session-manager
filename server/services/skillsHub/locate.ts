@@ -3,7 +3,6 @@ import os from "node:os";
 import path from "node:path";
 import { tryGit } from "../../utils/git.js";
 import { getUserPreferences, type SkillsHubPreferences } from "../preferencesService.js";
-import { normalizeRemoteUrl } from "../sessionTransferService.js";
 import { directoryExists } from "../sessionService.js";
 import { expandHome, findReposIn, getWorkspaceRepos } from "../workspaceService.js";
 import { listCatalogs } from "./catalog.js";
@@ -39,6 +38,19 @@ async function readRemoteUrls(dir: string): Promise<string[]> {
     .split("\n")
     .map((line) => line.trim().split(/\s+/)[1] ?? "")
     .filter((url) => url.length > 0);
+}
+
+/** Collapses any remote URL to `owner/repo`. The host is dropped: it's often a per-machine SSH
+ *  alias (`git@github-personal:...`) that would never match another dev's clone. */
+function normalizeRemoteUrl(url: string): string {
+  return url
+    .trim()
+    .replace(/^[a-z+]+:\/\//i, "")
+    .replace(/^[^@/]+@/, "")
+    .replace(/^[^/:]+(?::\d+)?[:/]/, "")
+    .replace(/\.git$/, "")
+    .replace(/\/+$/, "")
+    .toLowerCase();
 }
 
 /** `owner/repo` of a clone or browser URL — on top of `normalizeRemoteUrl`, drops what a URL copied
