@@ -1,6 +1,6 @@
 import { ChevronDown, FlaskConical, Loader2 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
-import type { WorkStatus } from "../../shared/session";
+import { TEST_WORK_STATUSES, type WorkStatus } from "../../shared/session";
 import { WORK_STATUS_CLASSES, WORK_STATUS_LABEL_KEYS, WORK_STATUSES } from "../utils/workStatus";
 import { Tooltip } from "./Tooltip";
 
@@ -8,13 +8,11 @@ type WorkStatusSelectProps = {
   value: WorkStatus | null;
   /** The card's task key; null = the status is the session's own. */
   taskKey: string | null;
-  /** Set for a test session: only in progress or done, behind a "Test" chip. */
+  /** Set for a test session: only in progress, waiting or done, behind a "Test" chip. */
   testKey?: string | null;
   saving: boolean;
   onChange: (status: WorkStatus | null) => void;
 };
-
-const TEST_STATUSES: readonly WorkStatus[] = ["in_progress", "done"];
 
 /** A session card's editable status tag: a native select styled as a colored pill. */
 export function WorkStatusSelect({
@@ -25,7 +23,7 @@ export function WorkStatusSelect({
   onChange,
 }: WorkStatusSelectProps) {
   const { t } = useLanguage();
-  const statuses = testKey ? TEST_STATUSES : WORK_STATUSES;
+  const statuses = testKey ? TEST_WORK_STATUSES : WORK_STATUSES;
   return (
     <Tooltip
       content={

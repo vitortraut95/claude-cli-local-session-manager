@@ -2,6 +2,8 @@
 export const WORK_STATUSES = ["todo", "in_progress", "waiting_user", "done"] as const;
 /** Hand-set work status of a session or task. */
 export type WorkStatus = (typeof WORK_STATUSES)[number];
+/** The ones a test session can take: waiting keeps its worktrees for a re-test, done removes them. */
+export const TEST_WORK_STATUSES: readonly WorkStatus[] = ["in_progress", "waiting_user", "done"];
 
 export type Session = {
   id: string;
