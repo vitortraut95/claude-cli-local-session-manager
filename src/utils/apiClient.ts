@@ -95,16 +95,8 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   WORKTREE_NAME_REQUIRED: "apiError.worktreeNameRequired",
   NOT_A_WORKTREE_SESSION: "apiError.notAWorktreeSession",
   PROTECTED_BRANCH_DELETE_FORBIDDEN: "apiError.protectedBranchDeleteForbidden",
-  IMPORT_INVALID_BUNDLE: "apiError.importInvalidBundle",
-  IMPORT_UNSUPPORTED_VERSION: "apiError.importUnsupportedVersion",
-  IMPORT_TARGET_REQUIRED: "apiError.importTargetRequired",
-  IMPORT_TARGET_MISSING: "apiError.importTargetMissing",
-  IMPORT_CHECKOUT_BLOCKED_ACTIVE: "apiError.importCheckoutBlockedActive",
-  IMPORT_SESSION_EXISTS: "apiError.importSessionExists",
-  IMPORT_OVERWRITE_ACTIVE: "apiError.importOverwriteActive",
   MALFORMED_PREFERENCES_FILE: "apiError.malformedPreferencesFile",
   TASK_SESSION_HAS_NO_BRANCH: "apiError.taskSessionHasNoBranch",
-  // IMPORT_CHECKOUT_FAILED unmapped: their messages carry git's reason.
 };
 
 /**

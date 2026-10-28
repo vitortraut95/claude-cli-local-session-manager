@@ -394,15 +394,6 @@ function updateSession(id: string, patch: Partial<SessionEntry>): Promise<void> 
   });
 }
 
-export async function getNicknames(): Promise<Record<string, string>> {
-  const { sessions } = await readStore();
-  const result: Record<string, string> = {};
-  for (const [id, entry] of Object.entries(sessions)) {
-    if (entry.nickname) result[id] = entry.nickname;
-  }
-  return result;
-}
-
 /** Blank/whitespace-only `nickname` clears it. */
 export function setNickname(id: string, nickname: string): Promise<void> {
   return updateSession(id, { nickname: asTextOrNull(nickname) });

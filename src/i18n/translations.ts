@@ -6,7 +6,6 @@ import { sessions } from "./locales/sessions";
 import { newTask } from "./locales/newTask";
 import { tasks } from "./locales/tasks";
 import { worktrees } from "./locales/worktrees";
-import { transfer } from "./locales/transfer";
 import { skillsHub } from "./locales/skillsHub";
 import { settings } from "./locales/settings";
 import { taskQueue } from "./locales/taskQueue";
@@ -40,7 +39,6 @@ export const translations = {
   ...newTask,
   ...tasks,
   ...worktrees,
-  ...transfer,
   ...skillsHub,
   ...settings,
   ...taskQueue,

@@ -69,13 +69,6 @@ export function SessionsPage() {
   const [cleanupBranchOnDelete, setCleanupBranchOnDelete] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
-  // Isolates one card by searching for its (unique) id and clearing the other filters.
-  const handleJumpToSession = (id: string) => {
-    setSearchQuery(id);
-    setProjectFilter("");
-    setStatusFilter("");
-  };
-
   // A task's sessions span several projects, so the project filter would hide the other repos'.
   // Goes through the search box (which also matches `taskKey`) so it's cleared like any search.
   const handleFilterByTask = (taskKey: string) => {
@@ -204,10 +197,6 @@ export function SessionsPage() {
       <Header
         onSessionCreated={refreshSoon}
         onSessionsChanged={refreshSoon}
-        onSessionImported={(id) => {
-          refresh();
-          handleJumpToSession(id);
-        }}
       />
       <main className="px-4 py-6 sm:px-6">
         <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center max-w-5xl mx-auto">

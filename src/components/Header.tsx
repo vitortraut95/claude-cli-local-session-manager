@@ -2,7 +2,6 @@ import {
   Bot,
   Globe,
   History,
-  Import,
   LayoutGrid,
   ListTodo,
   MessageSquarePlus,
@@ -21,7 +20,6 @@ import { useUsageLimits } from "../hooks/useUsageLimits";
 import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
 import { Button } from "./Button";
 import { CleanupModal } from "./CleanupModal";
-import { ImportSessionModal } from "./ImportSessionModal";
 import { NewSessionModal } from "./NewSessionModal";
 import { NewTaskModal } from "./NewTaskModal";
 import { RefinementModal } from "./RefinementModal";
@@ -45,11 +43,9 @@ type HeaderProps = {
   onSessionCreated?: () => void;
   /** Fired after any Cleanup modal finding is successfully executed. */
   onSessionsChanged?: () => void;
-  /** Fired with the new session's id after an exported session file is imported. */
-  onSessionImported?: (sessionId: string) => void;
 };
 
-export function Header({ onSessionCreated, onSessionsChanged, onSessionImported }: HeaderProps) {
+export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
   // Must stay here (SettingsModal only mounts while open): this applies the stored theme on load.
   const { theme, toggleTheme } = useTheme();
   const {
@@ -72,7 +68,6 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
   const [showRefinementModal, setShowRefinementModal] = useState(false);
   const [showCleanupModal, setShowCleanupModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
   const [showTaskQueueModal, setShowTaskQueueModal] = useState(false);
@@ -219,13 +214,6 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
           </Button>
           <Button
             variant="outline"
-            onClick={() => setShowImportModal(true)}
-            icon={<Import className="h-4 w-4 text-teal-600 dark:text-teal-400" />}
-          >
-            {t("header.importSession")}
-          </Button>
-          <Button
-            variant="outline"
             onClick={() => setShowCleanupModal(true)}
             icon={<Sparkles className="h-4 w-4" />}
           >
@@ -297,12 +285,6 @@ export function Header({ onSessionCreated, onSessionsChanged, onSessionImported 
         onClose={() => setShowCleanupModal(false)}
         onFindingExecuted={onSessionsChanged}
       />
-      {showImportModal && (
-        <ImportSessionModal
-          onClose={() => setShowImportModal(false)}
-          onImported={(sessionId) => onSessionImported?.(sessionId)}
-        />
-      )}
       {showSkillsModal && <SkillsHubModal onClose={() => setShowSkillsModal(false)} />}
       {showSettings && (
         <SettingsModal

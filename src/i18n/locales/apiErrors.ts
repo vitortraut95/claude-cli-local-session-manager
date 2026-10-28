@@ -211,34 +211,6 @@ export const apiErrors = {
     "Refusing to delete that branch — it looks like the repo's primary branch.",
     "Não é possível excluir essa branch — ela parece ser a branch principal do repositório.",
   ),
-  "apiError.importInvalidBundle": dict(
-    "This file isn't a session exported by Claude Session Manager.",
-    "Este arquivo não é uma sessão exportada pelo Claude Session Manager.",
-  ),
-  "apiError.importUnsupportedVersion": dict(
-    "This session was exported by a newer version of the app — update it first.",
-    "Esta sessão foi exportada por uma versão mais nova do app — atualize-o primeiro.",
-  ),
-  "apiError.importTargetRequired": dict(
-    "Choose the folder to import the session into.",
-    "Escolha a pasta para onde importar a sessão.",
-  ),
-  "apiError.importTargetMissing": dict(
-    "That folder doesn't exist on this machine.",
-    "Essa pasta não existe nesta máquina.",
-  ),
-  "apiError.importSessionExists": dict(
-    "This session already exists here — choose whether to overwrite it or import a copy.",
-    "Esta sessão já existe aqui — escolha entre sobrescrever ou importar uma cópia.",
-  ),
-  "apiError.importOverwriteActive": dict(
-    "The local session is active in a terminal — close it before overwriting, or import a copy.",
-    "A sessão local está ativa num terminal — feche-a antes de sobrescrever, ou importe uma cópia.",
-  ),
-  "apiError.importCheckoutBlockedActive": dict(
-    "Another Claude session is active in that folder — close it before switching branches, or import without checking out.",
-    "Outra sessão do Claude está ativa nessa pasta — feche-a antes de trocar de branch, ou importe sem fazer checkout.",
-  ),
   "apiError.worktreeUncommittedChanges": dict(
     "That worktree still has uncommitted changes, so it wasn't removed — commit or discard them " +
       'first (or use "copy" mode instead, which doesn\'t require the worktree to be clean).',

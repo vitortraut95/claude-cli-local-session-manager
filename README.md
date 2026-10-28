@@ -151,11 +151,8 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | POST   | `/sessions/resume-open`               | Resume the latest session of every in-progress / waiting task not running      |
 | GET    | `/sessions/:id/history`               | The session's (and its task's) history events and their summary                |
 | POST   | `/sessions/:id/grid-focus`            | Focus the Limux grid pane already running the session (`{ focused }`)          |
-| GET    | `/sessions/:id/export`                | Download the session as a `.claude-session.json.gz` file                       |
 | GET    | `/sessions/:id/task`                  | The session's task (key, inferred or saved) and that task's repos              |
 | PUT    | `/sessions/:id/task`                  | Save `{ taskKey, link? }` on the session (`""` = back to detecting it)         |
-| POST   | `/sessions/import/inspect`            | Read an exported file (raw body) and list local target clones                  |
-| POST   | `/sessions/import`                    | Import an exported file into `?targetDir=` (optional `&checkoutBranch=true`)   |
 | POST   | `/tasks/preferences/import`           | Replace every setting with an imported `userPreferences.json`                  |
 | GET    | `/tasks/by-key/:key`                  | A task's link, repos (branch, base, folder) and sessions                       |
 | PUT    | `/tasks/by-key/:key`                  | Save the task's `{ link }`                                                     |

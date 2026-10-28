@@ -1,4 +1,4 @@
-import express, { Router } from "express";
+import { Router } from "express";
 import {
   continueSession,
   createSessionWorktree,
@@ -23,11 +23,6 @@ import {
   startFreshSessionAtMissingWorktreeRoot,
   stopSiblingAndResume,
 } from "../services/sessionService.js";
-import {
-  exportSession,
-  importSessionBundle,
-  inspectSessionBundle,
-} from "../services/sessionTransferService.js";
 import { getSessionTask, setSessionTask } from "../services/taskGroupService.js";
 import { extractLayoutField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
 import { sendErrorResponse } from "../utils/httpError.js";
@@ -53,41 +48,9 @@ sessionsRouter.get("/scan-progress", (_req, res) => {
   res.json(getScanProgress());
 });
 
-/** Raw gzipped bytes, not JSON: the global `express.json()` (100kb limit) must not see them —
- *  a transcript is easily tens of MB. */
-const rawBundleBody = express.raw({ type: "application/octet-stream", limit: "1gb" });
-
-function bundleFromBody(body: unknown): Buffer {
-  return Buffer.isBuffer(body) ? body : Buffer.alloc(0);
-}
-
 /** Resumes the latest session of every in-progress / waiting task with nothing running. */
 sessionsRouter.post("/resume-open", async (_req, res) => {
   res.json(await resumeOpenTasks());
-});
-
-sessionsRouter.post("/import/inspect", rawBundleBody, async (req, res) => {
-  const preview = await inspectSessionBundle(bundleFromBody(req.body));
-  res.json({ preview });
-});
-
-sessionsRouter.post("/import", rawBundleBody, async (req, res) => {
-  const result = await importSessionBundle(bundleFromBody(req.body), {
-    targetDir: typeof req.query.targetDir === "string" ? req.query.targetDir : "",
-    checkoutBranch: req.query.checkoutBranch === "true",
-    onConflict:
-      req.query.onConflict === "overwrite" || req.query.onConflict === "copy"
-        ? req.query.onConflict
-        : null,
-  });
-  res.json({ success: true, ...result });
-});
-
-sessionsRouter.get("/:id/export", async (req, res) => {
-  const { fileName, data } = await exportSession(req.params.id);
-  res.setHeader("Content-Type", "application/gzip");
-  res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-  res.send(data);
 });
 
 sessionsRouter.delete("/:id", async (req, res) => {

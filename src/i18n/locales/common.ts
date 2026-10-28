@@ -21,7 +21,6 @@ export const common = {
   "select.search": dict("Search…", "Buscar…"),
   "select.noResults": dict("Nothing found.", "Nada encontrado."),
   "header.cleanup": dict("Cleanup", "Limpeza"),
-  "header.importSession": dict("Import session", "Importar sessão"),
   "header.settings": dict("Settings", "Configurações"),
   "header.language": dict("Language", "Idioma"),
   "confirmDialog.confirm": dict("Confirm", "Confirmar"),

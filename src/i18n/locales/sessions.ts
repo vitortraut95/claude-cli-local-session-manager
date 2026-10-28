@@ -133,8 +133,6 @@ export const sessions = {
     "Veja os prompts enviados nesta sessão",
   ),
   "sessionCard.previewAriaLabel": dict("Preview prompts", "Ver prompts"),
-  "sessionCard.exportTooltip": dict("Export session as a file", "Exportar sessão como arquivo"),
-  "sessionCard.exportAriaLabel": dict("Export session", "Exportar sessão"),
   "sessionCard.openJenkinsTooltip": dict(
     "Jenkins links for this project and branch",
     "Links do Jenkins deste projeto e branch",
