@@ -102,6 +102,18 @@ export function SettingsList({
           }
         />
       )}
+      <PreferenceRow
+        title={t("settings.remoteControl.title")}
+        description={t("settings.remoteControl.description")}
+        keyName="remoteControl"
+        control={
+          <Toggle
+            checked={prefs.remoteControl ?? false}
+            busy={savingKey === "remoteControl"}
+            onChange={(checked) => void save({ remoteControl: checked })}
+          />
+        }
+      />
       {prefs.terminalLayout !== undefined && (
         <PreferenceRow
           title={t("settings.terminalLayout.title")}
