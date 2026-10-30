@@ -7,7 +7,7 @@
  */
 import { loadBoardWatcherConfig } from "../services/boardWatcher/config.js";
 import { runClaudeTest } from "../services/boardWatcher/claudeTester.js";
-import { noticeTestDone } from "../services/boardWatcher/instantNotices.js";
+import { flushNotices, noticeTestDone } from "../services/boardWatcher/instantNotices.js";
 import { jiraCredentialsFromEnv, searchIssues } from "../services/boardWatcher/jira.js";
 import { isTestPlan, isTestReport } from "../services/boardWatcher/testPlan.js";
 
@@ -48,10 +48,11 @@ async function main(): Promise<void> {
       failed: "reprovaria",
       blocked: "não conseguiu testar",
     }[output.verdict];
-    await noticeTestDone(config, issue, verdict, "comentaria o relatório", output.report, {
+    noticeTestDone(config, issue, verdict, "comentaria o relatório", output.report, {
       count: output.evidence.length,
       dir: output.evidenceDir,
     });
+    await flushNotices();
   }
 }
 

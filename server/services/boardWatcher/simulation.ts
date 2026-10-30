@@ -106,7 +106,7 @@ export function createSimulationDeps(
     notifier: {
       notify: async (level, title, text) => {
         await record({ action: "notify", subject: title, detail: `${level}: ${text}` });
-        if (level === "urgent") await noticePause(title, text);
+        if (level === "urgent") noticePause(title, text);
       },
     },
     tasks: {
