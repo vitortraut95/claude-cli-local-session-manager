@@ -433,5 +433,118 @@
         }
       }
     ]
+  },
+  {
+    "name": "PR waits until its ticket is in Code Review",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"]
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-80",
+            "statusId": "in-progress",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          }
+        ],
+        "prs": [
+          {
+            "id": "50",
+            "repo": "web",
+            "title": "DEMO-80: carrossel novo",
+            "sourceBranch": "env/DEMO-80",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#50": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-80",
+            "statusId": "code-review",
+            "statusSince": "2026-10-28T14:05:00-03:00",
+            "assigneeId": "ana"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#50": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T16:10:00-03:00",
+        "expect": {
+          "effects": ["approve web#50"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "bundled PR counts when one of its tickets is in Code Review; PR with no ticket waits",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"]
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-81",
+            "statusId": "in-progress",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          },
+          {
+            "key": "DEMO-82",
+            "statusId": "code-review",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          }
+        ],
+        "prs": [
+          {
+            "id": "51",
+            "repo": "web",
+            "title": "DEMO-81 e DEMO-82",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          },
+          {
+            "id": "52",
+            "repo": "web",
+            "title": "Ajuste de lint",
+            "sourceBranch": "chore/lint",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#51"],
+          "decisions": {
+            "web#52": "wait"
+          }
+        }
+      }
+    ]
   }
 ]

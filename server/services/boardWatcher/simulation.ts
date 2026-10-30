@@ -58,6 +58,7 @@ export function createSimulationDeps(
     ...config.columns.todo,
     ...config.columns.waitTest,
     ...config.columns.testing,
+    ...(config.columns.codeReview ?? []),
   ].join(",");
 
   const record = (entry: Omit<ActionEntry, "ts" | "title"> & { title?: string }) =>

@@ -43,6 +43,8 @@ const SERVER_TEXT_PT: [RegExp, string][] = [
   [/(\d+) tests already claimed/, "já há $1 testes em andamento"],
   [/test plan in comment \S+/, "tem plano de teste"],
   [/(\d+) tests claimed today/, "$1 testes pegos hoje"],
+  [/no ticket in the PR title or branch/, "sem LED no título ou na branch do PR"],
+  [/ticket (.+) isn't in Code Review yet/, "$1 ainda não está em Code Review"],
   [/^draft$/, "rascunho"],
   [/has conflicts/, "tem conflitos"],
   [/CI failed/, "CI falhou"],
