@@ -29,10 +29,18 @@ export function decideIssues(
   now: Date,
 ): Decision[] {
   const decisions: Decision[] = [];
-  const inTesting = new Set(
-    issues.filter((i) => config.columns.testing.includes(i.statusId)).map((i) => i.key),
+  // A claimed test holds its slot until the ticket leaves Wait Test/Testing (e.g. to PO
+  // Validation): it may never reach Testing when the claim doesn't move it on the board.
+  const stillTesting = new Set(
+    issues
+      .filter(
+        (i) =>
+          config.columns.testing.includes(i.statusId) ||
+          config.columns.waitTest.includes(i.statusId),
+      )
+      .map((i) => i.key),
   );
-  let claimed = state.claimedTests.filter((key) => inTesting.has(key)).length;
+  let claimed = state.claimedTests.filter((key) => stillTesting.has(key)).length;
   const businessTime = isBusinessTime(now, config.businessHours);
   const waitingTests: BoardIssue[] = [];
 

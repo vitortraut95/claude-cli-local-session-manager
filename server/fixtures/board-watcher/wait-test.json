@@ -764,5 +764,171 @@
         }
       }
     ]
+  },
+  {
+    "name": "claims that stay in Wait Test (not moved on the board) still hold their slot",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-70",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-71",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [
+            "transition DEMO-70 -> testing",
+            "enqueue test DEMO-70",
+            "transition DEMO-71 -> testing",
+            "enqueue test DEMO-71"
+          ],
+          "decisions": {
+            "DEMO-72": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-70",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-71",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-72": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T15:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-70",
+            "statusId": "validation",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-71",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": ["transition DEMO-72 -> testing", "enqueue test DEMO-72"]
+        }
+      }
+    ]
   }
 ]
