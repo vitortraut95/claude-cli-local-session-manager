@@ -7,6 +7,8 @@ import {
 } from "../services/boardWatcher/settings.js";
 import { listFeedback, saveFeedback } from "../services/boardWatcher/feedback.js";
 import { readActions } from "../services/boardWatcher/simulation.js";
+import { historyPage } from "../services/boardWatcher/history.js";
+import { HISTORY_FILTERS } from "../../shared/boardWatcher.js";
 import { BadRequestError, NotFoundError } from "../utils/httpError.js";
 import {
   getBoardWatcherStatus,
@@ -56,6 +58,19 @@ boardWatcherRouter.get("/actions", async (req, res) => {
   const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 1000);
   const actions = await readActions(new Date(0));
   res.json(actions.slice(-limit).reverse());
+});
+
+/** The history grouped per ticket/PR, a page at a time (`?filter=&q=&cursor=&limit=`). */
+boardWatcherRouter.get("/history", async (req, res) => {
+  const filter = HISTORY_FILTERS.find((f) => f === req.query.filter) ?? "all";
+  res.json(
+    await historyPage({
+      filter,
+      query: typeof req.query.q === "string" ? req.query.q.slice(0, 100) : "",
+      cursor: typeof req.query.cursor === "string" ? req.query.cursor : null,
+      limit: Math.min(Math.max(Number(req.query.limit) || 30, 1), 100),
+    }),
+  );
 });
 
 /** A test's screenshot, by its path under `boardWatcher-tests/` (as recorded in an action). */

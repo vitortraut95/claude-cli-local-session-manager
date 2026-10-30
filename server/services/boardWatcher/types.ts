@@ -101,6 +101,9 @@ export type WatcherState = {
   pendingReviews: PullRequest[];
   /** Claimed tickets waiting for a test session, as they were when claimed. */
   pendingTests: { issue: BoardIssue; planId: string }[];
+  /** Per PR, the last commit reviewed and what was raised then, so the next round only looks at
+   *  what changed since and doesn't repeat itself. */
+  reviewedCommits: Record<string, { hash: string; findings: string[] }>;
 };
 
 export function emptyWatcherState(): WatcherState {
@@ -113,6 +116,7 @@ export function emptyWatcherState(): WatcherState {
     pausedReason: null,
     pendingReviews: [],
     pendingTests: [],
+    reviewedCommits: {},
   };
 }
 

@@ -99,6 +99,38 @@ export type WatcherActionEntry = {
   durationMs?: number;
 };
 
+export const HISTORY_FILTERS = ["all", "reviews", "tests", "queue", "notices"] as const;
+export type HistoryFilter = (typeof HISTORY_FILTERS)[number];
+
+const HISTORY_FILTER_KINDS: Record<Exclude<HistoryFilter, "all">, WatcherActionKind[]> = {
+  reviews: ["review", "reviewed", "review-failed", "approve", "comment"],
+  tests: ["claim-test", "tested", "test-failed"],
+  queue: ["enqueue-dev", "queued-test"],
+  notices: ["notify"],
+};
+
+export function matchesHistoryFilter(entry: WatcherActionEntry, filter: HistoryFilter): boolean {
+  return filter === "all" || HISTORY_FILTER_KINDS[filter].includes(entry.action);
+}
+
+/** The ticket key or `repo#id` an entry is about (a notice's subject is "Not approved: repo#1"). */
+export function historySubject(entry: Pick<WatcherActionEntry, "subject">): string {
+  return entry.subject.replace(/^(Weak description|Not approved|Product questions): /, "");
+}
+
+/** Everything recorded about one ticket or PR, newest first. */
+export type WatcherHistoryGroup = {
+  subject: string;
+  title: string;
+  lastTs: string;
+  /** Some of it was done for real. */
+  live: boolean;
+  entries: WatcherActionEntry[];
+};
+
+/** One page of groups, most recently active first; `nextCursor` asks for the next one. */
+export type WatcherHistoryPage = { groups: WatcherHistoryGroup[]; nextCursor: string | null };
+
 export type BoardWatcherStatus = {
   enabled: boolean;
   mode: string | null;

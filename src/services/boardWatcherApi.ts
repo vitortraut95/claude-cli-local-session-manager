@@ -4,8 +4,10 @@ import type {
   AutomationSettings,
   AutomationSettingsInput,
   BoardWatcherStatus,
+  HistoryFilter,
   WatcherActionEntry,
   WatcherFeedback,
+  WatcherHistoryPage,
 } from "../../shared/boardWatcher";
 export type {
   WatcherFeedback,
@@ -19,6 +21,8 @@ export type {
   WatcherActionEntry,
   WatcherActionKind,
   WatcherDecision,
+  WatcherHistoryGroup,
+  WatcherHistoryPage,
   WatcherDecisionAction,
 } from "../../shared/boardWatcher";
 
@@ -71,6 +75,21 @@ export async function saveAutomationSettings(
 export async function fetchWatcherActions(limit = 200): Promise<WatcherActionEntry[]> {
   const { data } = await withServerErrorMessage(() =>
     client.get<WatcherActionEntry[]>("/actions", { params: { limit } }),
+  );
+  return data;
+}
+
+/** One page of the history, grouped per ticket/PR (most recently active first). */
+export async function fetchWatcherHistory(params: {
+  filter: HistoryFilter;
+  q: string;
+  cursor: string | null;
+  limit?: number;
+}): Promise<WatcherHistoryPage> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<WatcherHistoryPage>("/history", {
+      params: { ...params, cursor: params.cursor ?? undefined, q: params.q || undefined },
+    }),
   );
   return data;
 }

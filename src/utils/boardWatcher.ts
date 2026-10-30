@@ -100,19 +100,11 @@ export const ACTION_KIND_KEYS = {
   notify: "board.kind.notify",
 } as const satisfies Record<WatcherActionKind, string>;
 
-export const HISTORY_FILTERS = ["all", "reviews", "tests", "queue", "notices"] as const;
-export type HistoryFilter = (typeof HISTORY_FILTERS)[number];
-
-const HISTORY_FILTER_KINDS: Record<Exclude<HistoryFilter, "all">, WatcherActionKind[]> = {
-  reviews: ["review", "reviewed", "review-failed", "approve", "comment"],
-  tests: ["claim-test", "tested", "test-failed"],
-  queue: ["enqueue-dev", "queued-test"],
-  notices: ["notify"],
-};
-
-export function matchesHistoryFilter(entry: WatcherActionEntry, filter: HistoryFilter): boolean {
-  return filter === "all" || HISTORY_FILTER_KINDS[filter].includes(entry.action);
-}
+export {
+  HISTORY_FILTERS,
+  matchesHistoryFilter,
+  type HistoryFilter,
+} from "../../shared/boardWatcher";
 
 /** What the user can judge: the watcher's own calls, not its bookkeeping (started, failed). */
 const RATEABLE: WatcherActionEntry["action"][] = [

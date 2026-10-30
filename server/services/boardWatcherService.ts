@@ -16,6 +16,8 @@ import {
   bitbucketCredentialsFromEnv,
   findPullRequestsForKey,
   listOpenPullRequests,
+  pullRequestHead,
+  sameCommit,
 } from "./boardWatcher/bitbucket.js";
 import { runClaudeReview } from "./boardWatcher/claudeReviewer.js";
 import {
@@ -37,6 +39,7 @@ import {
   noticeWatcherError,
   prUrl,
 } from "./boardWatcher/instantNotices.js";
+import { rotateActions } from "./boardWatcher/history.js";
 import { testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
 import { addTestEntryIfAbsent } from "./taskQueueService.js";
@@ -182,6 +185,7 @@ async function lookLocked(): Promise<void> {
             }
           }
         : undefined;
+    await rotateActionsDaily(now);
     lastDecisions = await runTick(
       createBoardDeps(config, () => new Date(), onReview, onTest),
       state,
@@ -206,6 +210,20 @@ async function lookLocked(): Promise<void> {
     running = false;
     schedule(config);
   }
+}
+
+let lastRotationDay = "";
+
+/** Archives old history once a day, between review/test sessions (they append to the log). */
+async function rotateActionsDaily(now: Date): Promise<void> {
+  const day = now.toISOString().slice(0, 10);
+  if (reviewing || lastRotationDay === day) return;
+  lastRotationDay = day;
+  const moved = await rotateActions(now).catch((err: unknown) => {
+    console.warn("[board-watcher] Couldn't archive old history:", err);
+    return 0;
+  });
+  if (moved) recordEvent("boardWatcher.archive", { entries: moved });
 }
 
 function schedule(config: BoardWatcherConfig | null): void {
@@ -251,10 +269,23 @@ async function drainJobs(): Promise<void> {
       try {
         const repoPath = config.bitbucket.localRepos?.[pr.repo];
         if (!repoPath) throw new Error(`No local clone of ${pr.repo} in bitbucket.localRepos.`);
-        const openPrs = await listOpenPullRequests(
-          bitbucketCredentialsFromEnv(config.bitbucket.workspace),
-          [pr.repo],
-        );
+        const credentials = bitbucketCredentialsFromEnv(config.bitbucket.workspace);
+        // Merged, closed or pushed to while it waited: no session for it. A new push is queued
+        // again by the next look, with the new commit.
+        const head = await pullRequestHead(credentials, pr);
+        if (head.state !== "OPEN" || !sameCommit(pr.sourceHash, head.hash)) {
+          await serial(async () => {
+            const state = await loadState();
+            state.pendingReviews = state.pendingReviews.filter((p) => prSubject(p) !== subject);
+            await saveState(state);
+          });
+          recordEvent("boardWatcher.reviewSkipped", {
+            subject,
+            reason: head.state !== "OPEN" ? head.state : "new push",
+          });
+          continue;
+        }
+        const openPrs = await listOpenPullRequests(credentials, [pr.repo]);
         const output = await runClaudeReview(pr, {
           repoPath,
           jiraSite: config.jira?.site,
@@ -262,6 +293,7 @@ async function drainJobs(): Promise<void> {
           model: config.review?.model,
           maxBudgetUsd: config.review?.maxBudgetUsd,
           lessons: await getLessons("review"),
+          previous: state.reviewedCommits?.[subject],
         });
         await serial(async () => {
           const state = await loadState();
@@ -281,6 +313,16 @@ async function drainJobs(): Promise<void> {
             state,
             config,
           );
+          if (pr.sourceHash) {
+            const raised = output.findings
+              .filter((f) => f.severity !== "minor" && f.topic !== "product")
+              .map((f) => `${f.file ? `${f.file}${f.line ? `:${f.line}` : ""}: ` : ""}${f.body}`);
+            const earlier = state.reviewedCommits[subject]?.findings ?? [];
+            state.reviewedCommits[subject] = {
+              hash: pr.sourceHash,
+              findings: [...earlier, ...raised].slice(-20),
+            };
+          }
           await saveState(state);
         });
         if (output.findings.some((f) => f.severity === "blocking" && f.topic !== "product")) {
