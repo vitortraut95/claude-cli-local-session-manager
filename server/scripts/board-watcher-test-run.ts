@@ -2,10 +2,12 @@
  * Runs the unattended test session on one ticket now, outside the board rules, to compare its
  * verdict with the one a person gave. Uses the plan as it was before the first test report, and
  * the session never sees that report. Nothing is posted: prints the verdict, the report it would
- * post and where the evidence is. `yarn board-watcher:test-run KEY`.
+ * post and where the evidence is; `--notify` also sends the instant Teams notice a watched test
+ * sends. `yarn board-watcher:test-run KEY [--notify]`.
  */
 import { loadBoardWatcherConfig } from "../services/boardWatcher/config.js";
 import { runClaudeTest } from "../services/boardWatcher/claudeTester.js";
+import { noticeTestDone } from "../services/boardWatcher/instantNotices.js";
 import { jiraCredentialsFromEnv, searchIssues } from "../services/boardWatcher/jira.js";
 import { isTestPlan, isTestReport } from "../services/boardWatcher/testPlan.js";
 
@@ -39,6 +41,18 @@ async function main(): Promise<void> {
   for (const item of output.evidence) console.log(`  ${item.file} — ${item.description}`);
   console.log(`\n--- Report it would post\n${output.report}`);
   if (firstReport) console.log(`\n--- Report a person posted\n${firstReport.body.slice(0, 3000)}`);
+  if (process.argv.includes("--notify")) {
+    const verdict = {
+      approved: "aprovaria",
+      "approved-with-notes": "aprovaria com ressalvas",
+      failed: "reprovaria",
+      blocked: "não conseguiu testar",
+    }[output.verdict];
+    await noticeTestDone(config, issue, verdict, "comentaria o relatório", output.report, {
+      count: output.evidence.length,
+      dir: output.evidenceDir,
+    });
+  }
 }
 
 await main();
