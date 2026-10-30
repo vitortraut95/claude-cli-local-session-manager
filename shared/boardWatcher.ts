@@ -77,6 +77,10 @@ export type WatcherActionEntry = {
   detail?: string;
   /** A test's screenshots, relative to `boardWatcher-tests/` (served by `GET /evidence`). */
   files?: string[];
+  /** A review/test session's cost as the CLI reports it (an API-price estimate on a plan) and
+   *  how long it ran. */
+  costUsd?: number;
+  durationMs?: number;
 };
 
 export type BoardWatcherStatus = {
@@ -95,5 +99,9 @@ export type BoardWatcherStatus = {
   pendingTests: string[];
   approvalsToday: number;
   testClaimsToday: number;
+  /** Review/test sessions the watcher ran today, with their total time and estimated cost. */
+  today: { reviews: number; tests: number; durationMs: number; costUsd: number };
+  /** Why pending reviews/tests aren't starting (e.g. the plan's usage limit), or null. */
+  jobsBlockedBy: string | null;
   lastDecisions: WatcherDecision[];
 };

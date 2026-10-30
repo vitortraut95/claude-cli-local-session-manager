@@ -186,3 +186,15 @@ export async function getClaudeUsageStatus(forceRefresh = false): Promise<Claude
   cache = { status, fetchedAt: Date.now() };
   return status;
 }
+
+/** The highest of the plan's usage limits, in %; null when unknown. Only fetched when `fetch`
+ *  (something is about to start); otherwise the last reading, if any. */
+export async function getMaxUsagePercent(fetch: boolean): Promise<number | null> {
+  try {
+    const status = fetch ? await getClaudeUsageStatus() : getCachedClaudeUsageStatus();
+    const limits = status?.limits ?? [];
+    return limits.length > 0 ? Math.max(...limits.map((limit) => limit.percent)) : null;
+  } catch {
+    return null;
+  }
+}

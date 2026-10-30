@@ -3,6 +3,8 @@ import path from "node:path";
 import type { BoardWatcherStatus } from "../../shared/boardWatcher.js";
 import { recordEvent } from "../utils/history.js";
 import { getTaskStore, onStoreChange, type StoreChange } from "../utils/taskStore.js";
+import { getUserPreferences } from "./preferencesService.js";
+import { getMaxUsagePercent } from "./usageService.js";
 import { findRemoteSessionUrl } from "./session/remoteUrl.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import { isBusinessTime, localDay } from "./boardWatcher/businessTime.js";
@@ -64,6 +66,8 @@ let running = false;
 let lastDecisions: Decision[] = [];
 let lastConfig: BoardWatcherConfig | null = null;
 let reviewing = false;
+/** Why pending reviews/tests aren't starting, shown in the app; null while they can. */
+let jobsBlockedBy: string | null = null;
 let stateChain: Promise<unknown> = Promise.resolve();
 
 /** Runs `fn` after every earlier state change has finished, so looks and reviews don't overwrite
@@ -228,6 +232,17 @@ async function drainJobs(): Promise<void> {
       if (!config?.enabled || !config.bitbucket) return;
       const pr = config.review?.enabled ? state.pendingReviews[0] : undefined;
       const test = config.test?.enabled !== false ? state.pendingTests[0] : undefined;
+      // A headless test or a review is a Claude session of its own: same plan limit as the queue.
+      const headlessTest = test && config.test?.runner === "headless";
+      if (pr || headlessTest) {
+        const { maxUsagePercent } = (await getUserPreferences()).orchestrator;
+        const usage = await getMaxUsagePercent(true);
+        if (usage !== null && usage >= maxUsagePercent) {
+          jobsBlockedBy = `plan usage at ${usage}% (limit ${maxUsagePercent}%)`;
+          return;
+        }
+      }
+      jobsBlockedBy = null;
       if (!pr) {
         if (!test) return;
         await runTestJob(test, config);
@@ -258,6 +273,8 @@ async function drainJobs(): Promise<void> {
             subject,
             title: pr.title,
             detail: `${output.summary} · Bate com a LED: ${output.ticketMatch} · Confiança: ${output.confidence}`,
+            costUsd: output.costUsd,
+            durationMs: output.durationMs ?? Date.now() - started,
           });
           await applyReview(
             pr,
@@ -358,6 +375,8 @@ async function runTestJob(
       subject: issue.key,
       title: issue.summary,
       detail: `${VERDICT_PT[output.verdict]}, ${next}. ${output.evidence.length} prints em ${output.evidenceDir}\n${output.report}`,
+      costUsd: output.costUsd,
+      durationMs: output.durationMs ?? Date.now() - started,
       files: output.evidence
         .map((e) => path.relative(TESTS_DIR, e.file))
         .filter((f) => !f.startsWith("..") && !path.isAbsolute(f)),
@@ -448,6 +467,26 @@ export async function resumeBoardWatcher(): Promise<BoardWatcherStatus> {
   return runBoardWatcherNow();
 }
 
+/** The review/test sessions run since local midnight, from the actions log. */
+async function todaysSessions(
+  config: BoardWatcherConfig | null,
+): Promise<BoardWatcherStatus["today"]> {
+  const now = new Date();
+  const hours = config?.businessHours;
+  const midnight = hours
+    ? new Date(`${localDay(now, hours)}T00:00:00`)
+    : new Date(now.toDateString());
+  const sessions = (await readActions(midnight)).filter(
+    (a) => a.action === "reviewed" || a.action === "tested",
+  );
+  return {
+    reviews: sessions.filter((a) => a.action === "reviewed").length,
+    tests: sessions.filter((a) => a.action === "tested").length,
+    durationMs: sessions.reduce((sum, a) => sum + (a.durationMs ?? 0), 0),
+    costUsd: sessions.reduce((sum, a) => sum + (a.costUsd ?? 0), 0),
+  };
+}
+
 export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
   const config = lastConfig ?? (await loadBoardWatcherConfig().catch(() => null));
   const state = await loadState();
@@ -465,6 +504,8 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
     pendingTests: state.pendingTests.map((t) => t.issue.key),
     nextLookAt: config?.enabled ? nextLookAt : null,
     approvalsToday: state.approvals.day === today ? state.approvals.count : 0,
+    today: await todaysSessions(config),
+    jobsBlockedBy,
     testClaimsToday: state.testClaims.day === today ? state.testClaims.count : 0,
     lastDecisions,
   };
