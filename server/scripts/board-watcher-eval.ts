@@ -3,8 +3,8 @@
  * and checks each tick's effects (what it would have done) and decisions against the expected
  * ones. Nothing leaves the machine. `yarn board-watcher:eval [name filter] [--verbose]`.
  *
- * Scenario: `{ name, config?, state?, ticks: [{ now, issues?, prs?, reviews?, expect }] }`. A tick
- * without `issues`/`prs` keeps the previous ones (as left by the last tick's writes).
+ * Scenario: `{ name, config?, state?, ticks: [{ now, issues?, prs?, reviews?, startedDevKeys?,
+ * expect }] }`. A tick without `issues`/`prs`/`startedDevKeys` keeps the previous ones (as left by the last tick's writes).
  * `expect.effects` must match exactly, in any order; `expect.decisions` maps a subject to the
  * action expected for it, or "none" for no decision at all.
  */
@@ -28,6 +28,7 @@ type Tick = {
   issues?: Partial<BoardIssue>[];
   prs?: Partial<PullRequest>[];
   reviews?: Record<string, ReviewResult>;
+  startedDevKeys?: string[];
   expect: { effects: string[]; decisions?: Record<string, DecisionAction | "none"> };
 };
 
@@ -110,6 +111,7 @@ async function runScenario(scenario: Scenario, verbose: boolean): Promise<string
     if (tick.issues) world.issues = tick.issues.map(toIssue);
     if (tick.prs) world.prs = tick.prs.map(toPullRequest);
     world.reviews = tick.reviews ?? {};
+    if (tick.startedDevKeys) world.startedDevKeys = tick.startedDevKeys;
     const effects: string[] = [];
     const decisions = await runTick(
       createFakeDeps(world, config.me, effects),

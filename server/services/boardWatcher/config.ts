@@ -41,15 +41,30 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
    *  its switch in `live` is on. */
   mode?: "simulate";
   /** Writes done for real (all off unless true): queue my To Do tickets in the app, move a
-   *  claimed test to Testing in Jira, post review comments and approve on Bitbucket. */
-  live?: { devQueue?: boolean; testClaim?: boolean; comments?: boolean; approve?: boolean };
+   *  claimed test to Testing in Jira, post review comments and approve on Bitbucket, move my
+   *  started task to In Progress. */
+  live?: {
+    devQueue?: boolean;
+    testClaim?: boolean;
+    comments?: boolean;
+    approve?: boolean;
+    startProgress?: boolean;
+  };
   /** The user's account id on the board and the code host. */
   me: string;
   /** Status ids making up each board column. With `codeReview`, PRs are only reviewed once
    *  their ticket is there. */
-  columns: { todo: string[]; waitTest: string[]; testing: string[]; codeReview?: string[] };
+  columns: {
+    todo: string[];
+    waitTest: string[];
+    testing: string[];
+    codeReview?: string[];
+    inProgress?: string[];
+  };
   /** Where a claimed test is moved to. */
   testingStatusId: string;
+  /** Where the user's started task is moved to, one at a time (`decideProgress`). */
+  inProgressStatusId?: string;
   /** Visible actions (comment, approve, claim) only happen inside these. */
   businessHours: BusinessHours;
   /** Where the board lives. Only the active sprint's issues are considered; `scopeJql` narrows

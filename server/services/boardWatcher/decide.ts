@@ -16,7 +16,14 @@ import { prSubject, type BoardIssue, type PullRequest, type WatcherState } from 
  */
 
 export type DecisionAction =
-  "enqueue-dev" | "weak-description" | "claim-test" | "retest" | "review" | "skip" | "wait";
+  | "enqueue-dev"
+  | "weak-description"
+  | "claim-test"
+  | "retest"
+  | "start-progress"
+  | "review"
+  | "skip"
+  | "wait";
 
 export type Decision = {
   subject: string;
@@ -192,6 +199,41 @@ export function decideRetests(
     });
   }
   return decisions;
+}
+
+/**
+ * Only one of the user's tasks is In Progress on the board at a time, for the board's sake: more
+ * can be worked on (their sessions started), but they stay in To Do. When none of the user's is
+ * In Progress, the first started task still in To Do is moved there, in business hours.
+ */
+export function decideProgress(
+  issues: BoardIssue[],
+  startedDevKeys: string[],
+  config: BoardWatcherConfig,
+  now: Date,
+): Decision[] {
+  const inProgress = config.columns.inProgress;
+  if (!config.inProgressStatusId || !inProgress?.length) return [];
+  const mine = issues.filter((i) => i.assigneeId === config.me);
+  const current = mine.find((i) => inProgress.includes(i.statusId));
+  const byKey = new Map(mine.map((i) => [i.key, i]));
+  const next = startedDevKeys
+    .map((key) => byKey.get(key))
+    .find((i) => i && config.columns.todo.includes(i.statusId));
+  if (!next) return [];
+  if (current) {
+    return [{ subject: next.key, action: "wait", reason: `${current.key} is In Progress` }];
+  }
+  if (!isBusinessTime(now, config.businessHours)) {
+    return [{ subject: next.key, action: "wait", reason: "outside business hours" }];
+  }
+  return [
+    {
+      subject: next.key,
+      action: "start-progress",
+      reason: "started, and none of yours is In Progress",
+    },
+  ];
 }
 
 const TICKET_KEYS = /\b[A-Z][A-Z0-9]+-\d+\b/g;

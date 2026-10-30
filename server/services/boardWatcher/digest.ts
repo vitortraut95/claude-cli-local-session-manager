@@ -39,6 +39,7 @@ export function buildActionsDigest(
     testClaim: !live.testClaim && !of("claim-test").some((e) => e.live),
     comments: !live.comments && !of("comment").some((e) => e.live),
     approve: !live.approve && !of("approve").some((e) => e.live),
+    startProgress: !live.startProgress && !of("start-progress").some((e) => e.live),
   };
   const simulated = Object.values(sim).every(Boolean);
   const weak = of("notify").filter((e) => e.subject.startsWith("Weak description: "));
@@ -87,6 +88,10 @@ export function buildActionsDigest(
     {
       heading: sim.devQueue ? "Entraria na fila para desenvolver" : "Entrou na fila de dev",
       items: of("enqueue-dev").map((e) => line(e, issueLink)),
+    },
+    {
+      heading: sim.startProgress ? "Moveria para In Progress" : "Moveu para In Progress",
+      items: of("start-progress").map((e) => line(e, issueLink)),
     },
     {
       heading: "Descrição insuficiente, não entraria na fila",

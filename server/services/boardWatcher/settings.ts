@@ -59,6 +59,7 @@ export async function getAutomationSettings(): Promise<AutomationSettings> {
       testClaim: config?.live?.testClaim === true,
       comments: config?.live?.comments === true,
       approve: config?.live?.approve === true,
+      startProgress: config?.live?.startProgress === true,
     },
     limits,
     businessHours: {
@@ -90,7 +91,13 @@ const FEATURE_KEYS: Record<keyof AutomationFeatures, [string, string]> = {
   digest: ["notifications", "digest"],
 };
 
-const LIVE_KEYS: (keyof AutomationLive)[] = ["devQueue", "testClaim", "comments", "approve"];
+export const LIVE_KEYS: (keyof AutomationLive)[] = [
+  "devQueue",
+  "startProgress",
+  "testClaim",
+  "comments",
+  "approve",
+];
 
 export async function saveAutomationSettings(body: unknown): Promise<AutomationSettings> {
   const text = await readFile(BOARD_WATCHER_CONFIG_FILE, "utf8").catch(() => null);

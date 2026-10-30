@@ -43,6 +43,7 @@ import {
   prUrl,
 } from "./boardWatcher/instantNotices.js";
 import { rotateActions } from "./boardWatcher/history.js";
+import { LIVE_KEYS } from "./boardWatcher/settings.js";
 import { networkProblem } from "./boardWatcher/network.js";
 import { isTestReport, testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
@@ -625,9 +626,7 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
       config && !isBusinessTime(new Date(), config.businessHours)
         ? (nextBusinessStart(new Date(), config.businessHours)?.toISOString() ?? null)
         : null,
-    live: config?.live
-      ? (["devQueue", "testClaim", "comments", "approve"] as const).filter((k) => config.live?.[k])
-      : [],
+    live: config?.live ? LIVE_KEYS.filter((k) => config.live?.[k]) : [],
     running,
     lastTickAt: state.lastTickAt,
     lastDigestAt: state.lastDigestAt,

@@ -26,6 +26,8 @@ export type AutomationLive = {
   comments: boolean;
   /** A clean review approves the PR. */
   approve: boolean;
+  /** One started task of mine at a time is moved to In Progress in Jira. */
+  startProgress: boolean;
 };
 
 export type AutomationLimits = {
@@ -59,7 +61,14 @@ export type AutomationSettingsInput = {
 };
 
 export type WatcherDecisionAction =
-  "enqueue-dev" | "weak-description" | "claim-test" | "retest" | "review" | "skip" | "wait";
+  | "enqueue-dev"
+  | "weak-description"
+  | "claim-test"
+  | "retest"
+  | "start-progress"
+  | "review"
+  | "skip"
+  | "wait";
 
 /** What the watcher decided about one ticket (a key) or PR (`repo#id`) on its last look. */
 export type WatcherDecision = {
@@ -73,6 +82,7 @@ export type WatcherActionKind =
   | "enqueue-dev"
   | "claim-test"
   | "retest"
+  | "start-progress"
   | "queued-test"
   | "review"
   | "reviewed"
@@ -106,7 +116,7 @@ export type HistoryFilter = (typeof HISTORY_FILTERS)[number];
 const HISTORY_FILTER_KINDS: Record<Exclude<HistoryFilter, "all">, WatcherActionKind[]> = {
   reviews: ["review", "reviewed", "review-failed", "approve", "comment"],
   tests: ["claim-test", "retest", "tested", "test-failed"],
-  queue: ["enqueue-dev", "queued-test"],
+  queue: ["enqueue-dev", "queued-test", "start-progress"],
   notices: ["notify"],
 };
 

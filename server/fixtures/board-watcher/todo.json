@@ -182,5 +182,163 @@
         }
       }
     ]
+  },
+  {
+    "name": "only one of my tasks is In Progress; the next started one moves up when it leaves",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "inProgress": ["in-progress"]
+      },
+      "inProgressStatusId": "in-progress"
+    },
+    "state": {
+      "handled": {
+        "dev:DEMO-70": "x",
+        "dev:DEMO-71": "x",
+        "dev:DEMO-72": "x"
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-70",
+            "statusId": "in-progress",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-71",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-73",
+            "statusId": "in-progress",
+            "assigneeId": "ana",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          }
+        ],
+        "startedDevKeys": ["DEMO-71", "DEMO-72"],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-71": "wait",
+            "DEMO-72": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-70",
+            "statusId": "code-review",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-71",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          }
+        ],
+        "expect": {
+          "effects": ["transition DEMO-71 -> in-progress"],
+          "decisions": {
+            "DEMO-71": "start-progress",
+            "DEMO-72": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:20:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-71": "none",
+            "DEMO-72": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T20:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-71",
+            "statusId": "code-review",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-72": "wait"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "a task not started yet isn't moved to In Progress",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "inProgress": ["in-progress"]
+      },
+      "inProgressStatusId": "in-progress"
+    },
+    "state": {
+      "handled": {
+        "dev:DEMO-74": "x"
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-74",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          }
+        ],
+        "startedDevKeys": [],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-74": "none"
+          }
+        }
+      }
+    ]
   }
 ]
