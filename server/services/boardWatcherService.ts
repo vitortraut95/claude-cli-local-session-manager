@@ -8,7 +8,12 @@ import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
 import { bitbucketCredentialsFromEnv, listOpenPullRequests } from "./boardWatcher/bitbucket.js";
 import { runClaudeReview } from "./boardWatcher/claudeReviewer.js";
-import { runClaudeTest, type TestOutput } from "./boardWatcher/claudeTester.js";
+import {
+  commentsUpToPlan,
+  findTestRepos,
+  runClaudeTest,
+  type TestOutput,
+} from "./boardWatcher/claudeTester.js";
 import { createSimulationDeps, readActions, recordAction } from "./boardWatcher/simulation.js";
 import { buildUrgentCard, postTeamsCard } from "./boardWatcher/teamsCards.js";
 import {
@@ -20,6 +25,7 @@ import {
 } from "./boardWatcher/instantNotices.js";
 import { testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
+import { addTestEntryIfAbsent } from "./taskQueueService.js";
 import { emptyWatcherState, prSubject, type WatcherState } from "./boardWatcher/types.js";
 
 /**
@@ -297,14 +303,48 @@ const VERDICT_PT: Record<TestOutput["verdict"], string> = {
   blocked: "não conseguiu testar",
 };
 
+/** Adds a claimed ticket to the app's task queue as a test entry; the scheduler launches it
+ *  like any queued test (its limits, its session, the user's test skill). */
+async function queueTestJob(
+  job: WatcherState["pendingTests"][number],
+  config: BoardWatcherConfig,
+): Promise<string> {
+  const { issue, planId } = job;
+  const plan = issue.comments.find((c) => c.id === planId);
+  const comments = plan ? commentsUpToPlan(issue, plan) : issue.comments;
+  const repos = await findTestRepos(issue, comments, config.bitbucket?.localRepos ?? {});
+  const added = await addTestEntryIfAbsent({
+    key: issue.key,
+    link: issueUrl(config, issue.key),
+    repos: repos.map((r) => r.path),
+    // One branch name for every repo: only safe to pin with a single repo.
+    branch: repos.length === 1 ? (repos[0]?.branch ?? null) : null,
+  });
+  await recordAction({
+    action: "queued-test",
+    subject: issue.key,
+    title: issue.summary,
+    detail: added
+      ? repos.length
+        ? repos.map((r) => `${r.repo} (${r.branch ?? "branch a achar"})`).join(", ")
+        : "sem repo identificado (sessão sem worktree)"
+      : "já estava na fila",
+  });
+  return added ? "queued" : "already queued";
+}
+
 async function runTestJob(
   job: WatcherState["pendingTests"][number],
   config: BoardWatcherConfig,
 ): Promise<void> {
   const { issue, planId } = job;
   const started = Date.now();
-  let outcome: string;
+  let outcome = "";
   try {
+    if ((config.test?.runner ?? "queue") === "queue") {
+      outcome = await queueTestJob(job, config);
+      return;
+    }
     const plan = issue.comments.find((c) => c.id === planId);
     if (!plan) throw new Error(`Plan comment ${planId} is gone.`);
     const output = await runClaudeTest(issue, plan, {
@@ -340,13 +380,14 @@ async function runTestJob(
       detail: outcome,
     });
     await noticeJobFailed("test", issue.key, issue.summary, outcome, issueUrl(config, issue.key));
+  } finally {
+    await serial(async () => {
+      const state = await loadState();
+      state.pendingTests = state.pendingTests.filter((t) => t.issue.key !== issue.key);
+      await saveState(state);
+    });
+    recordEvent("boardWatcher.test", { key: issue.key, outcome, durationMs: Date.now() - started });
   }
-  await serial(async () => {
-    const state = await loadState();
-    state.pendingTests = state.pendingTests.filter((t) => t.issue.key !== issue.key);
-    await saveState(state);
-  });
-  recordEvent("boardWatcher.test", { key: issue.key, outcome, durationMs: Date.now() - started });
 }
 
 export function startBoardWatcher(): void {

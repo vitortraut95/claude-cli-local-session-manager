@@ -25,6 +25,7 @@ export type ActionEntry = {
     | "review-failed"
     | "tested"
     | "test-failed"
+    | "queued-test"
     | "comment"
     | "approve"
     | "notify";

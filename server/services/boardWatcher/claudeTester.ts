@@ -72,7 +72,7 @@ const ALLOWED_TOOLS = ["Skill", "ToolSearch", "Read", "Glob", "Grep", "mcp__clau
 const MAX_DIFF_CHARS = 60_000;
 
 /** The ticket as the tester would have seen it: comments up to the plan, no test reports. */
-function commentsUpToPlan(issue: BoardIssue, plan: IssueComment): IssueComment[] {
+export function commentsUpToPlan(issue: BoardIssue, plan: IssueComment): IssueComment[] {
   return issue.comments.filter(
     (c) => Date.parse(c.created) <= Date.parse(plan.created) && !isTestReport(c.body),
   );
@@ -121,12 +121,13 @@ async function collectEvidence(
   );
 }
 
-/** Repos named in the ticket's PR links, with the origin branch carrying the ticket key. */
-async function testBranches(
+/** Repos named in the ticket's PR links (that have a local clone), each with the origin branch
+ *  carrying the ticket key, preferring the `env/` preview branch. */
+export async function findTestRepos(
   issue: BoardIssue,
   comments: IssueComment[],
   localRepos: Record<string, string>,
-): Promise<TestBranch[]> {
+): Promise<Omit<TestBranch, "diff">[]> {
   const text = [issue.description, ...comments.map((c) => c.body)].join("\n");
   const repos = [...new Set([...text.matchAll(PR_LINK)].map((m) => m[1] ?? ""))].filter(
     (repo) => localRepos[repo],
@@ -143,14 +144,23 @@ async function testBranches(
         .split("\n")
         .map((b) => b.trim().replace(/^origin\//, ""))
         .filter(Boolean);
-      const branch = names.find((b) => b.startsWith("env/")) ?? names[0] ?? null;
       return {
         repo,
         path: repoPath,
-        branch,
-        diff: branch ? await branchDiff(repoPath, branch) : "",
+        branch: names.find((b) => b.startsWith("env/")) ?? names[0] ?? null,
       };
     }),
+  );
+}
+
+async function testBranches(
+  issue: BoardIssue,
+  comments: IssueComment[],
+  localRepos: Record<string, string>,
+): Promise<TestBranch[]> {
+  const repos = await findTestRepos(issue, comments, localRepos);
+  return Promise.all(
+    repos.map(async (r) => ({ ...r, diff: r.branch ? await branchDiff(r.path, r.branch) : "" })),
   );
 }
 

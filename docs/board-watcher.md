@@ -88,6 +88,14 @@ local clone of each repo comes from `bitbucket.localRepos`.
 
 ### Test session
 
+By default (`test.runner: "queue"`) a claimed ticket is added to the app's task queue as a test
+entry, so the scheduler launches it like any queued test: within its session, memory and plan
+limits, as an interactive session with the user's test skill and a disposable worktree of the
+ticket's branch. The skill still asks the user before posting anything. `test.runner: "headless"`
+runs the unattended session below instead.
+
+#### Headless runner
+
 Runs the user's test skill in autonomous mode in a non-interactive `claude -p --chrome` (its own
 Chrome tab group), in the evidence folder outside every repo, with no tool that writes and no way
 to reach Jira or Bitbucket (no MCP servers, no Atlassian tokens in its env): the watcher is the
