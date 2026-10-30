@@ -3,6 +3,7 @@ import path from "node:path";
 import { REPO_ROOT } from "../../utils/repoRoot.js";
 import { bitbucketCredentialsFromEnv, listOpenPullRequests } from "./bitbucket.js";
 import type { BoardWatcherConfig } from "./config.js";
+import { noticePause } from "./instantNotices.js";
 import { jiraCredentialsFromEnv, searchIssues } from "./jira.js";
 import { prSubject, type BoardIssue, type PullRequest, type WatcherDeps } from "./types.js";
 
@@ -118,8 +119,10 @@ export function createSimulationDeps(
       },
     },
     notifier: {
-      notify: (level, title, text) =>
-        record({ action: "notify", subject: title, detail: `${level}: ${text}` }),
+      notify: async (level, title, text) => {
+        await record({ action: "notify", subject: title, detail: `${level}: ${text}` });
+        if (level === "urgent") await noticePause(title, text);
+      },
     },
     tasks: {
       enqueue: async (key, kind) => {

@@ -11,6 +11,13 @@ import { runClaudeReview } from "./boardWatcher/claudeReviewer.js";
 import { runClaudeTest, type TestOutput } from "./boardWatcher/claudeTester.js";
 import { createSimulationDeps, readActions, recordAction } from "./boardWatcher/simulation.js";
 import { buildUrgentCard, postTeamsCard } from "./boardWatcher/teamsCards.js";
+import {
+  issueUrl,
+  noticeJobFailed,
+  noticeReviewBlocked,
+  noticeTestDone,
+  prUrl,
+} from "./boardWatcher/instantNotices.js";
 import { testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
 import { emptyWatcherState, prSubject, type WatcherState } from "./boardWatcher/types.js";
@@ -261,6 +268,9 @@ async function drainJobs(): Promise<void> {
           );
           await saveState(state);
         });
+        if (output.findings.some((f) => f.severity === "blocking" && f.topic !== "product")) {
+          await noticeReviewBlocked(config, pr, output.summary, output.findings);
+        }
         outcome = `${output.findings.length} finding(s), ${output.verdict}`;
       } catch (err) {
         outcome = err instanceof Error ? err.message : String(err);
@@ -271,6 +281,7 @@ async function drainJobs(): Promise<void> {
           await saveState(state);
         });
         await recordAction({ action: "review-failed", subject, title: pr.title, detail: outcome });
+        await noticeJobFailed("review", subject, pr.title, outcome, prUrl(config, pr));
       }
       recordEvent("boardWatcher.review", { subject, outcome, durationMs: Date.now() - started });
     }
@@ -314,6 +325,10 @@ async function runTestJob(
       title: issue.summary,
       detail: `${VERDICT_PT[output.verdict]}, ${next}. ${output.evidence.length} prints em ${output.evidenceDir}\n${output.report}`,
     });
+    await noticeTestDone(config, issue, VERDICT_PT[output.verdict], next, output.report, {
+      count: output.evidence.length,
+      dir: output.evidenceDir,
+    });
     outcome = output.verdict;
   } catch (err) {
     outcome = err instanceof Error ? err.message : String(err);
@@ -324,6 +339,7 @@ async function runTestJob(
       title: issue.summary,
       detail: outcome,
     });
+    await noticeJobFailed("test", issue.key, issue.summary, outcome, issueUrl(config, issue.key));
   }
   await serial(async () => {
     const state = await loadState();
