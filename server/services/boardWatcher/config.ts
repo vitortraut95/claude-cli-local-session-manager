@@ -36,9 +36,12 @@ export type BoardWatcherLimits = {
 export type BoardWatcherConfig = BoardWatcherLimits & {
   /** Off unless true. */
   enabled?: boolean;
-  /** `simulate` reads the real board and PRs but only records what it would do. The only mode
-   *  for now. */
+  /** The real board and PRs are always read; each write is only recorded (simulation) unless
+   *  its switch in `live` is on. */
   mode?: "simulate";
+  /** Writes done for real (all off unless true): queue my To Do tickets in the app, move a
+   *  claimed test to Testing in Jira, post review comments and approve on Bitbucket. */
+  live?: { devQueue?: boolean; testClaim?: boolean; comments?: boolean; approve?: boolean };
   /** The user's account id on the board and the code host. */
   me: string;
   /** Status ids making up each board column. With `codeReview`, PRs are only reviewed once

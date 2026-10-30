@@ -208,8 +208,10 @@ export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
                 {status.enabled ? t("board.enabled.on") : t("board.enabled.off")}
               </Badge>
               {status.mode && (
-                <Badge tone="blue">
-                  {status.mode === "simulate" ? t("board.mode.simulate") : status.mode}
+                <Badge tone={status.live.length > 0 ? "red" : "blue"}>
+                  {status.live.length > 0
+                    ? t("board.mode.live", { count: status.live.length })
+                    : t("board.mode.simulate")}
                 </Badge>
               )}
             </div>
@@ -468,6 +470,11 @@ export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
                       <Badge tone={entry.action.endsWith("failed") ? "red" : "neutral"}>
                         {t(ACTION_KIND_KEYS[entry.action])}
                       </Badge>
+                      {entry.live && (
+                        <span title={t("board.history.live.title")}>
+                          <Badge tone="green">{t("board.history.live")}</Badge>
+                        </span>
+                      )}
                       <span className="break-all font-mono text-xs font-medium text-gray-900 dark:text-gray-100">
                         {entry.subject}
                       </span>

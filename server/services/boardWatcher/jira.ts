@@ -2,8 +2,8 @@ import { adfToMarkdown } from "./adf.js";
 import type { BoardIssue } from "./types.js";
 
 /**
- * Read-only Jira Cloud client for the board watcher (REST v3, basic auth with an API token).
- * Only GETs: no transition or comment goes through here yet.
+ * Jira Cloud client for the board watcher (REST v3, basic auth with an API token). The only
+ * write is moving a card (`transitionIssue`), used when a claimed test goes live.
  */
 
 export type JiraCredentials = { site: string; email: string; token: string };
@@ -17,6 +17,7 @@ type RawIssue = {
   key: string;
   fields: {
     summary?: string;
+    issuetype?: { name?: string };
     description?: unknown;
     status?: { id: string };
     assignee?: { accountId: string } | null;
@@ -34,7 +35,7 @@ type RawIssue = {
   };
 };
 
-const FIELDS = "summary,description,status,assignee,labels,created,comment";
+const FIELDS = "summary,issuetype,description,status,assignee,labels,created,comment";
 const PAGE_SIZE = 50;
 
 export function jiraCredentialsFromEnv(site: string): JiraCredentials {
@@ -44,15 +45,45 @@ export function jiraCredentialsFromEnv(site: string): JiraCredentials {
   return { site, email, token };
 }
 
-async function get<T>(credentials: JiraCredentials, apiPath: string): Promise<T> {
+async function request(
+  credentials: JiraCredentials,
+  apiPath: string,
+  body?: unknown,
+): Promise<Response> {
   const auth = Buffer.from(`${credentials.email}:${credentials.token}`).toString("base64");
   const response = await fetch(`https://${credentials.site}${apiPath}`, {
-    headers: { Authorization: `Basic ${auth}`, Accept: "application/json" },
+    method: body === undefined ? "GET" : "POST",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      Accept: "application/json",
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
     throw new Error(`Jira ${apiPath.split("?")[0]} answered ${response.status}.`);
   }
-  return (await response.json()) as T;
+  return response;
+}
+
+async function get<T>(credentials: JiraCredentials, apiPath: string): Promise<T> {
+  return (await (await request(credentials, apiPath)).json()) as T;
+}
+
+/** Moves `key` to `statusId` through the workflow transition that leads there. */
+export async function transitionIssue(
+  credentials: JiraCredentials,
+  key: string,
+  statusId: string,
+): Promise<void> {
+  const apiPath = `/rest/api/3/issue/${encodeURIComponent(key)}/transitions`;
+  const { transitions } = await get<{ transitions: { id: string; to?: { id: string } }[] }>(
+    credentials,
+    apiPath,
+  );
+  const transition = transitions.find((t) => t.to?.id === statusId);
+  if (!transition) throw new Error(`${key} has no transition to status ${statusId}.`);
+  await request(credentials, apiPath, { transition: { id: transition.id } });
 }
 
 /** The board's active sprint, or null between sprints. */
@@ -102,6 +133,7 @@ function toJiraIssue(raw: RawIssue): JiraIssue {
   return {
     key: raw.key,
     summary: fields.summary ?? "",
+    issueType: fields.issuetype?.name,
     description: adfToMarkdown(fields.description),
     statusId,
     statusSince: stays.at(-1)?.from ?? createdAt,
