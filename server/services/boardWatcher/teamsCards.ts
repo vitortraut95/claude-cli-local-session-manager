@@ -51,12 +51,19 @@ export function buildDigestCard(options: {
   link?: { title: string; url: string };
   /** More buttons after `link`. */
   extraLinks?: { title: string; url: string }[];
+  /** A one-line summary under the title (e.g. the counts). */
+  headline?: string;
+  /** Items shown per section (default 15); the rest become "… and N more" plus `moreHint`. */
+  maxItemsPerSection?: number;
+  moreHint?: string;
 }): CardElement {
   const body: CardElement[] = [text(options.title, { weight: "Bolder", size: "Medium" })];
+  if (options.headline) body.push(text(options.headline, { spacing: "Small" }));
   if (options.subtitle) body.push(text(options.subtitle, { isSubtle: true, spacing: "None" }));
+  const maxItems = options.maxItemsPerSection ?? MAX_ITEMS_PER_SECTION;
   for (const section of options.sections) {
     if (section.items.length === 0) continue;
-    const shown = section.items.slice(0, MAX_ITEMS_PER_SECTION);
+    const shown = section.items.slice(0, maxItems);
     const hidden = section.items.length - shown.length;
     body.push({
       type: "Container",
@@ -65,7 +72,13 @@ export function buildDigestCard(options: {
       items: [
         text(`${section.heading} (${section.items.length})`, { weight: "Bolder" }),
         ...shown.map((item) => text(`• ${item}`, { spacing: "Small" })),
-        ...(hidden > 0 ? [text(`… e mais ${hidden}`, { isSubtle: true })] : []),
+        ...(hidden > 0
+          ? [
+              text(`… e mais ${hidden}${options.moreHint ? ` ${options.moreHint}` : ""}`, {
+                isSubtle: true,
+              }),
+            ]
+          : []),
       ],
     });
   }
@@ -103,4 +116,83 @@ export async function postTeamsCard(webhookUrl: string, content: CardElement): P
     }),
   });
   if (!response.ok) throw new Error(`Teams webhook answered ${response.status}.`);
+}
+
+/** 🔴 needs the user now · 🟡 good to know · 🔵 summary. */
+export type NoticeLevel = "urgent" | "info" | "digest";
+
+const LEVEL_MARK: Record<NoticeLevel, string> = { urgent: "🔴", info: "🟡", digest: "🔵" };
+
+/** One short Teams message: a title with the ticket first, one line, and the long part hidden
+ *  behind "Ver detalhes". */
+export type Notice = {
+  level: NoticeLevel;
+  /** "PROJ-123 · esperando você": the subject first, then what happened. */
+  title: string;
+  summary: string;
+  details?: CardSection[];
+  links?: { title: string; url: string }[];
+};
+
+function detailsContainer(id: string, sections: CardSection[]): CardElement {
+  return {
+    type: "Container",
+    id,
+    isVisible: false,
+    items: sections
+      .filter((section) => section.items.length > 0)
+      .flatMap((section) => [
+        text(section.heading, { weight: "Bolder", spacing: "Medium" }),
+        ...section.items.map((item) => text(item, { spacing: "Small" })),
+      ]),
+  };
+}
+
+function noticeActions(notice: Notice, detailsId: string | null): CardElement[] {
+  return [
+    ...(detailsId
+      ? [{ type: "Action.ToggleVisibility", title: "Ver detalhes", targetElements: [detailsId] }]
+      : []),
+    ...(notice.links ?? []).map((link) => ({
+      type: "Action.OpenUrl",
+      title: link.title,
+      url: link.url,
+    })),
+  ];
+}
+
+export function buildNoticeCard(notice: Notice): CardElement {
+  const hasDetails = (notice.details ?? []).some((section) => section.items.length > 0);
+  return card(
+    [
+      text(`${LEVEL_MARK[notice.level]} ${notice.title}`, { weight: "Bolder" }),
+      text(notice.summary, { isSubtle: true, spacing: "Small" }),
+      ...(hasDetails ? [detailsContainer("details", notice.details ?? [])] : []),
+    ],
+    noticeActions(notice, hasDetails ? "details" : null),
+  );
+}
+
+/** Several notices that came close together, as one message: a line each, details per item. */
+export function buildNoticesCard(notices: Notice[]): CardElement {
+  const level: NoticeLevel = notices.some((n) => n.level === "urgent") ? "urgent" : "info";
+  const body: CardElement[] = [
+    text(`${LEVEL_MARK[level]} ${notices.length} avisos`, { weight: "Bolder" }),
+  ];
+  notices.forEach((notice, index) => {
+    const id = `details${index}`;
+    const hasDetails = (notice.details ?? []).some((section) => section.items.length > 0);
+    body.push({
+      type: "Container",
+      separator: true,
+      spacing: "Medium",
+      items: [
+        text(`${LEVEL_MARK[notice.level]} ${notice.title}`, { weight: "Bolder" }),
+        text(notice.summary, { isSubtle: true, spacing: "Small" }),
+        ...(hasDetails ? [detailsContainer(id, notice.details ?? [])] : []),
+        { type: "ActionSet", actions: noticeActions(notice, hasDetails ? id : null) },
+      ],
+    });
+  });
+  return card(body);
 }

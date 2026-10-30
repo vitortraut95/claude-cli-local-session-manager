@@ -42,8 +42,23 @@ export function buildActionsDigest(
     minute: "2-digit",
   });
   const verb = simulated ? "faria" : "fez";
+  const count = (action: ActionEntry["action"]) => of(action).length;
+  const headline = [
+    [count("enqueue-dev"), "na fila de dev"],
+    [count("claim-test") + count("queued-test"), "testes pegos"],
+    [count("reviewed"), "revisados"],
+    [count("approve"), simulated ? "aprovaria" : "aprovados"],
+    [notApproved.length, simulated ? "não aprovaria" : "não aprovados"],
+    [count("review-failed") + count("test-failed"), "falhas"],
+  ]
+    .filter(([n]) => Number(n) > 0)
+    .map(([n, label]) => `${n} ${label}`)
+    .join(" · ");
   return buildDigestCard({
-    title: "Board watcher · resumo",
+    title: "🔵 Board watcher · resumo",
+    headline: headline || undefined,
+    maxItemsPerSection: 3,
+    moreHint: "(veja todos no Board do Session Manager)",
     subtitle: `${simulated ? "SIMULAÇÃO: nada foi feito no Jira nem no Bitbucket. " : ""}Desde ${sinceText}.${
       entries.length === 0 ? ` Nada que ele ${verb} nesse período.` : ""
     }`,

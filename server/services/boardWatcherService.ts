@@ -22,7 +22,7 @@ import {
   type TestOutput,
 } from "./boardWatcher/claudeTester.js";
 import { createSimulationDeps, readActions, recordAction } from "./boardWatcher/simulation.js";
-import { buildUrgentCard, postTeamsCard } from "./boardWatcher/teamsCards.js";
+import { postTeamsCard } from "./boardWatcher/teamsCards.js";
 import {
   issueUrl,
   noticeJobFailed,
@@ -30,6 +30,7 @@ import {
   noticeWaitingForYou,
   noticeReviewBlocked,
   noticeTestDone,
+  noticeWatcherError,
   prUrl,
 } from "./boardWatcher/instantNotices.js";
 import { testPlanStatus } from "./boardWatcher/testPlan.js";
@@ -131,20 +132,13 @@ async function sendDigestIfDue(
   recordEvent("boardWatcher.digest", { entries: entries.length });
 }
 
-async function alertError(state: PersistedState, message: string, now: Date): Promise<void> {
+function alertError(state: PersistedState, message: string, now: Date): void {
   const previous = state.lastError;
   const alertedAt = previous?.message === message && previous.alertedAt ? previous.alertedAt : null;
   state.lastError = { message, at: now.toISOString(), alertedAt };
   if (alertedAt && now.getTime() - Date.parse(alertedAt) < ERROR_ALERT_EVERY_MS) return;
-  const webhook = process.env.TEAMS_WEBHOOK_URL;
-  if (!webhook) return;
-  await postTeamsCard(
-    webhook,
-    buildUrgentCard({
-      title: "Board watcher não conseguiu olhar o board",
-      text: `${message} Ele tenta de novo sozinho; se for token vencido ou VPN, precisa de você.`,
-    }),
-  ).catch((err: unknown) => console.warn("[board-watcher] Couldn't send the alert:", err));
+  if (!process.env.TEAMS_WEBHOOK_URL) return;
+  noticeWatcherError(message);
   state.lastError.alertedAt = now.toISOString();
 }
 
@@ -204,7 +198,7 @@ async function lookLocked(): Promise<void> {
     const message = err instanceof Error ? err.message : String(err);
     console.warn("[board-watcher] Look failed:", message);
     recordEvent("boardWatcher.error", { message });
-    await alertError(state, message, now);
+    alertError(state, message, now);
   } finally {
     if (config?.enabled) await saveState(state);
     running = false;
@@ -288,7 +282,7 @@ async function drainJobs(): Promise<void> {
           await saveState(state);
         });
         if (output.findings.some((f) => f.severity === "blocking" && f.topic !== "product")) {
-          await noticeReviewBlocked(config, pr, output.summary, output.findings);
+          noticeReviewBlocked(config, pr, output.summary, output.findings);
         }
         outcome = `${output.findings.length} finding(s), ${output.verdict}`;
       } catch (err) {
@@ -300,7 +294,7 @@ async function drainJobs(): Promise<void> {
           await saveState(state);
         });
         await recordAction({ action: "review-failed", subject, title: pr.title, detail: outcome });
-        await noticeJobFailed("review", subject, pr.title, outcome, prUrl(config, pr));
+        noticeJobFailed("review", subject, pr.title, outcome, prUrl(config, pr));
       }
       recordEvent("boardWatcher.review", { subject, outcome, durationMs: Date.now() - started });
     }
@@ -384,7 +378,7 @@ async function runTestJob(
         .map((e) => path.relative(TESTS_DIR, e.file))
         .filter((f) => !f.startsWith("..") && !path.isAbsolute(f)),
     });
-    await noticeTestDone(config, issue, VERDICT_PT[output.verdict], next, output.report, {
+    noticeTestDone(config, issue, VERDICT_PT[output.verdict], next, output.report, {
       count: output.evidence.length,
       dir: output.evidenceDir,
     });
@@ -398,7 +392,7 @@ async function runTestJob(
       title: issue.summary,
       detail: outcome,
     });
-    await noticeJobFailed("test", issue.key, issue.summary, outcome, issueUrl(config, issue.key));
+    noticeJobFailed("test", issue.key, issue.summary, outcome, issueUrl(config, issue.key));
   } finally {
     await serial(async () => {
       const state = await loadState();
@@ -419,7 +413,7 @@ async function noticeStoreChange(change: StoreChange): Promise<void> {
   const config = await loadBoardWatcherConfig().catch(() => null);
   if (!config?.enabled || config.notifications?.instant === false) return;
   if (change.kind === "queue-error") {
-    await noticeQueueError(change.key, change.error);
+    noticeQueueError(change.key, change.error);
     return;
   }
   if (change.to !== "waiting_user") return;
