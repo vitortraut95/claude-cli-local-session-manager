@@ -1,3 +1,4 @@
+import { getUserPreferences } from "../preferencesService.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./config.js";
 import { buildDigestCard, postTeamsCard } from "./teamsCards.js";
 import { prSubject, type BoardIssue, type PullRequest, type ReviewFinding } from "./types.js";
@@ -114,22 +115,32 @@ const APP_URL = "http://localhost:58230";
 /** One of the user's sessions stopped to wait for them (an OK to push, a decision, a test plan
  *  to approve). */
 export async function noticeWaitingForYou(key: string | null, name: string): Promise<void> {
+  const label = key ?? name;
+  const appLink = {
+    title: "Abrir no Session Manager (PC)",
+    url: `${APP_URL}/?q=${encodeURIComponent(label)}`,
+  };
+  // With Remote Control on, the session can be answered from the phone: point there first.
+  const remote = (await getUserPreferences()).remoteControl;
   await send(
     buildDigestCard({
-      title: `${key ?? name} está esperando você`,
+      title: `${label} está esperando você`,
       subtitle: key && name ? name : undefined,
       sections: [
         {
           heading: "O que fazer",
-          items: [
-            "Abrir a sessão no Session Manager e responder (OK do push, decisão ou aprovação).",
-          ],
+          items: remote
+            ? [
+                `No celular: abra o app Claude, toque em Code e entre na sessão "${label}" (bolinha verde) para responder (OK do push, decisão ou aprovação).`,
+                "No PC: abra a sessão pelo Session Manager.",
+              ]
+            : ["Abrir a sessão no Session Manager e responder (OK do push, decisão ou aprovação)."],
         },
       ],
-      link: {
-        title: "Abrir no Session Manager",
-        url: `${APP_URL}/?q=${encodeURIComponent(key ?? name)}`,
-      },
+      link: remote
+        ? { title: "Abrir no Claude (celular)", url: "https://claude.ai/code" }
+        : appLink,
+      extraLinks: remote ? [appLink] : [],
     }),
   );
 }

@@ -49,6 +49,8 @@ export function buildDigestCard(options: {
   subtitle?: string;
   sections: CardSection[];
   link?: { title: string; url: string };
+  /** More buttons after `link`. */
+  extraLinks?: { title: string; url: string }[];
 }): CardElement {
   const body: CardElement[] = [text(options.title, { weight: "Bolder", size: "Medium" })];
   if (options.subtitle) body.push(text(options.subtitle, { isSubtle: true, spacing: "None" }));
@@ -67,9 +69,9 @@ export function buildDigestCard(options: {
       ],
     });
   }
-  const actions = options.link
-    ? [{ type: "Action.OpenUrl", title: options.link.title, url: options.link.url }]
-    : [];
+  const actions = [...(options.link ? [options.link] : []), ...(options.extraLinks ?? [])].map(
+    (link) => ({ type: "Action.OpenUrl", title: link.title, url: link.url }),
+  );
   return card(body, actions);
 }
 
