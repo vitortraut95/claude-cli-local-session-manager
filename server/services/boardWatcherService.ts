@@ -12,7 +12,11 @@ import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/
 import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
 import { getLessons, getScoreboard } from "./boardWatcher/feedback.js";
-import { bitbucketCredentialsFromEnv, listOpenPullRequests } from "./boardWatcher/bitbucket.js";
+import {
+  bitbucketCredentialsFromEnv,
+  findPullRequestsForKey,
+  listOpenPullRequests,
+} from "./boardWatcher/bitbucket.js";
 import { runClaudeReview } from "./boardWatcher/claudeReviewer.js";
 import {
   commentsUpToPlan,
@@ -308,6 +312,22 @@ const VERDICT_PT: Record<TestOutput["verdict"], string> = {
   blocked: "não conseguiu testar",
 };
 
+/** The ticket's PRs on Bitbucket; none when it can't be reached (the ticket's text still is). */
+async function ticketPullRequests(
+  key: string,
+  config: BoardWatcherConfig,
+): Promise<{ repo: string; branch: string }[]> {
+  if (!config.bitbucket) return [];
+  return findPullRequestsForKey(
+    bitbucketCredentialsFromEnv(config.bitbucket.workspace),
+    config.bitbucket.repos,
+    key,
+  ).catch((err: unknown) => {
+    console.warn(`[board-watcher] Couldn't look up ${key}'s PRs:`, err);
+    return [];
+  });
+}
+
 /** Adds a claimed ticket to the app's task queue as a test entry; the scheduler launches it
  *  like any queued test (its limits, its session, the user's test skill). */
 async function queueTestJob(
@@ -317,7 +337,12 @@ async function queueTestJob(
   const { issue, planId } = job;
   const plan = issue.comments.find((c) => c.id === planId);
   const comments = plan ? commentsUpToPlan(issue, plan) : issue.comments;
-  const repos = await findTestRepos(issue, comments, config.bitbucket?.localRepos ?? {});
+  const repos = await findTestRepos(
+    issue,
+    comments,
+    config.bitbucket?.localRepos ?? {},
+    await ticketPullRequests(issue.key, config),
+  );
   const added = await addTestEntryIfAbsent({
     key: issue.key,
     link: issueUrl(config, issue.key),
@@ -354,6 +379,7 @@ async function runTestJob(
     if (!plan) throw new Error(`Plan comment ${planId} is gone.`);
     const output = await runClaudeTest(issue, plan, {
       localRepos: config.bitbucket?.localRepos ?? {},
+      prBranches: await ticketPullRequests(issue.key, config),
       skill: config.test?.skill,
       model: config.test?.model,
       maxBudgetUsd: config.test?.maxBudgetUsd,

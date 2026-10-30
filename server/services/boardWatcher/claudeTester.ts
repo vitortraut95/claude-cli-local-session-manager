@@ -48,6 +48,8 @@ export type TestContext = {
   lessons?: string[];
   /** Local clone per repo name. */
   localRepos: Record<string, string>;
+  /** The ticket's PRs found on Bitbucket (`findPullRequestsForKey`). */
+  prBranches?: { repo: string; branch: string }[];
   skill?: string;
   model?: string;
   maxBudgetUsd?: number;
@@ -126,18 +128,24 @@ async function collectEvidence(
   );
 }
 
-/** Repos named in the ticket's PR links (that have a local clone), each with the origin branch
- *  carrying the ticket key, preferring the `env/` preview branch. */
+/** Where the ticket's code is, each repo with a local clone and the branch to test: the
+ *  ticket's PRs on Bitbucket (`prBranches`), the PR links in its text, and repo names written in
+ *  it (only when origin has a branch with the key, so a repo cited in passing isn't picked). The
+ *  branch is the `env/` preview one when there is one, else the PR's, else any with the key. */
 export async function findTestRepos(
   issue: BoardIssue,
   comments: IssueComment[],
   localRepos: Record<string, string>,
+  prBranches: { repo: string; branch: string }[] = [],
 ): Promise<Omit<TestBranch, "diff">[]> {
-  const text = [issue.description, ...comments.map((c) => c.body)].join("\n");
-  const repos = [...new Set([...text.matchAll(PR_LINK)].map((m) => m[1] ?? ""))].filter(
-    (repo) => localRepos[repo],
-  );
-  return Promise.all(
+  const text = [issue.summary, issue.description, ...comments.map((c) => c.body)].join("\n");
+  const linked = new Set([
+    ...prBranches.map((p) => p.repo),
+    ...[...text.matchAll(PR_LINK)].map((m) => m[1] ?? ""),
+  ]);
+  const named = Object.keys(localRepos).filter((repo) => new RegExp(`\\b${repo}\\b`).test(text));
+  const repos = [...new Set([...linked, ...named])].filter((repo) => localRepos[repo]);
+  const found = await Promise.all(
     repos.map(async (repo) => {
       const repoPath = localRepos[repo] ?? "";
       await runGit(["fetch", "origin", "--prune"], repoPath, {
@@ -149,21 +157,21 @@ export async function findTestRepos(
         .split("\n")
         .map((b) => b.trim().replace(/^origin\//, ""))
         .filter(Boolean);
-      return {
-        repo,
-        path: repoPath,
-        branch: names.find((b) => b.startsWith("env/")) ?? names[0] ?? null,
-      };
+      const prBranch = prBranches.find((p) => p.repo === repo)?.branch ?? null;
+      const branch = names.find((b) => b.startsWith("env/")) ?? prBranch ?? names[0] ?? null;
+      return { repo, path: repoPath, branch, keep: linked.has(repo) || names.length > 0 };
     }),
   );
+  return found.filter((r) => r.keep).map(({ keep: _keep, ...r }) => r);
 }
 
 async function testBranches(
   issue: BoardIssue,
   comments: IssueComment[],
   localRepos: Record<string, string>,
+  prBranches: { repo: string; branch: string }[] = [],
 ): Promise<TestBranch[]> {
-  const repos = await findTestRepos(issue, comments, localRepos);
+  const repos = await findTestRepos(issue, comments, localRepos, prBranches);
   return Promise.all(
     repos.map(async (r) => ({ ...r, diff: r.branch ? await branchDiff(r.path, r.branch) : "" })),
   );
@@ -225,7 +233,7 @@ export async function runClaudeTest(
   const evidenceDir = path.join(TESTS_DIR, `${issue.key}-${stamp}`);
   await mkdir(evidenceDir, { recursive: true });
   const comments = commentsUpToPlan(issue, plan);
-  const branches = await testBranches(issue, comments, context.localRepos);
+  const branches = await testBranches(issue, comments, context.localRepos, context.prBranches);
 
   const env = sanitizedSpawnEnv();
   for (const name of CREDENTIAL_VARS) delete env[name];
