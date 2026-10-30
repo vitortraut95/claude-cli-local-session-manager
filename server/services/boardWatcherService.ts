@@ -28,21 +28,25 @@ import {
   type TestOutput,
 } from "./boardWatcher/claudeTester.js";
 import { createBoardDeps, readActions, recordAction } from "./boardWatcher/simulation.js";
-import { postTeamsCard } from "./boardWatcher/teamsCards.js";
+import { draftPoQuestions } from "./boardWatcher/poQuestions.js";
+import { postTeamsCard, reasonPtBr } from "./boardWatcher/teamsCards.js";
 import {
   issueUrl,
   noticeJobFailed,
   noticeQueueError,
   noticeWaitingForYou,
+  noticeTestsNeedNetwork,
+  noticeWeakDescription,
   noticeReviewBlocked,
   noticeTestDone,
   noticeWatcherError,
   prUrl,
 } from "./boardWatcher/instantNotices.js";
 import { rotateActions } from "./boardWatcher/history.js";
-import { testPlanStatus } from "./boardWatcher/testPlan.js";
+import { networkProblem } from "./boardWatcher/network.js";
+import { isTestReport, testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
-import { addTestEntryIfAbsent } from "./taskQueueService.js";
+import { addTestEntryIfAbsent, requeueTestEntry } from "./taskQueueService.js";
 import { emptyWatcherState, prSubject, type WatcherState } from "./boardWatcher/types.js";
 
 /**
@@ -135,6 +139,8 @@ async function sendDigestIfDue(
     ? new Date(state.lastDigestAt)
     : new Date(now.getTime() - 24 * 60 * 60_000);
   const entries = await readActions(since);
+  // Nothing happened since the last one: no card (the next one still covers from `since`).
+  if (entries.length === 0) return;
   await postTeamsCard(webhook, buildActionsDigest(entries, config, since));
   state.lastDigestAt = now.toISOString();
   recordEvent("boardWatcher.digest", { entries: entries.length });
@@ -177,17 +183,26 @@ async function lookLocked(): Promise<void> {
       : undefined;
     const onTest =
       config.test?.enabled !== false
-        ? (issue: WatcherState["pendingTests"][number]["issue"]) => {
-            const plan = testPlanStatus(issue.comments);
-            if (plan.state !== "pending") return;
-            if (!state.pendingTests.some((t) => t.issue.key === issue.key)) {
-              state.pendingTests.push({ issue, planId: plan.plan.id });
+        ? (issue: WatcherState["pendingTests"][number]["issue"], retest: boolean) => {
+            if (state.pendingTests.some((t) => t.issue.key === issue.key)) return;
+            if (retest) {
+              const report = issue.comments.filter((c) => isTestReport(c.body)).at(-1);
+              state.pendingTests.push({ issue, planId: report?.id ?? "", retest: true });
+              return;
             }
+            const plan = testPlanStatus(issue.comments);
+            if (plan.state === "pending") state.pendingTests.push({ issue, planId: plan.plan.id });
           }
         : undefined;
     await rotateActionsDaily(now);
     lastDecisions = await runTick(
-      createBoardDeps(config, () => new Date(), onReview, onTest),
+      createBoardDeps(
+        config,
+        () => new Date(),
+        onReview,
+        onTest,
+        (issue, missing) => void sendWeakDescriptionQuestions(config, issue, missing),
+      ),
       state,
       config,
       now,
@@ -210,6 +225,25 @@ async function lookLocked(): Promise<void> {
     running = false;
     schedule(config);
   }
+}
+
+/** The questions to unblock a weak To Do description, drafted and sent to Teams (best-effort:
+ *  without them, the notice still says what's missing). */
+async function sendWeakDescriptionQuestions(
+  config: BoardWatcherConfig,
+  issue: WatcherState["pendingTests"][number]["issue"],
+  missing: string,
+): Promise<void> {
+  if (config.notifications?.instant === false || !process.env.TEAMS_WEBHOOK_URL) return;
+  const missingPt = reasonPtBr(missing);
+  const messages = await draftPoQuestions(issue, missingPt, issueUrl(config, issue.key)).catch(
+    (err: unknown) => {
+      console.warn(`[board-watcher] Couldn't draft questions for ${issue.key}:`, err);
+      return [];
+    },
+  );
+  noticeWeakDescription(config, issue, missingPt, messages);
+  recordEvent("boardWatcher.poQuestions", { key: issue.key, messages: messages.length });
 }
 
 let lastRotationDay = "";
@@ -270,6 +304,12 @@ async function drainJobs(): Promise<void> {
       jobsBlockedBy = null;
       if (!pr) {
         if (!test) return;
+        const network = await networkProblem(config.test?.requires);
+        if (network) {
+          jobsBlockedBy = `tests waiting: ${network}`;
+          noticeNetworkBlocked(network);
+          return;
+        }
         await runTestJob(test, config);
         continue;
       }
@@ -301,6 +341,8 @@ async function drainJobs(): Promise<void> {
           jiraSite: config.jira?.site,
           openPrs,
           model: config.review?.model,
+          smallModel: config.review?.smallModel,
+          smallPr: config.review?.smallPr,
           maxBudgetUsd: config.review?.maxBudgetUsd,
           lessons: await getLessons("review"),
           previous: state.reviewedCommits?.[subject],
@@ -312,7 +354,7 @@ async function drainJobs(): Promise<void> {
             action: "reviewed",
             subject,
             title: pr.title,
-            detail: `${output.summary} · Bate com a LED: ${output.ticketMatch} · Confiança: ${output.confidence}`,
+            detail: `${output.summary} · Bate com a LED: ${output.ticketMatch} · Confiança: ${output.confidence} · Modelo: ${output.model} (${output.size.files} arquivos, ${output.size.lines} linhas)`,
             costUsd: output.costUsd,
             durationMs: output.durationMs ?? Date.now() - started,
           });
@@ -387,7 +429,8 @@ async function queueTestJob(
   config: BoardWatcherConfig,
 ): Promise<string> {
   const { issue, planId } = job;
-  const plan = issue.comments.find((c) => c.id === planId);
+  const plan = job.retest ? undefined : issue.comments.find((c) => c.id === planId);
+  // A retest reads everything: the failed report and what the dev said about the fix.
   const comments = plan ? commentsUpToPlan(issue, plan) : issue.comments;
   const repos = await findTestRepos(
     issue,
@@ -395,7 +438,7 @@ async function queueTestJob(
     config.bitbucket?.localRepos ?? {},
     await ticketPullRequests(issue.key, config),
   );
-  const added = await addTestEntryIfAbsent({
+  const added = await (job.retest ? requeueTestEntry : addTestEntryIfAbsent)({
     key: issue.key,
     link: issueUrl(config, issue.key),
     repos: repos.map((r) => r.path),
@@ -477,6 +520,16 @@ async function runTestJob(
     });
     recordEvent("boardWatcher.test", { key: issue.key, outcome, durationMs: Date.now() - started });
   }
+}
+
+/** "Tests waiting for the network" goes out at most this often. */
+const NETWORK_NOTICE_EVERY_MS = 2 * 60 * 60_000;
+let lastNetworkNotice = 0;
+
+function noticeNetworkBlocked(problem: string): void {
+  if (Date.now() - lastNetworkNotice < NETWORK_NOTICE_EVERY_MS) return;
+  lastNetworkNotice = Date.now();
+  noticeTestsNeedNetwork(problem);
 }
 
 /** The same task's "waiting for you" isn't repeated within this window (statuses can flap). */

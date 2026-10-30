@@ -38,6 +38,8 @@ const SERVER_TEXT_PT: [RegExp, string][] = [
   [/visual change without Figma/, "mudança visual sem Figma"],
   [/the user developed it/, "você é o dev"],
   [/no test plan in the comments/, "sem plano de teste nos comentários"],
+  [/test failed; waiting for a fix push/, "teste reprovou; esperando push com a correção"],
+  [/fix pushed after the failed test \(\S+\)/, "correção subiu depois do teste reprovado"],
   [/already tested since the last plan/, "já testada depois do último plano"],
   [/outside business hours/, "fora do horário comercial"],
   [/(\d+) tests already claimed/, "já há $1 testes em andamento"],
@@ -59,6 +61,10 @@ const SERVER_TEXT_PT: [RegExp, string][] = [
   [/left for a person:/, "deixada pra uma pessoa:"],
   [/^Paused from the app$/, "pausado pelo app"],
   [/^plan usage at (\d+)% \(limit (\d+)%\)$/, "uso do plano em $1% (limite $2%)"],
+  [/^tests waiting: /, "testes esperando: "],
+  [/VPN disconnected/, "VPN desconectada"],
+  [/IPv6 on/, "IPv6 ligado"],
+  [/ and IPv6/, " e IPv6"],
   [/^(\d+) approvals today \(limit (\d+)\)$/, "$1 aprovações hoje (limite $2)"],
 ];
 
@@ -81,6 +87,7 @@ export const DECISION_ACTION_KEYS = {
   "enqueue-dev": "board.decisionAction.enqueue-dev",
   "weak-description": "board.decisionAction.weak-description",
   "claim-test": "board.decisionAction.claim-test",
+  retest: "board.decisionAction.retest",
   review: "board.decisionAction.review",
   skip: "board.decisionAction.skip",
   wait: "board.decisionAction.wait",
@@ -89,6 +96,7 @@ export const DECISION_ACTION_KEYS = {
 export const ACTION_KIND_KEYS = {
   "enqueue-dev": "board.kind.enqueue-dev",
   "claim-test": "board.kind.claim-test",
+  retest: "board.kind.retest",
   "queued-test": "board.kind.queued-test",
   review: "board.kind.review",
   reviewed: "board.kind.reviewed",
@@ -114,6 +122,7 @@ const RATEABLE: WatcherActionEntry["action"][] = [
   "tested",
   "enqueue-dev",
   "claim-test",
+  "retest",
   "queued-test",
   "notify",
 ];

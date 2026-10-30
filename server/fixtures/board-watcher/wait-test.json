@@ -930,5 +930,192 @@
         }
       }
     ]
+  },
+  {
+    "name": "failed test in Testing is retested once after the fix push",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-60",
+            "statusId": "testing",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "r1",
+                "authorId": "me",
+                "created": "2026-10-28T11:00:00-03:00",
+                "body": "**Resultado: reprovado**\n\n1. O botão não aparece no mobile."
+              }
+            ]
+          }
+        ],
+        "prs": [
+          {
+            "id": "60",
+            "repo": "web",
+            "title": "[DEMO-60] Botão no mobile",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T10:00:00-03:00",
+            "reviewers": []
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-60": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T15:00:00-03:00",
+        "prs": [
+          {
+            "id": "60",
+            "repo": "web",
+            "title": "[DEMO-60] Botão no mobile",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T14:30:00-03:00",
+            "reviewers": []
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue retest DEMO-60"],
+          "decisions": {
+            "DEMO-60": "retest"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T15:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-60": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T16:00:00-03:00",
+        "prs": [
+          {
+            "id": "60",
+            "repo": "web",
+            "title": "[DEMO-60] Botão no mobile",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T15:40:00-03:00",
+            "reviewers": []
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue retest DEMO-60"],
+          "decisions": {
+            "DEMO-60": "retest"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "no retest when the failed report isn't mine, the last report passed, or it's off hours",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-61",
+            "statusId": "testing",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "r1",
+                "authorId": "bia",
+                "created": "2026-10-28T11:00:00-03:00",
+                "body": "**Resultado: reprovado**\n\n1. O botão não aparece no mobile."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-62",
+            "statusId": "testing",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "r1",
+                "authorId": "me",
+                "created": "2026-10-28T11:00:00-03:00",
+                "body": "**Resultado: reprovado**\n\n1. O botão não aparece no mobile."
+              },
+              {
+                "id": "r2",
+                "authorId": "me",
+                "created": "2026-10-28T12:00:00-03:00",
+                "body": "Resultado: aprovado"
+              }
+            ]
+          }
+        ],
+        "prs": [
+          {
+            "id": "61",
+            "repo": "web",
+            "title": "[DEMO-61] a",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T13:00:00-03:00",
+            "reviewers": []
+          },
+          {
+            "id": "62",
+            "repo": "web",
+            "title": "[DEMO-62] b",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T13:00:00-03:00",
+            "reviewers": []
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-61": "none",
+            "DEMO-62": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T20:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-63",
+            "statusId": "testing",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "r1",
+                "authorId": "me",
+                "created": "2026-10-28T11:00:00-03:00",
+                "body": "**Resultado: reprovado**\n\n1. O botão não aparece no mobile."
+              }
+            ]
+          }
+        ],
+        "prs": [
+          {
+            "id": "63",
+            "repo": "web",
+            "title": "fix/DEMO-63 ajuste",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T13:00:00-03:00",
+            "reviewers": []
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-63": "wait"
+          }
+        }
+      }
+    ]
   }
 ]

@@ -183,6 +183,25 @@ export async function addTestEntryIfAbsent(entry: {
 }
 
 /**
+ * Queues `key` for a test again: a fresh test entry replaces an earlier one that already
+ * launched (its session is over: the ticket got a fix after a failed test). An entry still
+ * waiting to launch is left as it is (false).
+ */
+export async function requeueTestEntry(entry: {
+  key: string;
+  link: string | null;
+  repos: string[];
+  branch: string | null;
+}): Promise<boolean> {
+  const queue = await getQueue();
+  const existing = queue.find((e) => e.key === entry.key);
+  if (existing && !existing.launchedAt) return false;
+  // Removed first, so the new entry comes back without the old launch fields.
+  if (existing) await saveTaskQueue({ entries: queue.filter((e) => e.key !== entry.key) });
+  return addTestEntryIfAbsent(entry);
+}
+
+/**
  * Adds a dev entry for `key` at the end of the queue unless the key is already there. For the
  * board watcher, which queues the user's own To Do tickets; with no repo it waits in the queue
  * for one to be chosen.

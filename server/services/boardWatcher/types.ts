@@ -75,7 +75,8 @@ export type Notifier = {
   notify(level: NotificationLevel, title: string, text: string): Promise<void>;
 };
 
-export type TaskSink = { enqueue(key: string, kind: "dev" | "test"): Promise<void> };
+/** `retest`: a ticket already in Testing whose last test failed, tested again after a fix. */
+export type TaskSink = { enqueue(key: string, kind: "dev" | "test" | "retest"): Promise<void> };
 
 export type WatcherDeps = {
   board: BoardProvider;
@@ -88,6 +89,7 @@ export type WatcherDeps = {
 /** Persisted between ticks so nothing is done twice. */
 export type WatcherState = {
   /** What was last acted on per subject, e.g. `dev:KEY`, `test:KEY` → plan comment id,
+   *  `retest:KEY` → the fix push retested,
    *  `review:repo#id` → the push reviewed, `gate:KEY` → the description already reported. */
   handled: Record<string, string>;
   reviewRounds: Record<string, number>;
@@ -100,7 +102,7 @@ export type WatcherState = {
   /** PRs waiting for a review session (run one at a time, outside the tick). */
   pendingReviews: PullRequest[];
   /** Claimed tickets waiting for a test session, as they were when claimed. */
-  pendingTests: { issue: BoardIssue; planId: string }[];
+  pendingTests: { issue: BoardIssue; planId: string; retest?: boolean }[];
   /** Per PR, the last commit reviewed and what was raised then, so the next round only looks at
    *  what changed since and doesn't repeat itself. */
   reviewedCommits: Record<string, { hash: string; findings: string[] }>;

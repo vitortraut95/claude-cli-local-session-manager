@@ -58,6 +58,7 @@ export function buildActionsDigest(
   const headline = [
     [count("enqueue-dev"), "na fila de dev"],
     [count("claim-test") + count("queued-test"), "testes pegos"],
+    [count("retest"), "retestes"],
     [count("reviewed"), "revisados"],
     [count("approve"), sim.approve ? "aprovaria" : "aprovados"],
     [notApproved.length, sim.approve ? "não aprovaria" : "não aprovados"],
@@ -98,6 +99,10 @@ export function buildActionsDigest(
     {
       heading: sim.testClaim ? "Pegaria para testar" : "Moveu para Testing",
       items: of("claim-test").map((e) => line(e, issueLink)),
+    },
+    {
+      heading: "Voltou para reteste (correção depois do teste reprovado)",
+      items: of("retest").map((e) => line(e, issueLink)),
     },
     {
       heading: "Colocou na fila de teste do app",

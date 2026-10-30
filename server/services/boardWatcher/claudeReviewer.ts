@@ -18,12 +18,17 @@ import { prSubject, type PullRequest, type ReviewFinding, type ReviewResult } fr
 const execFileAsync = promisify(execFile);
 const REVIEW_TIMEOUT_MS = 20 * 60_000;
 const TICKET_KEY = /\b[A-Z][A-Z0-9]+-\d+\b/;
+/** Up to this, a PR counts as small (a quicker, cheaper model reviews it). */
+const SMALL_PR = { maxFiles: 5, maxLines: 150 };
 
 export type ReviewOutput = ReviewResult & {
   summary: string;
   ticketMatch: string;
   verdict: string;
   confidence: string;
+  /** The model it ran with ("default" = the CLI's) and the PR's size. */
+  model: string;
+  size: { files: number; lines: number };
   /** As the CLI reports them. */
   costUsd?: number;
   durationMs?: number;
@@ -35,6 +40,9 @@ export type ReviewContext = {
   /** Other open PRs, to find the related ones. */
   openPrs: PullRequest[];
   model?: string;
+  /** For a PR within `smallPr`; null = always `model`. */
+  smallModel?: string | null;
+  smallPr?: { maxFiles?: number; maxLines?: number };
   maxBudgetUsd?: number;
   /** The user's notes on earlier reviews (`feedback.ts`), added to the prompt. */
   lessons?: string[];
@@ -96,6 +104,16 @@ async function ticketContext(site: string | undefined, key: string | null): Prom
   } catch (err) {
     return `Couldn't read ${key}: ${err instanceof Error ? err.message : String(err)}`;
   }
+}
+
+/** Files and lines (added + removed) the PR changes. */
+async function diffSize(cwd: string, base: string): Promise<{ files: number; lines: number }> {
+  const stat = await runGit(["diff", "--shortstat", `${base}...HEAD`], cwd).catch(() => "");
+  const count = (pattern: RegExp) => Number(pattern.exec(stat)?.[1] ?? 0);
+  return {
+    files: count(/(\d+) files? changed/),
+    lines: count(/(\d+) insertions?/) + count(/(\d+) deletions?/),
+  };
 }
 
 async function changedFiles(cwd: string, base: string, head: string): Promise<string[]> {
@@ -215,6 +233,12 @@ export async function runClaudeReview(
         relatedWithFiles,
         previous,
       ) + lessonsSection(context.lessons ?? []);
+    const size = await diffSize(worktree, base);
+    const small =
+      context.smallModel !== null &&
+      size.files <= (context.smallPr?.maxFiles ?? SMALL_PR.maxFiles) &&
+      size.lines <= (context.smallPr?.maxLines ?? SMALL_PR.maxLines);
+    const model = small ? (context.smallModel ?? "sonnet") : context.model;
     const args = [
       "-p",
       prompt,
@@ -230,7 +254,7 @@ export async function runClaudeReview(
       "dontAsk",
       "--strict-mcp-config",
       "--no-session-persistence",
-      ...(context.model ? ["--model", context.model] : []),
+      ...(model ? ["--model", model] : []),
       ...(context.maxBudgetUsd ? ["--max-budget-usd", String(context.maxBudgetUsd)] : []),
     ];
     const { stdout } = await execFileAsync("claude", args, {
@@ -239,7 +263,7 @@ export async function runClaudeReview(
       timeout: REVIEW_TIMEOUT_MS,
       maxBuffer: 32 * 1024 * 1024,
     });
-    return parseOutput(stdout);
+    return { ...parseOutput(stdout), model: model ?? "default", size };
   } finally {
     await forceRemoveWorktree(worktree).catch((err: unknown) =>
       console.warn(`[board-watcher] Couldn't remove ${worktree}:`, err),
@@ -247,7 +271,7 @@ export async function runClaudeReview(
   }
 }
 
-function parseOutput(stdout: string): ReviewOutput {
+function parseOutput(stdout: string): Omit<ReviewOutput, "model" | "size"> {
   const envelope = JSON.parse(stdout) as {
     is_error?: boolean;
     result?: string;
