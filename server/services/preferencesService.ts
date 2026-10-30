@@ -40,6 +40,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   taskTestSkill: "",
   taskRefinementSkill: "",
   taskTestPermissionModeAuto: true,
+  remoteControl: false,
   theme: null,
   orchestrator: {
     enabled: true,
@@ -241,6 +242,10 @@ function normalizePreferences(value: unknown): UserPreferences {
       typeof parsed.taskTestPermissionModeAuto === "boolean"
         ? parsed.taskTestPermissionModeAuto
         : DEFAULT_PREFERENCES.taskTestPermissionModeAuto,
+    remoteControl:
+      typeof parsed.remoteControl === "boolean"
+        ? parsed.remoteControl
+        : DEFAULT_PREFERENCES.remoteControl,
     theme:
       parsed.theme === "light" || parsed.theme === "dark"
         ? parsed.theme

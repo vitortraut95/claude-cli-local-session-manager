@@ -159,6 +159,14 @@ export const settings = {
     "Your team's Jenkins, used by the Jenkins button on session cards. Empty = button hidden.",
     "O Jenkins do seu time, usado pelo botão do Jenkins nos cards de sessão. Vazio = botão escondido.",
   ),
+  "settings.remoteControl.title": dict(
+    "Answer sessions from your phone (Remote Control)",
+    "Responder sessões pelo celular (Remote Control)",
+  ),
+  "settings.remoteControl.description": dict(
+    "Every Claude session the app opens starts with Remote Control, named after its task: follow and answer it in the Claude app (Code) while the PC and its terminal stay on. Applies to sessions opened from now on. While connected, the conversation is stored on Anthropic's servers.",
+    "Toda sessão do Claude que o app abrir começa com Remote Control, com o nome da tarefa: dá para acompanhar e responder pelo app do Claude (Code) enquanto o PC e o terminal dela estiverem ligados. Vale para as sessões abertas daqui em diante. Enquanto conectada, a conversa fica nos servidores da Anthropic.",
+  ),
   "settings.terminalLayout.title": dict("Where sessions open", "Onde as sessões abrem"),
   "settings.terminalLayout.description": dict(
     'A terminal tab per session (Warp when installed), or all of them as panes of one Limux workspace ("Claude — tarefas") in its own window — each new session joins it, and its pane closes when Claude quits. Applies to New task, the queue, New session and Resume. Needs Limux (github.com/am-will/limux) — installed and updated from here, no sudo; without it, tabs are used. Closing the Limux window ends the sessions in it (they stay resumable).',

@@ -4,7 +4,7 @@ import path from "node:path";
 import { getUserPreferences, type TerminalLayout } from "../preferencesService.js";
 import { isLimuxAvailable, launchInLimuxGrid } from "../limuxGridService.js";
 import { AppError } from "../../utils/httpError.js";
-import { commandExists, trySpawnDetached } from "./shell.js";
+import { commandExists, posixShellQuote, trySpawnDetached } from "./shell.js";
 
 /**
  * Terminal emulators, tried in order. Argv-style (`bash -c <cmd>`): most exec their payload
@@ -97,17 +97,30 @@ async function launchWarp(command: string, cwd?: string): Promise<boolean> {
 }
 
 /**
+ * `claude …` → `claude --remote-control <name> …`: the session also shows up in the Claude app
+ * (Code), named after its task (else its folder). The name is always given, since the flag's value
+ * is optional and would otherwise swallow a following prompt.
+ */
+function withRemoteControl(command: string, taskKey: string | null, cwd?: string): string {
+  if (!command.startsWith("claude ") && command !== "claude") return command;
+  const name = taskKey ?? (cwd ? path.basename(cwd) : "") ?? "";
+  return `claude --remote-control ${posixShellQuote(name || "Claude")}${command.slice("claude".length)}`;
+}
+
+/**
  * Runs a Claude session's `command` where `layout` (default: the `terminalLayout` preference)
  * says: a pane of the Limux grid (`limuxGridService`), or a terminal of its own. Without Limux the
  * grid falls back to a terminal.
  */
 export async function launchInTerminal(
-  command: string,
+  rawCommand: string,
   cwd?: string,
   taskKey: string | null = null,
   layout?: TerminalLayout,
 ): Promise<void> {
-  const terminalLayout = layout ?? (await getUserPreferences()).terminalLayout;
+  const prefs = await getUserPreferences();
+  const command = prefs.remoteControl ? withRemoteControl(rawCommand, taskKey, cwd) : rawCommand;
+  const terminalLayout = layout ?? prefs.terminalLayout;
   if (terminalLayout === "limux-grid") {
     if (await isLimuxAvailable()) {
       await launchInLimuxGrid(command, cwd, taskKey);
