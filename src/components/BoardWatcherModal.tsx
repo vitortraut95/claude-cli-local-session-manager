@@ -168,6 +168,7 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                     ? t("board.mode.simulate")
                     : t(status.businessTime ? "board.mode.live" : "board.mode.liveOnHold", {
                         count: status.live.length,
+                        total: settings ? Object.keys(settings.live).length : "?",
                       })}
                 </WatcherBadge>
               )}

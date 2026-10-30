@@ -32,6 +32,14 @@ export const boardWatcher = {
     "Posts the review findings on the PR, in your name (minor ones never).",
     "Posta os achados do review no PR, no seu nome (os menores nunca).",
   ),
+  "automation.live.startProgress": dict(
+    "Move to In Progress (one at a time)",
+    "Mover para In Progress (uma por vez)",
+  ),
+  "automation.live.startProgress.description": dict(
+    "Only one of your tasks stays In Progress on the board; others can run but stay in To Do and move up as it leaves.",
+    "Só uma tarefa sua fica em In Progress no board; as outras podem rodar, mas ficam em To Do e sobem quando ela sair.",
+  ),
   "automation.live.approve": dict("Approve PRs", "Aprovar PRs"),
   "automation.live.approve.description": dict(
     "Approves in your name when nothing blocks it. Skipped if the PR got a new push after the review.",
@@ -165,10 +173,10 @@ export const boardWatcher = {
   "board.enabled.on": dict("On", "Ligado"),
   "board.enabled.off": dict("Off", "Desligado"),
   "board.mode.simulate": dict("Simulation", "Simulação"),
-  "board.mode.live": dict("Real actions ({count}/4)", "Ações reais ({count}/4)"),
+  "board.mode.live": dict("Real actions ({count}/{total})", "Ações reais ({count}/{total})"),
   "board.mode.liveOnHold": dict(
-    "Real actions ({count}/4) · on hold",
-    "Ações reais ({count}/4) · em espera",
+    "Real actions ({count}/{total}) · on hold",
+    "Ações reais ({count}/{total}) · em espera",
   ),
   "board.offHours.title": dict(
     "Outside business hours, until {when}",
@@ -253,6 +261,7 @@ export const boardWatcher = {
   "board.decisionAction.weak-description": dict("Weak description", "Descrição fraca"),
   "board.decisionAction.claim-test": dict("Claim test", "Pegar teste"),
   "board.decisionAction.retest": dict("Retest", "Retestar"),
+  "board.decisionAction.start-progress": dict("Move to In Progress", "Mover para In Progress"),
   "board.decisionAction.review": dict("Review", "Review"),
   "board.decisionAction.skip": dict("Skip", "Pular"),
   "board.decisionAction.wait": dict("Wait", "Esperar"),
@@ -280,6 +289,7 @@ export const boardWatcher = {
   "board.kind.enqueue-dev": dict("To dev queue", "Pra fila de dev"),
   "board.kind.claim-test": dict("Claimed test", "Pegou teste"),
   "board.kind.retest": dict("Retest", "Reteste"),
+  "board.kind.start-progress": dict("Moved to In Progress", "Moveu para In Progress"),
   "board.kind.queued-test": dict("Queued for test", "Entrou na fila de teste"),
   "board.kind.review": dict("Review started", "Review iniciado"),
   "board.kind.reviewed": dict("Review done", "Review feito"),

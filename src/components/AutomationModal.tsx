@@ -66,6 +66,11 @@ const LIVE_ROWS: {
     description: "automation.live.devQueue.description",
   },
   {
+    key: "startProgress",
+    label: "automation.live.startProgress",
+    description: "automation.live.startProgress.description",
+  },
+  {
     key: "testClaim",
     label: "automation.live.testClaim",
     description: "automation.live.testClaim.description",

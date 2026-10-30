@@ -3,7 +3,7 @@ import path from "node:path";
 import type { WatcherActionEntry } from "../../../shared/boardWatcher.js";
 import { REPO_ROOT } from "../../utils/repoRoot.js";
 import { getUserPreferences } from "../preferencesService.js";
-import { addDevEntryIfAbsent } from "../taskQueueService.js";
+import { addDevEntryIfAbsent, getTaskQueue as getQueue } from "../taskQueueService.js";
 import {
   approvePullRequest,
   bitbucketCredentialsFromEnv,
@@ -89,6 +89,7 @@ export function createBoardDeps(
   const titles = new Map<string, string>();
   const issuesByKey = new Map<string, BoardIssue>();
   const statusIds = [
+    ...(config.columns.inProgress ?? []),
     ...config.columns.todo,
     ...config.columns.waitTest,
     ...config.columns.testing,
@@ -112,9 +113,21 @@ export function createBoardDeps(
         }
         return issues;
       },
-      // A claim is a transition followed by an enqueue; the enqueue records it.
+      // A claim is a transition followed by an enqueue, which records it; a move to In
+      // Progress is recorded here.
       transition: async (key, statusId) => {
-        if (live.testClaim) await transitionIssue(jiraCredentials, key, statusId);
+        const toProgress = statusId === config.inProgressStatusId;
+        const real = toProgress ? live.startProgress : live.testClaim;
+        if (real) await transitionIssue(jiraCredentials, key, statusId);
+        if (!toProgress) return;
+        await record({ action: "start-progress", subject: key, ...(real ? { live: true } : {}) });
+        if (real) {
+          noticeLiveAction(
+            `${key} · movida para In Progress`,
+            issuesByKey.get(key)?.summary ?? "",
+            issueUrl(config, key),
+          );
+        }
       },
     },
     codeHost: {
@@ -174,6 +187,11 @@ export function createBoardDeps(
       },
     },
     tasks: {
+      startedDevKeys: async () =>
+        (await getQueue())
+          .filter((e) => e.kind === "dev" && e.launchedAt)
+          .sort((a, b) => (a.launchedAt ?? "").localeCompare(b.launchedAt ?? ""))
+          .map((e) => e.key),
       enqueue: async (key, kind) => {
         const issue = issuesByKey.get(key);
         if (kind === "dev") {

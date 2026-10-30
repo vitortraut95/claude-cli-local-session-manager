@@ -76,7 +76,11 @@ export type Notifier = {
 };
 
 /** `retest`: a ticket already in Testing whose last test failed, tested again after a fix. */
-export type TaskSink = { enqueue(key: string, kind: "dev" | "test" | "retest"): Promise<void> };
+export type TaskSink = {
+  enqueue(key: string, kind: "dev" | "test" | "retest"): Promise<void>;
+  /** The user's dev tasks whose session started, first started first. */
+  startedDevKeys(): Promise<string[]>;
+};
 
 export type WatcherDeps = {
   board: BoardProvider;

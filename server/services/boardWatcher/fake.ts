@@ -17,6 +17,8 @@ export type FakeWorld = {
   prs: PullRequest[];
   /** Review results per PR subject; a PR without one reviews clean. */
   reviews: Record<string, ReviewResult>;
+  /** Dev tasks whose session started, first started first. */
+  startedDevKeys?: string[];
 };
 
 export function createFakeDeps(world: FakeWorld, me: string, effects: string[]): WatcherDeps {
@@ -59,6 +61,7 @@ export function createFakeDeps(world: FakeWorld, me: string, effects: string[]):
         effects.push(`enqueue ${kind} ${key}`);
         return Promise.resolve();
       },
+      startedDevKeys: () => Promise.resolve(world.startedDevKeys ?? []),
     },
   };
 }
