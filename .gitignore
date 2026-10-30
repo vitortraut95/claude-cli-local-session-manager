@@ -52,3 +52,6 @@ claude-session-manager.desktop
 *.sln
 *.sw?
 .claude/*
+# Board watcher: this machine's board ids and its state between ticks (server/services/boardWatcher).
+/boardWatcher.json
+/boardWatcher-state.json

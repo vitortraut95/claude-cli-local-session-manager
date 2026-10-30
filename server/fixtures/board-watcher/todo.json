@@ -1,0 +1,186 @@
+[
+  {
+    "name": "my task with a good description is queued once",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-1",
+            "summary": "Botão Contratar abre plano errado",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-1"],
+          "decisions": {
+            "DEMO-1": "enqueue-dev"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-1": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "vague description: reported once, queued after it's improved",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-2",
+            "summary": "Ajustar banner da home",
+            "description": "Ajustar o banner da home que está estranho no celular.",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["notify digest: Weak description: DEMO-2"],
+          "decisions": {
+            "DEMO-2": "weak-description"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-2": "weak-description"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T15:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-2",
+            "summary": "Ajustar banner da home",
+            "description": "Na página home (https://demo.example.com) o banner principal corta o texto no celular.\n\nCritérios de aceite:\n- No celular (360 px) o texto do banner deve aparecer inteiro\n- No desktop nada muda\n\nFigma: https://www.figma.com/design/abc123/Demo?node-id=1-2",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-2"],
+          "decisions": {
+            "DEMO-2": "enqueue-dev"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "title only is not queued",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-3",
+            "summary": "Corrigir checkout",
+            "description": "",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["notify digest: Weak description: DEMO-3"],
+          "decisions": {
+            "DEMO-3": "weak-description"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "visual change without Figma is not queued",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-4",
+            "summary": "Novo layout do card de planos",
+            "description": "Na página de planos, trocar o card:\n- título maior\n- preço em destaque\nO card deve seguir o novo padrão.",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["notify digest: Weak description: DEMO-4"],
+          "decisions": {
+            "DEMO-4": "weak-description"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "unassigned and colleagues' tasks are left alone",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-5",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": null
+          },
+          {
+            "key": "DEMO-6",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": "ana"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-5": "none",
+            "DEMO-6": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "task assigned to me between two looks is queued then",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-7",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": null
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-7": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-7",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-7"]
+        }
+      }
+    ]
+  }
+]

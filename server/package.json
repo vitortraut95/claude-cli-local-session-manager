@@ -8,7 +8,9 @@
     "dev": "tsx watch --exclude \"**/.claude/**\" index.ts",
     "build": "tsc",
     "start": "node dist/server/index.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "board-watcher:eval": "tsx scripts/board-watcher-eval.ts",
+    "board-watcher:dry-run": "tsx scripts/board-watcher-dry-run.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",

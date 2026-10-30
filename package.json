@@ -27,6 +27,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -b --noEmit",
+    "board-watcher:eval": "yarn workspace server run board-watcher:eval",
+    "board-watcher:dry-run": "yarn workspace server run board-watcher:dry-run",
     "preview": "vite preview",
     "prepare": "husky"
   },
