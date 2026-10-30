@@ -86,6 +86,17 @@ code is reviewed.
 Reviews run one at a time after a look, with a cost cap per review (`review.maxBudgetUsd`); the
 local clone of each repo comes from `bitbucket.localRepos`.
 
+### Test session
+
+Runs the user's test skill in autonomous mode in a non-interactive `claude -p --chrome` (its own
+Chrome tab group), in the evidence folder outside every repo, with no tool that writes and no way
+to reach Jira or Bitbucket (no MCP servers, no Atlassian tokens in its env): the watcher is the
+only thing that posts. It gets the ticket, the comments up to the test plan (never a test report)
+and the branch diff. Rules on top of the skill: no questions, test through the plan's links, at
+least one control scenario, check indexing when pages or files change, and check every item when
+the change renders many from a template. Screenshots are copied to `boardWatcher-tests/`.
+`yarn board-watcher:test-run KEY` runs it on any ticket to compare with a person's verdict.
+
 ## Sandbox (`board-watcher:eval`)
 
 Everything the watcher reads or writes goes through providers (`types.ts`): board, code host,

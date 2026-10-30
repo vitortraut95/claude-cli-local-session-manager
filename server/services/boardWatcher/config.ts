@@ -53,6 +53,8 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
   /** The team's repos whose open PRs are reviewed; `localRepos` maps each to its local clone,
    *  where review worktrees are made. */
   bitbucket?: { workspace: string; repos: string[]; localRepos?: Record<string, string> };
+  /** Unattended test sessions (`claudeTester.ts`); `skill` is the test skill to run. */
+  test?: { enabled: boolean; skill?: string; model?: string; maxBudgetUsd?: number };
   /** Real review sessions (`claudeReviewer.ts`); off = reviews are only recorded as due. */
   review?: { enabled: boolean; model?: string; maxBudgetUsd?: number };
 };

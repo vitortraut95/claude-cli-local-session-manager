@@ -97,6 +97,8 @@ export type WatcherState = {
   pausedReason: string | null;
   /** PRs waiting for a review session (run one at a time, outside the tick). */
   pendingReviews: PullRequest[];
+  /** Claimed tickets waiting for a test session, as they were when claimed. */
+  pendingTests: { issue: BoardIssue; planId: string }[];
 };
 
 export function emptyWatcherState(): WatcherState {
@@ -108,6 +110,7 @@ export function emptyWatcherState(): WatcherState {
     testClaims: { day: "", count: 0 },
     pausedReason: null,
     pendingReviews: [],
+    pendingTests: [],
   };
 }
 

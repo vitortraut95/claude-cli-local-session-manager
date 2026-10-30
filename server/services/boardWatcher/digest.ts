@@ -65,6 +65,16 @@ export function buildActionsDigest(
         items: of("claim-test").map((e) => line(e, issueLink)),
       },
       {
+        heading: simulated ? "Testou (sem postar)" : "Testou",
+        items: of("tested").map(
+          (e) => `${line(e, issueLink)} — ${short(e.detail?.split("\n")[0], 300)}`,
+        ),
+      },
+      {
+        heading: "Teste não rodou",
+        items: of("test-failed").map((e) => `${issueLink(e.subject)}: ${short(e.detail, 200)}`),
+      },
+      {
         heading: "Na fila de review",
         items: of("review")
           .filter((e) => !reviewed.has(e.subject))

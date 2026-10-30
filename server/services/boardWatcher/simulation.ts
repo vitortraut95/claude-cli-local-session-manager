@@ -4,7 +4,7 @@ import { REPO_ROOT } from "../../utils/repoRoot.js";
 import { bitbucketCredentialsFromEnv, listOpenPullRequests } from "./bitbucket.js";
 import type { BoardWatcherConfig } from "./config.js";
 import { jiraCredentialsFromEnv, searchIssues } from "./jira.js";
-import { prSubject, type PullRequest, type WatcherDeps } from "./types.js";
+import { prSubject, type BoardIssue, type PullRequest, type WatcherDeps } from "./types.js";
 
 /**
  * Simulation mode: the real board and PRs are read, and every write the watcher would make is
@@ -22,6 +22,8 @@ export type ActionEntry = {
     | "review"
     | "reviewed"
     | "review-failed"
+    | "tested"
+    | "test-failed"
     | "comment"
     | "approve"
     | "notify";
@@ -51,12 +53,13 @@ export async function recordAction(
   );
 }
 
-/** `onReview` takes a PR that's due for review (a real review session runs it later); without
- *  it the review is only recorded as due. */
+/** `onReview` / `onTest` take a PR due for review / a claimed ticket (a real session runs it
+ *  later); without them it's only recorded. */
 export function createSimulationDeps(
   config: BoardWatcherConfig,
   now: () => Date,
   onReview?: (pr: PullRequest) => void,
+  onTest?: (issue: BoardIssue) => void,
 ): WatcherDeps {
   if (!config.jira || !config.bitbucket) {
     throw new Error('boardWatcher.json needs "jira" and "bitbucket" for simulation mode.');
@@ -65,6 +68,7 @@ export function createSimulationDeps(
   const jiraCredentials = jiraCredentialsFromEnv(jira.site);
   const bitbucketCredentials = bitbucketCredentialsFromEnv(bitbucket.workspace);
   const titles = new Map<string, string>();
+  const issuesByKey = new Map<string, BoardIssue>();
   const statusIds = [
     ...config.columns.todo,
     ...config.columns.waitTest,
@@ -82,7 +86,10 @@ export function createSimulationDeps(
           `(${jira.scopeJql}) AND sprint in openSprints() AND status in (${statusIds})`,
           300,
         );
-        for (const issue of issues) titles.set(issue.key, issue.summary);
+        for (const issue of issues) {
+          titles.set(issue.key, issue.summary);
+          issuesByKey.set(issue.key, issue);
+        }
         return issues;
       },
       // A claim is a transition followed by an enqueue; the enqueue records it.
@@ -115,8 +122,11 @@ export function createSimulationDeps(
         record({ action: "notify", subject: title, detail: `${level}: ${text}` }),
     },
     tasks: {
-      enqueue: (key, kind) =>
-        record({ action: kind === "dev" ? "enqueue-dev" : "claim-test", subject: key }),
+      enqueue: async (key, kind) => {
+        await record({ action: kind === "dev" ? "enqueue-dev" : "claim-test", subject: key });
+        const issue = issuesByKey.get(key);
+        if (kind === "test" && issue) onTest?.(issue);
+      },
     },
   };
 }
