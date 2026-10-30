@@ -574,6 +574,8 @@ export function useSessions() {
 
   return {
     sessions: paginatedSessions,
+    /** Every session, not just the current page (the task sidebar needs all of them). */
+    allSessions: sessions,
     totalCount: sessions.length,
     filteredCount: filteredSessions.length,
     page: currentPage,
