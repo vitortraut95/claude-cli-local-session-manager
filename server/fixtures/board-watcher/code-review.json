@@ -1,0 +1,437 @@
+[
+  {
+    "name": "clean PR 2 business hours after the push is approved once",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "12",
+            "repo": "web",
+            "title": "PR 12",
+            "lastPushAt": "2026-10-28T11:30:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#12"],
+          "decisions": {
+            "web#12": "review"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#12": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "fresh PR waits for people to review first",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "13",
+            "repo": "web",
+            "title": "PR 13",
+            "lastPushAt": "2026-10-28T13:30:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#13": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T15:30:00-03:00",
+        "expect": {
+          "effects": ["approve web#13"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "PR pushed Friday evening: waits over the weekend, approved Monday",
+    "ticks": [
+      {
+        "now": "2026-10-31T10:00:00-03:00",
+        "prs": [
+          {
+            "id": "15",
+            "repo": "web",
+            "title": "PR 15",
+            "lastPushAt": "2026-10-30T17:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#15": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-11-02T09:30:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#15": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-11-02T10:00:00-03:00",
+        "expect": {
+          "effects": ["approve web#15"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "blocking finding: commented, not approved, reported",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "14",
+            "repo": "web",
+            "title": "PR 14",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "reviews": {
+          "web#14": {
+            "findings": [
+              {
+                "severity": "blocking",
+                "body": "Null deref quando o carrinho está vazio"
+              },
+              {
+                "severity": "minor",
+                "body": "Nome de variável"
+              }
+            ]
+          }
+        },
+        "expect": {
+          "effects": ["comment web#14 blocking", "notify digest: Not approved: web#14"]
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#14": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "many findings: at most 3 comments, approved when none blocks",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "16",
+            "repo": "web",
+            "title": "PR 16",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "reviews": {
+          "web#16": {
+            "findings": [
+              {
+                "severity": "major",
+                "body": "Achado 0"
+              },
+              {
+                "severity": "major",
+                "body": "Achado 1"
+              },
+              {
+                "severity": "major",
+                "body": "Achado 2"
+              },
+              {
+                "severity": "major",
+                "body": "Achado 3"
+              },
+              {
+                "severity": "major",
+                "body": "Achado 4"
+              },
+              {
+                "severity": "minor",
+                "body": "estilo"
+              }
+            ]
+          }
+        },
+        "expect": {
+          "effects": [
+            "comment web#16 major",
+            "comment web#16 major",
+            "comment web#16 major",
+            "approve web#16"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "draft, conflicts, red CI, changes requested: skipped; running CI waits",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "20",
+            "repo": "web",
+            "title": "PR 20",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "draft": true
+          },
+          {
+            "id": "21",
+            "repo": "web",
+            "title": "PR 21",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "hasConflicts": true
+          },
+          {
+            "id": "22",
+            "repo": "web",
+            "title": "PR 22",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "ci": "failed"
+          },
+          {
+            "id": "23",
+            "repo": "web",
+            "title": "PR 23",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "none"
+              },
+              {
+                "id": "bia",
+                "state": "changes_requested"
+              }
+            ]
+          },
+          {
+            "id": "24",
+            "repo": "web",
+            "title": "PR 24",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "ci": "running"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#20": "skip",
+            "web#21": "skip",
+            "web#22": "skip",
+            "web#23": "skip",
+            "web#24": "wait"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "my own PRs and PRs I'm not reviewing are left alone",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "25",
+            "repo": "web",
+            "title": "PR 25",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "authorId": "me",
+            "reviewers": [
+              {
+                "id": "ana",
+                "state": "none"
+              }
+            ]
+          },
+          {
+            "id": "26",
+            "repo": "web",
+            "title": "PR 26",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "bia",
+                "state": "none"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#25": "none",
+            "web#26": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "new push resets my approval and is reviewed again",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "30",
+            "repo": "web",
+            "title": "PR 30",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#30"]
+        }
+      },
+      {
+        "now": "2026-10-29T13:00:00-03:00",
+        "prs": [
+          {
+            "id": "30",
+            "repo": "web",
+            "title": "PR 30",
+            "lastPushAt": "2026-10-29T10:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "none"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#30"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "review round limit: skipped",
+    "state": {
+      "reviewRounds": {
+        "web#31": 3
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "31",
+            "repo": "web",
+            "title": "PR 31",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#31": "skip"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "PR I already approved is left alone",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "40",
+            "repo": "web",
+            "title": "PR 40",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "approved"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#40": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "product questions go to the digest, not the PR",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "41",
+            "repo": "web",
+            "title": "PR 41",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "reviews": {
+          "web#41": {
+            "findings": [
+              {
+                "severity": "major",
+                "topic": "product",
+                "body": "Os preços dependem de confirmação do PMM."
+              },
+              {
+                "severity": "blocking",
+                "topic": "product",
+                "body": "A remoção das LPs não está na LED; confirmar com o PO."
+              },
+              {
+                "severity": "major",
+                "body": "Falta tratar lista vazia."
+              }
+            ]
+          }
+        },
+        "expect": {
+          "effects": [
+            "comment web#41 major",
+            "notify digest: Product questions: web#41",
+            "approve web#41"
+          ]
+        }
+      }
+    ]
+  }
+]

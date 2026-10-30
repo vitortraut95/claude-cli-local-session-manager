@@ -1,0 +1,127 @@
+import { localDay } from "./businessTime.js";
+import type { BoardWatcherConfig } from "./config.js";
+import { decideIssues, decidePullRequests, type Decision } from "./decide.js";
+import {
+  prSubject,
+  type PullRequest,
+  type ReviewResult,
+  type WatcherDeps,
+  type WatcherState,
+} from "./types.js";
+
+/**
+ * One look at the board: reads it, decides (`decide.ts`) and carries the decisions out through
+ * the providers, updating `state` in place so the next tick doesn't repeat any of it.
+ */
+export async function runTick(
+  deps: WatcherDeps,
+  state: WatcherState,
+  config: BoardWatcherConfig,
+  now: Date,
+): Promise<Decision[]> {
+  if (state.pausedReason) return [];
+  const [issues, prs] = await Promise.all([
+    deps.board.listIssues(),
+    deps.codeHost.listPullRequests(),
+  ]);
+  const decisions = [
+    ...decideIssues(issues, state, config, now),
+    ...decidePullRequests(prs, state, config, now),
+  ];
+  const prsBySubject = new Map(prs.map((pr) => [prSubject(pr), pr]));
+
+  for (const decision of decisions) {
+    const { subject } = decision;
+    switch (decision.action) {
+      case "enqueue-dev":
+        await deps.tasks.enqueue(subject, "dev");
+        state.handled[`dev:${subject}`] = now.toISOString();
+        break;
+      case "weak-description":
+        if (state.handled[`gate:${subject}`] === decision.ref) break;
+        await deps.notifier.notify("digest", `Weak description: ${subject}`, decision.reason);
+        state.handled[`gate:${subject}`] = decision.ref ?? "";
+        break;
+      case "claim-test":
+        await deps.board.transition(subject, config.testingStatusId);
+        await deps.tasks.enqueue(subject, "test");
+        state.handled[`test:${subject}`] = decision.ref ?? "";
+        if (!state.claimedTests.includes(subject)) state.claimedTests.push(subject);
+        countTestClaim(state, config, now);
+        break;
+      case "review": {
+        const pr = prsBySubject.get(subject);
+        if (!pr) break;
+        // Checked before reviewing so a review isn't spent on a PR that can't be approved today.
+        if (await pauseAtApprovalCap(deps, state, config, now)) break;
+        await applyReview(pr, await deps.reviewer.review(pr), deps, state, config);
+        break;
+      }
+      case "skip":
+      case "wait":
+        break;
+    }
+    if (state.pausedReason) break;
+  }
+  return decisions;
+}
+
+function countTestClaim(state: WatcherState, config: BoardWatcherConfig, now: Date): void {
+  const day = localDay(now, config.businessHours);
+  if (state.testClaims.day !== day) state.testClaims = { day, count: 0 };
+  state.testClaims.count += 1;
+}
+
+/** Pauses the watcher once today's approvals hit the cap; true when it did. */
+async function pauseAtApprovalCap(
+  deps: WatcherDeps,
+  state: WatcherState,
+  config: BoardWatcherConfig,
+  now: Date,
+): Promise<boolean> {
+  const day = localDay(now, config.businessHours);
+  if (state.approvals.day !== day) state.approvals = { day, count: 0 };
+  if (state.approvals.count < config.maxApprovesPerDay) return false;
+  state.pausedReason = `${state.approvals.count} approvals today (limit ${config.maxApprovesPerDay})`;
+  await deps.notifier.notify("urgent", "Daily approval cap reached", state.pausedReason);
+  return true;
+}
+
+/** Posts the relevant findings and approves when nothing blocks it. */
+async function applyReview(
+  pr: PullRequest,
+  result: ReviewResult,
+  deps: WatcherDeps,
+  state: WatcherState,
+  config: BoardWatcherConfig,
+): Promise<void> {
+  const subject = prSubject(pr);
+  const relevant = result.findings.filter((f) => f.severity !== "minor" && f.topic !== "product");
+  const productQuestions = result.findings.filter((f) => f.topic === "product");
+  if (productQuestions.length > 0) {
+    await deps.notifier.notify(
+      "digest",
+      `Product questions: ${subject}`,
+      productQuestions.map((f) => f.body).join("\n"),
+    );
+  }
+  for (const finding of relevant.slice(0, config.maxCommentsPerPr)) {
+    await deps.codeHost.comment(pr, finding);
+  }
+  state.reviewRounds[subject] = (state.reviewRounds[subject] ?? 0) + 1;
+
+  const blocking = relevant.filter((f) => f.severity === "blocking").length;
+  if (blocking > 0) {
+    state.handled[`review:${subject}`] = pr.lastPushAt;
+    await deps.notifier.notify(
+      "digest",
+      `Not approved: ${subject}`,
+      `${blocking} blocking finding(s) on "${pr.title}".`,
+    );
+    return;
+  }
+
+  await deps.codeHost.approve(pr);
+  state.approvals.count += 1;
+  state.handled[`review:${subject}`] = pr.lastPushAt;
+}
