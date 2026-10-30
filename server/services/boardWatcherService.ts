@@ -11,6 +11,7 @@ import { isBusinessTime, localDay } from "./boardWatcher/businessTime.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
 import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
+import { getLessons, getScoreboard } from "./boardWatcher/feedback.js";
 import { bitbucketCredentialsFromEnv, listOpenPullRequests } from "./boardWatcher/bitbucket.js";
 import { runClaudeReview } from "./boardWatcher/claudeReviewer.js";
 import {
@@ -264,6 +265,7 @@ async function drainJobs(): Promise<void> {
           openPrs,
           model: config.review?.model,
           maxBudgetUsd: config.review?.maxBudgetUsd,
+          lessons: await getLessons("review"),
         });
         await serial(async () => {
           const state = await loadState();
@@ -363,6 +365,7 @@ async function runTestJob(
       skill: config.test?.skill,
       model: config.test?.model,
       maxBudgetUsd: config.test?.maxBudgetUsd,
+      lessons: await getLessons("test"),
     });
     const next =
       output.verdict === "failed"
@@ -505,6 +508,7 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
     nextLookAt: config?.enabled ? nextLookAt : null,
     approvalsToday: state.approvals.day === today ? state.approvals.count : 0,
     today: await todaysSessions(config),
+    scoreboard: await getScoreboard(),
     jobsBlockedBy,
     testClaimsToday: state.testClaims.day === today ? state.testClaims.count : 0,
     lastDecisions,

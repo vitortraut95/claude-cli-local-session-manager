@@ -152,6 +152,20 @@ export const boardWatcher = {
     "Sessions today: {reviews} reviews, {tests} tests · {minutes} min · ~US$ {cost} (estimate)",
     "Sessões hoje: {reviews} reviews, {tests} testes · {minutes} min · ~US$ {cost} (estimativa)",
   ),
+  "board.score": dict(
+    "Hit rate ({days} days): reviews {reviews} · tests {tests} · queue and notices {decisions}",
+    "Acerto ({days} dias): reviews {reviews} · testes {tests} · fila e avisos {decisions}",
+  ),
+  "board.feedback.up": dict("Right call", "Acertou"),
+  "board.feedback.down": dict("Wrong call", "Errou"),
+  "board.feedback.noteDown": dict(
+    "What was wrong? It becomes a lesson for the next reviews/tests.",
+    "O que estava errado? Vira uma lição para os próximos reviews/testes.",
+  ),
+  "board.feedback.noteUp": dict("A note (optional)", "Uma observação (opcional)"),
+  "board.feedback.saveNote": dict("Save note", "Salvar observação"),
+  "board.feedback.saved": dict("Saved", "Salvo"),
+  "board.feedback.saveError": dict("Couldn't save the verdict", "Não deu para salvar a avaliação"),
   "board.now.blocked": dict(
     "Reviews and tests are waiting: {reason}. They start once usage goes below the limit (the task queue's, in Settings).",
     "Reviews e testes esperando: {reason}. Começam quando o uso ficar abaixo do limite (o mesmo da fila de tarefas, nas Configurações).",

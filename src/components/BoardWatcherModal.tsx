@@ -4,6 +4,9 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
 import * as boardWatcherApi from "../services/boardWatcherApi";
+import type { WatcherFeedback } from "../services/boardWatcherApi";
+import { feedbackEntryKey } from "../../shared/boardWatcher";
+import { WatcherFeedbackNote, WatcherVoteButtons } from "./WatcherFeedbackControls";
 import type {
   AutomationSettings,
   BoardWatcherStatus,
@@ -17,6 +20,7 @@ import {
   DECISION_ACTION_KEYS,
   HISTORY_FILTERS,
   decisionColumn,
+  isRateable,
   matchesHistoryFilter,
   translateServerText,
   type DecisionColumn,
@@ -70,6 +74,12 @@ type BoardWatcherModalProps = {
   onClose: () => void;
 };
 
+/** "18/20 (90%)", or "—" with no verdict yet. */
+function scoreText(score: { up: number; down: number }): string {
+  const total = score.up + score.down;
+  return total === 0 ? "—" : `${score.up}/${total} (${Math.round((score.up / total) * 100)}%)`;
+}
+
 /** The board watcher at a glance: state, what it's doing, its last decisions and its history. */
 export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
   const { t, language } = useLanguage();
@@ -81,6 +91,23 @@ export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
   const [actionsError, setActionsError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"run" | "pause" | "digest" | null>(null);
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
+  const [feedback, setFeedback] = useState<Record<string, WatcherFeedback>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    boardWatcherApi
+      .fetchWatcherFeedback()
+      .then((result) => {
+        if (!cancelled) setFeedback(result);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onFeedbackSaved = (saved: WatcherFeedback) =>
+    setFeedback((current) => ({ ...current, [saved.entryKey]: saved }));
 
   useEffect(() => {
     let cancelled = false;
@@ -208,6 +235,16 @@ export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
                   max: settings?.limits.maxClaimsPerDay ?? "?",
                 })}
               </span>
+              {status.scoreboard && (
+                <span>
+                  {t("board.score", {
+                    days: status.scoreboard.days,
+                    reviews: scoreText(status.scoreboard.reviews),
+                    tests: scoreText(status.scoreboard.tests),
+                    decisions: scoreText(status.scoreboard.decisions),
+                  })}
+                </span>
+              )}
               {status.today && (
                 <span>
                   {t("board.usage.sessions", {
@@ -437,8 +474,23 @@ export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
                       <span className="min-w-0 break-words text-gray-700 dark:text-gray-300">
                         {entry.title}
                       </span>
+                      {isRateable(entry) && (
+                        <WatcherVoteButtons
+                          entry={entry}
+                          feedback={feedback[feedbackEntryKey(entry)]}
+                          onSaved={onFeedbackSaved}
+                        />
+                      )}
                     </summary>
                     <div className="mt-3 flex flex-col gap-3 pl-6">
+                      {feedback[feedbackEntryKey(entry)] && (
+                        <WatcherFeedbackNote
+                          key={feedback[feedbackEntryKey(entry)]?.verdict}
+                          entry={entry}
+                          feedback={feedback[feedbackEntryKey(entry)]!}
+                          onSaved={onFeedbackSaved}
+                        />
+                      )}
                       {entry.detail && <MarkdownView source={entry.detail} />}
                       {entry.files && entry.files.length > 0 && (
                         <div className="flex flex-col gap-2">

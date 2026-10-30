@@ -5,8 +5,11 @@ import type {
   AutomationSettingsInput,
   BoardWatcherStatus,
   WatcherActionEntry,
+  WatcherFeedback,
 } from "../../shared/boardWatcher";
 export type {
+  WatcherFeedback,
+  WatcherScoreboard,
   AutomationFeatures,
   AutomationLimits,
   AutomationSettings,
@@ -74,4 +77,21 @@ export async function fetchWatcherActions(limit = 200): Promise<WatcherActionEnt
 /** URL of one test screenshot (a `files` entry of a `tested` action). */
 export function evidenceUrl(file: string): string {
   return `/board-watcher/evidence?path=${encodeURIComponent(file)}`;
+}
+
+/** The user's latest 👍/👎 per history entry (`entryKey` → verdict). */
+export async function fetchWatcherFeedback(): Promise<Record<string, WatcherFeedback>> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<Record<string, WatcherFeedback>>("/feedback"),
+  );
+  return data;
+}
+
+export async function saveWatcherFeedback(
+  input: Pick<WatcherFeedback, "entryKey" | "action" | "subject" | "verdict" | "note">,
+): Promise<WatcherFeedback> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<WatcherFeedback>("/feedback", input),
+  );
+  return data;
 }
