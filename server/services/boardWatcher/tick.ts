@@ -89,8 +89,9 @@ async function pauseAtApprovalCap(
   return true;
 }
 
-/** Posts the relevant findings and approves when nothing blocks it. */
-async function applyReview(
+/** Posts the relevant findings and approves when nothing blocks it. Also used for a review
+ *  that ran outside the tick (`boardWatcherService`). */
+export async function applyReview(
   pr: PullRequest,
   result: ReviewResult,
   deps: WatcherDeps,

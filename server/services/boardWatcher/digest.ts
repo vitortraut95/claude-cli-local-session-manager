@@ -3,6 +3,13 @@ import type { ActionEntry } from "./simulation.js";
 import { buildDigestCard, reasonPtBr } from "./teamsCards.js";
 
 /** The start/end-of-day summary card, from the actions recorded since the last one. */
+/** "src/a/b/File.tsx:12 — text" → "File.tsx:12 — text": the comment is what's being judged. */
+function shortPath(detail = ""): string {
+  return detail.replace(/^\S*\/([^/\s]+:\d+ — )/, "$1");
+}
+
+/** Product questions from reviews stay in the actions log only: whoever reviews the code doesn't
+ *  need them (the PO/QA see copy, prices and design in testing). */
 export function buildActionsDigest(
   entries: ActionEntry[],
   config: BoardWatcherConfig,
@@ -22,7 +29,10 @@ export function buildActionsDigest(
     `${link(entry.subject)} ${entry.title}`.trim();
   const of = (action: ActionEntry["action"]) => entries.filter((e) => e.action === action);
   const weak = of("notify").filter((e) => e.subject.startsWith("Weak description: "));
-  const product = of("notify").filter((e) => e.subject.startsWith("Product questions: "));
+  const notApproved = of("notify").filter((e) => e.subject.startsWith("Not approved: "));
+  const urgent = of("notify").filter((e) => e.detail?.startsWith("urgent: "));
+  const reviewed = new Set(of("reviewed").map((e) => e.subject));
+  const short = (text = "", max = 400) => (text.length > max ? `${text.slice(0, max)}…` : text);
 
   const sinceText = since.toLocaleString("pt-BR", {
     timeZone: config.businessHours.timezone,
@@ -55,13 +65,34 @@ export function buildActionsDigest(
         items: of("claim-test").map((e) => line(e, issueLink)),
       },
       {
-        heading: simulated ? "Revisaria" : "Revisou",
-        items: of("review").map((e) => line(e, prLink)),
+        heading: "Na fila de review",
+        items: of("review")
+          .filter((e) => !reviewed.has(e.subject))
+          .map((e) => line(e, prLink)),
       },
-      { heading: "Aprovou", items: of("approve").map((e) => line(e, prLink)) },
       {
-        heading: "Perguntas de produto vindas dos reviews",
-        items: product.map((e) => `${e.subject.replace("Product questions: ", "")}: ${e.detail}`),
+        heading: simulated ? "Revisou (sem postar)" : "Revisou",
+        items: of("reviewed").map((e) => `${line(e, prLink)} — ${short(e.detail, 300)}`),
+      },
+      {
+        heading: simulated ? "Comentaria" : "Comentou",
+        items: of("comment").map((e) => `${prLink(e.subject)}: ${shortPath(e.detail)}`),
+      },
+      {
+        heading: simulated ? "Aprovaria" : "Aprovou",
+        items: of("approve").map((e) => line(e, prLink)),
+      },
+      {
+        heading: simulated ? "Não aprovaria" : "Não aprovou",
+        items: notApproved.map((e) => prLink(e.subject.replace("Not approved: ", ""))),
+      },
+      {
+        heading: "Review não rodou",
+        items: of("review-failed").map((e) => `${prLink(e.subject)}: ${short(e.detail, 200)}`),
+      },
+      {
+        heading: simulated ? "Pausaria" : "Pausou",
+        items: urgent.map((e) => `${e.subject}: ${(e.detail ?? "").replace(/^urgent: /, "")}`),
       },
     ],
     link: config.jira?.boardUrl ? { title: "Abrir o board", url: config.jira.boardUrl } : undefined,

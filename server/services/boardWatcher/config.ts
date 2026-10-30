@@ -50,8 +50,11 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
   /** Where the board lives. Only the active sprint's issues are considered; `scopeJql` narrows
    *  searches to the team's issues. */
   jira?: { site: string; boardId?: number; scopeJql: string; boardUrl?: string };
-  /** The team's repos whose open PRs are reviewed. */
-  bitbucket?: { workspace: string; repos: string[] };
+  /** The team's repos whose open PRs are reviewed; `localRepos` maps each to its local clone,
+   *  where review worktrees are made. */
+  bitbucket?: { workspace: string; repos: string[]; localRepos?: Record<string, string> };
+  /** Real review sessions (`claudeReviewer.ts`); off = reviews are only recorded as due. */
+  review?: { enabled: boolean; model?: string; maxBudgetUsd?: number };
 };
 
 export const DEFAULT_LIMITS: BoardWatcherLimits = {
