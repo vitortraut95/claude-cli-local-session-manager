@@ -10,7 +10,6 @@ import {
   Scale,
   Settings,
   Sparkles,
-  Workflow,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
@@ -194,13 +193,6 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
           </Button>
           <Button
             variant="outline"
-            onClick={() => setShowAutomationModal(true)}
-            icon={<Workflow className="h-4 w-4" />}
-          >
-            {t("header.automation")}
-          </Button>
-          <Button
-            variant="outline"
             onClick={() => setShowBoardModal(true)}
             icon={<Kanban className="h-4 w-4" />}
           >
@@ -307,8 +299,24 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
         onClose={() => setShowCleanupModal(false)}
         onFindingExecuted={onSessionsChanged}
       />
-      {showAutomationModal && <AutomationModal onClose={() => setShowAutomationModal(false)} />}
-      {showBoardModal && <BoardWatcherModal onClose={() => setShowBoardModal(false)} />}
+      {/* Automation is opened from the Board and goes back to it when closed. */}
+      {showAutomationModal && (
+        <AutomationModal
+          onClose={() => {
+            setShowAutomationModal(false);
+            setShowBoardModal(true);
+          }}
+        />
+      )}
+      {showBoardModal && (
+        <BoardWatcherModal
+          onClose={() => setShowBoardModal(false)}
+          onOpenAutomation={() => {
+            setShowBoardModal(false);
+            setShowAutomationModal(true);
+          }}
+        />
+      )}
       {showSkillsModal && <SkillsHubModal onClose={() => setShowSkillsModal(false)} />}
       {showSettings && (
         <SettingsModal
