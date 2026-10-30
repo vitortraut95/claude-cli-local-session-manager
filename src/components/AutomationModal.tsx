@@ -201,7 +201,7 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
   const codeReviewOn = features?.codeReview ?? false;
 
   return (
-    <Modal open title={t("automation.title")} onClose={onClose} size="lg">
+    <Modal open title={t("automation.title")} onClose={onClose} size="xxl">
       {loadError && <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>}
       {!loadError && !settings && <p className="text-sm text-gray-500 dark:text-gray-400">…</p>}
       {settings && (
@@ -232,130 +232,136 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
                 />
               </div>
 
-              <section className="flex flex-col gap-4">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {t("automation.features")}
-                </h3>
-                {FEATURE_ROWS.map((row) => {
-                  const nested = row.key === "reviewSessions";
-                  const disabled = nested && !codeReviewOn;
-                  return (
-                    <div
-                      key={row.key}
-                      className={
-                        nested ? "ml-6 border-l border-gray-200 pl-4 dark:border-gray-800" : ""
-                      }
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="text-sm text-gray-900 dark:text-gray-100">{t(row.label)}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {t(row.description)}
-                          </p>
-                          {disabled && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {t("automation.feature.reviewSessions.needsReview")}
-                            </p>
-                          )}
+              <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+                <div className="flex flex-col gap-6">
+                  <section className="flex flex-col gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {t("automation.features")}
+                    </h3>
+                    {FEATURE_ROWS.map((row) => {
+                      const nested = row.key === "reviewSessions";
+                      const disabled = nested && !codeReviewOn;
+                      return (
+                        <div
+                          key={row.key}
+                          className={
+                            nested ? "ml-6 border-l border-gray-200 pl-4 dark:border-gray-800" : ""
+                          }
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="text-sm text-gray-900 dark:text-gray-100">
+                                {t(row.label)}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {t(row.description)}
+                              </p>
+                              {disabled && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {t("automation.feature.reviewSessions.needsReview")}
+                                </p>
+                              )}
+                            </div>
+                            <Switch
+                              checked={features?.[row.key] ?? false}
+                              disabled={disabled}
+                              label={t(row.label)}
+                              onChange={(value) => void save({ features: { [row.key]: value } })}
+                            />
+                          </div>
                         </div>
-                        <Switch
-                          checked={features?.[row.key] ?? false}
-                          disabled={disabled}
-                          label={t(row.label)}
-                          onChange={(value) => void save({ features: { [row.key]: value } })}
+                      );
+                    })}
+                  </section>
+                  <section className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {t("automation.hours")}
+                    </h3>
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+                        {t("automation.hours.start")}
+                        <Input
+                          type="time"
+                          value={drafts.start ?? settings.businessHours.start}
+                          onChange={(event) =>
+                            setDrafts((current) => ({ ...current, start: event.target.value }))
+                          }
+                          onBlur={() => commitHour("start")}
+                          className="w-28 py-1"
                         />
-                      </div>
-                    </div>
-                  );
-                })}
-              </section>
-
-              <section className="flex flex-col gap-3">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {t("automation.limits")}
-                </h3>
-                {(Object.keys(LIMIT_BOUNDS) as (keyof AutomationLimits)[]).map((field) => (
-                  <SettingRow
-                    key={field}
-                    label={t(LIMIT_LABELS[field])}
-                    description={t(LIMIT_DESCRIPTIONS[field])}
-                    controlWidth="w-24"
-                    control={
-                      <Input
-                        type="number"
-                        min={LIMIT_BOUNDS[field][0]}
-                        max={LIMIT_BOUNDS[field][1]}
-                        value={drafts[field] ?? String(settings.limits[field])}
-                        aria-label={t(LIMIT_LABELS[field])}
-                        onChange={(event) =>
-                          setDrafts((current) => ({ ...current, [field]: event.target.value }))
-                        }
-                        onBlur={() => commitLimit(field)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") commitLimit(field);
-                        }}
-                        className="py-1"
-                      />
-                    }
-                  />
-                ))}
-              </section>
-
-              <section className="flex flex-col gap-3">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {t("automation.hours")}
-                </h3>
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
-                    {t("automation.hours.start")}
-                    <Input
-                      type="time"
-                      value={drafts.start ?? settings.businessHours.start}
-                      onChange={(event) =>
-                        setDrafts((current) => ({ ...current, start: event.target.value }))
-                      }
-                      onBlur={() => commitHour("start")}
-                      className="w-28 py-1"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
-                    {t("automation.hours.end")}
-                    <Input
-                      type="time"
-                      value={drafts.end ?? settings.businessHours.end}
-                      onChange={(event) =>
-                        setDrafts((current) => ({ ...current, end: event.target.value }))
-                      }
-                      onBlur={() => commitHour("end")}
-                      className="w-28 py-1"
-                    />
-                  </label>
-                </div>
-                <fieldset className="flex flex-col gap-2">
-                  <legend className="text-xs text-gray-500 dark:text-gray-400">
-                    {t("automation.hours.days")}
-                  </legend>
-                  <div className="flex flex-wrap gap-3">
-                    {WEEKDAY_ORDER.map((day) => (
-                      <label
-                        key={day}
-                        className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={settings.businessHours.days.includes(day)}
-                          onChange={() => toggleDay(day)}
-                          className="h-4 w-4 accent-gray-900 dark:accent-gray-100"
-                        />
-                        {t(`automation.weekday.${day}` as TranslationKey)}
                       </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {t("automation.hours.timezone", { timezone: settings.businessHours.timezone })}
-                </p>
-              </section>
+                      <label className="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+                        {t("automation.hours.end")}
+                        <Input
+                          type="time"
+                          value={drafts.end ?? settings.businessHours.end}
+                          onChange={(event) =>
+                            setDrafts((current) => ({ ...current, end: event.target.value }))
+                          }
+                          onBlur={() => commitHour("end")}
+                          className="w-28 py-1"
+                        />
+                      </label>
+                    </div>
+                    <fieldset className="flex flex-col gap-2">
+                      <legend className="text-xs text-gray-500 dark:text-gray-400">
+                        {t("automation.hours.days")}
+                      </legend>
+                      <div className="flex flex-wrap gap-3">
+                        {WEEKDAY_ORDER.map((day) => (
+                          <label
+                            key={day}
+                            className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={settings.businessHours.days.includes(day)}
+                              onChange={() => toggleDay(day)}
+                              className="h-4 w-4 accent-gray-900 dark:accent-gray-100"
+                            />
+                            {t(`automation.weekday.${day}` as TranslationKey)}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {t("automation.hours.timezone", {
+                        timezone: settings.businessHours.timezone,
+                      })}
+                    </p>
+                  </section>
+                </div>
+                <section className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {t("automation.limits")}
+                  </h3>
+                  {(Object.keys(LIMIT_BOUNDS) as (keyof AutomationLimits)[]).map((field) => (
+                    <SettingRow
+                      key={field}
+                      label={t(LIMIT_LABELS[field])}
+                      description={t(LIMIT_DESCRIPTIONS[field])}
+                      controlWidth="w-24"
+                      control={
+                        <Input
+                          type="number"
+                          min={LIMIT_BOUNDS[field][0]}
+                          max={LIMIT_BOUNDS[field][1]}
+                          value={drafts[field] ?? String(settings.limits[field])}
+                          aria-label={t(LIMIT_LABELS[field])}
+                          onChange={(event) =>
+                            setDrafts((current) => ({ ...current, [field]: event.target.value }))
+                          }
+                          onBlur={() => commitLimit(field)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") commitLimit(field);
+                          }}
+                          className="py-1"
+                        />
+                      }
+                    />
+                  ))}
+                </section>
+              </div>
             </>
           )}
         </div>
