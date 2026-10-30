@@ -1,15 +1,20 @@
 import type { BoardWatcherConfig } from "./config.js";
 import type { ActionEntry } from "./simulation.js";
-import { buildDigestCard, reasonPtBr } from "./teamsCards.js";
+import { buildNoticeCard, reasonPtBr, type CardSection } from "./teamsCards.js";
 
-/** The start/end-of-day summary card, from the actions recorded since the last one. */
+const MAX_DETAIL_ITEMS = 5;
+
 /** "src/a/b/File.tsx:12 — text" → "File.tsx:12 — text": the comment is what's being judged. */
 function shortPath(detail = ""): string {
   return detail.replace(/^\S*\/([^/\s]+:\d+ — )/, "$1");
 }
 
-/** Product questions from reviews stay in the actions log only: whoever reviews the code doesn't
- *  need them (the PO/QA see copy, prices and design in testing). */
+/**
+ * The start/end-of-day summary, from the actions recorded since the last one: the counts and up
+ * to 3 things that need a look, everything else behind "Ver detalhes". Product questions from
+ * reviews stay in the actions log only: whoever reviews the code doesn't need them (the PO/QA see
+ * copy, prices and design in testing).
+ */
 export function buildActionsDigest(
   entries: ActionEntry[],
   config: BoardWatcherConfig,
@@ -41,7 +46,6 @@ export function buildActionsDigest(
     hour: "2-digit",
     minute: "2-digit",
   });
-  const verb = simulated ? "faria" : "fez";
   const count = (action: ActionEntry["action"]) => of(action).length;
   const headline = [
     [count("enqueue-dev"), "na fila de dev"],
@@ -54,76 +58,97 @@ export function buildActionsDigest(
     .filter(([n]) => Number(n) > 0)
     .map(([n, label]) => `${n} ${label}`)
     .join(" · ");
-  return buildDigestCard({
-    title: "🔵 Board watcher · resumo",
-    headline: headline || undefined,
-    maxItemsPerSection: 3,
-    moreHint: "(veja todos no Board do Session Manager)",
-    subtitle: `${simulated ? "SIMULAÇÃO: nada foi feito no Jira nem no Bitbucket. " : ""}Desde ${sinceText}.${
-      entries.length === 0 ? ` Nada que ele ${verb} nesse período.` : ""
-    }`,
-    sections: [
-      {
-        heading: simulated ? "Entraria na fila para desenvolver" : "Entrou na fila",
-        items: of("enqueue-dev").map((e) => line(e, issueLink)),
-      },
-      {
-        heading: "Descrição insuficiente, não entraria na fila",
-        items: weak.map((e) => {
-          const key = e.subject.replace("Weak description: ", "");
-          const reason = reasonPtBr((e.detail ?? "").replace(/^digest: /, ""));
-          return `${issueLink(key)} ${reason}`;
-        }),
-      },
-      {
-        heading: simulated ? "Pegaria para testar" : "Pegou para testar",
-        items: of("claim-test").map((e) => line(e, issueLink)),
-      },
-      {
-        heading: "Colocou na fila de teste do app",
-        items: of("queued-test").map((e) => `${line(e, issueLink)} — ${short(e.detail, 200)}`),
-      },
-      {
-        heading: simulated ? "Testou (sem postar)" : "Testou",
-        items: of("tested").map(
-          (e) => `${line(e, issueLink)} — ${short(e.detail?.split("\n")[0], 300)}`,
-        ),
-      },
-      {
-        heading: "Teste não rodou",
-        items: of("test-failed").map((e) => `${issueLink(e.subject)}: ${short(e.detail, 200)}`),
-      },
-      {
-        heading: "Na fila de review",
-        items: of("review")
-          .filter((e) => !reviewed.has(e.subject))
-          .map((e) => line(e, prLink)),
-      },
-      {
-        heading: simulated ? "Revisou (sem postar)" : "Revisou",
-        items: of("reviewed").map((e) => `${line(e, prLink)} — ${short(e.detail, 300)}`),
-      },
-      {
-        heading: simulated ? "Comentaria" : "Comentou",
-        items: of("comment").map((e) => `${prLink(e.subject)}: ${shortPath(e.detail)}`),
-      },
-      {
-        heading: simulated ? "Aprovaria" : "Aprovou",
-        items: of("approve").map((e) => line(e, prLink)),
-      },
-      {
-        heading: simulated ? "Não aprovaria" : "Não aprovou",
-        items: notApproved.map((e) => prLink(e.subject.replace("Not approved: ", ""))),
-      },
-      {
-        heading: "Review não rodou",
-        items: of("review-failed").map((e) => `${prLink(e.subject)}: ${short(e.detail, 200)}`),
-      },
-      {
-        heading: simulated ? "Pausaria" : "Pausou",
-        items: urgent.map((e) => `${e.subject}: ${(e.detail ?? "").replace(/^urgent: /, "")}`),
-      },
-    ],
-    link: config.jira?.boardUrl ? { title: "Abrir o board", url: config.jira.boardUrl } : undefined,
+  const attention = [
+    ...notApproved.map(
+      (e) =>
+        `${prLink(e.subject.replace("Not approved: ", ""))} ${simulated ? "não aprovaria" : "não aprovado"}`,
+    ),
+    ...[...of("review-failed"), ...of("test-failed")].map(
+      (e) =>
+        `${e.action === "review-failed" ? prLink(e.subject) : issueLink(e.subject)} ${e.action === "review-failed" ? "review" : "teste"} não rodou`,
+    ),
+    ...weak.map((e) => `${issueLink(e.subject.replace("Weak description: ", ""))} descrição fraca`),
+    ...urgent.map((e) => `${e.subject}`),
+  ];
+  const shownAttention = attention.slice(0, 3);
+  if (attention.length > shownAttention.length) {
+    shownAttention.push(`+${attention.length - shownAttention.length} em "Ver detalhes"`);
+  }
+  const sections: CardSection[] = [
+    {
+      heading: simulated ? "Entraria na fila para desenvolver" : "Entrou na fila",
+      items: of("enqueue-dev").map((e) => line(e, issueLink)),
+    },
+    {
+      heading: "Descrição insuficiente, não entraria na fila",
+      items: weak.map((e) => {
+        const key = e.subject.replace("Weak description: ", "");
+        const reason = reasonPtBr((e.detail ?? "").replace(/^digest: /, ""));
+        return `${issueLink(key)} ${reason}`;
+      }),
+    },
+    {
+      heading: simulated ? "Pegaria para testar" : "Pegou para testar",
+      items: of("claim-test").map((e) => line(e, issueLink)),
+    },
+    {
+      heading: "Colocou na fila de teste do app",
+      items: of("queued-test").map((e) => `${line(e, issueLink)} — ${short(e.detail, 200)}`),
+    },
+    {
+      heading: simulated ? "Testou (sem postar)" : "Testou",
+      items: of("tested").map(
+        (e) => `${line(e, issueLink)} — ${short(e.detail?.split("\n")[0], 300)}`,
+      ),
+    },
+    {
+      heading: "Teste não rodou",
+      items: of("test-failed").map((e) => `${issueLink(e.subject)}: ${short(e.detail, 200)}`),
+    },
+    {
+      heading: "Na fila de review",
+      items: of("review")
+        .filter((e) => !reviewed.has(e.subject))
+        .map((e) => line(e, prLink)),
+    },
+    {
+      heading: simulated ? "Revisou (sem postar)" : "Revisou",
+      items: of("reviewed").map((e) => `${line(e, prLink)} — ${short(e.detail, 300)}`),
+    },
+    {
+      heading: simulated ? "Comentaria" : "Comentou",
+      items: of("comment").map((e) => `${prLink(e.subject)}: ${shortPath(e.detail)}`),
+    },
+    {
+      heading: simulated ? "Aprovaria" : "Aprovou",
+      items: of("approve").map((e) => line(e, prLink)),
+    },
+    {
+      heading: simulated ? "Não aprovaria" : "Não aprovou",
+      items: notApproved.map((e) => prLink(e.subject.replace("Not approved: ", ""))),
+    },
+    {
+      heading: "Review não rodou",
+      items: of("review-failed").map((e) => `${prLink(e.subject)}: ${short(e.detail, 200)}`),
+    },
+    {
+      heading: simulated ? "Pausaria" : "Pausou",
+      items: urgent.map((e) => `${e.subject}: ${(e.detail ?? "").replace(/^urgent: /, "")}`),
+    },
+  ];
+  return buildNoticeCard({
+    level: "digest",
+    title: `Resumo${simulated ? " (simulação)" : ""}`,
+    summary: headline ? `Desde ${sinceText}: ${headline}.` : `Nada desde ${sinceText}.`,
+    highlights: { heading: "Precisa de atenção", items: shownAttention },
+    details: sections.map((section) => {
+      const shown = section.items.slice(0, MAX_DETAIL_ITEMS);
+      const more = section.items.length - shown.length;
+      return {
+        heading: `${section.heading} (${section.items.length})`,
+        items: more > 0 ? [...shown, `… e mais ${more} (veja no Board do Session Manager)`] : shown,
+      };
+    }),
+    links: config.jira?.boardUrl ? [{ title: "Abrir o board", url: config.jira.boardUrl }] : [],
   });
 }

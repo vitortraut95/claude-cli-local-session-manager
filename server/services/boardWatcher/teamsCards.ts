@@ -130,6 +130,8 @@ export type Notice = {
   /** "PROJ-123 · esperando você": the subject first, then what happened. */
   title: string;
   summary: string;
+  /** Shown under the summary (not hidden): what needs a look. */
+  highlights?: CardSection;
   details?: CardSection[];
   links?: { title: string; url: string }[];
 };
@@ -167,6 +169,12 @@ export function buildNoticeCard(notice: Notice): CardElement {
     [
       text(`${LEVEL_MARK[notice.level]} ${notice.title}`, { weight: "Bolder" }),
       text(notice.summary, { isSubtle: true, spacing: "Small" }),
+      ...(notice.highlights && notice.highlights.items.length > 0
+        ? [
+            text(notice.highlights.heading, { weight: "Bolder", spacing: "Medium" }),
+            ...notice.highlights.items.map((item) => text(`• ${item}`, { spacing: "Small" })),
+          ]
+        : []),
       ...(hasDetails ? [detailsContainer("details", notice.details ?? [])] : []),
     ],
     noticeActions(notice, hasDetails ? "details" : null),
