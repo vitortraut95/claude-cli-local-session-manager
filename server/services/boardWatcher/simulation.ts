@@ -1,5 +1,6 @@
 import { appendFile, readFile } from "node:fs/promises";
 import path from "node:path";
+import type { WatcherActionEntry } from "../../../shared/boardWatcher.js";
 import { REPO_ROOT } from "../../utils/repoRoot.js";
 import { bitbucketCredentialsFromEnv, listOpenPullRequests } from "./bitbucket.js";
 import type { BoardWatcherConfig } from "./config.js";
@@ -15,25 +16,7 @@ import { prSubject, type BoardIssue, type PullRequest, type WatcherDeps } from "
 
 export const ACTIONS_FILE = path.join(REPO_ROOT, "boardWatcher-actions.jsonl");
 
-export type ActionEntry = {
-  ts: string;
-  action:
-    | "enqueue-dev"
-    | "claim-test"
-    | "review"
-    | "reviewed"
-    | "review-failed"
-    | "tested"
-    | "test-failed"
-    | "queued-test"
-    | "comment"
-    | "approve"
-    | "notify";
-  subject: string;
-  /** The issue summary or PR title, for the digest. */
-  title: string;
-  detail?: string;
-};
+export type ActionEntry = WatcherActionEntry;
 
 export async function readActions(since: Date): Promise<ActionEntry[]> {
   const raw = await readFile(ACTIONS_FILE, "utf8").catch(() => "");

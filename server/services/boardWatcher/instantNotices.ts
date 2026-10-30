@@ -1,4 +1,4 @@
-import type { BoardWatcherConfig } from "./config.js";
+import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./config.js";
 import { buildDigestCard, postTeamsCard } from "./teamsCards.js";
 import { prSubject, type BoardIssue, type PullRequest, type ReviewFinding } from "./types.js";
 
@@ -14,6 +14,8 @@ const MAX_REPORT_CHARS = 2500;
 async function send(card: Record<string, unknown>): Promise<void> {
   const webhook = process.env.TEAMS_WEBHOOK_URL;
   if (!webhook) return;
+  const config = await loadBoardWatcherConfig().catch(() => null);
+  if (config?.notifications?.instant === false) return;
   await postTeamsCard(webhook, card).catch((err: unknown) =>
     console.warn("[board-watcher] Couldn't send the notice:", err),
   );
