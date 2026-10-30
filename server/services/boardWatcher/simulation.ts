@@ -4,7 +4,7 @@ import { REPO_ROOT } from "../../utils/repoRoot.js";
 import { bitbucketCredentialsFromEnv, listOpenPullRequests } from "./bitbucket.js";
 import type { BoardWatcherConfig } from "./config.js";
 import { jiraCredentialsFromEnv, searchIssues } from "./jira.js";
-import { prSubject, type WatcherDeps } from "./types.js";
+import { prSubject, type PullRequest, type WatcherDeps } from "./types.js";
 
 /**
  * Simulation mode: the real board and PRs are read, and every write the watcher would make is
@@ -16,7 +16,15 @@ export const ACTIONS_FILE = path.join(REPO_ROOT, "boardWatcher-actions.jsonl");
 
 export type ActionEntry = {
   ts: string;
-  action: "enqueue-dev" | "claim-test" | "review" | "comment" | "approve" | "notify";
+  action:
+    | "enqueue-dev"
+    | "claim-test"
+    | "review"
+    | "reviewed"
+    | "review-failed"
+    | "comment"
+    | "approve"
+    | "notify";
   subject: string;
   /** The issue summary or PR title, for the digest. */
   title: string;
@@ -32,7 +40,24 @@ export async function readActions(since: Date): Promise<ActionEntry[]> {
     .filter((entry) => Date.parse(entry.ts) >= since.getTime());
 }
 
-export function createSimulationDeps(config: BoardWatcherConfig, now: () => Date): WatcherDeps {
+export async function recordAction(
+  entry: Omit<ActionEntry, "ts">,
+  now = new Date(),
+): Promise<void> {
+  await appendFile(
+    ACTIONS_FILE,
+    `${JSON.stringify({ ts: now.toISOString(), ...entry })}\n`,
+    "utf8",
+  );
+}
+
+/** `onReview` takes a PR that's due for review (a real review session runs it later); without
+ *  it the review is only recorded as due. */
+export function createSimulationDeps(
+  config: BoardWatcherConfig,
+  now: () => Date,
+  onReview?: (pr: PullRequest) => void,
+): WatcherDeps {
   if (!config.jira || !config.bitbucket) {
     throw new Error('boardWatcher.json needs "jira" and "bitbucket" for simulation mode.');
   }
@@ -46,14 +71,8 @@ export function createSimulationDeps(config: BoardWatcherConfig, now: () => Date
     ...config.columns.testing,
   ].join(",");
 
-  const record = async (entry: Omit<ActionEntry, "ts" | "title">) => {
-    const line: ActionEntry = {
-      ts: now().toISOString(),
-      title: titles.get(entry.subject) ?? "",
-      ...entry,
-    };
-    await appendFile(ACTIONS_FILE, `${JSON.stringify(line)}\n`, "utf8");
-  };
+  const record = (entry: Omit<ActionEntry, "ts" | "title"> & { title?: string }) =>
+    recordAction({ title: titles.get(entry.subject) ?? "", ...entry }, now());
 
   return {
     board: {
@@ -76,12 +95,18 @@ export function createSimulationDeps(config: BoardWatcherConfig, now: () => Date
         return prs;
       },
       comment: (pr, finding) =>
-        record({ action: "comment", subject: prSubject(pr), detail: finding.body }),
-      approve: (pr) => record({ action: "approve", subject: prSubject(pr) }),
+        record({
+          action: "comment",
+          subject: prSubject(pr),
+          title: pr.title,
+          detail: `${finding.file ? `${finding.file}${finding.line ? `:${finding.line}` : ""} — ` : ""}${finding.body}`,
+        }),
+      approve: (pr) => record({ action: "approve", subject: prSubject(pr), title: pr.title }),
     },
     reviewer: {
       review: async (pr) => {
         await record({ action: "review", subject: prSubject(pr) });
+        onReview?.(pr);
         return null;
       },
     },

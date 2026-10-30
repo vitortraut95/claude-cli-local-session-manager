@@ -14,7 +14,8 @@ type RawPullRequest = {
   draft?: boolean;
   created_on: string;
   author?: { account_id?: string };
-  source?: { commit?: { hash?: string } };
+  source?: { commit?: { hash?: string }; branch?: { name?: string } };
+  destination?: { branch?: { name?: string } };
   participants?: {
     role: string;
     state?: string | null;
@@ -29,6 +30,8 @@ const PR_FIELDS = [
   "values.created_on",
   "values.author.account_id",
   "values.source.commit.hash",
+  "values.source.branch.name",
+  "values.destination.branch.name",
   "values.participants.role",
   "values.participants.state",
   "values.participants.user.account_id",
@@ -96,6 +99,9 @@ async function toPullRequest(
       .map((p) => ({ id: p.user?.account_id ?? "", state: reviewerState(p.state) })),
     ci: ciState((statuses.values ?? []).map((s) => s.state)),
     hasConflicts: false,
+    sourceBranch: raw.source?.branch?.name,
+    destinationBranch: raw.destination?.branch?.name,
+    sourceHash: hash,
   };
 }
 

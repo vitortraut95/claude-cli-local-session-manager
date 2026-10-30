@@ -4,9 +4,9 @@ Watches a Jira board around the clock and feeds the existing task queue (`taskQu
 `taskSchedulerService`). Looking at the board is plain REST polling, with no Claude session in
 the loop; a session only starts when there's work.
 
-**Status:** decisions, fake providers and the scenario runner are in place
-(`server/services/boardWatcher/`). Not wired to the server yet; no real Jira/Bitbucket/Teams
-provider yet.
+**Status:** runs in the server in simulation mode: reads the real Jira board and Bitbucket PRs,
+runs real review sessions, and records what it would do (`boardWatcher-actions.jsonl`) instead of
+acting; digests go to Teams at 09:00 and 18:00.
 
 ## Rules per column
 
@@ -79,8 +79,11 @@ Runs as a background Claude session in a local worktree of the PR's source branc
 search the whole repo for other uses of what changed), read-only: no edits, commits or pushes. It
 gets the diff against the merge-base, the ticket with its comments, and the other open PRs that
 touch the same files or tickets (a simulation flagged a "bug" that a sibling PR already handled).
-Each finding comes back with severity, file, line and `topic`: questions for PO/design/content are
-`product` and go to the user's digest, never to the colleague's PR.
+Each finding comes back with severity, file, line and `topic`: questions for PO/design/content
+(copy, prices, Figma parity) are `product` and are never posted; they stay in the actions log.
+Changes from another ticket riding along in the PR are a `code` finding (major), so they're posted.
+Reviews run one at a time after a look, with a cost cap per review (`review.maxBudgetUsd`); the
+local clone of each repo comes from `bitbucket.localRepos`.
 
 ## Sandbox (`board-watcher:eval`)
 

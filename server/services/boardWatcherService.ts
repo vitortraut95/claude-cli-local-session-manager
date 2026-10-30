@@ -6,17 +6,21 @@ import { isBusinessTime, localDay } from "./boardWatcher/businessTime.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
 import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
-import { createSimulationDeps, readActions } from "./boardWatcher/simulation.js";
+import { bitbucketCredentialsFromEnv, listOpenPullRequests } from "./boardWatcher/bitbucket.js";
+import { runClaudeReview } from "./boardWatcher/claudeReviewer.js";
+import { createSimulationDeps, readActions, recordAction } from "./boardWatcher/simulation.js";
 import { buildUrgentCard, postTeamsCard } from "./boardWatcher/teamsCards.js";
-import { runTick } from "./boardWatcher/tick.js";
-import { emptyWatcherState, type WatcherState } from "./boardWatcher/types.js";
+import { applyReview, runTick } from "./boardWatcher/tick.js";
+import { emptyWatcherState, prSubject, type WatcherState } from "./boardWatcher/types.js";
 
 /**
  * Runs the board watcher inside the server: a look at the board every 10 minutes in business
  * hours (60 outside), the digest to Teams at the start and end of the day, and an alert when a
  * look fails. Off unless `boardWatcher.json` has `"enabled": true`; only simulation mode exists
- * so far (`boardWatcher/simulation.ts`). State between looks lives in the gitignored
- * `boardWatcher-state.json`.
+ * so far (`boardWatcher/simulation.ts`). With `review.enabled`, PRs due for review get a real
+ * review session (`claudeReviewer.ts`), one at a time after the look, whose findings go through
+ * the same rules but are only recorded. State between looks lives in the gitignored
+ * `boardWatcher-state.json`; every read-modify-write of it goes through `serial`.
  */
 
 const STATE_FILE = path.join(REPO_ROOT, "boardWatcher-state.json");
@@ -41,6 +45,8 @@ export type BoardWatcherStatus = {
   lastDigestAt: string | null;
   lastError: PersistedState["lastError"];
   pausedReason: string | null;
+  reviewing: boolean;
+  pendingReviews: string[];
   lastDecisions: Decision[];
 };
 
@@ -48,6 +54,16 @@ let timer: NodeJS.Timeout | null = null;
 let running = false;
 let lastDecisions: Decision[] = [];
 let lastConfig: BoardWatcherConfig | null = null;
+let reviewing = false;
+let stateChain: Promise<unknown> = Promise.resolve();
+
+/** Runs `fn` after every earlier state change has finished, so looks and reviews don't overwrite
+ *  each other's state. */
+function serial<T>(fn: () => Promise<T>): Promise<T> {
+  const next = stateChain.then(fn, fn);
+  stateChain = next.catch(() => undefined);
+  return next;
+}
 
 async function loadState(): Promise<PersistedState> {
   const raw = await readFile(STATE_FILE, "utf8").catch(() => null);
@@ -120,6 +136,11 @@ async function alertError(state: PersistedState, message: string, now: Date): Pr
 async function look(): Promise<void> {
   if (running) return;
   running = true;
+  await serial(lookLocked);
+  void drainReviews();
+}
+
+async function lookLocked(): Promise<void> {
   const started = Date.now();
   const now = new Date();
   const config = await loadBoardWatcherConfig().catch((err: unknown) => {
@@ -133,8 +154,15 @@ async function look(): Promise<void> {
     if (config.mode !== "simulate") {
       throw new Error(`Mode "${String(config.mode)}" isn't supported yet; use "simulate".`);
     }
+    const onReview = config.review?.enabled
+      ? (pr: WatcherState["pendingReviews"][number]) => {
+          if (!state.pendingReviews.some((p) => prSubject(p) === prSubject(pr))) {
+            state.pendingReviews.push(pr);
+          }
+        }
+      : undefined;
     lastDecisions = await runTick(
-      createSimulationDeps(config, () => new Date()),
+      createSimulationDeps(config, () => new Date(), onReview),
       state,
       config,
       now,
@@ -168,6 +196,69 @@ function schedule(config: BoardWatcherConfig | null): void {
   );
 }
 
+/** Runs the pending review sessions one at a time; each result goes through `applyReview`
+ *  against the simulation providers, so it's recorded, not posted. */
+async function drainReviews(): Promise<void> {
+  if (reviewing) return;
+  reviewing = true;
+  try {
+    for (;;) {
+      const config = await loadBoardWatcherConfig().catch(() => null);
+      const pr = (await loadState()).pendingReviews[0];
+      if (!config?.enabled || !config.review?.enabled || !config.bitbucket || !pr) return;
+      const subject = prSubject(pr);
+      const started = Date.now();
+      let outcome: string;
+      try {
+        const repoPath = config.bitbucket.localRepos?.[pr.repo];
+        if (!repoPath) throw new Error(`No local clone of ${pr.repo} in bitbucket.localRepos.`);
+        const openPrs = await listOpenPullRequests(
+          bitbucketCredentialsFromEnv(config.bitbucket.workspace),
+          [pr.repo],
+        );
+        const output = await runClaudeReview(pr, {
+          repoPath,
+          jiraSite: config.jira?.site,
+          openPrs,
+          model: config.review.model,
+          maxBudgetUsd: config.review.maxBudgetUsd,
+        });
+        await serial(async () => {
+          const state = await loadState();
+          state.pendingReviews = state.pendingReviews.filter((p) => prSubject(p) !== subject);
+          await recordAction({
+            action: "reviewed",
+            subject,
+            title: pr.title,
+            detail: `${output.summary} · Bate com a LED: ${output.ticketMatch} · Confiança: ${output.confidence}`,
+          });
+          await applyReview(
+            pr,
+            output,
+            createSimulationDeps(config, () => new Date()),
+            state,
+            config,
+          );
+          await saveState(state);
+        });
+        outcome = `${output.findings.length} finding(s), ${output.verdict}`;
+      } catch (err) {
+        outcome = err instanceof Error ? err.message : String(err);
+        console.warn(`[board-watcher] Review of ${subject} failed:`, outcome);
+        await serial(async () => {
+          const state = await loadState();
+          state.pendingReviews = state.pendingReviews.filter((p) => prSubject(p) !== subject);
+          await saveState(state);
+        });
+        await recordAction({ action: "review-failed", subject, title: pr.title, detail: outcome });
+      }
+      recordEvent("boardWatcher.review", { subject, outcome, durationMs: Date.now() - started });
+    }
+  } finally {
+    reviewing = false;
+  }
+}
+
 export function startBoardWatcher(): void {
   void look();
 }
@@ -180,9 +271,11 @@ export async function runBoardWatcherNow(): Promise<BoardWatcherStatus> {
 
 /** Clears a pause (e.g. the daily approval cap) so the next look runs. */
 export async function resumeBoardWatcher(): Promise<BoardWatcherStatus> {
-  const state = await loadState();
-  state.pausedReason = null;
-  await saveState(state);
+  await serial(async () => {
+    const state = await loadState();
+    state.pausedReason = null;
+    await saveState(state);
+  });
   return runBoardWatcherNow();
 }
 
@@ -197,6 +290,8 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
     lastDigestAt: state.lastDigestAt,
     lastError: state.lastError,
     pausedReason: state.pausedReason,
+    reviewing,
+    pendingReviews: state.pendingReviews.map(prSubject),
     lastDecisions,
   };
 }

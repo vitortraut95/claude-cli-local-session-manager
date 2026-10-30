@@ -32,6 +32,10 @@ export type PullRequest = {
   reviewers: { id: string; state: ReviewerState }[];
   ci: "passed" | "failed" | "running" | "none";
   hasConflicts: boolean;
+  /** Needed to check the PR out for a real review. */
+  sourceBranch?: string;
+  destinationBranch?: string;
+  sourceHash?: string;
 };
 
 /** Only `blocking` stops the approval; `minor` (style, nitpicks) is never posted. A `product`
@@ -91,6 +95,8 @@ export type WatcherState = {
   testClaims: { day: string; count: number };
   /** Set when a limit trips; nothing runs until the user clears it. */
   pausedReason: string | null;
+  /** PRs waiting for a review session (run one at a time, outside the tick). */
+  pendingReviews: PullRequest[];
 };
 
 export function emptyWatcherState(): WatcherState {
@@ -101,6 +107,7 @@ export function emptyWatcherState(): WatcherState {
     claimedTests: [],
     testClaims: { day: "", count: 0 },
     pausedReason: null,
+    pendingReviews: [],
   };
 }
 
