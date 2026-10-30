@@ -59,7 +59,7 @@ export type AutomationSettingsInput = {
 };
 
 export type WatcherDecisionAction =
-  "enqueue-dev" | "weak-description" | "claim-test" | "review" | "skip" | "wait";
+  "enqueue-dev" | "weak-description" | "claim-test" | "retest" | "review" | "skip" | "wait";
 
 /** What the watcher decided about one ticket (a key) or PR (`repo#id`) on its last look. */
 export type WatcherDecision = {
@@ -72,6 +72,7 @@ export type WatcherDecision = {
 export type WatcherActionKind =
   | "enqueue-dev"
   | "claim-test"
+  | "retest"
   | "queued-test"
   | "review"
   | "reviewed"
@@ -104,7 +105,7 @@ export type HistoryFilter = (typeof HISTORY_FILTERS)[number];
 
 const HISTORY_FILTER_KINDS: Record<Exclude<HistoryFilter, "all">, WatcherActionKind[]> = {
   reviews: ["review", "reviewed", "review-failed", "approve", "comment"],
-  tests: ["claim-test", "tested", "test-failed"],
+  tests: ["claim-test", "retest", "tested", "test-failed"],
   queue: ["enqueue-dev", "queued-test"],
   notices: ["notify"],
 };

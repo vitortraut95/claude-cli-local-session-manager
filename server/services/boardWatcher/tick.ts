@@ -1,6 +1,6 @@
 import { localDay } from "./businessTime.js";
 import type { BoardWatcherConfig } from "./config.js";
-import { decideIssues, decidePullRequests, type Decision } from "./decide.js";
+import { decideIssues, decidePullRequests, decideRetests, type Decision } from "./decide.js";
 import {
   prSubject,
   type PullRequest,
@@ -24,8 +24,11 @@ export async function runTick(
     deps.board.listIssues(),
     deps.codeHost.listPullRequests(),
   ]);
+  const issueDecisions = decideIssues(issues, state, config, now);
+  const claims = issueDecisions.filter((d) => d.action === "claim-test").length;
   const decisions = [
-    ...decideIssues(issues, state, config, now),
+    ...issueDecisions,
+    ...decideRetests(issues, prs, state, config, now, claims),
     ...decidePullRequests(prs, state, config, now, issues),
   ];
   const prsBySubject = new Map(prs.map((pr) => [prSubject(pr), pr]));
@@ -47,6 +50,11 @@ export async function runTick(
         await deps.tasks.enqueue(subject, "test");
         state.handled[`test:${subject}`] = decision.ref ?? "";
         if (!state.claimedTests.includes(subject)) state.claimedTests.push(subject);
+        countTestClaim(state, config, now);
+        break;
+      case "retest":
+        await deps.tasks.enqueue(subject, "retest");
+        state.handled[`retest:${subject}`] = decision.ref ?? "";
         countTestClaim(state, config, now);
         break;
       case "review": {

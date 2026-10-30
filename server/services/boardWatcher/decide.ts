@@ -1,7 +1,12 @@
 import { businessMinutesBetween, isBusinessTime, localDay } from "./businessTime.js";
 import type { BoardWatcherConfig } from "./config.js";
 import { gradeDescription } from "./descriptionGate.js";
-import { testabilityProblem, testPlanStatus } from "./testPlan.js";
+import {
+  isFailedTestReport,
+  isTestReport,
+  testabilityProblem,
+  testPlanStatus,
+} from "./testPlan.js";
 import { prSubject, type BoardIssue, type PullRequest, type WatcherState } from "./types.js";
 
 /**
@@ -11,7 +16,7 @@ import { prSubject, type BoardIssue, type PullRequest, type WatcherState } from 
  */
 
 export type DecisionAction =
-  "enqueue-dev" | "weak-description" | "claim-test" | "review" | "skip" | "wait";
+  "enqueue-dev" | "weak-description" | "claim-test" | "retest" | "review" | "skip" | "wait";
 
 export type Decision = {
   subject: string;
@@ -126,6 +131,64 @@ export function decideIssues(
       action: "claim-test",
       reason: `test plan in comment ${plan.plan.id}`,
       ref: plan.plan.id,
+    });
+  }
+  return decisions;
+}
+
+/**
+ * A ticket stays in Testing while its PR gets fixed: when the user's latest test report on it
+ * failed and one of its PRs got a push after that report, it's tested again (once per push), in
+ * business hours and within the daily claim limit.
+ */
+export function decideRetests(
+  issues: BoardIssue[],
+  prs: PullRequest[],
+  state: WatcherState,
+  config: BoardWatcherConfig,
+  now: Date,
+  /** Claims already decided in this look (`decideIssues`), which count toward the daily limit. */
+  claimedThisLook = 0,
+): Decision[] {
+  if (config.test?.enabled === false) return [];
+  const decisions: Decision[] = [];
+  const businessTime = isBusinessTime(now, config.businessHours);
+  const today = localDay(now, config.businessHours);
+  let claimedToday =
+    (state.testClaims.day === today ? state.testClaims.count : 0) + claimedThisLook;
+  for (const issue of issues) {
+    if (!config.columns.testing.includes(issue.statusId)) continue;
+    const report = issue.comments
+      .filter((c) => isTestReport(c.body))
+      .sort((a, b) => Date.parse(a.created) - Date.parse(b.created))
+      .at(-1);
+    if (report?.authorId !== config.me || !isFailedTestReport(report.body)) continue;
+    const fixPush = prs
+      .filter((pr) => ticketKeysOf(pr).includes(issue.key))
+      .map((pr) => pr.lastPushAt)
+      .filter((at) => Date.parse(at) > Date.parse(report.created))
+      .sort()
+      .at(-1);
+    const subject = issue.key;
+    if (!fixPush) {
+      decisions.push({ subject, action: "wait", reason: "test failed; waiting for a fix push" });
+      continue;
+    }
+    if (state.handled[`retest:${subject}`] === fixPush) continue;
+    if (!businessTime) {
+      decisions.push({ subject, action: "wait", reason: "outside business hours" });
+      continue;
+    }
+    if (claimedToday >= config.maxClaimsPerDay) {
+      decisions.push({ subject, action: "wait", reason: `${claimedToday} tests claimed today` });
+      continue;
+    }
+    claimedToday += 1;
+    decisions.push({
+      subject,
+      action: "retest",
+      reason: `fix pushed after the failed test (${report.id})`,
+      ref: fixPush,
     });
   }
   return decisions;

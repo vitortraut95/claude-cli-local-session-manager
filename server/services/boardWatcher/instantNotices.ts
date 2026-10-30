@@ -179,6 +179,50 @@ export function noticeWatcherError(message: string): void {
   });
 }
 
+/** One of the user's To Do tickets has too weak a description for the dev queue: what's missing
+ *  and, when they could be drafted, the questions to forward to whoever decides. */
+export function noticeWeakDescription(
+  config: BoardWatcherConfig,
+  issue: BoardIssue,
+  missing: string,
+  messages: { to: string; text: string }[],
+): void {
+  enqueue({
+    level: "info",
+    title: `${issue.key} · descrição fraca, não entrou na fila`,
+    summary: messages.length
+      ? `Falta: ${short(missing, 100)}. Perguntas prontas para encaminhar em "Ver detalhes".`
+      : `Falta: ${short(missing, 120)}.`,
+    details: messages.map((m) => ({ heading: `Para ${m.to}`, items: [m.text] })),
+    links: link("Abrir a tarefa", issueUrl(config, issue.key)),
+  });
+}
+
+/** Tests are waiting because the network isn't as they need it (VPN, IPv6). */
+export function noticeTestsNeedNetwork(problem: string): void {
+  const vpn = problem.includes("VPN");
+  const ipv6 = problem.includes("IPv6");
+  enqueue({
+    level: "urgent",
+    title: `Testes esperando: ${[vpn && "VPN desconectada", ipv6 && "IPv6 ligado"].filter(Boolean).join(" e ")}`,
+    summary: "Os testes da fila só começam com a rede pronta; o resto continua rodando.",
+    details: [
+      {
+        heading: "O que fazer",
+        items: [
+          ...(vpn ? ["Conecte a VPN (GlobalProtect)."] : []),
+          ...(ipv6 || vpn
+            ? [
+                "Desative o IPv6 (reconectar a VPN reativa ele): `sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1` e `sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1`",
+              ]
+            : []),
+          "Na próxima olhada (até 10 min) os testes começam sozinhos.",
+        ],
+      },
+    ],
+  });
+}
+
 /** One of the user's sessions stopped to wait for them (an OK to push, a decision, a test plan
  *  to approve). */
 export async function noticeWaitingForYou(

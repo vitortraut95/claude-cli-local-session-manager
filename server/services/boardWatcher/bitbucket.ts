@@ -4,7 +4,7 @@ import type { PullRequest, ReviewFinding, ReviewerState } from "./types.js";
  * Bitbucket Cloud client for the board watcher (REST 2.0, basic auth with an Atlassian API
  * token). The writes (a review comment, an approval) first check the PR is still at the commit
  * that was reviewed. The API doesn't say whether a PR has merge conflicts, so `hasConflicts` is
- * always false here.
+ * false here; `conflicts.ts` fills it in from the local clone.
  */
 
 export type BitbucketCredentials = { workspace: string; email: string; token: string };

@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { REPO_ROOT } from "../../utils/repoRoot.js";
+import type { NetworkRequirements } from "./network.js";
 
 /**
  * Board watcher settings. The board's own ids (account, status ids per column) live in the
@@ -69,12 +70,23 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
     /** Off = Wait Test tickets aren't claimed at all. */
     enabled?: boolean;
     runner?: "queue" | "headless";
+    /** What the network must look like before a test starts (e.g. VPN up, IPv6 off, for
+     *  homolog/preview environments); see `network.ts`. */
+    requires?: NetworkRequirements;
     skill?: string;
     model?: string;
     maxBudgetUsd?: number;
   };
-  /** Real review sessions (`claudeReviewer.ts`); off = reviews are only recorded as due. */
-  review?: { enabled?: boolean; model?: string; maxBudgetUsd?: number };
+  /** Real review sessions (`claudeReviewer.ts`); off = reviews are only recorded as due. A
+   *  small PR (up to `smallPr` changed files and lines) is reviewed with `smallModel` (default
+   *  "sonnet"), the rest with `model` (default: the CLI's). */
+  review?: {
+    enabled?: boolean;
+    model?: string;
+    smallModel?: string;
+    smallPr?: { maxFiles?: number; maxLines?: number };
+    maxBudgetUsd?: number;
+  };
 };
 
 export const DEFAULT_LIMITS: BoardWatcherLimits = {

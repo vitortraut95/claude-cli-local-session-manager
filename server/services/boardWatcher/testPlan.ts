@@ -28,6 +28,13 @@ export function isTestReport(body: string): boolean {
   return TEST_REPORT.some((pattern) => pattern.test(body));
 }
 
+const FAILED_VERDICT = /\b(reprovado|rejected|failed)\b/i;
+
+/** A report whose verdict is a fail ("Resultado: reprovado", "QA: failed"). */
+export function isFailedTestReport(body: string): boolean {
+  return TEST_REPORT.some((pattern) => FAILED_VERDICT.test(pattern.exec(body)?.[0] ?? ""));
+}
+
 export function isTestPlan(body: string): boolean {
   if (isTestReport(body)) return false;
   if (PLAN_HEADING.test(body) && LIST_ITEM.test(body)) return true;

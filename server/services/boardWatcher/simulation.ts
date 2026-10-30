@@ -11,6 +11,7 @@ import {
   listOpenPullRequests,
 } from "./bitbucket.js";
 import type { BoardWatcherConfig } from "./config.js";
+import { markConflicts } from "./conflicts.js";
 import { issueUrl, noticeLiveAction, noticePause, prUrl } from "./instantNotices.js";
 import { jiraCredentialsFromEnv, searchIssues, transitionIssue } from "./jira.js";
 import { prSubject, type BoardIssue, type PullRequest, type WatcherDeps } from "./types.js";
@@ -74,7 +75,9 @@ export function createBoardDeps(
   config: BoardWatcherConfig,
   now: () => Date,
   onReview?: (pr: PullRequest) => void,
-  onTest?: (issue: BoardIssue) => void,
+  onTest?: (issue: BoardIssue, retest: boolean) => void,
+  /** A To Do ticket of the user's newly found with a weak description, and what it lacks. */
+  onWeakDescription?: (issue: BoardIssue, missing: string) => void,
 ): WatcherDeps {
   if (!config.jira || !config.bitbucket) {
     throw new Error('boardWatcher.json needs "jira" and "bitbucket" for simulation mode.');
@@ -118,6 +121,15 @@ export function createBoardDeps(
       listPullRequests: async () => {
         const prs = await listOpenPullRequests(bitbucketCredentials, bitbucket.repos);
         for (const pr of prs) titles.set(prSubject(pr), pr.title);
+        // Only the PRs the user may review: a conflicted one isn't worth a review session.
+        const candidates = prs.filter(
+          (pr) =>
+            pr.authorId !== config.me &&
+            pr.reviewers.some((r) => r.id === config.me && r.state !== "approved"),
+        );
+        await markConflicts(candidates, bitbucket.localRepos ?? {}).catch((err: unknown) =>
+          console.warn("[board-watcher] Couldn't check PR conflicts:", err),
+        );
         return prs;
       },
       comment: async (pr, finding) => {
@@ -155,6 +167,9 @@ export function createBoardDeps(
     notifier: {
       notify: async (level, title, text) => {
         await record({ action: "notify", subject: title, detail: `${level}: ${text}` });
+        const weak = /^Weak description: (\S+)$/.exec(title)?.[1];
+        const weakIssue = weak ? issuesByKey.get(weak) : undefined;
+        if (weakIssue) onWeakDescription?.(weakIssue, text);
         if (level === "urgent") noticePause(title, text);
       },
     },
@@ -193,6 +208,12 @@ export function createBoardDeps(
           }
           return;
         }
+        if (kind === "retest") {
+          // Already in Testing: nothing moves on the board, it only goes back to the test queue.
+          await record({ action: "retest", subject: key });
+          if (issue) onTest?.(issue, true);
+          return;
+        }
         await record({
           action: "claim-test",
           subject: key,
@@ -205,7 +226,7 @@ export function createBoardDeps(
             issueUrl(config, key),
           );
         }
-        if (issue) onTest?.(issue);
+        if (issue) onTest?.(issue, false);
       },
     },
   };
