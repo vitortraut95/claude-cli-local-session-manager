@@ -2,6 +2,7 @@ import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { BoardWatcherStatus } from "../../shared/boardWatcher.js";
 import { recordEvent } from "../utils/history.js";
+import { getTaskStore, onStoreChange, type StoreChange } from "../utils/taskStore.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import { isBusinessTime, localDay } from "./boardWatcher/businessTime.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
@@ -21,6 +22,8 @@ import { buildUrgentCard, postTeamsCard } from "./boardWatcher/teamsCards.js";
 import {
   issueUrl,
   noticeJobFailed,
+  noticeQueueError,
+  noticeWaitingForYou,
   noticeReviewBlocked,
   noticeTestDone,
   prUrl,
@@ -383,7 +386,37 @@ async function runTestJob(
   }
 }
 
+/** The same task's "waiting for you" isn't repeated within this window (statuses can flap). */
+const WAITING_NOTICE_EVERY_MS = 30 * 60_000;
+const lastWaitingNotice = new Map<string, number>();
+
+/** Teams notices for the user's own sessions: one stopped to wait for them, or a queued task
+ *  couldn't launch. Sent as the change happens, while the automation and instant notices are on. */
+async function noticeStoreChange(change: StoreChange): Promise<void> {
+  const config = await loadBoardWatcherConfig().catch(() => null);
+  if (!config?.enabled || config.notifications?.instant === false) return;
+  if (change.kind === "queue-error") {
+    await noticeQueueError(change.key, change.error);
+    return;
+  }
+  if (change.to !== "waiting_user") return;
+  const store = await getTaskStore();
+  const session = change.sessionId ? store.sessions[change.sessionId] : undefined;
+  const key = change.key ?? session?.taskKey ?? session?.test?.key ?? null;
+  const name = session?.nickname ?? (key ? "" : (change.sessionId ?? ""));
+  const id = key ?? change.sessionId ?? "";
+  const last = lastWaitingNotice.get(id) ?? 0;
+  if (Date.now() - last < WAITING_NOTICE_EVERY_MS) return;
+  lastWaitingNotice.set(id, Date.now());
+  await noticeWaitingForYou(key, name);
+}
+
 export function startBoardWatcher(): void {
+  onStoreChange((change) => {
+    void noticeStoreChange(change).catch((err: unknown) =>
+      console.warn("[board-watcher] Couldn't send the notice:", err),
+    );
+  });
   void look();
 }
 
