@@ -108,3 +108,40 @@ export async function noticePause(title: string, text: string): Promise<void> {
     }),
   );
 }
+
+const APP_URL = "http://localhost:58230";
+
+/** One of the user's sessions stopped to wait for them (an OK to push, a decision, a test plan
+ *  to approve). */
+export async function noticeWaitingForYou(key: string | null, name: string): Promise<void> {
+  await send(
+    buildDigestCard({
+      title: `${key ?? name} está esperando você`,
+      subtitle: key && name ? name : undefined,
+      sections: [
+        {
+          heading: "O que fazer",
+          items: [
+            "Abrir a sessão no Session Manager e responder (OK do push, decisão ou aprovação).",
+          ],
+        },
+      ],
+      link: {
+        title: "Abrir no Session Manager",
+        url: `${APP_URL}/?q=${encodeURIComponent(key ?? name)}`,
+      },
+    }),
+  );
+}
+
+/** A queued task couldn't be launched (red in the app's task list). */
+export async function noticeQueueError(key: string, error: string): Promise<void> {
+  await send(
+    buildDigestCard({
+      title: `${key} não conseguiu começar`,
+      subtitle: "Erro ao lançar a tarefa da fila.",
+      sections: [{ heading: "Motivo", items: [error] }],
+      link: { title: "Abrir no Session Manager", url: `${APP_URL}/?q=${encodeURIComponent(key)}` },
+    }),
+  );
+}
