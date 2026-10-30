@@ -65,6 +65,17 @@ const LIMIT_LABELS: Record<keyof AutomationLimits, TranslationKey> = {
   descriptionMinScore: "automation.limit.descriptionMinScore",
 };
 
+const LIMIT_DESCRIPTIONS: Record<keyof AutomationLimits, TranslationKey> = {
+  approveDelayHours: "automation.limit.approveDelayHours.description",
+  waitTestGraceMinutes: "automation.limit.waitTestGraceMinutes.description",
+  maxClaimedTests: "automation.limit.maxClaimedTests.description",
+  maxClaimsPerDay: "automation.limit.maxClaimsPerDay.description",
+  maxApprovesPerDay: "automation.limit.maxApprovesPerDay.description",
+  maxCommentsPerPr: "automation.limit.maxCommentsPerPr.description",
+  maxReviewRounds: "automation.limit.maxReviewRounds.description",
+  descriptionMinScore: "automation.limit.descriptionMinScore.description",
+};
+
 /** Monday first; the values are the server's weekday numbers (0 = Sunday). */
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 
@@ -267,6 +278,7 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
                   <SettingRow
                     key={field}
                     label={t(LIMIT_LABELS[field])}
+                    description={t(LIMIT_DESCRIPTIONS[field])}
                     controlWidth="w-24"
                     control={
                       <Input
