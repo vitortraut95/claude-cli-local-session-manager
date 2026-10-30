@@ -1,0 +1,77 @@
+import axios from "axios";
+import { withServerErrorMessage } from "../utils/apiClient";
+import type {
+  AutomationSettings,
+  AutomationSettingsInput,
+  BoardWatcherStatus,
+  WatcherActionEntry,
+} from "../../shared/boardWatcher";
+export type {
+  AutomationFeatures,
+  AutomationLimits,
+  AutomationSettings,
+  AutomationSettingsInput,
+  BoardWatcherStatus,
+  WatcherActionEntry,
+  WatcherActionKind,
+  WatcherDecision,
+  WatcherDecisionAction,
+} from "../../shared/boardWatcher";
+
+const client = axios.create({
+  baseURL: "/board-watcher",
+});
+
+export async function fetchBoardWatcherStatus(): Promise<BoardWatcherStatus> {
+  const { data } = await withServerErrorMessage(() => client.get<BoardWatcherStatus>("/status"));
+  return data;
+}
+
+/** A look at the board right away, instead of waiting for the next one. */
+export async function runBoardWatcherNow(): Promise<BoardWatcherStatus> {
+  const { data } = await withServerErrorMessage(() => client.post<BoardWatcherStatus>("/run"));
+  return data;
+}
+
+export async function pauseBoardWatcher(): Promise<BoardWatcherStatus> {
+  const { data } = await withServerErrorMessage(() => client.post<BoardWatcherStatus>("/pause"));
+  return data;
+}
+
+export async function resumeBoardWatcher(): Promise<BoardWatcherStatus> {
+  const { data } = await withServerErrorMessage(() => client.post<BoardWatcherStatus>("/resume"));
+  return data;
+}
+
+/** Sends the Teams digest now; doesn't move the scheduled ones. */
+export async function sendBoardWatcherDigestNow(): Promise<void> {
+  await withServerErrorMessage(() => client.post("/digest"));
+}
+
+export async function fetchAutomationSettings(): Promise<AutomationSettings> {
+  const { data } = await withServerErrorMessage(() => client.get<AutomationSettings>("/settings"));
+  return data;
+}
+
+/** Partial update; the server answers with the whole settings as saved. */
+export async function saveAutomationSettings(
+  input: AutomationSettingsInput,
+): Promise<AutomationSettings> {
+  const { data } = await withServerErrorMessage(() =>
+    client.put<AutomationSettings>("/settings", input),
+  );
+  return data;
+}
+
+/** The latest recorded actions, newest first. */
+export async function fetchWatcherActions(limit = 200): Promise<WatcherActionEntry[]> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<WatcherActionEntry[]>("/actions", { params: { limit } }),
+  );
+  return data;
+}
+
+/** URL of one test screenshot (a `files` entry of a `tested` action). */
+export function evidenceUrl(file: string): string {
+  return `/board-watcher/evidence?path=${encodeURIComponent(file)}`;
+}

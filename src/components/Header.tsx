@@ -2,6 +2,7 @@ import {
   Bot,
   Globe,
   History,
+  Kanban,
   LayoutGrid,
   ListTodo,
   MessageSquarePlus,
@@ -9,6 +10,7 @@ import {
   Scale,
   Settings,
   Sparkles,
+  Workflow,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
@@ -18,6 +20,8 @@ import { useToast } from "../hooks/useToast";
 import { useUpdate } from "../hooks/useUpdate";
 import { useUsageLimits } from "../hooks/useUsageLimits";
 import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
+import { AutomationModal } from "./AutomationModal";
+import { BoardWatcherModal } from "./BoardWatcherModal";
 import { Button } from "./Button";
 import { CleanupModal } from "./CleanupModal";
 import { NewSessionModal } from "./NewSessionModal";
@@ -71,6 +75,8 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
   const [showTaskQueueModal, setShowTaskQueueModal] = useState(false);
+  const [showAutomationModal, setShowAutomationModal] = useState(false);
+  const [showBoardModal, setShowBoardModal] = useState(false);
   // The one "bring my open tasks back" button: "Open grid" with the Limux grid layout (brings
   // Limux up too), "Resume open tasks" with tabs.
   const [gridLayout, setGridLayout] = useState(false);
@@ -151,6 +157,8 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
     !showNewSessionModal &&
     !showRefinementModal &&
     !showTaskQueueModal &&
+    !showAutomationModal &&
+    !showBoardModal &&
     !showSkillsModal;
 
   return (
@@ -183,6 +191,20 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
             icon={<ListTodo className="h-4 w-4" />}
           >
             {t("header.taskQueue")}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowAutomationModal(true)}
+            icon={<Workflow className="h-4 w-4" />}
+          >
+            {t("header.automation")}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowBoardModal(true)}
+            icon={<Kanban className="h-4 w-4" />}
+          >
+            {t("header.board")}
           </Button>
           <Tooltip
             content={t(gridLayout ? "header.grid.tooltip" : "sessionsPage.resumeOpen.tooltip")}
@@ -285,6 +307,8 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
         onClose={() => setShowCleanupModal(false)}
         onFindingExecuted={onSessionsChanged}
       />
+      {showAutomationModal && <AutomationModal onClose={() => setShowAutomationModal(false)} />}
+      {showBoardModal && <BoardWatcherModal onClose={() => setShowBoardModal(false)} />}
       {showSkillsModal && <SkillsHubModal onClose={() => setShowSkillsModal(false)} />}
       {showSettings && (
         <SettingsModal
