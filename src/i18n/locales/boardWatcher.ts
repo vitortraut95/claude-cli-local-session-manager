@@ -167,6 +167,27 @@ export const boardWatcher = {
   "board.enabled.off": dict("Off", "Desligado"),
   "board.mode.simulate": dict("Simulation", "Simulação"),
   "board.mode.live": dict("Real actions ({count}/4)", "Ações reais ({count}/4)"),
+  "board.mode.liveOnHold": dict(
+    "Real actions ({count}/4) · on hold",
+    "Ações reais ({count}/4) · em espera",
+  ),
+  "board.offHours.title": dict(
+    "Outside business hours, until {when}",
+    "Fora do horário comercial, até {when}",
+  ),
+  "board.offHours.looks": dict("Looks at the board every hour", "Olha o board de hora em hora"),
+  "board.offHours.notices": dict(
+    "Teams notices (session waiting for you, failures) keep coming",
+    "Avisos no Teams (sessão esperando você, falhas) continuam",
+  ),
+  "board.offHours.devQueue": dict(
+    "Your To Do tasks can still go into the dev queue",
+    "Suas tarefas To Do ainda podem entrar na fila de dev",
+  ),
+  "board.offHours.waiting": dict(
+    "Tests, reviews, comments, approvals and card moves wait; they start again by themselves",
+    "Testes, reviews, comentários, aprovações e mover card esperam; voltam sozinhos",
+  ),
   "board.history.live": dict("real", "real"),
   "board.history.live.title": dict("Done for real", "Feito de verdade"),
   "board.lastLook": dict("Last look", "Última olhada"),

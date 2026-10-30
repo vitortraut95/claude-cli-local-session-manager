@@ -65,3 +65,13 @@ export function businessMinutesBetween(
   }
   return total;
 }
+
+/** When business hours start again after `now` (null when `hours` has no business days). */
+export function nextBusinessStart(now: Date, hours: BusinessHours): Date | null {
+  const minute = 60_000;
+  const first = Math.ceil(now.getTime() / minute) * minute;
+  for (let t = first; t < first + 8 * 24 * 60 * minute; t += minute) {
+    if (isBusinessTime(new Date(t), hours)) return new Date(t);
+  }
+  return null;
+}

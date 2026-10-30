@@ -7,7 +7,7 @@ import { getUserPreferences } from "./preferencesService.js";
 import { getMaxUsagePercent } from "./usageService.js";
 import { findRemoteSessionUrl } from "./session/remoteUrl.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
-import { isBusinessTime, localDay } from "./boardWatcher/businessTime.js";
+import { isBusinessTime, localDay, nextBusinessStart } from "./boardWatcher/businessTime.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
 import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
@@ -228,8 +228,13 @@ async function rotateActionsDaily(now: Date): Promise<void> {
 
 function schedule(config: BoardWatcherConfig | null): void {
   if (timer) clearTimeout(timer);
-  const businessTime = config ? isBusinessTime(new Date(), config.businessHours) : false;
-  const delay = businessTime ? BUSINESS_INTERVAL_MS : OFF_HOURS_INTERVAL_MS;
+  const now = new Date();
+  const businessTime = config ? isBusinessTime(now, config.businessHours) : false;
+  // Off hours, the first look of the day is right when business hours start.
+  const start = config && !businessTime ? nextBusinessStart(now, config.businessHours) : null;
+  const delay = businessTime
+    ? BUSINESS_INTERVAL_MS
+    : Math.min(OFF_HOURS_INTERVAL_MS, start ? start.getTime() - now.getTime() : Infinity);
   nextLookAt = new Date(Date.now() + delay).toISOString();
   timer = setTimeout(() => void look(), delay);
 }
@@ -245,7 +250,12 @@ async function drainJobs(): Promise<void> {
       const config = await loadBoardWatcherConfig().catch(() => null);
       const state = await loadState();
       if (!config?.enabled || !config.bitbucket) return;
-      const pr = config.review?.enabled ? state.pendingReviews[0] : undefined;
+      // A review ends in a comment or an approval, which only happen in business hours: the
+      // session waits for them (queued reviews start with the next look then).
+      const pr =
+        config.review?.enabled && isBusinessTime(new Date(), config.businessHours)
+          ? state.pendingReviews[0]
+          : undefined;
       const test = config.test?.enabled !== false ? state.pendingTests[0] : undefined;
       // A headless test or a review is a Claude session of its own: same plan limit as the queue.
       const headlessTest = test && config.test?.runner === "headless";
@@ -557,6 +567,11 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
   return {
     enabled: Boolean(config?.enabled),
     mode: config?.mode ?? null,
+    businessTime: config ? isBusinessTime(new Date(), config.businessHours) : true,
+    nextBusinessStart:
+      config && !isBusinessTime(new Date(), config.businessHours)
+        ? (nextBusinessStart(new Date(), config.businessHours)?.toISOString() ?? null)
+        : null,
     live: config?.live
       ? (["devQueue", "testClaim", "comments", "approve"] as const).filter((k) => config.live?.[k])
       : [],

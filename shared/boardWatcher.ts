@@ -136,6 +136,10 @@ export type BoardWatcherStatus = {
   mode: string | null;
   /** The writes done for real (the rest is simulated). */
   live: (keyof AutomationLive)[];
+  /** Inside business hours: tests, reviews, comments and approvals only happen then. */
+  businessTime: boolean;
+  /** Outside them, when they start again. */
+  nextBusinessStart: string | null;
   /** A look at the board is running right now. */
   running: boolean;
   /** A review or test session is running right now. */

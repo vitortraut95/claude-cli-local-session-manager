@@ -146,10 +146,12 @@ export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
                 {status.enabled ? t("board.enabled.on") : t("board.enabled.off")}
               </WatcherBadge>
               {status.mode && (
-                <WatcherBadge tone={status.live.length > 0 ? "red" : "blue"}>
-                  {status.live.length > 0
-                    ? t("board.mode.live", { count: status.live.length })
-                    : t("board.mode.simulate")}
+                <WatcherBadge tone={status.live.length > 0 && status.businessTime ? "red" : "blue"}>
+                  {status.live.length === 0
+                    ? t("board.mode.simulate")
+                    : t(status.businessTime ? "board.mode.live" : "board.mode.liveOnHold", {
+                        count: status.live.length,
+                      })}
                 </WatcherBadge>
               )}
             </div>
@@ -197,6 +199,28 @@ export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
               )}
             </div>
 
+            {status.enabled && !status.businessTime && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-200">
+                <p className="font-medium">
+                  {t("board.offHours.title", {
+                    when: status.nextBusinessStart
+                      ? new Date(status.nextBusinessStart).toLocaleString(
+                          language === "pt" ? "pt-BR" : "en-US",
+                          { weekday: "long", hour: "2-digit", minute: "2-digit" },
+                        )
+                      : "—",
+                  })}
+                </p>
+                <ul className="mt-1 list-disc pl-5">
+                  <li>{t("board.offHours.looks")}</li>
+                  <li>{t("board.offHours.notices")}</li>
+                  {settings?.features.devQueue && settings.live.devQueue && (
+                    <li>{t("board.offHours.devQueue")}</li>
+                  )}
+                  <li>{t("board.offHours.waiting")}</li>
+                </ul>
+              </div>
+            )}
             {status.lastError && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
                 <p className="font-medium">
