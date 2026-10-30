@@ -149,3 +149,35 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
     if (!keys.has(key)) recordEvent("queue.removed", { key, launched: Boolean(before.launchedAt) });
   }
 }
+
+/**
+ * Adds a test entry for `key` at the end of the queue unless the key is already there (queued or
+ * launched). For the board watcher, which queues the Wait Test tickets it picks up.
+ */
+export async function addTestEntryIfAbsent(entry: {
+  key: string;
+  link: string | null;
+  repos: string[];
+  branch: string | null;
+}): Promise<boolean> {
+  const queue = await getQueue();
+  if (queue.some((e) => e.key === entry.key)) return false;
+  await saveTaskQueue({
+    entries: [
+      ...queue,
+      {
+        key: entry.key,
+        link: entry.link,
+        kind: "test",
+        repos: entry.repos,
+        noRepo: entry.repos.length === 0,
+        branchPrefix: null,
+        branch: entry.branch,
+        baseBranch: null,
+        useLocalBaseBranch: false,
+        error: null,
+      },
+    ],
+  });
+  return true;
+}

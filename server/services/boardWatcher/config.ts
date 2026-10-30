@@ -53,8 +53,16 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
   /** The team's repos whose open PRs are reviewed; `localRepos` maps each to its local clone,
    *  where review worktrees are made. */
   bitbucket?: { workspace: string; repos: string[]; localRepos?: Record<string, string> };
-  /** Unattended test sessions (`claudeTester.ts`); `skill` is the test skill to run. */
-  test?: { enabled: boolean; skill?: string; model?: string; maxBudgetUsd?: number };
+  /** What happens to a claimed Wait Test ticket: `queue` (default) adds it to the app's task
+   *  queue as a test entry, launched by the scheduler like any other; `headless` runs an
+   *  unattended test session (`claudeTester.ts`, with `skill`). */
+  test?: {
+    enabled: boolean;
+    runner?: "queue" | "headless";
+    skill?: string;
+    model?: string;
+    maxBudgetUsd?: number;
+  };
   /** Real review sessions (`claudeReviewer.ts`); off = reviews are only recorded as due. */
   review?: { enabled: boolean; model?: string; maxBudgetUsd?: number };
 };

@@ -65,6 +65,10 @@ export function buildActionsDigest(
         items: of("claim-test").map((e) => line(e, issueLink)),
       },
       {
+        heading: "Colocou na fila de teste do app",
+        items: of("queued-test").map((e) => `${line(e, issueLink)} — ${short(e.detail, 200)}`),
+      },
+      {
         heading: simulated ? "Testou (sem postar)" : "Testou",
         items: of("tested").map(
           (e) => `${line(e, issueLink)} — ${short(e.detail?.split("\n")[0], 300)}`,
