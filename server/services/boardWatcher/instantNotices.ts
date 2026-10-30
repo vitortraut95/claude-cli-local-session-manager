@@ -109,11 +109,13 @@ export function noticeReviewBlocked(
     });
   enqueue({
     level: "info",
-    title: `${prSubject(pr)} · review: não aprovaria`,
-    summary: `${short(pr.title, 80)} ${SIMULATION}.`,
+    title: `${prSubject(pr)} · review: ${config.live?.approve ? "não aprovou" : "não aprovaria"}`,
+    summary: config.live?.comments
+      ? `${short(pr.title, 80)}. Comentou no PR; o aprove fica com você.`
+      : `${short(pr.title, 80)} ${SIMULATION}.`,
     details: [
       { heading: "Resumo do review", items: [summary] },
-      { heading: "Comentaria", items: posted },
+      { heading: config.live?.comments ? "Comentou" : "Comentaria", items: posted },
     ],
     links: link("Abrir o PR", prUrl(config, pr)),
   });
@@ -135,11 +137,28 @@ export function noticeJobFailed(
   });
 }
 
+/** The watcher paused itself (a limit tripped): nothing runs until resumed in the Board panel. */
 export function noticePause(title: string, text: string): void {
   enqueue({
     level: "urgent",
-    title: `Board watcher · pausaria: ${title}`,
-    summary: `${short(text)} ${SIMULATION}.`,
+    title: `Board watcher · pausou: ${title}`,
+    summary: `${short(text)}. Retome no painel Board do Session Manager.`,
+  });
+}
+
+/** Something done for real (a comment, an approval, a card moved, a task queued), so the user
+ *  sees every visible action as it happens. */
+export function noticeLiveAction(
+  title: string,
+  text: string,
+  url: string | null,
+  level: "urgent" | "info" = "info",
+): void {
+  enqueue({
+    level,
+    title,
+    summary: short(text),
+    links: link(url?.includes("/pull-requests/") ? "Abrir o PR" : "Abrir a tarefa", url),
   });
 }
 

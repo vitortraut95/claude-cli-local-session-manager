@@ -181,3 +181,36 @@ export async function addTestEntryIfAbsent(entry: {
   });
   return true;
 }
+
+/**
+ * Adds a dev entry for `key` at the end of the queue unless the key is already there. For the
+ * board watcher, which queues the user's own To Do tickets; with no repo it waits in the queue
+ * for one to be chosen.
+ */
+export async function addDevEntryIfAbsent(entry: {
+  key: string;
+  link: string | null;
+  repos: string[];
+  branchPrefix: string | null;
+}): Promise<boolean> {
+  const queue = await getQueue();
+  if (queue.some((e) => e.key === entry.key)) return false;
+  await saveTaskQueue({
+    entries: [
+      ...queue,
+      {
+        key: entry.key,
+        link: entry.link,
+        kind: "dev",
+        repos: entry.repos,
+        noRepo: false,
+        branchPrefix: entry.branchPrefix,
+        branch: null,
+        baseBranch: null,
+        useLocalBaseBranch: false,
+        error: null,
+      },
+    ],
+  });
+  return true;
+}

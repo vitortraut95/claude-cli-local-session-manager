@@ -1,9 +1,10 @@
-import type { PullRequest, ReviewerState } from "./types.js";
+import type { PullRequest, ReviewFinding, ReviewerState } from "./types.js";
 
 /**
- * Read-only Bitbucket Cloud client for the board watcher (REST 2.0, basic auth with an Atlassian
- * API token). Only GETs. The API doesn't say whether a PR has merge conflicts, so `hasConflicts`
- * is always false here.
+ * Bitbucket Cloud client for the board watcher (REST 2.0, basic auth with an Atlassian API
+ * token). The writes (a review comment, an approval) first check the PR is still at the commit
+ * that was reviewed. The API doesn't say whether a PR has merge conflicts, so `hasConflicts` is
+ * always false here.
  */
 
 export type BitbucketCredentials = { workspace: string; email: string; token: string };
@@ -45,15 +46,82 @@ export function bitbucketCredentialsFromEnv(workspace: string): BitbucketCredent
   return { workspace, email, token };
 }
 
-async function get<T>(credentials: BitbucketCredentials, url: string): Promise<T> {
+async function request(
+  credentials: BitbucketCredentials,
+  url: string,
+  body?: unknown,
+): Promise<Response> {
   const auth = Buffer.from(`${credentials.email}:${credentials.token}`).toString("base64");
   const response = await fetch(url, {
-    headers: { Authorization: `Basic ${auth}`, Accept: "application/json" },
+    method: body === undefined ? "GET" : "POST",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      Accept: "application/json",
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
     throw new Error(`Bitbucket ${new URL(url).pathname} answered ${response.status}.`);
   }
-  return (await response.json()) as T;
+  return response;
+}
+
+async function get<T>(credentials: BitbucketCredentials, url: string): Promise<T> {
+  return (await (await request(credentials, url)).json()) as T;
+}
+
+function pullRequestUrl(credentials: BitbucketCredentials, pr: PullRequest): string {
+  return `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${pr.repo}/pullrequests/${pr.id}`;
+}
+
+/** Throws when the PR got a new push (or was closed) since `pr` was read: what was reviewed is
+ *  no longer what would be commented on or approved. */
+async function assertUnchanged(credentials: BitbucketCredentials, pr: PullRequest): Promise<void> {
+  const current = await get<{ state?: string; source?: { commit?: { hash?: string } } }>(
+    credentials,
+    `${pullRequestUrl(credentials, pr)}?fields=state,source.commit.hash`,
+  );
+  if (current.state !== "OPEN")
+    throw new Error(`${pr.repo}#${pr.id} is ${current.state ?? "gone"}.`);
+  const hash = current.source?.commit?.hash;
+  if (pr.sourceHash && hash && !pr.sourceHash.startsWith(hash) && !hash.startsWith(pr.sourceHash)) {
+    throw new Error(`${pr.repo}#${pr.id} got a new push since the review.`);
+  }
+}
+
+/** A review finding as a PR comment: inline on its line when it has one, falling back to a
+ *  general comment naming the place (a line outside the diff can't take an inline comment). */
+export async function commentOnPullRequest(
+  credentials: BitbucketCredentials,
+  pr: PullRequest,
+  finding: ReviewFinding,
+): Promise<void> {
+  await assertUnchanged(credentials, pr);
+  const url = `${pullRequestUrl(credentials, pr)}/comments`;
+  if (finding.file && finding.line) {
+    const inline = {
+      content: { raw: finding.body },
+      inline: { path: finding.file, to: finding.line },
+    };
+    const posted = await request(credentials, url, inline).then(
+      () => true,
+      () => false,
+    );
+    if (posted) return;
+  }
+  const where = finding.file
+    ? `\`${finding.file}${finding.line ? `:${finding.line}` : ""}\`: `
+    : "";
+  await request(credentials, url, { content: { raw: `${where}${finding.body}` } });
+}
+
+export async function approvePullRequest(
+  credentials: BitbucketCredentials,
+  pr: PullRequest,
+): Promise<void> {
+  await assertUnchanged(credentials, pr);
+  await request(credentials, `${pullRequestUrl(credentials, pr)}/approve`, {});
 }
 
 function reviewerState(state: string | null | undefined): ReviewerState {

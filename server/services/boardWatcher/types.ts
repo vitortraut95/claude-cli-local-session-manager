@@ -9,6 +9,8 @@ export type IssueComment = { id: string; authorId: string; created: string; body
 export type BoardIssue = {
   key: string;
   summary: string;
+  /** "Story", "Bug"…; picks the branch prefix of a queued dev task. */
+  issueType?: string;
   description: string;
   statusId: string;
   /** When it entered `statusId`. */

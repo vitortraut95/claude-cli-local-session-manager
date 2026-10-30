@@ -9,6 +9,35 @@ export const boardWatcher = {
     "Simulation mode: nothing is posted or moved in Jira/Bitbucket.",
     "Modo simulação: nada é postado nem movido no Jira/Bitbucket.",
   ),
+  "automation.liveOn": dict(
+    'Real actions on: what\'s switched on under "Real actions" happens for real, the rest is only recorded.',
+    'Ações reais ligadas: o que está ligado em "Ações reais" acontece de verdade, o resto só é registrado.',
+  ),
+  "automation.live": dict("Real actions", "Ações reais"),
+  "automation.live.description": dict(
+    "Off = simulation (only recorded). Each one you turn on is done for real and announced on Teams.",
+    "Desligado = simulação (só registra). Cada uma que você ligar é feita de verdade e avisada no Teams.",
+  ),
+  "automation.live.devQueue": dict("Queue my To Do tasks", "Colocar minhas tarefas To Do na fila"),
+  "automation.live.devQueue.description": dict(
+    "Adds them to the app's dev queue (only you see it). With no repo named in the task, it waits for you to pick one.",
+    "Adiciona na fila de dev do app (só você vê). Sem repo citado na tarefa, espera você escolher.",
+  ),
+  "automation.live.testClaim": dict("Move tests to Testing", "Mover testes para Testing"),
+  "automation.live.testClaim.description": dict(
+    "Moves the Wait Test card to Testing in Jira when it takes it (the team sees it).",
+    "Move o card de Wait Test para Testing no Jira quando pega o teste (o time vê).",
+  ),
+  "automation.live.comments": dict("Comment on PRs", "Comentar nos PRs"),
+  "automation.live.comments.description": dict(
+    "Posts the review findings on the PR, in your name (minor ones never).",
+    "Posta os achados do review no PR, no seu nome (os menores nunca).",
+  ),
+  "automation.live.approve": dict("Approve PRs", "Aprovar PRs"),
+  "automation.live.approve.description": dict(
+    "Approves in your name when nothing blocks it. Skipped if the PR got a new push after the review.",
+    "Aprova no seu nome quando nada bloqueia. Não aprova se o PR recebeu push depois do review.",
+  ),
   "automation.notConfigured": dict(
     "Not available yet: the boardWatcher.json file with the board ids is missing. Set it up on the server first.",
     "Ainda não dá pra ligar: falta o arquivo boardWatcher.json com os ids do board. Configure-o no servidor primeiro.",
@@ -137,6 +166,9 @@ export const boardWatcher = {
   "board.enabled.on": dict("On", "Ligado"),
   "board.enabled.off": dict("Off", "Desligado"),
   "board.mode.simulate": dict("Simulation", "Simulação"),
+  "board.mode.live": dict("Real actions ({count}/4)", "Ações reais ({count}/4)"),
+  "board.history.live": dict("real", "real"),
+  "board.history.live.title": dict("Done for real", "Feito de verdade"),
   "board.lastLook": dict("Last look", "Última olhada"),
   "board.nextLook": dict("Next look", "Próxima olhada"),
   "board.never": dict("never", "nunca"),

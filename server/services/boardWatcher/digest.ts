@@ -19,7 +19,6 @@ export function buildActionsDigest(
   entries: ActionEntry[],
   config: BoardWatcherConfig,
   since: Date,
-  simulated: boolean,
 ): Record<string, unknown> {
   const site = config.jira?.site;
   const issueLink = (key: string) => (site ? `[${key}](https://${site}/browse/${key})` : key);
@@ -33,6 +32,15 @@ export function buildActionsDigest(
   const line = (entry: ActionEntry, link: (subject: string) => string) =>
     `${link(entry.subject)} ${entry.title}`.trim();
   const of = (action: ActionEntry["action"]) => entries.filter((e) => e.action === action);
+  // Wording per kind of write: "aprovou" once approvals are real, "aprovaria" while simulated.
+  const live = config.live ?? {};
+  const sim = {
+    devQueue: !live.devQueue && !of("enqueue-dev").some((e) => e.live),
+    testClaim: !live.testClaim && !of("claim-test").some((e) => e.live),
+    comments: !live.comments && !of("comment").some((e) => e.live),
+    approve: !live.approve && !of("approve").some((e) => e.live),
+  };
+  const simulated = Object.values(sim).every(Boolean);
   const weak = of("notify").filter((e) => e.subject.startsWith("Weak description: "));
   const notApproved = of("notify").filter((e) => e.subject.startsWith("Not approved: "));
   const urgent = of("notify").filter((e) => e.detail?.startsWith("urgent: "));
@@ -51,8 +59,8 @@ export function buildActionsDigest(
     [count("enqueue-dev"), "na fila de dev"],
     [count("claim-test") + count("queued-test"), "testes pegos"],
     [count("reviewed"), "revisados"],
-    [count("approve"), simulated ? "aprovaria" : "aprovados"],
-    [notApproved.length, simulated ? "não aprovaria" : "não aprovados"],
+    [count("approve"), sim.approve ? "aprovaria" : "aprovados"],
+    [notApproved.length, sim.approve ? "não aprovaria" : "não aprovados"],
     [count("review-failed") + count("test-failed"), "falhas"],
   ]
     .filter(([n]) => Number(n) > 0)
@@ -61,7 +69,7 @@ export function buildActionsDigest(
   const attention = [
     ...notApproved.map(
       (e) =>
-        `${prLink(e.subject.replace("Not approved: ", ""))} ${simulated ? "não aprovaria" : "não aprovado"}`,
+        `${prLink(e.subject.replace("Not approved: ", ""))} ${sim.approve ? "não aprovaria" : "não aprovado"}`,
     ),
     ...[...of("review-failed"), ...of("test-failed")].map(
       (e) =>
@@ -76,7 +84,7 @@ export function buildActionsDigest(
   }
   const sections: CardSection[] = [
     {
-      heading: simulated ? "Entraria na fila para desenvolver" : "Entrou na fila",
+      heading: sim.devQueue ? "Entraria na fila para desenvolver" : "Entrou na fila de dev",
       items: of("enqueue-dev").map((e) => line(e, issueLink)),
     },
     {
@@ -88,7 +96,7 @@ export function buildActionsDigest(
       }),
     },
     {
-      heading: simulated ? "Pegaria para testar" : "Pegou para testar",
+      heading: sim.testClaim ? "Pegaria para testar" : "Moveu para Testing",
       items: of("claim-test").map((e) => line(e, issueLink)),
     },
     {
@@ -112,19 +120,19 @@ export function buildActionsDigest(
         .map((e) => line(e, prLink)),
     },
     {
-      heading: simulated ? "Revisou (sem postar)" : "Revisou",
+      heading: sim.comments ? "Revisou (sem postar)" : "Revisou",
       items: of("reviewed").map((e) => `${line(e, prLink)} — ${short(e.detail, 300)}`),
     },
     {
-      heading: simulated ? "Comentaria" : "Comentou",
+      heading: sim.comments ? "Comentaria" : "Comentou",
       items: of("comment").map((e) => `${prLink(e.subject)}: ${shortPath(e.detail)}`),
     },
     {
-      heading: simulated ? "Aprovaria" : "Aprovou",
+      heading: sim.approve ? "Aprovaria" : "Aprovou",
       items: of("approve").map((e) => line(e, prLink)),
     },
     {
-      heading: simulated ? "Não aprovaria" : "Não aprovou",
+      heading: sim.approve ? "Não aprovaria" : "Não aprovou",
       items: notApproved.map((e) => prLink(e.subject.replace("Not approved: ", ""))),
     },
     {
@@ -132,7 +140,7 @@ export function buildActionsDigest(
       items: of("review-failed").map((e) => `${prLink(e.subject)}: ${short(e.detail, 200)}`),
     },
     {
-      heading: simulated ? "Pausaria" : "Pausou",
+      heading: "Pausou",
       items: urgent.map((e) => `${e.subject}: ${(e.detail ?? "").replace(/^urgent: /, "")}`),
     },
   ];

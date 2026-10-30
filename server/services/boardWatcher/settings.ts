@@ -2,6 +2,7 @@ import { readFile, rename, writeFile } from "node:fs/promises";
 import type {
   AutomationFeatures,
   AutomationLimits,
+  AutomationLive,
   AutomationSettings,
   AutomationSettingsInput,
 } from "../../../shared/boardWatcher.js";
@@ -53,6 +54,12 @@ export async function getAutomationSettings(): Promise<AutomationSettings> {
       instantNotices: config?.notifications?.instant !== false,
       digest: config?.notifications?.digest !== false,
     },
+    live: {
+      devQueue: config?.live?.devQueue === true,
+      testClaim: config?.live?.testClaim === true,
+      comments: config?.live?.comments === true,
+      approve: config?.live?.approve === true,
+    },
     limits,
     businessHours: {
       start: hours.start,
@@ -83,6 +90,8 @@ const FEATURE_KEYS: Record<keyof AutomationFeatures, [string, string]> = {
   digest: ["notifications", "digest"],
 };
 
+const LIVE_KEYS: (keyof AutomationLive)[] = ["devQueue", "testClaim", "comments", "approve"];
+
 export async function saveAutomationSettings(body: unknown): Promise<AutomationSettings> {
   const text = await readFile(BOARD_WATCHER_CONFIG_FILE, "utf8").catch(() => null);
   if (text === null) {
@@ -104,6 +113,12 @@ export async function saveAutomationSettings(body: unknown): Promise<AutomationS
       throw new BadRequestError("BAD_SETTING", `"${feature}" isn't an automation switch.`);
     }
     section(raw, target[0])[target[1]] = value;
+  }
+  for (const [action, value] of Object.entries(input.live ?? {})) {
+    if (!LIVE_KEYS.includes(action as keyof AutomationLive) || typeof value !== "boolean") {
+      throw new BadRequestError("BAD_SETTING", `"${action}" isn't a real-action switch.`);
+    }
+    section(raw, "live")[action] = value;
   }
   for (const [limit, value] of Object.entries(input.limits ?? {})) {
     const range = LIMIT_RANGES[limit as keyof AutomationLimits];

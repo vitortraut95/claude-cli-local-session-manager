@@ -21,7 +21,7 @@ import {
   TESTS_DIR,
   type TestOutput,
 } from "./boardWatcher/claudeTester.js";
-import { createSimulationDeps, readActions, recordAction } from "./boardWatcher/simulation.js";
+import { createBoardDeps, readActions, recordAction } from "./boardWatcher/simulation.js";
 import { postTeamsCard } from "./boardWatcher/teamsCards.js";
 import {
   issueUrl,
@@ -41,10 +41,11 @@ import { emptyWatcherState, prSubject, type WatcherState } from "./boardWatcher/
 /**
  * Runs the board watcher inside the server: a look at the board every 10 minutes in business
  * hours (60 outside), the digest to Teams at the start and end of the day, and an alert when a
- * look fails. Off unless `boardWatcher.json` has `"enabled": true`; only simulation mode exists
- * so far (`boardWatcher/simulation.ts`). With `review.enabled`, PRs due for review get a real
- * review session (`claudeReviewer.ts`), one at a time after the look, whose findings go through
- * the same rules but are only recorded. State between looks lives in the gitignored
+ * look fails. Off unless `boardWatcher.json` has `"enabled": true`. Each write (queue a task, move
+ * a card, comment, approve) is only recorded unless its switch in `live` is on
+ * (`boardWatcher/simulation.ts`). With `review.enabled`, PRs due for review get a real review
+ * session (`claudeReviewer.ts`), one at a time after the look, whose findings go through the
+ * same rules. State between looks lives in the gitignored
  * `boardWatcher-state.json`; every read-modify-write of it goes through `serial`.
  */
 
@@ -127,7 +128,7 @@ async function sendDigestIfDue(
     ? new Date(state.lastDigestAt)
     : new Date(now.getTime() - 24 * 60 * 60_000);
   const entries = await readActions(since);
-  await postTeamsCard(webhook, buildActionsDigest(entries, config, since, true));
+  await postTeamsCard(webhook, buildActionsDigest(entries, config, since));
   state.lastDigestAt = now.toISOString();
   recordEvent("boardWatcher.digest", { entries: entries.length });
 }
@@ -160,9 +161,6 @@ async function lookLocked(): Promise<void> {
   const state = await loadState();
   try {
     if (!config?.enabled) return;
-    if (config.mode !== "simulate") {
-      throw new Error(`Mode "${String(config.mode)}" isn't supported yet; use "simulate".`);
-    }
     const onReview = config.review?.enabled
       ? (pr: WatcherState["pendingReviews"][number]) => {
           if (!state.pendingReviews.some((p) => prSubject(p) === prSubject(pr))) {
@@ -181,7 +179,7 @@ async function lookLocked(): Promise<void> {
           }
         : undefined;
     lastDecisions = await runTick(
-      createSimulationDeps(config, () => new Date(), onReview, onTest),
+      createBoardDeps(config, () => new Date(), onReview, onTest),
       state,
       config,
       now,
@@ -215,8 +213,8 @@ function schedule(config: BoardWatcherConfig | null): void {
 }
 
 /** Runs the pending review and test sessions one at a time (reviews first: they're quick). A
- *  review's result goes through `applyReview` against the simulation providers, so it's recorded,
- *  not posted; a test's verdict and report are recorded with what would be done with them. */
+ *  review's result goes through `applyReview`, so it's posted or only recorded per `live`; a
+ *  test's verdict and report are recorded with what would be done with them. */
 async function drainJobs(): Promise<void> {
   if (reviewing) return;
   reviewing = true;
@@ -275,7 +273,7 @@ async function drainJobs(): Promise<void> {
           await applyReview(
             pr,
             output,
-            createSimulationDeps(config, () => new Date()),
+            createBoardDeps(config, () => new Date()),
             state,
             config,
           );
@@ -491,6 +489,9 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
   return {
     enabled: Boolean(config?.enabled),
     mode: config?.mode ?? null,
+    live: config?.live
+      ? (["devQueue", "testClaim", "comments", "approve"] as const).filter((k) => config.live?.[k])
+      : [],
     running,
     lastTickAt: state.lastTickAt,
     lastDigestAt: state.lastDigestAt,
@@ -521,5 +522,5 @@ export async function sendBoardWatcherDigestNow(): Promise<void> {
   const since = state.lastDigestAt
     ? new Date(state.lastDigestAt)
     : new Date(`${localDay(now, config.businessHours)}T00:00:00`);
-  await postTeamsCard(webhook, buildActionsDigest(await readActions(since), config, since, true));
+  await postTeamsCard(webhook, buildActionsDigest(await readActions(since), config, since));
 }

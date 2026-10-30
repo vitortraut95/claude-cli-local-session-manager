@@ -6,6 +6,7 @@ import * as boardWatcherApi from "../services/boardWatcherApi";
 import type {
   AutomationFeatures,
   AutomationLimits,
+  AutomationLive,
   AutomationSettings,
   AutomationSettingsInput,
 } from "../services/boardWatcherApi";
@@ -54,6 +55,33 @@ const FEATURE_ROWS: FeatureRow[] = [
   },
 ];
 
+const LIVE_ROWS: {
+  key: keyof AutomationLive;
+  label: TranslationKey;
+  description: TranslationKey;
+}[] = [
+  {
+    key: "devQueue",
+    label: "automation.live.devQueue",
+    description: "automation.live.devQueue.description",
+  },
+  {
+    key: "testClaim",
+    label: "automation.live.testClaim",
+    description: "automation.live.testClaim.description",
+  },
+  {
+    key: "comments",
+    label: "automation.live.comments",
+    description: "automation.live.comments.description",
+  },
+  {
+    key: "approve",
+    label: "automation.live.approve",
+    description: "automation.live.approve.description",
+  },
+];
+
 const LIMIT_LABELS: Record<keyof AutomationLimits, TranslationKey> = {
   approveDelayHours: "automation.limit.approveDelayHours",
   waitTestGraceMinutes: "automation.limit.waitTestGraceMinutes",
@@ -88,6 +116,7 @@ function applyInput(
     ...current,
     enabled: input.enabled ?? current.enabled,
     features: { ...current.features, ...input.features },
+    live: { ...current.live, ...input.live },
     limits: { ...current.limits, ...input.limits },
     businessHours: { ...current.businessHours, ...input.businessHours },
   };
@@ -199,6 +228,7 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
 
   const features = settings?.features;
   const codeReviewOn = features?.codeReview ?? false;
+  const anyLive = settings ? Object.values(settings.live).some(Boolean) : false;
 
   return (
     <Modal open title={t("automation.title")} onClose={onClose} size="xxl">
@@ -207,7 +237,7 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
       {settings && (
         <div className="flex flex-col gap-6">
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
-            {t("automation.simulation")}
+            {t(anyLive ? "automation.liveOn" : "automation.simulation")}
           </p>
 
           {!settings.configured ? (
@@ -272,6 +302,31 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
                         </div>
                       );
                     })}
+                  </section>
+                  <section className="flex flex-col gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {t("automation.live")}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {t("automation.live.description")}
+                      </p>
+                    </div>
+                    {LIVE_ROWS.map((row) => (
+                      <div key={row.key} className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-900 dark:text-gray-100">{t(row.label)}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {t(row.description)}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={settings.live[row.key]}
+                          label={t(row.label)}
+                          onChange={(value) => void save({ live: { [row.key]: value } })}
+                        />
+                      </div>
+                    ))}
                   </section>
                   <section className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">

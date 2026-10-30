@@ -16,6 +16,18 @@ export type AutomationFeatures = {
   digest: boolean;
 };
 
+/** Which writes are done for real; off = only recorded (simulation). All start off. */
+export type AutomationLive = {
+  /** My To Do tickets go into the app's task queue. */
+  devQueue: boolean;
+  /** A claimed Wait Test ticket is moved to Testing in Jira. */
+  testClaim: boolean;
+  /** Review findings are posted on the PR. */
+  comments: boolean;
+  /** A clean review approves the PR. */
+  approve: boolean;
+};
+
 export type AutomationLimits = {
   approveDelayHours: number;
   waitTestGraceMinutes: number;
@@ -33,6 +45,7 @@ export type AutomationSettings = {
   enabled: boolean;
   mode: "simulate";
   features: AutomationFeatures;
+  live: AutomationLive;
   limits: AutomationLimits;
   businessHours: { start: string; end: string; days: number[]; timezone: string };
 };
@@ -40,6 +53,7 @@ export type AutomationSettings = {
 export type AutomationSettingsInput = {
   enabled?: boolean;
   features?: Partial<AutomationFeatures>;
+  live?: Partial<AutomationLive>;
   limits?: Partial<AutomationLimits>;
   businessHours?: Partial<Pick<AutomationSettings["businessHours"], "start" | "end" | "days">>;
 };
@@ -75,6 +89,8 @@ export type WatcherActionEntry = {
   subject: string;
   title: string;
   detail?: string;
+  /** Done for real (Jira, Bitbucket, the task queue); absent = only recorded (simulation). */
+  live?: boolean;
   /** A test's screenshots, relative to `boardWatcher-tests/` (served by `GET /evidence`). */
   files?: string[];
   /** A review/test session's cost as the CLI reports it (an API-price estimate on a plan) and
@@ -86,6 +102,8 @@ export type WatcherActionEntry = {
 export type BoardWatcherStatus = {
   enabled: boolean;
   mode: string | null;
+  /** The writes done for real (the rest is simulated). */
+  live: (keyof AutomationLive)[];
   /** A look at the board is running right now. */
   running: boolean;
   /** A review or test session is running right now. */

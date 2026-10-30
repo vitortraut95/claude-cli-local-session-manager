@@ -55,7 +55,7 @@ export async function runTick(
         // Checked before reviewing so a review isn't spent on a PR that can't be approved today.
         if (await pauseAtApprovalCap(deps, state, config, now)) break;
         const result = await deps.reviewer.review(pr);
-        if (result) await applyReview(pr, result, deps, state, config);
+        if (result) await applyReview(pr, result, deps, state, config, now);
         else state.handled[`review:${subject}`] = pr.lastPushAt;
         break;
       }
@@ -97,6 +97,7 @@ export async function applyReview(
   deps: WatcherDeps,
   state: WatcherState,
   config: BoardWatcherConfig,
+  now = new Date(),
 ): Promise<void> {
   const subject = prSubject(pr);
   const relevant = result.findings.filter((f) => f.severity !== "minor" && f.topic !== "product");
@@ -124,6 +125,18 @@ export async function applyReview(
     return;
   }
 
+  // Reviews queued before the cap was reached still finish; they just don't approve past it.
+  const day = localDay(now, config.businessHours);
+  if (state.approvals.day !== day) state.approvals = { day, count: 0 };
+  if (state.approvals.count >= config.maxApprovesPerDay) {
+    state.handled[`review:${subject}`] = pr.lastPushAt;
+    await deps.notifier.notify(
+      "digest",
+      `Not approved: ${subject}`,
+      `Daily approval cap (${config.maxApprovesPerDay}) reached.`,
+    );
+    return;
+  }
   await deps.codeHost.approve(pr);
   state.approvals.count += 1;
   state.handled[`review:${subject}`] = pr.lastPushAt;
