@@ -50,15 +50,17 @@ export function localDay(date: Date, hours: BusinessHours): string {
   return localParts(date, hours.timezone).day;
 }
 
-/** Business minutes in [from, to), in 5-minute steps; stops counting once `cap` is reached. */
+/** Business minutes in [from, to), in whole 5-minute steps (a partial last step doesn't count,
+ *  so a wait is never reached early); stops counting once `cap` is reached. */
 export function businessMinutesBetween(
   from: Date,
   to: Date,
   hours: BusinessHours,
   cap = Infinity,
 ): number {
+  const step = STEP_MINUTES * 60_000;
   let total = 0;
-  for (let t = from.getTime(); t < to.getTime() && total < cap; t += STEP_MINUTES * 60_000) {
+  for (let t = from.getTime(); t + step <= to.getTime() && total < cap; t += step) {
     if (isBusinessTime(new Date(t), hours)) total += STEP_MINUTES;
   }
   return total;
