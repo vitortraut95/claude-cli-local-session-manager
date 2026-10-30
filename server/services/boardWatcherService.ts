@@ -8,8 +8,10 @@ import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
 import { bitbucketCredentialsFromEnv, listOpenPullRequests } from "./boardWatcher/bitbucket.js";
 import { runClaudeReview } from "./boardWatcher/claudeReviewer.js";
+import { runClaudeTest, type TestOutput } from "./boardWatcher/claudeTester.js";
 import { createSimulationDeps, readActions, recordAction } from "./boardWatcher/simulation.js";
 import { buildUrgentCard, postTeamsCard } from "./boardWatcher/teamsCards.js";
+import { testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
 import { emptyWatcherState, prSubject, type WatcherState } from "./boardWatcher/types.js";
 
@@ -47,6 +49,7 @@ export type BoardWatcherStatus = {
   pausedReason: string | null;
   reviewing: boolean;
   pendingReviews: string[];
+  pendingTests: string[];
   lastDecisions: Decision[];
 };
 
@@ -137,7 +140,7 @@ async function look(): Promise<void> {
   if (running) return;
   running = true;
   await serial(lookLocked);
-  void drainReviews();
+  void drainJobs();
 }
 
 async function lookLocked(): Promise<void> {
@@ -161,8 +164,17 @@ async function lookLocked(): Promise<void> {
           }
         }
       : undefined;
+    const onTest = config.test?.enabled
+      ? (issue: WatcherState["pendingTests"][number]["issue"]) => {
+          const plan = testPlanStatus(issue.comments);
+          if (plan.state !== "pending") return;
+          if (!state.pendingTests.some((t) => t.issue.key === issue.key)) {
+            state.pendingTests.push({ issue, planId: plan.plan.id });
+          }
+        }
+      : undefined;
     lastDecisions = await runTick(
-      createSimulationDeps(config, () => new Date(), onReview),
+      createSimulationDeps(config, () => new Date(), onReview, onTest),
       state,
       config,
       now,
@@ -196,16 +208,24 @@ function schedule(config: BoardWatcherConfig | null): void {
   );
 }
 
-/** Runs the pending review sessions one at a time; each result goes through `applyReview`
- *  against the simulation providers, so it's recorded, not posted. */
-async function drainReviews(): Promise<void> {
+/** Runs the pending review and test sessions one at a time (reviews first: they're quick). A
+ *  review's result goes through `applyReview` against the simulation providers, so it's recorded,
+ *  not posted; a test's verdict and report are recorded with what would be done with them. */
+async function drainJobs(): Promise<void> {
   if (reviewing) return;
   reviewing = true;
   try {
     for (;;) {
       const config = await loadBoardWatcherConfig().catch(() => null);
-      const pr = (await loadState()).pendingReviews[0];
-      if (!config?.enabled || !config.review?.enabled || !config.bitbucket || !pr) return;
+      const state = await loadState();
+      if (!config?.enabled || !config.bitbucket) return;
+      const pr = config.review?.enabled ? state.pendingReviews[0] : undefined;
+      const test = config.test?.enabled ? state.pendingTests[0] : undefined;
+      if (!pr) {
+        if (!test) return;
+        await runTestJob(test, config);
+        continue;
+      }
       const subject = prSubject(pr);
       const started = Date.now();
       let outcome: string;
@@ -220,8 +240,8 @@ async function drainReviews(): Promise<void> {
           repoPath,
           jiraSite: config.jira?.site,
           openPrs,
-          model: config.review.model,
-          maxBudgetUsd: config.review.maxBudgetUsd,
+          model: config.review?.model,
+          maxBudgetUsd: config.review?.maxBudgetUsd,
         });
         await serial(async () => {
           const state = await loadState();
@@ -259,6 +279,60 @@ async function drainReviews(): Promise<void> {
   }
 }
 
+const VERDICT_PT: Record<TestOutput["verdict"], string> = {
+  approved: "aprovaria",
+  "approved-with-notes": "aprovaria com ressalvas",
+  failed: "reprovaria",
+  blocked: "não conseguiu testar",
+};
+
+async function runTestJob(
+  job: WatcherState["pendingTests"][number],
+  config: BoardWatcherConfig,
+): Promise<void> {
+  const { issue, planId } = job;
+  const started = Date.now();
+  let outcome: string;
+  try {
+    const plan = issue.comments.find((c) => c.id === planId);
+    if (!plan) throw new Error(`Plan comment ${planId} is gone.`);
+    const output = await runClaudeTest(issue, plan, {
+      localRepos: config.bitbucket?.localRepos ?? {},
+      skill: config.test?.skill,
+      model: config.test?.model,
+      maxBudgetUsd: config.test?.maxBudgetUsd,
+    });
+    const next =
+      output.verdict === "failed"
+        ? "comentaria o relatório e te avisaria"
+        : output.verdict === "blocked"
+          ? `te avisaria: ${output.blockedBy ?? "sem motivo"}`
+          : "comentaria o relatório e moveria para PO Validation";
+    await recordAction({
+      action: "tested",
+      subject: issue.key,
+      title: issue.summary,
+      detail: `${VERDICT_PT[output.verdict]}, ${next}. ${output.evidence.length} prints em ${output.evidenceDir}\n${output.report}`,
+    });
+    outcome = output.verdict;
+  } catch (err) {
+    outcome = err instanceof Error ? err.message : String(err);
+    console.warn(`[board-watcher] Test of ${issue.key} failed:`, outcome);
+    await recordAction({
+      action: "test-failed",
+      subject: issue.key,
+      title: issue.summary,
+      detail: outcome,
+    });
+  }
+  await serial(async () => {
+    const state = await loadState();
+    state.pendingTests = state.pendingTests.filter((t) => t.issue.key !== issue.key);
+    await saveState(state);
+  });
+  recordEvent("boardWatcher.test", { key: issue.key, outcome, durationMs: Date.now() - started });
+}
+
 export function startBoardWatcher(): void {
   void look();
 }
@@ -292,6 +366,7 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
     pausedReason: state.pausedReason,
     reviewing,
     pendingReviews: state.pendingReviews.map(prSubject),
+    pendingTests: state.pendingTests.map((t) => t.issue.key),
     lastDecisions,
   };
 }
