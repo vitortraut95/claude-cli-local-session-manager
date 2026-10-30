@@ -122,7 +122,7 @@ Look for correctness bugs, edge cases (null/undefined, empty lists, missing coun
 
 Severity: blocking = a real bug, security issue or regression that should stop the merge; major = worth fixing but not a blocker; minor = style/nitpicks (never posted).
 Topic: code = about the code; product = a question for PO/design/content (prices to confirm, copy, Figma parity). Product findings never block and are not posted.
-Changes that belong to another ticket (extra commits or scope the ticket doesn't mention) are topic code, severity major: say what's extra and suggest splitting it out or naming it in the PR title/description.
+A PR may bundle more than one ticket (the team sometimes does one along with another): never flag scope, extra commits or tickets missing from the title, but review all of its code the same way.
 
 Write each finding's body in Portuguese (pt-BR), short, in a suggestion tone, exactly as it would be posted as an inline comment to a colleague. summary/ticketMatch/confidence in pt-BR too. verdict: approve, comment-and-approve or do-not-approve (only with a blocking code finding).`;
 }

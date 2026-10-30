@@ -81,7 +81,8 @@ gets the diff against the merge-base, the ticket with its comments, and the othe
 touch the same files or tickets (a simulation flagged a "bug" that a sibling PR already handled).
 Each finding comes back with severity, file, line and `topic`: questions for PO/design/content
 (copy, prices, Figma parity) are `product` and are never posted; they stay in the actions log.
-Changes from another ticket riding along in the PR are a `code` finding (major), so they're posted.
+A PR bundling more than one ticket is normal for the team: scope is never flagged, but all of its
+code is reviewed.
 Reviews run one at a time after a look, with a cost cap per review (`review.maxBudgetUsd`); the
 local clone of each repo comes from `bitbucket.localRepos`.
 
