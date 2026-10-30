@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { runGit, tryGit } from "../../utils/git.js";
 import { REPO_ROOT } from "../../utils/repoRoot.js";
 import { sanitizedSpawnEnv } from "../../utils/spawnEnv.js";
+import { lessonsSection } from "./feedback.js";
 import { isTestReport } from "./testPlan.js";
 import type { BoardIssue, IssueComment } from "./types.js";
 
@@ -43,6 +44,8 @@ export type TestOutput = {
 };
 
 export type TestContext = {
+  /** The user's notes on earlier tests (`feedback.ts`), added to the prompt. */
+  lessons?: string[];
   /** Local clone per repo name. */
   localRepos: Record<string, string>;
   skill?: string;
@@ -228,7 +231,8 @@ export async function runClaudeTest(
   for (const name of CREDENTIAL_VARS) delete env[name];
   const args = [
     "-p",
-    buildPrompt(issue, comments, plan, branches, context.skill),
+    buildPrompt(issue, comments, plan, branches, context.skill) +
+      lessonsSection(context.lessons ?? []),
     "--chrome",
     "--strict-mcp-config",
     "--output-format",

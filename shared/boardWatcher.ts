@@ -103,5 +103,33 @@ export type BoardWatcherStatus = {
   today: { reviews: number; tests: number; durationMs: number; costUsd: number };
   /** Why pending reviews/tests aren't starting (e.g. the plan's usage limit), or null. */
   jobsBlockedBy: string | null;
+  scoreboard: WatcherScoreboard;
   lastDecisions: WatcherDecision[];
 };
+
+/** The user's verdict on something the watcher did (a history entry), for calibration. */
+export type WatcherFeedback = {
+  /** Identifies the history entry: its `ts`, `action` and `subject`. */
+  entryKey: string;
+  action: WatcherActionKind;
+  subject: string;
+  verdict: "up" | "down";
+  /** Why, in the user's words; a "down" with a note becomes a lesson for the next sessions. */
+  note?: string;
+  ts: string;
+};
+
+export type FeedbackScore = { up: number; down: number };
+
+/** Hit rate of the last `days`: reviews (verdicts and comments), tests, and the rest (queueing,
+ *  claims, notices). */
+export type WatcherScoreboard = {
+  days: number;
+  reviews: FeedbackScore;
+  tests: FeedbackScore;
+  decisions: FeedbackScore;
+};
+
+export function feedbackEntryKey(entry: Pick<WatcherActionEntry, "ts" | "action" | "subject">) {
+  return `${entry.ts}|${entry.action}|${entry.subject}`;
+}

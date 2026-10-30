@@ -3,6 +3,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { forceRemoveWorktree, runGit } from "../../utils/git.js";
 import { sanitizedSpawnEnv } from "../../utils/spawnEnv.js";
+import { lessonsSection } from "./feedback.js";
 import { jiraCredentialsFromEnv, searchIssues } from "./jira.js";
 import { prSubject, type PullRequest, type ReviewFinding, type ReviewResult } from "./types.js";
 
@@ -34,6 +35,8 @@ export type ReviewContext = {
   openPrs: PullRequest[];
   model?: string;
   maxBudgetUsd?: number;
+  /** The user's notes on earlier reviews (`feedback.ts`), added to the prompt. */
+  lessons?: string[];
 };
 
 const OUTPUT_SCHEMA = {
@@ -177,12 +180,9 @@ export async function runClaudeReview(
       ({ pr: other, files: shared }) => shared.length > 0 || (key && ticketKeyOf(other) === key),
     );
 
-    const prompt = buildPrompt(
-      pr,
-      base,
-      await ticketContext(context.jiraSite, key),
-      relatedWithFiles,
-    );
+    const prompt =
+      buildPrompt(pr, base, await ticketContext(context.jiraSite, key), relatedWithFiles) +
+      lessonsSection(context.lessons ?? []);
     const args = [
       "-p",
       prompt,

@@ -5,6 +5,7 @@ import {
   getAutomationSettings,
   saveAutomationSettings,
 } from "../services/boardWatcher/settings.js";
+import { listFeedback, saveFeedback } from "../services/boardWatcher/feedback.js";
 import { readActions } from "../services/boardWatcher/simulation.js";
 import { BadRequestError, NotFoundError } from "../utils/httpError.js";
 import {
@@ -70,4 +71,13 @@ boardWatcherRouter.get("/evidence", (req, res) => {
   res.sendFile(resolved, (err) => {
     if (err && !res.headersSent) res.status(404).json({ error: "Evidence not found." });
   });
+});
+
+/** The user's 👍/👎 per history entry (`entryKey` → latest verdict). */
+boardWatcherRouter.get("/feedback", async (_req, res) => {
+  res.json(await listFeedback());
+});
+
+boardWatcherRouter.post("/feedback", async (req, res) => {
+  res.json(await saveFeedback(req.body));
 });

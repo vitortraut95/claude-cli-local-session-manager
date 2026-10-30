@@ -58,3 +58,4 @@ claude-session-manager.desktop
 /boardWatcher-state.json.tmp
 /boardWatcher-actions.jsonl
 /boardWatcher-tests/
+/boardWatcher-feedback.jsonl

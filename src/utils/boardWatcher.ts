@@ -113,3 +113,19 @@ const HISTORY_FILTER_KINDS: Record<Exclude<HistoryFilter, "all">, WatcherActionK
 export function matchesHistoryFilter(entry: WatcherActionEntry, filter: HistoryFilter): boolean {
   return filter === "all" || HISTORY_FILTER_KINDS[filter].includes(entry.action);
 }
+
+/** What the user can judge: the watcher's own calls, not its bookkeeping (started, failed). */
+const RATEABLE: WatcherActionEntry["action"][] = [
+  "reviewed",
+  "comment",
+  "approve",
+  "tested",
+  "enqueue-dev",
+  "claim-test",
+  "queued-test",
+  "notify",
+];
+
+export function isRateable(entry: WatcherActionEntry): boolean {
+  return RATEABLE.includes(entry.action);
+}
