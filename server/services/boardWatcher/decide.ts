@@ -47,6 +47,7 @@ export function decideIssues(
   for (const issue of issues) {
     const subject = issue.key;
     if (config.columns.todo.includes(issue.statusId)) {
+      if (config.todo?.enabled === false) continue;
       if (issue.assigneeId !== config.me || state.handled[`dev:${subject}`]) continue;
       const verdict = gradeDescription(issue, config.descriptionMinScore);
       decisions.push(
@@ -62,7 +63,9 @@ export function decideIssues(
       continue;
     }
 
-    if (config.columns.waitTest.includes(issue.statusId)) waitingTests.push(issue);
+    if (config.columns.waitTest.includes(issue.statusId) && config.test?.enabled !== false) {
+      waitingTests.push(issue);
+    }
   }
 
   // Oldest in Wait Test first; the ones people pick up quickly stay with them (grace period).
@@ -135,6 +138,7 @@ export function decidePullRequests(
   now: Date,
 ): Decision[] {
   const decisions: Decision[] = [];
+  if (config.codeReview?.enabled === false) return decisions;
   const businessTime = isBusinessTime(now, config.businessHours);
   const delayMinutes = config.approveDelayHours * 60;
 

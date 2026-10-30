@@ -1,5 +1,6 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { BoardWatcherStatus } from "../../shared/boardWatcher.js";
 import { recordEvent } from "../utils/history.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import { isBusinessTime, localDay } from "./boardWatcher/businessTime.js";
@@ -12,6 +13,7 @@ import {
   commentsUpToPlan,
   findTestRepos,
   runClaudeTest,
+  TESTS_DIR,
   type TestOutput,
 } from "./boardWatcher/claudeTester.js";
 import { createSimulationDeps, readActions, recordAction } from "./boardWatcher/simulation.js";
@@ -52,21 +54,8 @@ type PersistedState = WatcherState & {
   lastError: { message: string; at: string; alertedAt: string | null } | null;
 };
 
-export type BoardWatcherStatus = {
-  enabled: boolean;
-  mode: string | null;
-  running: boolean;
-  lastTickAt: string | null;
-  lastDigestAt: string | null;
-  lastError: PersistedState["lastError"];
-  pausedReason: string | null;
-  reviewing: boolean;
-  pendingReviews: string[];
-  pendingTests: string[];
-  lastDecisions: Decision[];
-};
-
 let timer: NodeJS.Timeout | null = null;
+let nextLookAt: string | null = null;
 let running = false;
 let lastDecisions: Decision[] = [];
 let lastConfig: BoardWatcherConfig | null = null;
@@ -115,6 +104,7 @@ async function sendDigestIfDue(
   config: BoardWatcherConfig,
   now: Date,
 ): Promise<void> {
+  if (config.notifications?.digest === false) return;
   const slot = dueDigestSlot(now, config);
   if (!slot) return;
   if (state.lastDigestAt && Date.parse(state.lastDigestAt) >= slot.getTime()) return;
@@ -177,15 +167,16 @@ async function lookLocked(): Promise<void> {
           }
         }
       : undefined;
-    const onTest = config.test?.enabled
-      ? (issue: WatcherState["pendingTests"][number]["issue"]) => {
-          const plan = testPlanStatus(issue.comments);
-          if (plan.state !== "pending") return;
-          if (!state.pendingTests.some((t) => t.issue.key === issue.key)) {
-            state.pendingTests.push({ issue, planId: plan.plan.id });
+    const onTest =
+      config.test?.enabled !== false
+        ? (issue: WatcherState["pendingTests"][number]["issue"]) => {
+            const plan = testPlanStatus(issue.comments);
+            if (plan.state !== "pending") return;
+            if (!state.pendingTests.some((t) => t.issue.key === issue.key)) {
+              state.pendingTests.push({ issue, planId: plan.plan.id });
+            }
           }
-        }
-      : undefined;
+        : undefined;
     lastDecisions = await runTick(
       createSimulationDeps(config, () => new Date(), onReview, onTest),
       state,
@@ -215,10 +206,9 @@ async function lookLocked(): Promise<void> {
 function schedule(config: BoardWatcherConfig | null): void {
   if (timer) clearTimeout(timer);
   const businessTime = config ? isBusinessTime(new Date(), config.businessHours) : false;
-  timer = setTimeout(
-    () => void look(),
-    businessTime ? BUSINESS_INTERVAL_MS : OFF_HOURS_INTERVAL_MS,
-  );
+  const delay = businessTime ? BUSINESS_INTERVAL_MS : OFF_HOURS_INTERVAL_MS;
+  nextLookAt = new Date(Date.now() + delay).toISOString();
+  timer = setTimeout(() => void look(), delay);
 }
 
 /** Runs the pending review and test sessions one at a time (reviews first: they're quick). A
@@ -233,7 +223,7 @@ async function drainJobs(): Promise<void> {
       const state = await loadState();
       if (!config?.enabled || !config.bitbucket) return;
       const pr = config.review?.enabled ? state.pendingReviews[0] : undefined;
-      const test = config.test?.enabled ? state.pendingTests[0] : undefined;
+      const test = config.test?.enabled !== false ? state.pendingTests[0] : undefined;
       if (!pr) {
         if (!test) return;
         await runTestJob(test, config);
@@ -364,6 +354,9 @@ async function runTestJob(
       subject: issue.key,
       title: issue.summary,
       detail: `${VERDICT_PT[output.verdict]}, ${next}. ${output.evidence.length} prints em ${output.evidenceDir}\n${output.report}`,
+      files: output.evidence
+        .map((e) => path.relative(TESTS_DIR, e.file))
+        .filter((f) => !f.startsWith("..") && !path.isAbsolute(f)),
     });
     await noticeTestDone(config, issue, VERDICT_PT[output.verdict], next, output.report, {
       count: output.evidence.length,
@@ -400,6 +393,16 @@ export async function runBoardWatcherNow(): Promise<BoardWatcherStatus> {
   return getBoardWatcherStatus();
 }
 
+/** Stops every look until resumed (the app's "Pause" button). */
+export async function pauseBoardWatcher(): Promise<BoardWatcherStatus> {
+  await serial(async () => {
+    const state = await loadState();
+    state.pausedReason = "Paused from the app";
+    await saveState(state);
+  });
+  return getBoardWatcherStatus();
+}
+
 /** Clears a pause (e.g. the daily approval cap) so the next look runs. */
 export async function resumeBoardWatcher(): Promise<BoardWatcherStatus> {
   await serial(async () => {
@@ -413,6 +416,7 @@ export async function resumeBoardWatcher(): Promise<BoardWatcherStatus> {
 export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
   const config = lastConfig ?? (await loadBoardWatcherConfig().catch(() => null));
   const state = await loadState();
+  const today = config ? localDay(new Date(), config.businessHours) : "";
   return {
     enabled: Boolean(config?.enabled),
     mode: config?.mode ?? null,
@@ -424,6 +428,9 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
     reviewing,
     pendingReviews: state.pendingReviews.map(prSubject),
     pendingTests: state.pendingTests.map((t) => t.issue.key),
+    nextLookAt: config?.enabled ? nextLookAt : null,
+    approvalsToday: state.approvals.day === today ? state.approvals.count : 0,
+    testClaimsToday: state.testClaims.day === today ? state.testClaims.count : 0,
     lastDecisions,
   };
 }
