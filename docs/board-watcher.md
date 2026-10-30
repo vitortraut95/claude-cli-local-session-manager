@@ -66,6 +66,9 @@ The watcher is a safety net, not a competitor: it only takes tickets nobody pick
 
 ## Playing nice
 
+- PRs: only once their ticket (from the PR title or branch; any one, for a PR bundling several) is
+  in the Code Review column (`columns.codeReview`), since people open PRs while still working; the
+  wait before approving counts from the later of the last push and the ticket reaching Code Review.
 - PRs: only where the user is a reviewer, never their own, and not already approved by them (a new
   push resets the approval). No approval on a draft, red CI,
   conflicts or another reviewer's "changes requested"; never "request changes" or decline. Any

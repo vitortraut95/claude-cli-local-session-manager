@@ -26,7 +26,7 @@ export async function runTick(
   ]);
   const decisions = [
     ...decideIssues(issues, state, config, now),
-    ...decidePullRequests(prs, state, config, now),
+    ...decidePullRequests(prs, state, config, now, issues),
   ];
   const prsBySubject = new Map(prs.map((pr) => [prSubject(pr), pr]));
 

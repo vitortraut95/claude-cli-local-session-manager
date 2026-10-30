@@ -131,16 +131,33 @@ export function decideIssues(
   return decisions;
 }
 
+const TICKET_KEYS = /\b[A-Z][A-Z0-9]+-\d+\b/g;
+
+/** Tickets named in the PR's title or branch (a PR may bundle more than one). */
+function ticketKeysOf(pr: PullRequest): string[] {
+  return [...new Set(`${pr.title} ${pr.sourceBranch ?? ""}`.match(TICKET_KEYS) ?? [])];
+}
+
+/**
+ * With `columns.codeReview` set, a PR is only reviewed once one of its tickets is in that column:
+ * people open PRs while still working. `issues` are the board's issues; the wait before approving
+ * then counts from the later of the last push and the ticket reaching Code Review.
+ */
 export function decidePullRequests(
   prs: PullRequest[],
   state: WatcherState,
   config: BoardWatcherConfig,
   now: Date,
+  issues: BoardIssue[] = [],
 ): Decision[] {
   const decisions: Decision[] = [];
   if (config.codeReview?.enabled === false) return decisions;
   const businessTime = isBusinessTime(now, config.businessHours);
   const delayMinutes = config.approveDelayHours * 60;
+  const codeReviewColumn = config.columns.codeReview;
+  const inCodeReview = new Map(
+    issues.filter((i) => codeReviewColumn?.includes(i.statusId)).map((i) => [i.key, i.statusSince]),
+  );
 
   for (const pr of prs) {
     const subject = prSubject(pr);
@@ -152,7 +169,16 @@ export function decidePullRequests(
 
     const skip = (reason: string) => decisions.push({ subject, action: "skip", reason });
     const wait = (reason: string) => decisions.push({ subject, action: "wait", reason });
-    if (pr.draft) skip("draft");
+    const keys = ticketKeysOf(pr);
+    const reachedCodeReview = keys
+      .map((key) => inCodeReview.get(key))
+      .filter((since): since is string => Boolean(since))
+      .sort()
+      .at(-1);
+    if (codeReviewColumn && keys.length === 0) wait("no ticket in the PR title or branch");
+    else if (codeReviewColumn && !reachedCodeReview) {
+      wait(`ticket ${keys.join(", ")} isn't in Code Review yet`);
+    } else if (pr.draft) skip("draft");
     else if (pr.hasConflicts) skip("has conflicts");
     else if (pr.ci === "failed") skip("CI failed");
     else if (pr.reviewers.some((r) => r.id !== config.me && r.state === "changes_requested")) {
@@ -162,8 +188,12 @@ export function decidePullRequests(
     } else if (pr.ci === "running") wait("CI running");
     else if (!businessTime) wait("outside business hours");
     else {
+      const since =
+        reachedCodeReview && Date.parse(reachedCodeReview) > Date.parse(pr.lastPushAt)
+          ? reachedCodeReview
+          : pr.lastPushAt;
       const elapsed = businessMinutesBetween(
-        new Date(pr.lastPushAt),
+        new Date(since),
         now,
         config.businessHours,
         delayMinutes,

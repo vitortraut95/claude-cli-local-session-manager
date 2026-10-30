@@ -83,6 +83,9 @@ function toPullRequest(raw: Partial<PullRequest>): PullRequest {
     reviewers: raw.reviewers ?? [{ id: "me", state: "none" }],
     ci: raw.ci ?? "passed",
     hasConflicts: raw.hasConflicts ?? false,
+    sourceBranch: raw.sourceBranch,
+    destinationBranch: raw.destinationBranch,
+    sourceHash: raw.sourceHash,
   };
 }
 

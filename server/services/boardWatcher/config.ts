@@ -41,8 +41,9 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
   mode?: "simulate";
   /** The user's account id on the board and the code host. */
   me: string;
-  /** Status ids making up each board column. */
-  columns: { todo: string[]; waitTest: string[]; testing: string[] };
+  /** Status ids making up each board column. With `codeReview`, PRs are only reviewed once
+   *  their ticket is there. */
+  columns: { todo: string[]; waitTest: string[]; testing: string[]; codeReview?: string[] };
   /** Where a claimed test is moved to. */
   testingStatusId: string;
   /** Visible actions (comment, approve, claim) only happen inside these. */
