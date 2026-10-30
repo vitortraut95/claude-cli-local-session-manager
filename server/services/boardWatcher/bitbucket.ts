@@ -75,17 +75,29 @@ function pullRequestUrl(credentials: BitbucketCredentials, pr: PullRequest): str
   return `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${pr.repo}/pullrequests/${pr.id}`;
 }
 
-/** Throws when the PR got a new push (or was closed) since `pr` was read: what was reviewed is
- *  no longer what would be commented on or approved. */
-async function assertUnchanged(credentials: BitbucketCredentials, pr: PullRequest): Promise<void> {
+/** The PR's state now ("OPEN", "MERGED"…) and its latest commit. */
+export async function pullRequestHead(
+  credentials: BitbucketCredentials,
+  pr: PullRequest,
+): Promise<{ state: string; hash: string | null }> {
   const current = await get<{ state?: string; source?: { commit?: { hash?: string } } }>(
     credentials,
     `${pullRequestUrl(credentials, pr)}?fields=state,source.commit.hash`,
   );
-  if (current.state !== "OPEN")
-    throw new Error(`${pr.repo}#${pr.id} is ${current.state ?? "gone"}.`);
-  const hash = current.source?.commit?.hash;
-  if (pr.sourceHash && hash && !pr.sourceHash.startsWith(hash) && !hash.startsWith(pr.sourceHash)) {
+  return { state: current.state ?? "gone", hash: current.source?.commit?.hash ?? null };
+}
+
+/** Bitbucket shortens hashes to 12 characters; either side may be the short one. */
+export function sameCommit(a: string | null | undefined, b: string | null | undefined): boolean {
+  return !a || !b || a.startsWith(b) || b.startsWith(a);
+}
+
+/** Throws when the PR got a new push (or was closed) since `pr` was read: what was reviewed is
+ *  no longer what would be commented on or approved. */
+async function assertUnchanged(credentials: BitbucketCredentials, pr: PullRequest): Promise<void> {
+  const { state, hash } = await pullRequestHead(credentials, pr);
+  if (state !== "OPEN") throw new Error(`${pr.repo}#${pr.id} is ${state}.`);
+  if (!sameCommit(pr.sourceHash, hash)) {
     throw new Error(`${pr.repo}#${pr.id} got a new push since the review.`);
   }
 }

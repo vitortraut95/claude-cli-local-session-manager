@@ -237,6 +237,10 @@ export const boardWatcher = {
   "board.history.title": dict("History", "Histórico"),
   "board.history.filter": dict("Filter history", "Filtrar histórico"),
   "board.history.empty": dict("Nothing recorded yet.", "Nada registrado ainda."),
+  "board.history.noMatch": dict("No task or PR matches.", "Nenhuma tarefa ou PR encontrada."),
+  "board.history.search": dict("Search by task, PR or title", "Buscar por tarefa, PR ou título"),
+  "board.history.count": dict("{count} actions", "{count} ações"),
+  "board.history.loadMore": dict("Load more", "Carregar mais"),
   "board.history.loadError": dict(
     "Couldn't load the history.",
     "Não foi possível carregar o histórico.",
