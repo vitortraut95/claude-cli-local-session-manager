@@ -173,6 +173,31 @@ async function toPullRequest(
   };
 }
 
+/** The PRs (open or merged) of `repos` whose title or source branch has `key`, newest first:
+ *  where a ticket's code lives, even when nobody linked the PR on the ticket. */
+export async function findPullRequestsForKey(
+  credentials: BitbucketCredentials,
+  repos: string[],
+  key: string,
+): Promise<{ repo: string; branch: string }[]> {
+  const query = `title ~ "${key}" OR source.branch.name ~ "${key}"`;
+  const found = await Promise.all(
+    repos.map(async (repo) => {
+      const page = await get<{ values?: { source?: { branch?: { name?: string } } }[] }>(
+        credentials,
+        `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}/pullrequests` +
+          `?q=${encodeURIComponent(query)}&state=OPEN&state=MERGED&sort=-updated_on&pagelen=5` +
+          `&fields=values.source.branch.name`,
+      );
+      return (page.values ?? [])
+        .map((pr) => pr.source?.branch?.name ?? "")
+        .filter(Boolean)
+        .map((branch) => ({ repo, branch }));
+    }),
+  );
+  return found.flat();
+}
+
 /** Open PRs of each repo, with their reviewers, CI state and last push. */
 export async function listOpenPullRequests(
   credentials: BitbucketCredentials,
