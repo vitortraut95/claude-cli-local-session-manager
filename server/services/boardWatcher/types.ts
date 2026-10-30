@@ -59,7 +59,8 @@ export type CodeHostProvider = {
   approve(pr: PullRequest): Promise<void>;
 };
 
-export type Reviewer = { review(pr: PullRequest): Promise<ReviewResult> };
+/** Null when no review ran (simulation): the push counts as handled, nothing is posted. */
+export type Reviewer = { review(pr: PullRequest): Promise<ReviewResult | null> };
 
 /** `urgent` = needs the user now; `digest` = goes in the next summary. */
 export type NotificationLevel = "urgent" | "digest";

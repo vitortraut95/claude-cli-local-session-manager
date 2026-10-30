@@ -54,7 +54,9 @@ export async function runTick(
         if (!pr) break;
         // Checked before reviewing so a review isn't spent on a PR that can't be approved today.
         if (await pauseAtApprovalCap(deps, state, config, now)) break;
-        await applyReview(pr, await deps.reviewer.review(pr), deps, state, config);
+        const result = await deps.reviewer.review(pr);
+        if (result) await applyReview(pr, result, deps, state, config);
+        else state.handled[`review:${subject}`] = pr.lastPushAt;
         break;
       }
       case "skip":
