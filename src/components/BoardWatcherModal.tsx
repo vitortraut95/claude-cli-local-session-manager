@@ -1,4 +1,4 @@
-import { Pause, Play, RefreshCw, Send } from "lucide-react";
+import { Pause, Play, RefreshCw, Send, Workflow } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -34,6 +34,8 @@ const DECISION_COLUMNS: { id: DecisionColumn; label: TranslationKey }[] = [
 
 type BoardWatcherModalProps = {
   onClose: () => void;
+  /** Opens the Automation settings (in place of this modal). */
+  onOpenAutomation: () => void;
 };
 
 /** "18/20 (90%)", or "—" with no verdict yet. */
@@ -43,7 +45,7 @@ function scoreText(score: { up: number; down: number }): string {
 }
 
 /** The board watcher at a glance: state, what it's doing, its last decisions and its history. */
-export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
+export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherModalProps) {
   const { t, language } = useLanguage();
   const { showToast } = useToast();
   const [status, setStatus] = useState<BoardWatcherStatus | null>(null);
@@ -137,7 +139,22 @@ export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
   return (
     <Modal open title={t("board.title")} onClose={onClose} size="xxl">
       <div className="flex flex-col gap-6">
-        {statusError && <p className="text-sm text-red-600 dark:text-red-400">{statusError}</p>}
+        {statusError && (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm text-red-600 dark:text-red-400">{statusError}</p>
+            {/* The settings stay reachable when the status can't be read. */}
+            {!status && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenAutomation}
+                icon={<Workflow className="h-3.5 w-3.5" />}
+              >
+                {t("board.action.automation")}
+              </Button>
+            )}
+          </div>
+        )}
 
         {status && (
           <section className="flex flex-col gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
@@ -272,6 +289,14 @@ export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
                 icon={<Send className="h-3.5 w-3.5" />}
               >
                 {t("board.action.digest")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenAutomation}
+                icon={<Workflow className="h-3.5 w-3.5" />}
+              >
+                {t("board.action.automation")}
               </Button>
             </div>
           </section>

@@ -1,7 +1,6 @@
 import { dict } from "../dict";
 
 export const boardWatcher = {
-  "header.automation": dict("Automation", "Automação"),
   "header.board": dict("Board", "Board"),
 
   "automation.title": dict("Automation", "Automação"),
@@ -229,6 +228,7 @@ export const boardWatcher = {
   "board.action.pause": dict("Pause", "Pausar"),
   "board.action.resume": dict("Resume", "Retomar"),
   "board.action.digest": dict("Send digest now", "Mandar resumo agora"),
+  "board.action.automation": dict("Automation settings", "Configurar automação"),
   "board.digest.sent": dict("Digest sent to Teams.", "Resumo enviado pro Teams."),
   "board.now.title": dict("Now", "Agora"),
   "board.now.running": dict("Looking at the board", "Olhando o board"),
