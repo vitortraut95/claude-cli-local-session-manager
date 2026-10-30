@@ -3,6 +3,7 @@ import path from "node:path";
 import type { BoardWatcherStatus } from "../../shared/boardWatcher.js";
 import { recordEvent } from "../utils/history.js";
 import { getTaskStore, onStoreChange, type StoreChange } from "../utils/taskStore.js";
+import { findRemoteSessionUrl } from "./session/remoteUrl.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import { isBusinessTime, localDay } from "./boardWatcher/businessTime.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
@@ -408,7 +409,8 @@ async function noticeStoreChange(change: StoreChange): Promise<void> {
   const last = lastWaitingNotice.get(id) ?? 0;
   if (Date.now() - last < WAITING_NOTICE_EVERY_MS) return;
   lastWaitingNotice.set(id, Date.now());
-  await noticeWaitingForYou(key, name);
+  const remoteUrl = await findRemoteSessionUrl(change.sessionId, key).catch(() => null);
+  await noticeWaitingForYou(key, name, remoteUrl);
 }
 
 export function startBoardWatcher(): void {

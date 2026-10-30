@@ -114,14 +114,22 @@ const APP_URL = "http://localhost:58230";
 
 /** One of the user's sessions stopped to wait for them (an OK to push, a decision, a test plan
  *  to approve). */
-export async function noticeWaitingForYou(key: string | null, name: string): Promise<void> {
+export async function noticeWaitingForYou(
+  key: string | null,
+  name: string,
+  /** The session's Remote Control link, when it has one: opens it right in the Claude app. */
+  remoteUrl: string | null = null,
+): Promise<void> {
   const label = key ?? name;
   const appLink = {
     title: "Abrir no Session Manager (PC)",
     url: `${APP_URL}/?q=${encodeURIComponent(label)}`,
   };
   // With Remote Control on, the session can be answered from the phone: point there first.
-  const remote = (await getUserPreferences()).remoteControl;
+  const remote = remoteUrl !== null || (await getUserPreferences()).remoteControl;
+  const phoneStep = remoteUrl
+    ? `No celular: toque em "Abrir no Claude (celular)" para ir direto à sessão e responder (OK do push, decisão ou aprovação).`
+    : `No celular: abra o app Claude, toque em Code e entre na sessão "${label}" (bolinha verde) para responder (OK do push, decisão ou aprovação).`;
   await send(
     buildDigestCard({
       title: `${label} está esperando você`,
@@ -130,15 +138,12 @@ export async function noticeWaitingForYou(key: string | null, name: string): Pro
         {
           heading: "O que fazer",
           items: remote
-            ? [
-                `No celular: abra o app Claude, toque em Code e entre na sessão "${label}" (bolinha verde) para responder (OK do push, decisão ou aprovação).`,
-                "No PC: abra a sessão pelo Session Manager.",
-              ]
+            ? [phoneStep, "No PC: abra a sessão pelo Session Manager."]
             : ["Abrir a sessão no Session Manager e responder (OK do push, decisão ou aprovação)."],
         },
       ],
       link: remote
-        ? { title: "Abrir no Claude (celular)", url: "https://claude.ai/code" }
+        ? { title: "Abrir no Claude (celular)", url: remoteUrl ?? "https://claude.ai/code" }
         : appLink,
       extraLinks: remote ? [appLink] : [],
     }),
