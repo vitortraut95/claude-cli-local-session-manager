@@ -1,9 +1,11 @@
 import cors from "cors";
 import express from "express";
+import { boardWatcherRouter } from "./routes/boardWatcher.js";
 import { cleanupRouter } from "./routes/cleanup.js";
 import { sessionsRouter } from "./routes/sessions.js";
 import { systemRouter } from "./routes/system.js";
 import { tasksRouter } from "./routes/tasks.js";
+import { startBoardWatcher } from "./services/boardWatcherService.js";
 import { autoUpdateSkillsHubOnStart } from "./services/skillsHubService.js";
 import { startTaskScheduler } from "./services/taskSchedulerService.js";
 import { API_PORT } from "./utils/apiPort.js";
@@ -18,6 +20,7 @@ app.use("/sessions", sessionsRouter);
 app.use("/system", systemRouter);
 app.use("/tasks", tasksRouter);
 app.use("/cleanup", cleanupRouter);
+app.use("/board-watcher", boardWatcherRouter);
 app.use(errorHandler);
 
 app.listen(API_PORT, () => {
@@ -25,6 +28,7 @@ app.listen(API_PORT, () => {
   // Background, after the server is already answering.
   void autoUpdateSkillsHubOnStart();
   startTaskScheduler();
+  startBoardWatcher();
   // Also runs lazily on the first read/write, so a request arriving first can't miss it.
   migrateTaskStore()
     .then(({ migrated, sessions, branches, nicknameBranches }) => {

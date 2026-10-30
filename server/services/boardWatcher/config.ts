@@ -34,6 +34,11 @@ export type BoardWatcherLimits = {
 };
 
 export type BoardWatcherConfig = BoardWatcherLimits & {
+  /** Off unless true. */
+  enabled?: boolean;
+  /** `simulate` reads the real board and PRs but only records what it would do. The only mode
+   *  for now. */
+  mode?: "simulate";
   /** The user's account id on the board and the code host. */
   me: string;
   /** Status ids making up each board column. */
@@ -45,6 +50,8 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
   /** Where the board lives. Only the active sprint's issues are considered; `scopeJql` narrows
    *  searches to the team's issues. */
   jira?: { site: string; boardId?: number; scopeJql: string; boardUrl?: string };
+  /** The team's repos whose open PRs are reviewed. */
+  bitbucket?: { workspace: string; repos: string[] };
 };
 
 export const DEFAULT_LIMITS: BoardWatcherLimits = {
