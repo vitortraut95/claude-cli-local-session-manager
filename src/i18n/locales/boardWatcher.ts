@@ -82,6 +82,38 @@ export const boardWatcher = {
     "Minimum description score (0-5)",
     "Nota mínima da descrição (0 a 5)",
   ),
+  "automation.limit.approveDelayHours.description": dict(
+    "Business hours since a PR's last push before it's reviewed and approved, so colleagues get to review first.",
+    "Horas úteis desde o último push de um PR antes de ele revisar e aprovar, para os colegas revisarem primeiro.",
+  ),
+  "automation.limit.waitTestGraceMinutes.description": dict(
+    "Business minutes a task sits in Wait Test before it's picked up, so whoever is free takes it first.",
+    "Minutos úteis que uma tarefa fica em Wait Test antes de ele pegar, para quem estiver disponível pegar primeiro.",
+  ),
+  "automation.limit.maxClaimedTests.description": dict(
+    "How many tasks it can have picked up for testing at once. A slot frees when the task leaves Wait Test/Testing.",
+    "Quantas tarefas ele pode ter pegado para teste ao mesmo tempo. A vaga libera quando a tarefa sai de Wait Test/Testing.",
+  ),
+  "automation.limit.maxClaimsPerDay.description": dict(
+    "Most tasks it picks up for testing in a single day.",
+    "Máximo de tarefas que ele pega para teste num mesmo dia.",
+  ),
+  "automation.limit.maxApprovesPerDay.description": dict(
+    "On reaching this many approvals in a day it pauses everything and alerts you: that many is a sign something's off.",
+    "Ao chegar a esse número de aprovações no dia, ele pausa tudo e te avisa: tantas aprovações num dia é sinal de que algo está estranho.",
+  ),
+  "automation.limit.maxCommentsPerPr.description": dict(
+    "Most comments per PR in each review. Only bugs, security and regressions; style details are never posted.",
+    "Máximo de comentários por PR em cada review. Só entram bugs, segurança e regressões; detalhes de estilo nunca são postados.",
+  ),
+  "automation.limit.maxReviewRounds.description": dict(
+    "How many times it reviews the same PR (once per new push). After that, it's left to a person.",
+    "Quantas vezes ele revisa o mesmo PR (uma por push novo). Depois disso, fica para uma pessoa.",
+  ),
+  "automation.limit.descriptionMinScore.description": dict(
+    "Score one of your tasks' description needs to go to the development queue on its own. One point each: detailed text, steps or acceptance criteria, expected result, page or URL, screenshot or Figma; minus one for a visual change with no Figma.",
+    "Nota que a descrição de uma tarefa sua precisa ter para entrar sozinha na fila de desenvolvimento. Vale 1 ponto cada: texto detalhado, passos ou critérios de aceite, resultado esperado, página ou URL, print ou Figma; perde 1 ponto mudança visual sem Figma.",
+  ),
   "automation.hours": dict("Business hours", "Horário comercial"),
   "automation.hours.start": dict("Start", "Início"),
   "automation.hours.end": dict("End", "Fim"),
