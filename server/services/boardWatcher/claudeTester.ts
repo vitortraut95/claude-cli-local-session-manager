@@ -38,6 +38,8 @@ export type TestOutput = {
   blockedBy?: string;
   evidence: { file: string; description: string }[];
   evidenceDir: string;
+  costUsd?: number;
+  durationMs?: number;
 };
 
 export type TestContext = {
@@ -252,6 +254,8 @@ export async function runClaudeTest(
     is_error?: boolean;
     result?: string;
     structured_output?: unknown;
+    total_cost_usd?: number;
+    duration_ms?: number;
   };
   if (envelope.is_error) throw new Error(`Test session failed: ${envelope.result ?? "no detail"}`);
   const raw: unknown =
@@ -263,5 +267,7 @@ export async function runClaudeTest(
     ...output,
     evidence: await collectEvidence(output.evidence ?? [], evidenceDir),
     evidenceDir,
+    costUsd: envelope.total_cost_usd,
+    durationMs: envelope.duration_ms,
   };
 }

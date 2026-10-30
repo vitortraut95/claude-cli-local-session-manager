@@ -208,6 +208,16 @@ export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
                   max: settings?.limits.maxClaimsPerDay ?? "?",
                 })}
               </span>
+              {status.today && (
+                <span>
+                  {t("board.usage.sessions", {
+                    reviews: status.today.reviews,
+                    tests: status.today.tests,
+                    minutes: Math.round(status.today.durationMs / 60_000),
+                    cost: status.today.costUsd.toFixed(2),
+                  })}
+                </span>
+              )}
             </div>
 
             {status.lastError && (
@@ -276,6 +286,13 @@ export function BoardWatcherModal({ onClose }: BoardWatcherModalProps) {
               {status.reviewing && <Badge tone="blue">{t("board.now.reviewing")}</Badge>}
               {!status.running && !status.reviewing && <Badge>{t("board.now.idle")}</Badge>}
             </div>
+            {status.jobsBlockedBy && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                {t("board.now.blocked", {
+                  reason: translateServerText(status.jobsBlockedBy, language),
+                })}
+              </p>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">

@@ -22,6 +22,9 @@ export type ReviewOutput = ReviewResult & {
   ticketMatch: string;
   verdict: string;
   confidence: string;
+  /** As the CLI reports them. */
+  costUsd?: number;
+  durationMs?: number;
 };
 
 export type ReviewContext = {
@@ -217,6 +220,8 @@ function parseOutput(stdout: string): ReviewOutput {
     is_error?: boolean;
     result?: string;
     structured_output?: unknown;
+    total_cost_usd?: number;
+    duration_ms?: number;
   };
   if (envelope.is_error)
     throw new Error(`Review session failed: ${envelope.result ?? "no detail"}`);
@@ -227,6 +232,8 @@ function parseOutput(stdout: string): ReviewOutput {
   const output = raw as ReviewOutput;
   return {
     ...output,
+    costUsd: envelope.total_cost_usd,
+    durationMs: envelope.duration_ms,
     findings: (output.findings ?? []).filter(
       (f): f is ReviewFinding => typeof f.body === "string" && Boolean(f.severity),
     ),

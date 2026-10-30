@@ -58,6 +58,7 @@ const SERVER_TEXT_PT: [RegExp, string][] = [
   [/ready for review/, "pronta pra review"],
   [/left for a person:/, "deixada pra uma pessoa:"],
   [/^Paused from the app$/, "pausado pelo app"],
+  [/^plan usage at (\d+)% \(limit (\d+)%\)$/, "uso do plano em $1% (limite $2%)"],
   [/^(\d+) approvals today \(limit (\d+)\)$/, "$1 aprovações hoje (limite $2)"],
 ];
 

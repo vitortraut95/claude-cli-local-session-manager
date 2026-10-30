@@ -148,6 +148,14 @@ export const boardWatcher = {
     "Tests claimed today: {used} of {max}",
     "Testes pegos hoje: {used} de {max}",
   ),
+  "board.usage.sessions": dict(
+    "Sessions today: {reviews} reviews, {tests} tests · {minutes} min · ~US$ {cost} (estimate)",
+    "Sessões hoje: {reviews} reviews, {tests} testes · {minutes} min · ~US$ {cost} (estimativa)",
+  ),
+  "board.now.blocked": dict(
+    "Reviews and tests are waiting: {reason}. They start once usage goes below the limit (the task queue's, in Settings).",
+    "Reviews e testes esperando: {reason}. Começam quando o uso ficar abaixo do limite (o mesmo da fila de tarefas, nas Configurações).",
+  ),
   "board.lastError": dict("Last error", "Último erro"),
   "board.paused": dict("Paused: {reason}", "Pausado: {reason}"),
   "board.action.run": dict("Look now", "Olhar agora"),
