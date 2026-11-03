@@ -10,6 +10,7 @@
     "start": "node dist/server/index.js",
     "lint": "eslint .",
     "board-watcher:eval": "tsx scripts/board-watcher-eval.ts",
+    "board-watcher:unit": "tsx --test tests/boardWatcher/*.test.ts",
     "board-watcher:dry-run": "tsx scripts/board-watcher-dry-run.ts",
     "board-watcher:test-run": "tsx scripts/board-watcher-test-run.ts"
   },
