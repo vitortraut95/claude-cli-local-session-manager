@@ -18,6 +18,7 @@ import {
   findPullRequestsForKey,
   listOpenPullRequests,
   pullRequestHead,
+  pullRequestNews,
   sameCommit,
 } from "./boardWatcher/bitbucket.js";
 import { runClaudeReview } from "./boardWatcher/claudeReviewer.js";
@@ -39,6 +40,7 @@ import {
   noticeTestsNeedNetwork,
   noticeWeakDescription,
   noticeReviewBlocked,
+  noticeNewsOnMyPr,
   noticePreviewFailed,
   noticeTestDone,
   noticeUnwatchedPullRequests,
@@ -55,6 +57,7 @@ import {
   emptyWatcherState,
   prSubject,
   type BoardIssue,
+  type PullRequest,
   type WatcherState,
 } from "./boardWatcher/types.js";
 import { jiraCredentialsFromEnv, linkedPullRequests } from "./boardWatcher/jira.js";
@@ -213,10 +216,16 @@ async function lookLocked(): Promise<void> {
       (issue, missing) => void sendWeakDescriptionQuestions(config, issue, missing),
     );
     let issues: BoardIssue[] = [];
-    const { board } = deps;
+    let prs: PullRequest[] = [];
+    const { board, codeHost } = deps;
     deps.board = { ...board, listIssues: async () => (issues = await board.listIssues()) };
+    deps.codeHost = {
+      ...codeHost,
+      listPullRequests: async () => (prs = await codeHost.listPullRequests()),
+    };
     lastDecisions = await runTick(deps, state, config, now);
     await warnUnwatchedPullRequests(config, issues, state);
+    await noticeNewsOnMyPullRequests(config, prs, state, now);
     state.lastTickAt = now.toISOString();
     state.lastError = null;
     recordEvent("boardWatcher.tick", {
@@ -234,6 +243,37 @@ async function lookLocked(): Promise<void> {
     if (config?.enabled) await saveState(state);
     running = false;
     schedule(config);
+  }
+}
+
+/** Tells the user when others comment on, or ask for changes in, their open PRs. A PR seen for
+ *  the first time only starts the count (what was said before isn't news). Best-effort. */
+async function noticeNewsOnMyPullRequests(
+  config: BoardWatcherConfig,
+  prs: PullRequest[],
+  state: WatcherState,
+  now: Date,
+): Promise<void> {
+  if (!config.bitbucket || config.notifications?.instant === false) return;
+  const credentials = bitbucketCredentialsFromEnv(config.bitbucket.workspace);
+  for (const pr of prs.filter((p) => p.authorId === config.me)) {
+    const key = `mine:${prSubject(pr)}`;
+    const since = state.handled[key];
+    state.handled[key] = now.toISOString();
+    if (!since) continue;
+    try {
+      const news = await pullRequestNews(credentials, pr, since, config.me);
+      if (news.comments.length === 0 && news.changesRequested.length === 0) continue;
+      noticeNewsOnMyPr(config, pr, news);
+      recordEvent("boardWatcher.myPrNews", {
+        subject: prSubject(pr),
+        comments: news.comments.length,
+        changesRequested: news.changesRequested.length,
+      });
+    } catch (err) {
+      state.handled[key] = since;
+      console.warn(`[board-watcher] Couldn't read the news on ${prSubject(pr)}:`, err);
+    }
   }
 }
 
