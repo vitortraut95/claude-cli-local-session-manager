@@ -39,6 +39,11 @@ const FEATURE_ROWS: FeatureRow[] = [
     description: "automation.feature.reviewSessions.description",
   },
   {
+    key: "reviewUnapprovedDeploying",
+    label: "automation.feature.reviewUnapprovedDeploying",
+    description: "automation.feature.reviewUnapprovedDeploying.description",
+  },
+  {
     key: "testQueue",
     label: "automation.feature.testQueue",
     description: "automation.feature.testQueue.description",
@@ -274,7 +279,8 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
                       {t("automation.features")}
                     </h3>
                     {FEATURE_ROWS.map((row) => {
-                      const nested = row.key === "reviewSessions";
+                      const nested =
+                        row.key === "reviewSessions" || row.key === "reviewUnapprovedDeploying";
                       const disabled = nested && !codeReviewOn;
                       return (
                         <div

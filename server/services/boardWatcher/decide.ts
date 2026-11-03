@@ -263,6 +263,14 @@ export function decidePullRequests(
   const inCodeReview = new Map(
     issues.filter((i) => codeReviewColumn?.includes(i.statusId)).map((i) => [i.key, i.statusSince]),
   );
+  // Opt-in: a ticket past Code Review whose PR nobody approved goes to review before it merges.
+  const deploying = new Map(
+    config.codeReview?.unapprovedDeploying
+      ? issues
+          .filter((i) => config.columns.deploying?.includes(i.statusId))
+          .map((i) => [i.key, i.statusSince])
+      : [],
+  );
   const beforeCodeReview = new Set(
     issues
       .filter(
@@ -284,8 +292,10 @@ export function decidePullRequests(
     const skip = (reason: string) => decisions.push({ subject, action: "skip", reason });
     const wait = (reason: string) => decisions.push({ subject, action: "wait", reason });
     const keys = ticketKeysOf(pr);
+    const unapprovedDeploying =
+      !pr.reviewers.some((r) => r.state === "approved") && keys.some((key) => deploying.has(key));
     const reachedCodeReview = keys
-      .map((key) => inCodeReview.get(key))
+      .map((key) => inCodeReview.get(key) ?? (unapprovedDeploying ? deploying.get(key) : undefined))
       .filter((since): since is string => Boolean(since))
       .sort()
       .at(-1);
@@ -322,7 +332,11 @@ export function decidePullRequests(
         decisions.push({
           subject,
           action: "review",
-          reason: pr.approvedCommit ? "pushed since the user's approval" : "ready for review",
+          reason: pr.approvedCommit
+            ? "pushed since the user's approval"
+            : unapprovedDeploying && !keys.some((key) => inCodeReview.has(key))
+              ? "past Code Review without any approval"
+              : "ready for review",
         });
       }
     }

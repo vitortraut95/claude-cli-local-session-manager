@@ -8,6 +8,9 @@ export type AutomationFeatures = {
   codeReview: boolean;
   /** A real review session runs for each due PR (off = only recorded as due). */
   reviewSessions: boolean;
+  /** PRs of tickets already past Code Review (Validation, Ready for Deployment) that nobody
+   *  approved are reviewed too, before they merge at the deploy. */
+  reviewUnapprovedDeploying: boolean;
   /** Colleagues' Wait Test tickets with a test plan go to the test queue. */
   testQueue: boolean;
   /** Important events go to Teams right away. */
