@@ -17,28 +17,28 @@ afterEach(() => {
   takeCallCounts();
 });
 
-test("a read is retried on a rate limit and counted per attempt", async () => {
+void test("a read is retried on a rate limit and counted per attempt", async () => {
   answers(429, 200);
   const response = await apiFetch("bitbucket", "https://api.example.test/x");
   assert.equal(response.status, 200);
   assert.deepEqual(takeCallCounts(), { calls: { jira: 0, bitbucket: 2, jenkins: 0 }, retries: 1 });
 });
 
-test("a read gives up after three attempts and returns the last answer", async () => {
+void test("a read gives up after three attempts and returns the last answer", async () => {
   answers(503);
   const response = await apiFetch("jira", "https://api.example.test/x");
   assert.equal(response.status, 503);
   assert.equal(takeCallCounts().calls.jira, 3);
 });
 
-test("a write isn't retried on a server error (it may have gone through)", async () => {
+void test("a write isn't retried on a server error (it may have gone through)", async () => {
   answers(502, 200);
   const response = await apiFetch("bitbucket", "https://api.example.test/x", { method: "POST" });
   assert.equal(response.status, 502);
   assert.equal(takeCallCounts().calls.bitbucket, 1);
 });
 
-test("a client error isn't retried", async () => {
+void test("a client error isn't retried", async () => {
   answers(404, 200);
   const response = await apiFetch("bitbucket", "https://api.example.test/x");
   assert.equal(response.status, 404);
