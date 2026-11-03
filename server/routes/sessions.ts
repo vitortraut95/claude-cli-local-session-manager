@@ -6,11 +6,12 @@ import {
   deleteSessionBranch,
   deleteSessionWorktree,
   getSessionPrUrl,
-  getSessionPrompts,
+  getSessionTranscript,
   invalidSessionIdError,
   isSafeSessionId,
   getScanProgress,
   listSessions,
+  searchSessionPrompts,
   openInCursor,
   openInVSCode,
   openMissingWorktreeRootInVSCode,
@@ -41,6 +42,12 @@ sessionsRouter.param("id", (_req, res, next, id: string) => {
 sessionsRouter.get("/", async (_req, res) => {
   const sessions = await listSessions();
   res.json(sessions);
+});
+
+/** Ids of the sessions whose prompts match `q` (the list only carries each session's first). */
+sessionsRouter.get("/search", async (req, res) => {
+  const query = typeof req.query.q === "string" ? req.query.q : "";
+  res.json({ ids: await searchSessionPrompts(query) });
 });
 
 /** Polled by the frontend while the initial `GET /sessions` call is in flight. */
@@ -101,9 +108,8 @@ sessionsRouter.get("/:id/history", async (req, res) => {
   res.json(await getSessionHistory(req.params.id));
 });
 
-sessionsRouter.get("/:id/prompts", async (req, res) => {
-  const prompts = await getSessionPrompts(req.params.id);
-  res.json({ prompts });
+sessionsRouter.get("/:id/transcript", async (req, res) => {
+  res.json({ turns: await getSessionTranscript(req.params.id) });
 });
 
 sessionsRouter.get("/:id/pr-url", async (req, res) => {
