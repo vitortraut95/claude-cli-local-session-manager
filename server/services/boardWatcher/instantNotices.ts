@@ -1,6 +1,7 @@
 import { getUserPreferences } from "../preferencesService.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./config.js";
 import { buildNoticeCard, buildNoticesCard, postTeamsCard, type Notice } from "./teamsCards.js";
+import type { PullRequestNews } from "./bitbucket.js";
 import { prSubject, type BoardIssue, type PullRequest, type ReviewFinding } from "./types.js";
 
 /**
@@ -222,6 +223,34 @@ export function noticeWeakDescription(
       : `Falta: ${short(missing, 120)}.`,
     details: messages.map((m) => ({ heading: `Para ${m.to}`, items: [m.text] })),
     links: link("Abrir a tarefa", issueUrl(config, issue.key)),
+  });
+}
+
+/** Someone commented on, or asked for changes in, one of the user's PRs. */
+export function noticeNewsOnMyPr(
+  config: BoardWatcherConfig,
+  pr: PullRequest,
+  news: PullRequestNews,
+): void {
+  const authors = [...new Set(news.comments.map((c) => c.author))];
+  const what = [
+    news.changesRequested.length && `${news.changesRequested.join(", ")} pediu mudanças`,
+    news.comments.length && `${news.comments.length} comentário(s) de ${authors.join(", ")}`,
+  ].filter(Boolean);
+  enqueue({
+    level: news.changesRequested.length ? "urgent" : "info",
+    title: `${prSubject(pr)} · seu PR: ${what.join(" e ")}`,
+    summary: short(pr.title, 100),
+    details: [
+      {
+        heading: "Comentários",
+        items: news.comments.map((c) => {
+          const where = c.file ? `${c.file.split("/").at(-1)}${c.line ? `:${c.line}` : ""} — ` : "";
+          return `${c.author}: ${where}${short(c.body, 300)}`;
+        }),
+      },
+    ],
+    links: link("Abrir o PR", prUrl(config, pr)),
   });
 }
 

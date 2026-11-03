@@ -223,6 +223,66 @@ export async function markStaleApprovals(
   );
 }
 
+export type PullRequestNews = {
+  comments: { author: string; body: string; file?: string; line?: number; at: string }[];
+  /** Who asked for changes since `since`. */
+  changesRequested: string[];
+};
+
+/** What others said on a PR after `since`: their comments (newest last) and requests for
+ *  changes. */
+export async function pullRequestNews(
+  credentials: BitbucketCredentials,
+  pr: PullRequest,
+  since: string,
+  me: string,
+): Promise<PullRequestNews> {
+  const url = pullRequestUrl(credentials, pr);
+  const query = encodeURIComponent(`created_on > ${since}`);
+  const [comments, activity] = await Promise.all([
+    get<{
+      values?: {
+        created_on: string;
+        deleted?: boolean;
+        content?: { raw?: string };
+        inline?: { path?: string; to?: number | null };
+        user?: { account_id?: string; display_name?: string };
+      }[];
+    }>(
+      credentials,
+      `${url}/comments?q=${query}&sort=created_on&pagelen=50` +
+        "&fields=values.created_on,values.deleted,values.content.raw,values.inline," +
+        "values.user.account_id,values.user.display_name",
+    ),
+    get<{
+      values?: {
+        changes_requested?: { date: string; user?: { account_id?: string; display_name?: string } };
+      }[];
+    }>(credentials, `${url}/activity?pagelen=50`),
+  ]);
+  const byOthers = <T extends { user?: { account_id?: string } }>(item: T) =>
+    item.user?.account_id !== undefined && item.user.account_id !== me;
+  return {
+    comments: (comments.values ?? [])
+      .filter((c) => !c.deleted && c.content?.raw?.trim() && byOthers(c))
+      .map((c) => ({
+        author: c.user?.display_name ?? "",
+        body: c.content?.raw ?? "",
+        file: c.inline?.path,
+        line: c.inline?.to ?? undefined,
+        at: c.created_on,
+      })),
+    changesRequested: [
+      ...new Set(
+        (activity.values ?? [])
+          .map((a) => a.changes_requested)
+          .filter((c) => c && Date.parse(c.date) > Date.parse(since) && byOthers(c))
+          .map((c) => c?.user?.display_name ?? ""),
+      ),
+    ],
+  };
+}
+
 /** The build (Jenkins status) of a branch's latest commit, preferring the branch's own job over
  *  the PR's; null when the branch is gone (merged and deleted). */
 export async function branchBuild(
