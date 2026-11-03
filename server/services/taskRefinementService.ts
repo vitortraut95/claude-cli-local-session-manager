@@ -49,6 +49,7 @@ export async function launchRefinement(
   const skill = await resolveInstalledSkill(
     prefs.taskRefinementSkill,
     "TASK_REFINEMENT_SKILL_NOT_INSTALLED",
+    "taskRefinementSkill",
   );
   if (!skill) {
     throw new BadRequestError(

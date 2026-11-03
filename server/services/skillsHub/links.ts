@@ -3,7 +3,8 @@ import path from "node:path";
 import type { HubCatalog, SkillStatus, SkillsSelection } from "../../../shared/skillsHub.js";
 import { AppError } from "../../utils/httpError.js";
 import type { SkillsHubPreferences } from "../preferencesService.js";
-import { getUserSkillsDir } from "./common.js";
+import { parseSkillRef } from "./catalog.js";
+import { getUserSkillsDir, updateSkillsHubPreferences } from "./common.js";
 
 type LinkEntry =
   { kind: "absent" } | { kind: "link"; target: string; targetExists: boolean } | { kind: "other" };
@@ -35,8 +36,53 @@ function skillId(catalog: string, skill: string): string {
   return `${catalog}/${skill}`;
 }
 
-function isSelected(selection: SkillsSelection, catalog: string, skill: string): boolean {
-  return selection.catalogs.includes(catalog) || selection.skills.includes(skillId(catalog, skill));
+/**
+ * Every skill to keep linked, as `<catalog>/<skill>` → who pulled it in: `[]` when picked (or in a
+ * whole picked catalog), otherwise the selected skills/catalogs that depend on it — `requires-skills`
+ * of each linked skill (transitively) and `requires-skills` of each whole picked catalog. Refs to
+ * skills the hub doesn't have are skipped.
+ */
+export function expandSelection(
+  catalogs: HubCatalog[],
+  selection: SkillsSelection,
+): Map<string, string[]> {
+  const skills = new Map<string, { catalog: string; requires: string[] }>();
+  for (const catalog of catalogs) {
+    for (const skill of catalog.skills) {
+      skills.set(skillId(catalog.name, skill.name), {
+        catalog: catalog.name,
+        requires: skill.requires ?? [],
+      });
+    }
+  }
+
+  const result = new Map<string, string[]>();
+  const queue: string[] = [];
+  const add = (id: string, by: string | null) => {
+    if (!skills.has(id)) return;
+    const current = result.get(id);
+    if (current === undefined) {
+      result.set(id, by === null ? [] : [by]);
+      queue.push(id);
+    } else if (by !== null && current.length > 0 && !current.includes(by)) {
+      current.push(by);
+    }
+  };
+
+  for (const catalog of catalogs) {
+    for (const skill of catalog.skills) {
+      const id = skillId(catalog.name, skill.name);
+      if (selection.catalogs.includes(catalog.name) || selection.skills.includes(id)) add(id, null);
+    }
+  }
+  for (const catalog of catalogs.filter((c) => selection.catalogs.includes(c.name))) {
+    for (const ref of catalog.requires ?? []) add(parseSkillRef(ref, catalog.name), catalog.name);
+  }
+  for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+    const skill = skills.get(id)!;
+    for (const ref of skill.requires) add(parseSkillRef(ref, skill.catalog), id);
+  }
+  return result;
 }
 
 /** Drops catalogs/skills that no longer exist in the hub, and individual picks already covered by
@@ -65,9 +111,17 @@ export async function computeSkillStatuses(
   const catalogRoot = path.join(hubPath, "catalog");
   const owner = new Map<string, string>();
   const statuses: SkillStatus[] = [];
+  const wanted = expandSelection(catalogs, selection);
   for (const catalog of catalogs) {
-    for (const skill of catalog.skills.filter((k) => isSelected(selection, catalog.name, k.name))) {
-      const base = { name: skill.name, catalog: catalog.name, description: skill.description };
+    for (const skill of catalog.skills) {
+      const requiredBy = wanted.get(skillId(catalog.name, skill.name));
+      if (requiredBy === undefined) continue;
+      const base = {
+        name: skill.name,
+        catalog: catalog.name,
+        description: skill.description,
+        ...(requiredBy.length > 0 ? { requiredBy } : {}),
+      };
       const firstOwner = owner.get(skill.name);
       if (firstOwner) {
         statuses.push({ ...base, state: "conflict", conflictWith: `catalog:${firstOwner}` });
@@ -119,13 +173,39 @@ async function inferSelection(catalogs: HubCatalog[]): Promise<SkillsSelection> 
   return selection;
 }
 
+/** Picks whose skill moved to another catalog (same name, found in exactly one catalog) follow
+ *  it, so a reorganization of the hub doesn't silently drop them. */
+export function migrateMovedSkills(
+  catalogs: HubCatalog[],
+  skills: string[],
+): { skills: string[]; moved: { from: string; to: string }[] } {
+  const known = new Set(catalogs.flatMap((c) => c.skills.map((k) => skillId(c.name, k.name))));
+  const moved: { from: string; to: string }[] = [];
+  const migrated = skills.map((id) => {
+    if (known.has(id)) return id;
+    const name = id.slice(id.indexOf("/") + 1);
+    const homes = catalogs.filter((c) => c.skills.some((k) => k.name === name));
+    if (homes.length !== 1) return id;
+    const to = skillId(homes[0]!.name, name);
+    moved.push({ from: id, to });
+    return to;
+  });
+  return { skills: migrated, moved };
+}
+
 export async function resolveSelection(
   catalogs: HubCatalog[],
   prefs: SkillsHubPreferences,
 ): Promise<SkillsSelection> {
-  return prefs.catalogs !== null
-    ? normalizeSelection(catalogs, { catalogs: prefs.catalogs, skills: prefs.skills })
-    : inferSelection(catalogs);
+  if (prefs.catalogs === null) return inferSelection(catalogs);
+  const { skills, moved } = migrateMovedSkills(catalogs, prefs.skills);
+  if (moved.length > 0) {
+    await updateSkillsHubPreferences({ skills });
+    console.log(
+      `[skills] moved in the hub, selection updated: ${moved.map((m) => `${m.from} → ${m.to}`).join(", ")}`,
+    );
+  }
+  return normalizeSelection(catalogs, { catalogs: prefs.catalogs, skills });
 }
 
 export type LinkResult = { linked: string[]; unlinked: string[]; conflicts: string[] };

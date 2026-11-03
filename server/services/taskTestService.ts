@@ -199,7 +199,11 @@ export async function launchTestEntry(
 ): Promise<TestLaunchOutcome | null> {
   const [mainFolder] = entry.repos;
   if (!mainFolder && !entry.noRepo) return null;
-  const skill = await resolveInstalledSkill(prefs.taskTestSkill, "TASK_TEST_SKILL_NOT_INSTALLED");
+  const skill = await resolveInstalledSkill(
+    prefs.taskTestSkill,
+    "TASK_TEST_SKILL_NOT_INSTALLED",
+    "taskTestSkill",
+  );
 
   const worktrees: string[] = [];
   const linked: string[] = [];

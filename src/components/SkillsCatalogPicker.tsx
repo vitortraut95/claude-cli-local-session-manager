@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Info, Loader2, Plus } from "lucide-react";
+import { AlertTriangle, Check, Info, Link2, Loader2, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -100,6 +100,16 @@ export function SkillsCatalogPicker({
     }
     return map;
   }, [status.skills]);
+  /** Saved skills linked only as a dependency of others: `<catalog>/<skill>` → who needs them. */
+  const requiredBy = useMemo(
+    () =>
+      new Map(
+        status.skills
+          .filter((skill) => skill.requiredBy && skill.requiredBy.length > 0)
+          .map((skill) => [`${skill.catalog}/${skill.name}`, skill.requiredBy!]),
+      ),
+    [status.skills],
+  );
 
   const duplicateNames = useMemo(() => {
     const seen = new Map<string, number>();
@@ -187,13 +197,18 @@ export function SkillsCatalogPicker({
               <ul className="mt-2 flex flex-wrap gap-1.5 pl-6">
                 {catalog.skills.map((skill) => {
                   const picked = isPicked(catalog.name, skill.name);
-                  // Link state reflects what's saved — only shown while the skill is still picked.
-                  const state = picked ? states?.get(skill.name) : undefined;
+                  const neededBy = picked
+                    ? undefined
+                    : requiredBy.get(`${catalog.name}/${skill.name}`);
+                  // Link state reflects what's saved — only shown while the skill is still linked.
+                  const state = picked || neededBy ? states?.get(skill.name) : undefined;
                   return (
                     <li key={skill.name} className="flex items-center">
                       <Tooltip
                         content={
                           <span className="block max-w-md whitespace-pre-line font-normal">
+                            {neededBy &&
+                              `${t("skillsHub.manage.requiredBy", { names: neededBy.join(", ") })}\n\n`}
                             {skill.description || t("skillsHub.preview.noDescription")}
                           </span>
                         }
@@ -203,14 +218,22 @@ export function SkillsCatalogPicker({
                           aria-pressed={picked}
                           onClick={() => toggleSkill(catalog, skill.name)}
                           className={`flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[11px] transition-colors ${
-                            !picked
-                              ? "border-gray-200 text-gray-500 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-500"
-                              : state
-                                ? `border-transparent ${STATE_CLASSES[state]}`
-                                : "border-gray-500 bg-gray-100 text-gray-800 dark:border-gray-400 dark:bg-gray-800 dark:text-gray-100"
+                            neededBy
+                              ? "border-dashed border-gray-400 text-gray-700 dark:border-gray-500 dark:text-gray-300"
+                              : !picked
+                                ? "border-gray-200 text-gray-500 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-500"
+                                : state
+                                  ? `border-transparent ${STATE_CLASSES[state]}`
+                                  : "border-gray-500 bg-gray-100 text-gray-800 dark:border-gray-400 dark:bg-gray-800 dark:text-gray-100"
                           }`}
                         >
-                          {picked ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                          {picked ? (
+                            <Check className="h-3 w-3" />
+                          ) : neededBy ? (
+                            <Link2 className="h-3 w-3" />
+                          ) : (
+                            <Plus className="h-3 w-3" />
+                          )}
                           {skill.name}
                           {state && state !== "linked" && <> · {t(STATE_LABEL_KEYS[state])}</>}
                         </button>

@@ -94,6 +94,10 @@ export const skillsHub = {
   ),
   "skillsHub.manage.detached": dict("(detached)", "(detached)"),
   "skillsHub.manage.dirty": dict("local changes", "mudanças locais"),
+  "skillsHub.manage.requiredBy": dict(
+    "Linked as a dependency of: {names}",
+    "Linkada como dependência de: {names}",
+  ),
   "skillsHub.manage.duplicates": dict(
     "Same skill name in more than one checked catalog: {names} — only the first catalog's is linked.",
     "Mesmo nome de skill em mais de um catálogo marcado: {names} — só a do primeiro catálogo é linkada.",
