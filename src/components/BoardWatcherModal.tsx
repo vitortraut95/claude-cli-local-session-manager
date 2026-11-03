@@ -19,6 +19,7 @@ import {
   type DecisionColumn,
 } from "../utils/boardWatcher";
 import { Button } from "./Button";
+import { DailyPreviewPanel } from "./DailyPreviewPanel";
 import { Modal } from "./Modal";
 import { WatcherBadge } from "./WatcherBadge";
 import { WatcherHistory } from "./WatcherHistory";
@@ -428,6 +429,8 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
             )}
           </section>
         )}
+
+        {status?.enabled && <DailyPreviewPanel />}
 
         <WatcherHistory
           refreshKey={historyRefreshKey}

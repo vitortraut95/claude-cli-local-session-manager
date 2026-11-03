@@ -94,7 +94,9 @@ export type WatcherActionKind =
   | "test-failed"
   | "comment"
   | "approve"
-  | "notify";
+  | "notify"
+  | "build-failed"
+  | "pr-news";
 
 /** One line of `boardWatcher-actions.jsonl`: something done (or, in simulation, that would be). */
 export type WatcherActionEntry = {
@@ -120,7 +122,7 @@ const HISTORY_FILTER_KINDS: Record<Exclude<HistoryFilter, "all">, WatcherActionK
   reviews: ["review", "reviewed", "review-failed", "approve", "comment"],
   tests: ["claim-test", "retest", "tested", "test-failed"],
   queue: ["enqueue-dev", "queued-test", "start-progress"],
-  notices: ["notify"],
+  notices: ["notify", "build-failed", "pr-news"],
 };
 
 export function matchesHistoryFilter(entry: WatcherActionEntry, filter: HistoryFilter): boolean {
@@ -183,6 +185,17 @@ export type WatcherCalls = {
   lastLookMs: number;
   retries: number;
   lastHour: { jira: number; bitbucket: number; jenkins: number };
+};
+
+/** The daily summary as the Board shows it (built on demand). */
+export type DailyPreview = {
+  /** "ontem", or "sexta 30/10" after a holiday or a day off. */
+  dayLabel: string;
+  yesterday: string[];
+  today: string[];
+  stuck: string[];
+  /** The few first-person lines to say or paste. */
+  text: string;
 };
 
 /** The user's verdict on something the watcher did (a history entry), for calibration. */
