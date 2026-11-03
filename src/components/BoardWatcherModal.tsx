@@ -12,14 +12,11 @@ import type {
 } from "../services/boardWatcherApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { formatUpdatedAt } from "../utils/formatDate";
-import {
-  decisionColumn,
-  translateServerText,
-  type DecisionColumn,
-} from "../utils/boardWatcher";
+import { decisionColumn, translateServerText, type DecisionColumn } from "../utils/boardWatcher";
 import { Button } from "./Button";
 import { DailyPreviewPanel } from "./DailyPreviewPanel";
 import { DecisionItem } from "./DecisionItem";
+import { HomologPanel } from "./HomologPanel";
 import { Modal } from "./Modal";
 import { WatcherBadge } from "./WatcherBadge";
 import { WatcherHistory } from "./WatcherHistory";
@@ -419,6 +416,8 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
         )}
 
         {status?.enabled && <DailyPreviewPanel />}
+
+        {status?.enabled && <HomologPanel />}
 
         <WatcherHistory
           refreshKey={historyRefreshKey}

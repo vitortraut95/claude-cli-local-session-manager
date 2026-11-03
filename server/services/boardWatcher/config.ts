@@ -82,6 +82,9 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
   /** `unapprovedDeploying`: also review the PRs nobody approved whose ticket is in `deploying`. */
   codeReview?: { enabled?: boolean; unapprovedDeploying?: boolean };
   notifications?: { instant?: boolean; digest?: boolean };
+  /** "Point to homolog": the repos it's offered for and, per repo, the homolog pages to open
+   *  once it's deployed. */
+  homolog?: { repos: string[]; urls?: Record<string, string[]> };
   /** A summary for the daily meeting (yesterday, today, what's stuck), sent `leadMinutes` before
    *  `meetingAt` ("HH:MM", business timezone) on business days. Off without it. */
   daily?: { meetingAt: string; leadMinutes?: number };

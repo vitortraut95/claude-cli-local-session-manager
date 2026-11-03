@@ -412,7 +412,14 @@ export async function branchBuild(
   credentials: BitbucketCredentials,
   repo: string,
   branch: string,
-): Promise<{ ci: PullRequest["ci"]; hash: string; date: string; failedUrl?: string } | null> {
+): Promise<{
+  ci: PullRequest["ci"];
+  hash: string;
+  date: string;
+  failedUrl?: string;
+  /** The branch's own build on its latest commit (any result). */
+  url?: string;
+} | null> {
   const base = `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}`;
   const ref = await get<{ target?: { hash?: string; date?: string } }>(
     credentials,
@@ -428,6 +435,7 @@ export async function branchBuild(
     hash,
     date: ref.target?.date ?? "",
     failedUrl: relevant.find((s) => s.state === "FAILED" || s.state === "STOPPED")?.url,
+    url: own[0]?.url,
   };
 }
 

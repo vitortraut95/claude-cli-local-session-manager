@@ -15,6 +15,8 @@ import {
   pauseBoardWatcher,
   resumeBoardWatcher,
   runBoardWatcherNow,
+  homologCandidates,
+  pointToHomolog,
   previewDaily,
   sendBoardWatcherDigestNow,
 } from "../services/boardWatcherService.js";
@@ -39,6 +41,22 @@ boardWatcherRouter.post("/resume", async (_req, res) => {
 boardWatcherRouter.post("/digest", async (_req, res) => {
   await sendBoardWatcherDigestNow();
   res.status(204).end();
+});
+
+/** A ticket's PR branches that can be pointed to homolog. */
+boardWatcherRouter.get("/homolog/candidates", async (req, res) => {
+  const key = typeof req.query.key === "string" ? req.query.key.trim().toUpperCase() : "";
+  if (!/^[A-Z][A-Z0-9]+-\d+$/.test(key)) throw new BadRequestError("BAD_KEY", "key");
+  res.json(await homologCandidates(key));
+});
+
+/** Points a branch to homolog (Jenkins Replay); the app asks the user to confirm first. */
+boardWatcherRouter.post("/homolog", async (req, res) => {
+  const { repo, branch } = (req.body ?? {}) as { repo?: unknown; branch?: unknown };
+  if (typeof repo !== "string" || typeof branch !== "string" || !branch) {
+    throw new BadRequestError("BAD_HOMOLOG", "repo and branch");
+  }
+  res.json(await pointToHomolog(repo, branch));
 });
 
 /** The daily summary right now, to read in the Board (nothing goes to Teams). */

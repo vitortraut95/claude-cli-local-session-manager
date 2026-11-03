@@ -295,6 +295,30 @@ export function noticePreviewFailed(
   });
 }
 
+/** How a "point to homolog" build ended: deployed (with the homolog pages) or failed (with why). */
+export function noticeHomologDone(
+  repo: string,
+  branch: string,
+  buildUrl: string,
+  result: string,
+  urls: string[],
+  diagnosis: BuildDiagnosis | null,
+): void {
+  const ok = result === "SUCCESS";
+  enqueue({
+    level: ok ? "info" : "urgent",
+    title: `Homolog · ${repo} ${ok ? "atualizado com" : "não subiu"} ${branch}`,
+    summary: ok
+      ? "O build terminou: homolog está com essa branch."
+      : diagnosis
+        ? `O build terminou com ${result}, em ${diagnosis.stage}: ${short(diagnosis.cause, 160)}`
+        : `O build terminou com ${result}.`,
+    highlights: ok && urls.length ? { heading: "Homolog", items: urls } : undefined,
+    details: !ok && diagnosis ? [{ heading: "O que fazer", items: [diagnosis.fix] }] : [],
+    links: link("Abrir no Jenkins", buildUrl),
+  });
+}
+
 /** One infra problem behind several failed builds: told once, with a message for DevOps. */
 export function noticeInfraIncident(
   incident: NonNullable<BuildDiagnosis["incident"]>,
