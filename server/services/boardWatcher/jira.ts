@@ -1,4 +1,5 @@
 import { adfToMarkdown } from "./adf.js";
+import { apiFetch } from "./http.js";
 import type { BoardIssue } from "./types.js";
 
 /**
@@ -51,7 +52,7 @@ async function request(
   body?: unknown,
 ): Promise<Response> {
   const auth = Buffer.from(`${credentials.email}:${credentials.token}`).toString("base64");
-  const response = await fetch(`https://${credentials.site}${apiPath}`, {
+  const response = await apiFetch("jira", `https://${credentials.site}${apiPath}`, {
     method: body === undefined ? "GET" : "POST",
     headers: {
       Authorization: `Basic ${auth}`,

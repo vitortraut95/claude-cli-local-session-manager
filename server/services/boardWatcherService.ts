@@ -1,6 +1,7 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { BoardWatcherStatus } from "../../shared/boardWatcher.js";
+import type { BoardWatcherStatus, WatcherCalls } from "../../shared/boardWatcher.js";
+import { takeCallCounts } from "./boardWatcher/http.js";
 import { recordEvent } from "../utils/history.js";
 import { getTaskStore, onStoreChange, type StoreChange } from "../utils/taskStore.js";
 import { getUserPreferences } from "./preferencesService.js";
@@ -102,6 +103,23 @@ let timer: NodeJS.Timeout | null = null;
 let nextLookAt: string | null = null;
 let running = false;
 let lastDecisions: Decision[] = [];
+/** Per look: when, how long and the API calls since the previous one (for the last hour's sum). */
+const looks: { at: number; ms: number; calls: WatcherCalls["lastLook"]; retries: number }[] = [];
+const HOUR_MS = 60 * 60_000;
+
+function callStats(): WatcherCalls | null {
+  const last = looks.at(-1);
+  if (!last) return null;
+  const recent = looks.filter((l) => Date.now() - l.at < HOUR_MS);
+  const sum = (service: keyof WatcherCalls["lastLook"]) =>
+    recent.reduce((total, l) => total + l.calls[service], 0);
+  return {
+    lastLook: last.calls,
+    lastLookMs: last.ms,
+    retries: last.retries,
+    lastHour: { jira: sum("jira"), bitbucket: sum("bitbucket"), jenkins: sum("jenkins") },
+  };
+}
 let lastConfig: BoardWatcherConfig | null = null;
 let reviewing = false;
 /** Why pending reviews/tests aren't starting, shown in the app; null while they can. */
@@ -275,6 +293,9 @@ async function lookLocked(): Promise<void> {
     await watchPreviewBuilds(config, issues, state);
     state.lastTickAt = now.toISOString();
     state.lastError = null;
+    const { calls, retries } = takeCallCounts();
+    looks.push({ at: Date.now(), ms: Date.now() - started, calls, retries });
+    while (looks.length > 0 && Date.now() - (looks[0]?.at ?? 0) > HOUR_MS) looks.shift();
     recordEvent("boardWatcher.tick", {
       mode: config.mode,
       decisions: lastDecisions.length,
@@ -860,6 +881,7 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
     today: await todaysSessions(config),
     scoreboard: await getScoreboard(),
     jobsBlockedBy,
+    calls: callStats(),
     testClaimsToday: state.testClaims.day === today ? state.testClaims.count : 0,
     lastDecisions,
   };

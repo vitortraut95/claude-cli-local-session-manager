@@ -1,3 +1,4 @@
+import { apiFetch } from "./http.js";
 import type { PullRequest, ReviewFinding, ReviewerState } from "./types.js";
 
 /**
@@ -52,7 +53,7 @@ async function request(
   body?: unknown,
 ): Promise<Response> {
   const auth = Buffer.from(`${credentials.email}:${credentials.token}`).toString("base64");
-  const response = await fetch(url, {
+  const response = await apiFetch("bitbucket", url, {
     method: body === undefined ? "GET" : "POST",
     headers: {
       Authorization: `Basic ${auth}`,

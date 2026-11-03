@@ -317,6 +317,19 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                 <WatcherBadge>{t("board.now.idle")}</WatcherBadge>
               )}
             </div>
+            {status.calls && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t("board.now.calls", {
+                  seconds: Math.round(status.calls.lastLookMs / 1000),
+                  jira: status.calls.lastLook.jira,
+                  bitbucket: status.calls.lastLook.bitbucket,
+                  jenkins: status.calls.lastLook.jenkins,
+                  hour: status.calls.lastHour.bitbucket,
+                })}
+                {status.calls.retries > 0 &&
+                  ` ${t("board.now.retries", { count: status.calls.retries })}`}
+              </p>
+            )}
             {status.jobsBlockedBy && (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
                 {t("board.now.blocked", {
