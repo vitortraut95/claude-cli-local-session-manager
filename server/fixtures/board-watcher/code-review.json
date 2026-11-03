@@ -546,5 +546,92 @@
         }
       }
     ]
+  },
+  {
+    "name": "a PR pushed after the user's approval is reviewed again, without approving twice",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "60",
+            "repo": "web",
+            "title": "PR 60",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "approved"
+              }
+            ],
+            "approvedCommit": "aaa111"
+          },
+          {
+            "id": "61",
+            "repo": "web",
+            "title": "PR 61",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "approved"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#60": "review",
+            "web#61": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#60": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "a blocking finding pushed after the user's approval is commented and reported",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "62",
+            "repo": "web",
+            "title": "PR 62",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "approved"
+              }
+            ],
+            "approvedCommit": "aaa111"
+          }
+        ],
+        "reviews": {
+          "web#62": {
+            "findings": [
+              {
+                "severity": "blocking",
+                "body": "Quebra o checkout"
+              }
+            ]
+          }
+        },
+        "expect": {
+          "effects": ["comment web#62 blocking", "notify digest: Not approved: web#62"]
+        }
+      }
+    ]
   }
 ]

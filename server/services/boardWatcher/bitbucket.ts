@@ -185,6 +185,44 @@ async function toPullRequest(
   };
 }
 
+type RawActivity = {
+  approval?: { date: string; user?: { account_id?: string } };
+  update?: { date: string; source?: { commit?: { hash?: string } } };
+};
+
+/** Sets `approvedCommit` on the PRs `me` approved before their latest push: the head at the
+ *  time of the approval is the last update (push) before it. */
+export async function markStaleApprovals(
+  credentials: BitbucketCredentials,
+  prs: PullRequest[],
+  me: string,
+): Promise<void> {
+  const approved = prs.filter((pr) =>
+    pr.reviewers.some((r) => r.id === me && r.state === "approved"),
+  );
+  await Promise.all(
+    approved.map(async (pr) => {
+      const page = await get<{ values?: RawActivity[] }>(
+        credentials,
+        `${pullRequestUrl(credentials, pr)}/activity?pagelen=50`,
+      );
+      const activity = page.values ?? [];
+      const approvedAt = activity
+        .map((a) => a.approval)
+        .filter((a) => a?.user?.account_id === me)
+        .map((a) => Date.parse(a?.date ?? ""))
+        .sort((a, b) => b - a)[0];
+      if (!approvedAt) return;
+      const hash = activity
+        .map((a) => a.update)
+        .filter((u) => u && Date.parse(u.date) <= approvedAt)
+        .sort((a, b) => Date.parse(b?.date ?? "") - Date.parse(a?.date ?? ""))[0]?.source?.commit
+        ?.hash;
+      if (hash && !sameCommit(hash, pr.sourceHash)) pr.approvedCommit = hash;
+    }),
+  );
+}
+
 /** The PRs (open or merged) of `repos` whose title or source branch has `key`, newest first:
  *  where a ticket's code lives, even when nobody linked the PR on the ticket. */
 export async function findPullRequestsForKey(

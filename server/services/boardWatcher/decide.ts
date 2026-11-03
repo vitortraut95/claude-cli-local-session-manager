@@ -268,8 +268,8 @@ export function decidePullRequests(
     const subject = prSubject(pr);
     if (pr.authorId === config.me) continue;
     const mine = pr.reviewers.find((r) => r.id === config.me);
-    // An approval stays until a new push resets it (Bitbucket), so it means this push is done.
-    if (!mine || mine.state === "approved") continue;
+    // Bitbucket keeps an approval through new pushes; those are reviewed (`approvedCommit`).
+    if (!mine || (mine.state === "approved" && !pr.approvedCommit)) continue;
     if (state.handled[`review:${subject}`] === pr.lastPushAt) continue;
 
     const skip = (reason: string) => decisions.push({ subject, action: "skip", reason });
@@ -306,7 +306,11 @@ export function decidePullRequests(
       if (elapsed < delayMinutes) {
         wait(`giving people time to review (${elapsed} of ${delayMinutes} business minutes)`);
       } else {
-        decisions.push({ subject, action: "review", reason: "ready for review" });
+        decisions.push({
+          subject,
+          action: "review",
+          reason: pr.approvedCommit ? "pushed since the user's approval" : "ready for review",
+        });
       }
     }
   }

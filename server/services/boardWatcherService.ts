@@ -346,7 +346,12 @@ async function drainJobs(): Promise<void> {
           smallPr: config.review?.smallPr,
           maxBudgetUsd: config.review?.maxBudgetUsd,
           lessons: await getLessons("review"),
-          previous: state.reviewedCommits?.[subject],
+          previous: pr.approvedCommit
+            ? {
+                hash: pr.approvedCommit,
+                findings: state.reviewedCommits?.[subject]?.findings ?? [],
+              }
+            : state.reviewedCommits?.[subject],
         });
         await serial(async () => {
           const state = await loadState();

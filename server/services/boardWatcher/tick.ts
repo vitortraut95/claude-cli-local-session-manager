@@ -138,11 +138,19 @@ export async function applyReview(
   const blocking = relevant.filter((f) => f.severity === "blocking").length;
   if (blocking > 0) {
     state.handled[`review:${subject}`] = pr.lastPushAt;
+    // The user's approval of an earlier commit is still on the PR; only they take it back.
     await deps.notifier.notify(
       "digest",
       `Not approved: ${subject}`,
-      `${blocking} blocking finding(s) on "${pr.title}".`,
+      pr.approvedCommit
+        ? `${blocking} blocking finding(s) pushed after your approval on "${pr.title}"; your approval is still on the PR.`
+        : `${blocking} blocking finding(s) on "${pr.title}".`,
     );
+    return;
+  }
+  // Already approved: the new pushes only needed a look.
+  if (pr.approvedCommit) {
+    state.handled[`review:${subject}`] = pr.lastPushAt;
     return;
   }
 

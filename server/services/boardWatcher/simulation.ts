@@ -9,6 +9,7 @@ import {
   bitbucketCredentialsFromEnv,
   commentOnPullRequest,
   listOpenPullRequests,
+  markStaleApprovals,
 } from "./bitbucket.js";
 import type { BoardWatcherConfig } from "./config.js";
 import { markConflicts } from "./conflicts.js";
@@ -134,11 +135,15 @@ export function createBoardDeps(
       listPullRequests: async () => {
         const prs = await listOpenPullRequests(bitbucketCredentials, bitbucket.repos);
         for (const pr of prs) titles.set(prSubject(pr), pr.title);
+        const others = prs.filter((pr) => pr.authorId !== config.me);
+        await markStaleApprovals(bitbucketCredentials, others, config.me).catch((err: unknown) =>
+          console.warn("[board-watcher] Couldn't check approvals against new pushes:", err),
+        );
         // Only the PRs the user may review: a conflicted one isn't worth a review session.
-        const candidates = prs.filter(
-          (pr) =>
-            pr.authorId !== config.me &&
-            pr.reviewers.some((r) => r.id === config.me && r.state !== "approved"),
+        const candidates = others.filter((pr) =>
+          pr.reviewers.some(
+            (r) => r.id === config.me && (r.state !== "approved" || pr.approvedCommit),
+          ),
         );
         await markConflicts(candidates, bitbucket.localRepos ?? {}).catch((err: unknown) =>
           console.warn("[board-watcher] Couldn't check PR conflicts:", err),

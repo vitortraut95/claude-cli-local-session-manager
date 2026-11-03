@@ -107,12 +107,16 @@ export function noticeReviewBlocked(
       const where = f.file ? `${f.file.split("/").at(-1)}${f.line ? `:${f.line}` : ""} — ` : "";
       return `[${f.severity === "blocking" ? "bloqueia" : "médio"}] ${where}${f.body}`;
     });
+  // An approval of an earlier commit stays on the PR: it's up to the user to take it back.
+  const staleApproval = pr.approvedCommit
+    ? " Problema no push feito depois do seu aprove, que continua no PR: veja se tira o aprove."
+    : "";
   enqueue({
-    level: "info",
+    level: pr.approvedCommit ? "urgent" : "info",
     title: `${prSubject(pr)} · review: ${config.live?.approve ? "não aprovou" : "não aprovaria"}`,
     summary: config.live?.comments
-      ? `${short(pr.title, 80)}. Comentou no PR; o aprove fica com você.`
-      : `${short(pr.title, 80)} ${SIMULATION}.`,
+      ? `${short(pr.title, 80)}. Comentou no PR; o aprove fica com você.${staleApproval}`
+      : `${short(pr.title, 80)} ${SIMULATION}.${staleApproval}`,
     details: [
       { heading: "Resumo do review", items: [summary] },
       { heading: config.live?.comments ? "Comentou" : "Comentaria", items: posted },

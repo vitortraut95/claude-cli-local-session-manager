@@ -38,6 +38,9 @@ export type PullRequest = {
   sourceBranch?: string;
   destinationBranch?: string;
   sourceHash?: string;
+  /** The commit the user approved, set only when the PR got pushes since: Bitbucket keeps the
+   *  approval, so those pushes would otherwise go unreviewed. */
+  approvedCommit?: string;
 };
 
 /** Only `blocking` stops the approval; `minor` (style, nitpicks) is never posted. A `product`
