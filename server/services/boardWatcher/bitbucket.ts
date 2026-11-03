@@ -15,6 +15,7 @@ type RawPullRequest = {
   title: string;
   draft?: boolean;
   created_on: string;
+  updated_on?: string;
   author?: { account_id?: string };
   source?: { commit?: { hash?: string }; branch?: { name?: string } };
   destination?: { branch?: { name?: string } };
@@ -30,6 +31,7 @@ const PR_FIELDS = [
   "values.title",
   "values.draft",
   "values.created_on",
+  "values.updated_on",
   "values.author.account_id",
   "values.source.commit.hash",
   "values.source.branch.name",
@@ -151,6 +153,53 @@ function ciState(states: string[]): PullRequest["ci"] {
   return "passed";
 }
 
+/**
+ * Caches that spare repeated calls between looks: what a commit is doesn't change (its date, a
+ * finished build's statuses), and a ticket's PRs or a PR's approval history move slowly enough
+ * for a short TTL. Process-local; a restart just refills them.
+ */
+const MAX_CACHED = 2000;
+const commitDates = new Map<string, string>();
+const finishedStatuses = new Map<string, { state: string; name?: string; url?: string }[]>();
+
+function remember<V>(cache: Map<string, V>, key: string, value: V): V {
+  const oldest = cache.keys().next().value;
+  if (cache.size >= MAX_CACHED && oldest !== undefined) cache.delete(oldest);
+  cache.set(key, value);
+  return value;
+}
+
+async function commitDate(
+  credentials: BitbucketCredentials,
+  base: string,
+  hash: string,
+): Promise<string | undefined> {
+  const cached = commitDates.get(hash);
+  if (cached) return cached;
+  const { date } = await get<{ date?: string }>(credentials, `${base}/commit/${hash}?fields=date`);
+  return date ? remember(commitDates, hash, date) : undefined;
+}
+
+/** A commit's build statuses; kept once every build on it finished. */
+async function commitStatuses(
+  credentials: BitbucketCredentials,
+  base: string,
+  hash: string,
+): Promise<{ state: string; name?: string; url?: string }[]> {
+  const cached = finishedStatuses.get(hash);
+  if (cached) return cached;
+  const { values = [] } = await get<{
+    values?: { state: string; name?: string; url?: string }[];
+  }>(
+    credentials,
+    `${base}/commit/${hash}/statuses?pagelen=50&fields=values.state,values.name,values.url`,
+  );
+  if (values.length > 0 && !values.some((s) => s.state === "INPROGRESS")) {
+    remember(finishedStatuses, hash, values);
+  }
+  return values;
+}
+
 async function toPullRequest(
   credentials: BitbucketCredentials,
   repo: string,
@@ -158,27 +207,25 @@ async function toPullRequest(
 ): Promise<PullRequest> {
   const base = `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}`;
   const hash = raw.source?.commit?.hash;
-  const [commit, statuses] = hash
+  const [date, statuses] = hash
     ? await Promise.all([
-        get<{ date?: string }>(credentials, `${base}/commit/${hash}?fields=date`),
-        get<{ values?: { state: string }[] }>(
-          credentials,
-          `${base}/commit/${hash}/statuses?pagelen=50&fields=values.state`,
-        ),
+        commitDate(credentials, base, hash),
+        commitStatuses(credentials, base, hash),
       ])
-    : [{}, {}];
+    : [undefined, []];
   return {
     id: String(raw.id),
     repo,
     title: raw.title,
     authorId: raw.author?.account_id ?? "",
     createdAt: raw.created_on,
-    lastPushAt: commit.date ?? raw.created_on,
+    updatedAt: raw.updated_on,
+    lastPushAt: date ?? raw.created_on,
     draft: raw.draft ?? false,
     reviewers: (raw.participants ?? [])
       .filter((p) => p.role === "REVIEWER" && p.user?.account_id)
       .map((p) => ({ id: p.user?.account_id ?? "", state: reviewerState(p.state) })),
-    ci: ciState((statuses.values ?? []).map((s) => s.state)),
+    ci: ciState(statuses.map((s) => s.state)),
     hasConflicts: false,
     sourceBranch: raw.source?.branch?.name,
     destinationBranch: raw.destination?.branch?.name,
@@ -190,6 +237,11 @@ type RawActivity = {
   approval?: { date: string; user?: { account_id?: string } };
   update?: { date: string; source?: { commit?: { hash?: string } } };
 };
+
+/** Per PR and head: the commit the user approved when it's an earlier one. Re-read after the TTL
+ *  so an approval of the new head clears it. */
+const STALE_APPROVAL_TTL_MS = 60 * 60_000;
+const staleApprovals = new Map<string, { at: number; commit: string | null }>();
 
 /** Sets `approvedCommit` on the PRs `me` approved before their latest push: the head at the
  *  time of the approval is the last update (push) before it. */
@@ -203,6 +255,12 @@ export async function markStaleApprovals(
   );
   await Promise.all(
     approved.map(async (pr) => {
+      const key = `${pr.repo}#${pr.id}@${pr.sourceHash ?? ""}`;
+      const cached = staleApprovals.get(key);
+      if (cached && Date.now() - cached.at < STALE_APPROVAL_TTL_MS) {
+        if (cached.commit) pr.approvedCommit = cached.commit;
+        return;
+      }
       const page = await get<{ values?: RawActivity[] }>(
         credentials,
         `${pullRequestUrl(credentials, pr)}/activity?pagelen=50`,
@@ -219,7 +277,9 @@ export async function markStaleApprovals(
         .filter((u) => u && Date.parse(u.date) <= approvedAt)
         .sort((a, b) => Date.parse(b?.date ?? "") - Date.parse(a?.date ?? ""))[0]?.source
         ?.commit?.hash;
-      if (hash && !sameCommit(hash, pr.sourceHash)) pr.approvedCommit = hash;
+      const commit = hash && !sameCommit(hash, pr.sourceHash) ? hash : null;
+      remember(staleApprovals, key, { at: Date.now(), commit });
+      if (commit) pr.approvedCommit = commit;
     }),
   );
 }
@@ -350,11 +410,7 @@ export async function branchBuild(
   ).catch(() => null);
   const hash = ref?.target?.hash;
   if (!hash) return null;
-  const statuses = await get<{ values?: { state: string; name?: string; url?: string }[] }>(
-    credentials,
-    `${base}/commit/${hash}/statuses?pagelen=50&fields=values.state,values.name,values.url`,
-  );
-  const all = statuses.values ?? [];
+  const all = await commitStatuses(credentials, base, hash);
   const own = all.filter((s) => s.name?.includes(branch));
   const relevant = own.length ? own : all;
   return {
@@ -365,9 +421,25 @@ export async function branchBuild(
   };
 }
 
+const TICKET_PRS_TTL_MS = 30 * 60_000;
+const ticketPrs = new Map<string, { at: number; prs: { repo: string; branch: string }[] }>();
+
 /** The PRs (open or merged) of `repos` whose title or source branch has `key`, newest first:
  *  where a ticket's code lives, even when nobody linked the PR on the ticket. */
 export async function findPullRequestsForKey(
+  credentials: BitbucketCredentials,
+  repos: string[],
+  key: string,
+): Promise<{ repo: string; branch: string }[]> {
+  const cacheKey = `${repos.join(",")}|${key}`;
+  const cached = ticketPrs.get(cacheKey);
+  if (cached && Date.now() - cached.at < TICKET_PRS_TTL_MS) return cached.prs;
+  const prs = await searchPullRequestsForKey(credentials, repos, key);
+  remember(ticketPrs, cacheKey, { at: Date.now(), prs });
+  return prs;
+}
+
+async function searchPullRequestsForKey(
   credentials: BitbucketCredentials,
   repos: string[],
   key: string,
