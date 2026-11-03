@@ -166,6 +166,29 @@ export function noticeLiveAction(
   });
 }
 
+/** A ticket in Code Review has PRs in repos the watcher doesn't follow: they get no review. */
+export function noticeUnwatchedPullRequests(
+  config: BoardWatcherConfig,
+  key: string,
+  summary: string,
+  prs: { repo: string; id: string; title: string; status: string }[],
+): void {
+  const status: Record<string, string> = { OPEN: "aberto", MERGED: "já mergeado" };
+  enqueue({
+    level: "info",
+    title: `${key} · PR em repo que o watcher não acompanha`,
+    summary: `${short(summary, 80)}. Esses PRs não passam pelo review automático.`,
+    highlights: {
+      heading: "PRs",
+      items: prs.map(
+        (pr) =>
+          `${pr.repo.split("/").at(-1)}#${pr.id} (${status[pr.status] ?? pr.status}): ${short(pr.title, 80)}`,
+      ),
+    },
+    links: link("Abrir a tarefa", issueUrl(config, key)),
+  });
+}
+
 /** The look at the board failed (token, VPN, network). */
 export function noticeWatcherError(message: string): void {
   enqueue({

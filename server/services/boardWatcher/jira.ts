@@ -98,6 +98,48 @@ export async function activeSprint(
   return page.values[0] ?? null;
 }
 
+export type LinkedPullRequest = {
+  /** "workspace/repo". */
+  repo: string;
+  id: string;
+  title: string;
+  status: "OPEN" | "MERGED" | "DECLINED";
+  url: string;
+};
+
+/** The Bitbucket PRs linked to an issue (Jira's development panel: by key in title or branch). */
+export async function linkedPullRequests(
+  credentials: JiraCredentials,
+  key: string,
+): Promise<LinkedPullRequest[]> {
+  const { id } = await get<{ id: string }>(credentials, `/rest/api/3/issue/${key}?fields=id`);
+  const params = new URLSearchParams({
+    issueId: id,
+    applicationType: "bitbucket",
+    dataType: "pullrequest",
+  });
+  const page = await get<{
+    detail?: {
+      pullRequests?: {
+        id: string;
+        name: string;
+        status: LinkedPullRequest["status"];
+        url: string;
+        repositoryName: string;
+      }[];
+    }[];
+  }>(credentials, `/rest/dev-status/latest/issue/detail?${params.toString()}`);
+  return (page.detail ?? []).flatMap((d) =>
+    (d.pullRequests ?? []).map((pr) => ({
+      repo: pr.repositoryName,
+      id: pr.id,
+      title: pr.name,
+      status: pr.status,
+      url: pr.url,
+    })),
+  );
+}
+
 /** Every issue matching `jql`, with comments and the status history, up to `limit`. */
 export async function searchIssues(
   credentials: JiraCredentials,
