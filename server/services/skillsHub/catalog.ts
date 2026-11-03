@@ -37,6 +37,23 @@ export function readFrontmatterList(frontmatter: string, key: string): string[] 
   return items;
 }
 
+/** A scalar one level down, e.g. `metadata:` → `  author: Name`. */
+export function readFrontmatterNestedScalar(
+  frontmatter: string,
+  parent: string,
+  key: string,
+): string | null {
+  const lines = frontmatter.split(/\r?\n/);
+  const index = lines.findIndex((line) => line.startsWith(`${parent}:`));
+  if (index === -1) return null;
+  for (const line of lines.slice(index + 1)) {
+    if (line.trim() !== "" && !/^\s/.test(line)) break;
+    const match = new RegExp(`^\\s+${key}:\\s*(.+)$`).exec(line);
+    if (match) return match[1]!.trim().replace(/^["']|["']$/g, "") || null;
+  }
+  return null;
+}
+
 async function readSkillDescription(skillMdPath: string): Promise<string> {
   try {
     const raw = await readFile(skillMdPath, "utf-8");

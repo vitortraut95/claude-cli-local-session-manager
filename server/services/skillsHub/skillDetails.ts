@@ -7,6 +7,7 @@ import {
   FRONTMATTER_PATTERN,
   listCatalogs,
   readFrontmatterList,
+  readFrontmatterNestedScalar,
   readFrontmatterScalar,
 } from "./catalog.js";
 import { locateHub, resolveRepoUrl } from "./locate.js";
@@ -47,6 +48,8 @@ export async function getSkillDetails(
     name: skillName,
     description: readFrontmatterScalar(frontmatter, "description"),
     requiresSkills: readFrontmatterList(frontmatter, "requires-skills"),
+    author: readFrontmatterNestedScalar(frontmatter, "metadata", "author"),
+    version: readFrontmatterNestedScalar(frontmatter, "metadata", "version"),
     body: raw.replace(FRONTMATTER_PATTERN, "").trim(),
     files: (await listFilesRecursive(skill.dir)).filter((file) => file !== "SKILL.md"),
     dir: skill.dir,

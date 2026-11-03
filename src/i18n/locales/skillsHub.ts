@@ -202,6 +202,8 @@ export const skillsHub = {
   "skillsHub.preview.noDescription": dict("No description.", "Sem descrição."),
   "skillsHub.preview.whenUsed": dict("When Claude uses it", "Quando o Claude usa"),
   "skillsHub.preview.requires": dict("Depends on:", "Depende de:"),
+  "skillsHub.preview.author": dict("Author:", "Autor:"),
+  "skillsHub.preview.version": dict("Version:", "Versão:"),
   "skillsHub.preview.files": dict("Files that come with it", "Arquivos que vêm junto"),
   "skillsHub.preview.loadError": dict(
     "Couldn't read this skill.",
