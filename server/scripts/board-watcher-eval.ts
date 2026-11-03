@@ -87,6 +87,7 @@ function toPullRequest(raw: Partial<PullRequest>): PullRequest {
     sourceBranch: raw.sourceBranch,
     destinationBranch: raw.destinationBranch,
     sourceHash: raw.sourceHash,
+    approvedCommit: raw.approvedCommit,
   };
 }
 
