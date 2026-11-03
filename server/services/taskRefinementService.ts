@@ -7,16 +7,27 @@ import type { TerminalLayout } from "../../shared/preferences.js";
 import type { RefinementInput } from "../../shared/tasks.js";
 
 /**
- * "Refine tasks": a batch of tickets handed to `taskRefinementSkill` in a session of its own. No
- * repo, branch or worktree — it opens in the first workspace dir, like a queue entry without repo.
+ * "Refine tasks": a batch of tickets and/or a sprint handed to `taskRefinementSkill` in a session of
+ * its own (neither = the skill offers the team's sprints). No repo, branch or worktree — it opens in
+ * the first workspace dir, like a queue entry without repo.
  */
 
 const KEY_PATTERN = /\b[A-Za-z][A-Za-z0-9]+-\d+\b/g;
 const NAME_NOTES_MAX = 60;
 
 const TEXT = {
-  en: { name: "Refinement: {keys}", notes: "Additional notes:" },
-  pt: { name: "Refinamento: {keys}", notes: "Observações adicionais:" },
+  en: {
+    name: "Refinement",
+    sprint: "Sprint: {sprint}",
+    directToPo: "Straight to the PO (skip the technical round with the devs).",
+    notes: "Additional notes:",
+  },
+  pt: {
+    name: "Refinamento",
+    sprint: "Sprint: {sprint}",
+    directToPo: "Direto pro PO (pula a etapa técnica com os devs).",
+    notes: "Observações adicionais:",
+  },
 };
 
 /** The ticket keys in the pasted text, uppercased, in order, without repeats. */
@@ -31,13 +42,9 @@ function notesForName(notes: string): string {
 }
 
 export async function launchRefinement(
-  { tasks, notes }: RefinementInput,
+  { tasks, notes, sprint = "", directToPo = false }: RefinementInput,
   layout?: TerminalLayout,
 ): Promise<{ sessionId: string | null }> {
-  const keys = ticketKeys(tasks);
-  if (keys.length === 0) {
-    throw new BadRequestError("REFINEMENT_TASKS_REQUIRED", "Paste at least one ticket.");
-  }
   const prefs = await getUserPreferences();
   const skill = await resolveInstalledSkill(
     prefs.taskRefinementSkill,
@@ -51,11 +58,24 @@ export async function launchRefinement(
   }
 
   const text = TEXT[prefs.language ?? "en"];
+  const trimmedTasks = tasks.trim();
+  const trimmedSprint = sprint.trim();
   const trimmedNotes = notes.trim();
-  const prompt = [`/${skill}\n${tasks.trim()}`, trimmedNotes && `${text.notes}\n${trimmedNotes}`]
+  const request = [
+    trimmedSprint && text.sprint.replace("{sprint}", trimmedSprint),
+    trimmedTasks,
+    directToPo && text.directToPo,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const prompt = [
+    request ? `/${skill}\n${request}` : `/${skill}`,
+    trimmedNotes && `${text.notes}\n${trimmedNotes}`,
+  ]
     .filter(Boolean)
     .join("\n\n");
-  const name = [text.name.replace("{keys}", keys.join(", ")), notesForName(trimmedNotes)]
+  const subject = [ticketKeys(tasks).join(", "), trimmedSprint].filter(Boolean).join(" · ");
+  const name = [subject ? `${text.name}: ${subject}` : text.name, notesForName(trimmedNotes)]
     .filter(Boolean)
     .join(" ");
 

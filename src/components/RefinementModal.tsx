@@ -17,7 +17,7 @@ type RefinementModalProps = {
   onSessionCreated?: () => void;
 };
 
-const TEXTAREA_CLASSNAME =
+const FIELD_CLASSNAME =
   "w-full rounded-lg border border-gray-300 bg-white p-3 text-sm text-gray-900 placeholder:text-gray-400 " +
   "focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 disabled:cursor-not-allowed " +
   "disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 " +
@@ -31,9 +31,9 @@ function ticketKeys(text: string): string[] {
 }
 
 /**
- * "Refine tasks": pasted tickets + additional notes, opened as a new session running
- * `taskRefinementSkill`. The tasks field stays locked until that skill is chosen (here, in the
- * Skills modal or in Settings) and installed.
+ * "Refine tasks": a sprint and/or pasted tickets + additional notes, opened as a new session running
+ * `taskRefinementSkill` (both empty = the skill offers the team's sprints). The fields stay locked
+ * until that skill is chosen (here, in the Skills modal or in Settings) and installed.
  *
  * Always mounted so an accidental close doesn't lose what was pasted — only a successful launch
  * resets the form.
@@ -43,7 +43,9 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
   const { showToast } = useToast();
   const { status: skillsHub } = useSkillsHubStatus(open);
   const [skill, setSkill] = useState<string | null>(null);
+  const [sprint, setSprint] = useState("");
   const [tasks, setTasks] = useState("");
+  const [directToPo, setDirectToPo] = useState(false);
   const [notes, setNotes] = useState("");
   const [launching, setLaunching] = useState(false);
 
@@ -68,15 +70,17 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
   const installedSkills = skillsHub?.installedSkills ?? [];
   const skillReady = Boolean(skill) && installedSkills.some((s) => s.name === skill);
   const keys = ticketKeys(tasks);
-  const canSubmit = skillReady && keys.length > 0 && !launching;
+  const canSubmit = skillReady && !launching;
 
   const launch = async (layout?: TerminalLayout) => {
     if (!canSubmit) return;
     setLaunching(true);
     try {
-      await tasksApi.launchRefinement({ tasks, notes }, layout);
+      await tasksApi.launchRefinement({ tasks, notes, sprint, directToPo }, layout);
       showToast(t("refinementModal.launched"), "success");
+      setSprint("");
       setTasks("");
+      setDirectToPo(false);
       setNotes("");
       onSessionCreated?.();
       onClose();
@@ -126,6 +130,20 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+            {t("refinementModal.sprintLabel")}
+          </label>
+          <input
+            type="text"
+            value={sprint}
+            onChange={(event) => setSprint(event.target.value)}
+            disabled={!skillReady}
+            placeholder={t("refinementModal.sprintPlaceholder")}
+            className={FIELD_CLASSNAME}
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
             {t("refinementModal.tasksLabel")}
           </label>
           <textarea
@@ -133,14 +151,32 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
             onChange={(event) => setTasks(event.target.value)}
             disabled={!skillReady}
             placeholder={t("refinementModal.tasksPlaceholder")}
-            rows={6}
-            className={TEXTAREA_CLASSNAME}
+            rows={5}
+            className={FIELD_CLASSNAME}
           />
-          {keys.length > 0 && (
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {t("refinementModal.detected", { count: keys.length, keys: keys.join(", ") })}
-            </p>
-          )}
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {keys.length > 0
+              ? t("refinementModal.detected", { count: keys.length, keys: keys.join(", ") })
+              : sprint.trim()
+                ? t("refinementModal.wholeSprint")
+                : t("refinementModal.nothingChosen")}
+          </p>
+        </div>
+
+        <div>
+          <label className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <input
+              type="checkbox"
+              checked={directToPo}
+              onChange={(event) => setDirectToPo(event.target.checked)}
+              disabled={!skillReady}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+            />
+            {t("refinementModal.directToPoLabel")}
+          </label>
+          <p className="mt-1 pl-6 text-xs text-gray-500 dark:text-gray-400">
+            {t("refinementModal.directToPoExplanation")}
+          </p>
         </div>
 
         <div>
@@ -153,7 +189,7 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
             disabled={!skillReady}
             placeholder={t("refinementModal.notesPlaceholder")}
             rows={4}
-            className={TEXTAREA_CLASSNAME}
+            className={FIELD_CLASSNAME}
           />
         </div>
       </div>
