@@ -3,6 +3,7 @@ import path from "node:path";
 import type {
   BoardWatcherStatus,
   DailyPreview,
+  HomologCandidate,
   WatcherCalls,
   WatcherDecision,
 } from "../../shared/boardWatcher.js";
@@ -14,7 +15,8 @@ import { getUserPreferences } from "./preferencesService.js";
 import { getMaxUsagePercent } from "./usageService.js";
 import { findRemoteSessionUrl } from "./session/remoteUrl.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
-import { ConflictError } from "../utils/httpError.js";
+import { BadRequestError, ConflictError } from "../utils/httpError.js";
+import { buildResult, HomologPatchError, replayToHomolog } from "./boardWatcher/homologReplay.js";
 import {
   isBusinessDay,
   isBusinessTime,
@@ -69,6 +71,7 @@ import {
   noticeTestsNeedNetwork,
   noticeWeakDescription,
   noticeReviewBlocked,
+  noticeHomologDone,
   noticeInfraIncident,
   noticeNewsOnMyPr,
   noticePreviewFailed,
@@ -1109,6 +1112,86 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
     testClaimsToday: state.testClaims.day === today ? state.testClaims.count : 0,
     lastDecisions: lastDecisions.map((d) => decisionView(d, config)),
   };
+}
+
+/** The branches of a ticket's PRs that can go to homolog (in the repos set up for it). */
+export async function homologCandidates(key: string): Promise<HomologCandidate[]> {
+  const config = await loadBoardWatcherConfig();
+  if (!config?.bitbucket || !config.homolog?.repos.length) {
+    throw new ConflictError("HOMOLOG_NOT_CONFIGURED", "boardWatcher.json has no homolog repos.");
+  }
+  const prs = await findPullRequestsForKey(
+    bitbucketCredentialsFromEnv(config.bitbucket.workspace),
+    config.homolog.repos,
+    key,
+  );
+  return [...new Map(prs.map((pr) => [`${pr.repo} ${pr.branch}`, pr])).values()];
+}
+
+/** Replays the branch's latest build with the Jenkinsfile pointed at homolog; the new build is
+ *  followed and its end told in Teams. Only on the user's say-so (a confirmed button). */
+export async function pointToHomolog(repo: string, branch: string): Promise<{ buildUrl: string }> {
+  const config = await loadBoardWatcherConfig();
+  if (!config?.bitbucket || !config.homolog?.repos.includes(repo)) {
+    throw new BadRequestError("HOMOLOG_REPO", `${repo} isn't set up for homolog.`);
+  }
+  const build = await branchBuild(
+    bitbucketCredentialsFromEnv(config.bitbucket.workspace),
+    repo,
+    branch,
+  );
+  if (!build?.url) {
+    throw new ConflictError("HOMOLOG_NO_BUILD", `${branch} has no build in Jenkins yet.`);
+  }
+  let buildUrl: string;
+  try {
+    buildUrl = await replayToHomolog(build.url);
+  } catch (err) {
+    if (err instanceof HomologPatchError) {
+      throw new ConflictError("HOMOLOG_PATCH", `The Jenkinsfile changed: ${err.message}`);
+    }
+    throw err;
+  }
+  const subject = /[A-Z][A-Z0-9]+-\d+/.exec(branch)?.[0] ?? branch;
+  await recordAction({
+    action: "homolog",
+    subject,
+    title: `${repo} ${branch}`,
+    detail: buildUrl,
+    live: true,
+  });
+  recordEvent("boardWatcher.homolog", { repo, branch });
+  void followHomologBuild(config, repo, branch, buildUrl);
+  return { buildUrl };
+}
+
+const HOMOLOG_POLL_MS = 60_000;
+const HOMOLOG_MAX_POLLS = 90;
+
+async function followHomologBuild(
+  config: BoardWatcherConfig,
+  repo: string,
+  branch: string,
+  buildUrl: string,
+): Promise<void> {
+  for (let i = 0; i < HOMOLOG_MAX_POLLS; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, HOMOLOG_POLL_MS));
+    const result = await buildResult(buildUrl).catch(() => null);
+    if (!result) continue;
+    const diagnosis =
+      result === "SUCCESS"
+        ? null
+        : await diagnoseBuild(`${buildUrl}display/redirect`).catch(() => null);
+    noticeHomologDone(
+      repo,
+      branch,
+      buildUrl,
+      result,
+      config.homolog?.urls?.[repo] ?? [],
+      diagnosis,
+    );
+    return;
+  }
 }
 
 /** The daily summary now, for the Board (nothing is sent). */

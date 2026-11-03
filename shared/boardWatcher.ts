@@ -119,7 +119,8 @@ export type WatcherActionKind =
   | "approve"
   | "notify"
   | "build-failed"
-  | "pr-news";
+  | "pr-news"
+  | "homolog";
 
 /** One line of `boardWatcher-actions.jsonl`: something done (or, in simulation, that would be). */
 export type WatcherActionEntry = {
@@ -143,7 +144,7 @@ export type HistoryFilter = (typeof HISTORY_FILTERS)[number];
 
 const HISTORY_FILTER_KINDS: Record<Exclude<HistoryFilter, "all">, WatcherActionKind[]> = {
   reviews: ["review", "reviewed", "review-failed", "approve", "comment"],
-  tests: ["claim-test", "retest", "tested", "test-failed"],
+  tests: ["claim-test", "retest", "tested", "test-failed", "homolog"],
   queue: ["enqueue-dev", "queued-test", "start-progress"],
   notices: ["notify", "build-failed", "pr-news"],
 };
@@ -209,6 +210,9 @@ export type WatcherCalls = {
   retries: number;
   lastHour: { jira: number; bitbucket: number; jenkins: number };
 };
+
+/** A branch that can be pointed to homolog: a ticket's PR branch in a homolog repo. */
+export type HomologCandidate = { repo: string; branch: string };
 
 /** The daily summary as the Board shows it (built on demand). */
 export type DailyPreview = {

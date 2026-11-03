@@ -114,6 +114,7 @@ export const ACTION_KIND_KEYS = {
   notify: "board.kind.notify",
   "build-failed": "board.kind.build-failed",
   "pr-news": "board.kind.pr-news",
+  homolog: "board.kind.homolog",
 } as const satisfies Record<WatcherActionKind, string>;
 
 export {

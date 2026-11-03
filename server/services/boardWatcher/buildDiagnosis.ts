@@ -66,7 +66,10 @@ export function infraIncident(log: string): BuildDiagnosis["incident"] | null {
         signature: `${agent}|${problem}`,
         agent,
         problem,
-        evidence: line.replace(/^\[[^\]]+\]\s*/, "").trim().slice(0, 200),
+        evidence: line
+          .replace(/^\[[^\]]+\]\s*/, "")
+          .trim()
+          .slice(0, 200),
       };
     }
   }

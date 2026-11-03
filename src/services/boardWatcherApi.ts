@@ -6,6 +6,7 @@ import type {
   BoardWatcherStatus,
   DailyPreview,
   HistoryFilter,
+  HomologCandidate,
   WatcherActionEntry,
   WatcherFeedback,
   WatcherHistoryPage,
@@ -20,6 +21,7 @@ export type {
   AutomationSettingsInput,
   BoardWatcherStatus,
   DailyPreview,
+  HomologCandidate,
   WatcherActionEntry,
   WatcherActionKind,
   WatcherDecision,
@@ -56,6 +58,22 @@ export async function resumeBoardWatcher(): Promise<BoardWatcherStatus> {
 /** Sends the Teams digest now; doesn't move the scheduled ones. */
 export async function sendBoardWatcherDigestNow(): Promise<void> {
   await withServerErrorMessage(() => client.post("/digest"));
+}
+
+/** A ticket's PR branches that can be pointed to homolog. */
+export async function fetchHomologCandidates(key: string): Promise<HomologCandidate[]> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<HomologCandidate[]>("/homolog/candidates", { params: { key } }),
+  );
+  return data;
+}
+
+/** Replays the branch's latest build pointed at homolog; the new build's Jenkins page. */
+export async function pointToHomolog(repo: string, branch: string): Promise<{ buildUrl: string }> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ buildUrl: string }>("/homolog", { repo, branch }),
+  );
+  return data;
 }
 
 /** The daily summary built now (takes a few seconds: it drafts the text). */
