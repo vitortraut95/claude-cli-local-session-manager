@@ -201,6 +201,13 @@ async function commitStatuses(
   return values;
 }
 
+function failedBuildOf(
+  statuses: { state: string; name?: string; url?: string }[],
+): PullRequest["failedBuild"] {
+  const failed = statuses.find((s) => (s.state === "FAILED" || s.state === "STOPPED") && s.url);
+  return failed?.url ? { url: failed.url, name: failed.name ?? "" } : undefined;
+}
+
 async function toPullRequest(
   credentials: BitbucketCredentials,
   repo: string,
@@ -227,6 +234,7 @@ async function toPullRequest(
       .filter((p) => p.role === "REVIEWER" && p.user?.account_id)
       .map((p) => ({ id: p.user?.account_id ?? "", state: reviewerState(p.state) })),
     ci: ciState(statuses.map((s) => s.state)),
+    failedBuild: failedBuildOf(statuses),
     hasConflicts: false,
     sourceBranch: raw.source?.branch?.name,
     destinationBranch: raw.destination?.branch?.name,
