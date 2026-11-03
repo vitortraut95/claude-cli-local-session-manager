@@ -39,6 +39,7 @@ import {
   noticeWeakDescription,
   noticeReviewBlocked,
   noticeTestDone,
+  noticeUnwatchedPullRequests,
   noticeWatcherError,
   prUrl,
 } from "./boardWatcher/instantNotices.js";
@@ -48,7 +49,13 @@ import { networkProblem } from "./boardWatcher/network.js";
 import { isTestReport, testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
 import { addTestEntryIfAbsent, requeueTestEntry } from "./taskQueueService.js";
-import { emptyWatcherState, prSubject, type WatcherState } from "./boardWatcher/types.js";
+import {
+  emptyWatcherState,
+  prSubject,
+  type BoardIssue,
+  type WatcherState,
+} from "./boardWatcher/types.js";
+import { jiraCredentialsFromEnv, linkedPullRequests } from "./boardWatcher/jira.js";
 
 /**
  * Runs the board watcher inside the server: a look at the board every 10 minutes in business
@@ -196,18 +203,18 @@ async function lookLocked(): Promise<void> {
           }
         : undefined;
     await rotateActionsDaily(now);
-    lastDecisions = await runTick(
-      createBoardDeps(
-        config,
-        () => new Date(),
-        onReview,
-        onTest,
-        (issue, missing) => void sendWeakDescriptionQuestions(config, issue, missing),
-      ),
-      state,
+    const deps = createBoardDeps(
       config,
-      now,
+      () => new Date(),
+      onReview,
+      onTest,
+      (issue, missing) => void sendWeakDescriptionQuestions(config, issue, missing),
     );
+    let issues: BoardIssue[] = [];
+    const { board } = deps;
+    deps.board = { ...board, listIssues: async () => (issues = await board.listIssues()) };
+    lastDecisions = await runTick(deps, state, config, now);
+    await warnUnwatchedPullRequests(config, issues, state);
     state.lastTickAt = now.toISOString();
     state.lastError = null;
     recordEvent("boardWatcher.tick", {
@@ -225,6 +232,38 @@ async function lookLocked(): Promise<void> {
     if (config?.enabled) await saveState(state);
     running = false;
     schedule(config);
+  }
+}
+
+/** Once per arrival in Code Review, tells the user about the ticket's PRs (open or merged) in
+ *  repos missing from `bitbucket.repos`, which no review looks at. Not for the user's own
+ *  tickets. Best-effort. */
+async function warnUnwatchedPullRequests(
+  config: BoardWatcherConfig,
+  issues: BoardIssue[],
+  state: WatcherState,
+): Promise<void> {
+  if (!config.jira || !config.bitbucket) return;
+  const credentials = jiraCredentialsFromEnv(config.jira.site);
+  const watched = new Set(config.bitbucket.repos);
+  const arrived = issues.filter(
+    (i) =>
+      config.columns.codeReview?.includes(i.statusId) &&
+      i.assigneeId !== config.me &&
+      state.handled[`unwatched:${i.key}`] !== i.statusSince,
+  );
+  for (const issue of arrived) {
+    try {
+      const prs = (await linkedPullRequests(credentials, issue.key)).filter(
+        (pr) => pr.status !== "DECLINED" && !watched.has(pr.repo.split("/").at(-1) ?? ""),
+      );
+      state.handled[`unwatched:${issue.key}`] = issue.statusSince;
+      if (prs.length === 0) continue;
+      noticeUnwatchedPullRequests(config, issue.key, issue.summary, prs);
+      recordEvent("boardWatcher.unwatchedPrs", { key: issue.key, prs: prs.length });
+    } catch (err) {
+      console.warn(`[board-watcher] Couldn't list the PRs of ${issue.key}:`, err);
+    }
   }
 }
 
