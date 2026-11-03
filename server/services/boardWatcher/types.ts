@@ -28,6 +28,8 @@ export type PullRequest = {
   title: string;
   authorId: string;
   createdAt: string;
+  /** Any activity (push, comment, approval) bumps it. */
+  updatedAt?: string;
   /** The PR's latest commit; a new push means a new review round. */
   lastPushAt: string;
   draft: boolean;

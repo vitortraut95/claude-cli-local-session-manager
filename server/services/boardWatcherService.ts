@@ -364,7 +364,8 @@ async function noticeNewsOnMyPullRequests(
     const key = `mine:${prSubject(pr)}`;
     const since = state.handled[key];
     state.handled[key] = now.toISOString();
-    if (!since) continue;
+    // Nothing happened on it since (a comment or a review bumps the PR's update time).
+    if (!since || (pr.updatedAt && Date.parse(pr.updatedAt) <= Date.parse(since))) continue;
     try {
       const news = await pullRequestNews(credentials, pr, since, config.me);
       if (news.comments.length === 0 && news.changesRequested.length === 0) continue;
