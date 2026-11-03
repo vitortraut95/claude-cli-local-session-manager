@@ -39,6 +39,8 @@ export type PullRequest = {
   /** Needed to check the PR out for a real review. */
   sourceBranch?: string;
   destinationBranch?: string;
+  /** The destination branch's head, short (as Bitbucket gives it). */
+  destinationHash?: string;
   sourceHash?: string;
   /** The commit the user approved, set only when the PR got pushes since: Bitbucket keeps the
    *  approval, so those pushes would otherwise go unreviewed. */

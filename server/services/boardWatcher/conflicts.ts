@@ -7,7 +7,7 @@ import type { PullRequest } from "./types.js";
  * Merge conflicts of open PRs, which the Bitbucket API doesn't report: a trial merge of the PR's
  * commit into its destination with `git merge-tree` in the local clone (only objects are written;
  * no branch, index or working tree changes). Results are kept per (PR commit, destination commit),
- * so a PR is only re-checked when either moves.
+ * so a PR is only re-checked, and the clone only fetched, when either moves.
  */
 
 const execFileAsync = promisify(execFile);
@@ -35,7 +35,9 @@ async function hasConflicts(
   }
 }
 
-/** Sets `hasConflicts` on `prs` (in place) for those with a local clone. */
+/** Sets `hasConflicts` on `prs` (in place) for those with a local clone. A pair (PR commit,
+ *  destination commit) already checked is answered from memory without touching the clone; the
+ *  repo is only fetched when some pair is new. */
 export async function markConflicts(
   prs: PullRequest[],
   localRepos: Record<string, string>,
@@ -44,6 +46,13 @@ export async function markConflicts(
   for (const pr of prs) {
     if (!pr.sourceHash || !pr.sourceBranch || !pr.destinationBranch || !localRepos[pr.repo])
       continue;
+    const known = pr.destinationHash
+      ? checked.get(`${pr.repo}|${pr.sourceHash}|${pr.destinationHash}`)
+      : undefined;
+    if (known !== undefined) {
+      pr.hasConflicts = known;
+      continue;
+    }
     byRepo.set(pr.repo, [...(byRepo.get(pr.repo) ?? []), pr]);
   }
   for (const [repo, repoPrs] of byRepo) {
@@ -65,11 +74,11 @@ export async function markConflicts(
         repoPath,
       ).catch(() => null);
       if (!destination || !pr.sourceHash) continue;
-      const key = `${repo}|${pr.sourceHash}|${destination}`;
-      let conflicts = checked.get(key);
-      if (conflicts === undefined) {
-        conflicts = await hasConflicts(repoPath, destination, pr.sourceHash);
-        checked.set(key, conflicts);
+      const conflicts = await hasConflicts(repoPath, destination, pr.sourceHash);
+      checked.set(`${repo}|${pr.sourceHash}|${destination}`, conflicts);
+      // Also under the short hashes the API gives, so the next look finds it without git.
+      if (pr.destinationHash) {
+        checked.set(`${repo}|${pr.sourceHash}|${pr.destinationHash}`, conflicts);
       }
       pr.hasConflicts = conflicts;
     }
