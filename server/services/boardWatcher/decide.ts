@@ -1,4 +1,5 @@
 import { businessMinutesBetween, isBusinessTime, localDay } from "./businessTime.js";
+import type { DecisionContext } from "../../../shared/boardWatcher.js";
 import type { BoardWatcherConfig } from "./config.js";
 import { gradeDescription } from "./descriptionGate.js";
 import {
@@ -32,6 +33,9 @@ export type Decision = {
   /** What the action is about, kept in `state.handled`: the test plan comment id, the
    *  description fingerprint. */
   ref?: string;
+  context?: DecisionContext;
+  /** The build that failed, for a "CI failed". */
+  failedBuild?: { url: string; name: string };
 };
 
 export function decideIssues(
@@ -289,11 +293,18 @@ export function decidePullRequests(
     if (!mine || (mine.state === "approved" && !pr.approvedCommit)) continue;
     if (state.handled[`review:${subject}`] === pr.lastPushAt) continue;
 
-    const skip = (reason: string) => decisions.push({ subject, action: "skip", reason });
-    const wait = (reason: string) => decisions.push({ subject, action: "wait", reason });
     const keys = ticketKeysOf(pr);
     const unapprovedDeploying =
       !pr.reviewers.some((r) => r.state === "approved") && keys.some((key) => deploying.has(key));
+    const context: DecisionContext | undefined = pr.approvedCommit
+      ? { kind: "pushed-after-approval", keys, lastPushAt: pr.lastPushAt }
+      : unapprovedDeploying && !keys.some((key) => inCodeReview.has(key))
+        ? { kind: "unapproved-deploying", keys, lastPushAt: pr.lastPushAt }
+        : undefined;
+    const extra = context ? { context } : {};
+    const skip = (reason: string, more: Partial<Decision> = {}) =>
+      decisions.push({ subject, action: "skip", reason, ...extra, ...more });
+    const wait = (reason: string) => decisions.push({ subject, action: "wait", reason, ...extra });
     const reachedCodeReview = keys
       .map((key) => inCodeReview.get(key) ?? (unapprovedDeploying ? deploying.get(key) : undefined))
       .filter((since): since is string => Boolean(since))
@@ -308,7 +319,8 @@ export function decidePullRequests(
       }
     } else if (pr.draft) skip("draft");
     else if (pr.hasConflicts) skip("has conflicts");
-    else if (pr.ci === "failed") skip("CI failed");
+    else if (pr.ci === "failed")
+      skip("CI failed", pr.failedBuild ? { failedBuild: pr.failedBuild } : {});
     else if (pr.reviewers.some((r) => r.id !== config.me && r.state === "changes_requested")) {
       skip("another reviewer requested changes");
     } else if ((state.reviewRounds[subject] ?? 0) >= config.maxReviewRounds) {
@@ -332,6 +344,7 @@ export function decidePullRequests(
         decisions.push({
           subject,
           action: "review",
+          ...extra,
           reason: pr.approvedCommit
             ? "pushed since the user's approval"
             : unapprovedDeploying && !keys.some((key) => inCodeReview.has(key))

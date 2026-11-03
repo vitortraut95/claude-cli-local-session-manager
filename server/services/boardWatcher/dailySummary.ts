@@ -170,7 +170,11 @@ export async function gatherDailyFacts(config: BoardWatcherConfig, now: Date): P
 const WEEKDAYS_PT = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 
 /** "ontem" for yesterday, else the weekday and date ("sexta 30/10"). */
-export function dayLabel(day: string, now: Date, hours: BoardWatcherConfig["businessHours"]): string {
+export function dayLabel(
+  day: string,
+  now: Date,
+  hours: BoardWatcherConfig["businessHours"],
+): string {
   const yesterday = localDay(new Date(now.getTime() - 24 * 60 * 60_000), hours);
   if (day === yesterday) return "ontem";
   const [, month, date] = day.split("-");
@@ -180,7 +184,11 @@ export function dayLabel(day: string, now: Date, hours: BoardWatcherConfig["busi
 
 /** The bullet lines of each section, in pt-BR; a card's moves of the day become one line from
  *  where it started to where it ended. */
-export function sections(facts: DailyFacts): { yesterday: string[]; today: string[]; stuck: string[] } {
+export function sections(facts: DailyFacts): {
+  yesterday: string[];
+  today: string[];
+  stuck: string[];
+} {
   const short = (text: string, max = 90) =>
     text.length > max ? `${text.slice(0, max - 1)}…` : text;
   const moves = new Map<string, { summary: string; from: string; to: string }>();

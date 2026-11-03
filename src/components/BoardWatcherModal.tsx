@@ -13,13 +13,13 @@ import type {
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { formatUpdatedAt } from "../utils/formatDate";
 import {
-  DECISION_ACTION_KEYS,
   decisionColumn,
   translateServerText,
   type DecisionColumn,
 } from "../utils/boardWatcher";
 import { Button } from "./Button";
 import { DailyPreviewPanel } from "./DailyPreviewPanel";
+import { DecisionItem } from "./DecisionItem";
 import { Modal } from "./Modal";
 import { WatcherBadge } from "./WatcherBadge";
 import { WatcherHistory } from "./WatcherHistory";
@@ -403,22 +403,10 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                       ) : (
                         <ul className="flex flex-col gap-2">
                           {items.map((decision, index) => (
-                            <li
+                            <DecisionItem
                               key={`${decision.subject}-${index}`}
-                              className="flex flex-col gap-1 border-b border-gray-100 pb-2 last:border-b-0 dark:border-gray-800"
-                            >
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="break-all font-mono text-xs font-medium text-gray-900 dark:text-gray-100">
-                                  {decision.subject}
-                                </span>
-                                <WatcherBadge>
-                                  {t(DECISION_ACTION_KEYS[decision.action])}
-                                </WatcherBadge>
-                              </div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">
-                                {translateServerText(decision.reason, language)}
-                              </p>
-                            </li>
+                              decision={decision}
+                            />
                           ))}
                         </ul>
                       )}

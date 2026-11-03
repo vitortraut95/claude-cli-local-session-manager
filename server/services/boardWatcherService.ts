@@ -1,6 +1,11 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { BoardWatcherStatus, DailyPreview, WatcherCalls } from "../../shared/boardWatcher.js";
+import type {
+  BoardWatcherStatus,
+  DailyPreview,
+  WatcherCalls,
+  WatcherDecision,
+} from "../../shared/boardWatcher.js";
 import { takeCallCounts } from "./boardWatcher/http.js";
 import { backupWatcherFiles, restoreMissingWatcherFiles } from "./boardWatcher/backup.js";
 import { recordEvent } from "../utils/history.js";
@@ -24,7 +29,7 @@ import {
   gatherDailyFacts,
   sections,
 } from "./boardWatcher/dailySummary.js";
-import { buildPageUrl, diagnoseBuild } from "./boardWatcher/buildDiagnosis.js";
+import { buildPageUrl, diagnoseBuild, type BuildDiagnosis } from "./boardWatcher/buildDiagnosis.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
 import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
@@ -300,6 +305,7 @@ async function lookLocked(): Promise<void> {
       listPullRequests: async () => (prs = await codeHost.listPullRequests()),
     };
     lastDecisions = await runTick(deps, state, config, now);
+    diagnoseDecisionBuilds(lastDecisions);
     await warnUnwatchedPullRequests(config, issues, state);
     await noticeNewsOnMyPullRequests(config, prs, state, now);
     await watchPreviewBuilds(config, issues, state);
@@ -352,22 +358,78 @@ async function watchPreviewBuilds(
       if (build?.ci !== "failed" || state.handled[key]) continue;
       state.handled[key] = new Date().toISOString();
       const url = build.failedUrl ?? null;
-      void (url ? diagnoseBuild(url) : Promise.resolve(null))
-        .catch(() => null)
-        .then(async (diagnosis) => {
-          noticePreviewFailed(config, issue, repo, branch, url && buildPageUrl(url), diagnosis);
-          await recordAction({
-            action: "build-failed",
-            subject: issue.key,
-            title: issue.summary,
-            detail: diagnosis
-              ? `${repo} ${branch} · ${diagnosis.kind === "infra" ? "infra" : diagnosis.kind === "code" ? "código" : "?"} · ${diagnosis.stage}: ${diagnosis.cause} → ${diagnosis.fix}`
-              : `${repo} ${branch}`,
-          });
-          recordEvent("boardWatcher.buildFailed", { key: issue.key, repo, kind: diagnosis?.kind });
+      void (url ? diagnoseOnce(url) : Promise.resolve(null)).then(async (diagnosis) => {
+        noticePreviewFailed(config, issue, repo, branch, url && buildPageUrl(url), diagnosis);
+        await recordAction({
+          action: "build-failed",
+          subject: issue.key,
+          title: issue.summary,
+          detail: diagnosis
+            ? `${repo} ${branch} · ${diagnosis.kind === "infra" ? "infra" : diagnosis.kind === "code" ? "código" : "?"} · ${diagnosis.stage}: ${diagnosis.cause} → ${diagnosis.fix}`
+            : `${repo} ${branch}`,
         });
+        recordEvent("boardWatcher.buildFailed", { key: issue.key, repo, kind: diagnosis?.kind });
+      });
     }
   }
+}
+
+/** Build diagnoses by the build's link, so each failed build's log is read once; `null` = tried
+ *  and couldn't (no token, Jenkins down). */
+const diagnoses = new Map<string, BuildDiagnosis | null>();
+const diagnosing = new Set<string>();
+
+function diagnoseOnce(url: string): Promise<BuildDiagnosis | null> {
+  if (diagnoses.has(url)) return Promise.resolve(diagnoses.get(url) ?? null);
+  diagnosing.add(url);
+  return diagnoseBuild(url)
+    .catch(() => null)
+    .then((diagnosis) => {
+      if (diagnoses.size > 200) diagnoses.clear();
+      diagnoses.set(url, diagnosis);
+      diagnosing.delete(url);
+      return diagnosis;
+    });
+}
+
+/** The "CI failed" decisions get their build's diagnosis in the background (the Board shows it
+ *  once it's there). */
+function diagnoseDecisionBuilds(decisions: Decision[]): void {
+  for (const decision of decisions) {
+    const url = decision.failedBuild?.url;
+    if (url && !diagnoses.has(url) && !diagnosing.has(url)) void diagnoseOnce(url);
+  }
+}
+
+/** A decision as the Board shows it: links to the PR/ticket and the failed build's diagnosis. */
+function decisionView(decision: Decision, config: BoardWatcherConfig | null): WatcherDecision {
+  const { failedBuild, ...rest } = decision;
+  const pr = /^(.+)#(\d+)$/.exec(decision.subject);
+  const keys = pr ? (decision.context?.keys ?? []) : [decision.subject];
+  const links: NonNullable<WatcherDecision["links"]> = [];
+  if (config && pr) {
+    const url = prUrl(config, { repo: pr[1] ?? "", id: pr[2] ?? "" } as PullRequest);
+    if (url) links.push({ kind: "pr", url });
+  }
+  for (const key of keys) {
+    const url = config ? issueUrl(config, key) : null;
+    if (url) links.push({ kind: "issue", url });
+  }
+  return {
+    ...rest,
+    links,
+    ...(failedBuild
+      ? {
+          build: {
+            url: buildPageUrl(failedBuild.url),
+            name: failedBuild.name,
+            ...(diagnoses.has(failedBuild.url)
+              ? { diagnosis: diagnoses.get(failedBuild.url) ?? null }
+              : {}),
+          },
+        }
+      : {}),
+  };
 }
 
 /** Tells the user when others comment on, or ask for changes in, their open PRs. A PR seen for
@@ -940,7 +1002,7 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
     jobsBlockedBy,
     calls: callStats(),
     testClaimsToday: state.testClaims.day === today ? state.testClaims.count : 0,
-    lastDecisions,
+    lastDecisions: lastDecisions.map((d) => decisionView(d, config)),
   };
 }
 

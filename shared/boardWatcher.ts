@@ -74,11 +74,31 @@ export type WatcherDecisionAction =
   | "wait";
 
 /** What the watcher decided about one ticket (a key) or PR (`repo#id`) on its last look. */
+/** Why a PR is on the list beyond its reason: past Code Review without approvals, or pushed
+ *  since the user approved it. */
+export type DecisionContext = {
+  kind: "unapproved-deploying" | "pushed-after-approval";
+  keys: string[];
+  lastPushAt: string;
+};
+
+export type BuildDiagnosisView = {
+  kind: "infra" | "code" | "unknown";
+  stage: string;
+  cause: string;
+  fix: string;
+};
+
 export type WatcherDecision = {
   subject: string;
   action: WatcherDecisionAction;
   reason: string;
   ref?: string;
+  context?: DecisionContext;
+  /** The failed build behind a "CI failed", with why once the log was read (null: couldn't). */
+  build?: { url: string; name: string; diagnosis?: BuildDiagnosisView | null };
+  /** The PR and/or ticket, to open from the Board. */
+  links?: { kind: "pr" | "issue"; url: string }[];
 };
 
 export type WatcherActionKind =
