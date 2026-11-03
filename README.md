@@ -81,7 +81,10 @@ opens the browser. Stop the app by closing that terminal.
 - **Team skills** — optional integration with your team's own skills repo (a git repo with a
   `catalog/<catalog>/` tree of skills; its URL is asked on first start and kept only in your local
   `userPreferences.json`): the New task/New session modals invite you to clone it, you pick whole catalogs and/or single skills, and
-  their skills get linked into `~/.claude/skills`; the hub is fast-forwarded on server start (when
+  their skills get linked into `~/.claude/skills`, together with the skills they declare in
+  `requires-skills` (and a catalog's own `catalog/<catalog>/requires-skills`); a picked skill that
+  moves to another catalog is followed, and a skill shortcut naming a renamed skill finds it by
+  "formerly <name>" in its description; the hub is fast-forwarded on server start (when
   clean) and on "Update now", which also links new skills (Settings → "Team skills" to manage)
 - **Task queue** — paste a list of tickets (links or keys) that are ready to be worked on and pick
   the repo(s) of each one (the first is the main repo). A scheduler then launches them on its own,
