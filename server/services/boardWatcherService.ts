@@ -2,6 +2,7 @@ import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { BoardWatcherStatus, WatcherCalls } from "../../shared/boardWatcher.js";
 import { takeCallCounts } from "./boardWatcher/http.js";
+import { backupWatcherFiles, restoreMissingWatcherFiles } from "./boardWatcher/backup.js";
 import { recordEvent } from "../utils/history.js";
 import { getTaskStore, onStoreChange, type StoreChange } from "../utils/taskStore.js";
 import { getUserPreferences } from "./preferencesService.js";
@@ -45,6 +46,7 @@ import { postTeamsCard, reasonPtBr } from "./boardWatcher/teamsCards.js";
 import {
   issueUrl,
   noticeJobFailed,
+  noticeLiveAction,
   noticeQueueError,
   noticeWaitingForYou,
   noticeTestsNeedNetwork,
@@ -272,6 +274,7 @@ async function lookLocked(): Promise<void> {
           }
         : undefined;
     await rotateActionsDaily(now);
+    await backupDaily(now, config);
     const deps = createBoardDeps(
       config,
       () => new Date(),
@@ -431,6 +434,18 @@ async function sendWeakDescriptionQuestions(
   );
   noticeWeakDescription(config, issue, missingPt, messages);
   recordEvent("boardWatcher.poQuestions", { key: issue.key, messages: messages.length });
+}
+
+let lastBackupDay = "";
+
+/** Today's copy of the watcher's files, the first look of the day. */
+async function backupDaily(now: Date, config: BoardWatcherConfig): Promise<void> {
+  const day = localDay(now, config.businessHours);
+  if (lastBackupDay === day) return;
+  lastBackupDay = day;
+  await backupWatcherFiles(day).catch((err: unknown) =>
+    console.warn("[board-watcher] Couldn't back up the watcher's files:", err),
+  );
 }
 
 let lastRotationDay = "";
@@ -797,8 +812,20 @@ export function startBoardWatcher(): void {
       console.warn("[board-watcher] Couldn't send the notice:", err),
     );
   });
-  void look();
-  void remindNetworkAtStart();
+  // Files erased since the last run (a hard reset + clean of the clone) come back first.
+  void restoreMissingWatcherFiles()
+    .then((restored) => {
+      if (restored.length === 0) return;
+      const list = restored.map((r) => `${r.file} (${r.day})`).join(", ");
+      console.warn(`[board-watcher] Restored from the backup: ${list}`);
+      recordEvent("boardWatcher.restored", { files: restored.length });
+      noticeLiveAction("Board watcher · arquivos restaurados do backup", list, null, "urgent");
+    })
+    .catch((err: unknown) => console.warn("[board-watcher] Couldn't restore the backup:", err))
+    .finally(() => {
+      void look();
+      void remindNetworkAtStart();
+    });
 }
 
 /** Tells the user on the desktop when the app starts (usually at login) without the network the
