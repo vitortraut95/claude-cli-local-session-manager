@@ -29,7 +29,13 @@ import {
   gatherDailyFacts,
   sections,
 } from "./boardWatcher/dailySummary.js";
-import { buildPageUrl, diagnoseBuild, type BuildDiagnosis } from "./boardWatcher/buildDiagnosis.js";
+import {
+  buildPageUrl,
+  diagnoseBuild,
+  rebuildJob,
+  type BuildDiagnosis,
+  type RebuildOutcome,
+} from "./boardWatcher/buildDiagnosis.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
 import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
@@ -63,6 +69,7 @@ import {
   noticeTestsNeedNetwork,
   noticeWeakDescription,
   noticeReviewBlocked,
+  noticeInfraIncident,
   noticeNewsOnMyPr,
   noticePreviewFailed,
   noticeTestDone,
@@ -309,6 +316,7 @@ async function lookLocked(): Promise<void> {
     await warnUnwatchedPullRequests(config, issues, state);
     await noticeNewsOnMyPullRequests(config, prs, state, now);
     await watchPreviewBuilds(config, issues, state);
+    diagnoseOpenPrBuilds(prs, config);
     state.lastTickAt = now.toISOString();
     state.lastError = null;
     const { calls, retries } = takeCallCounts();
@@ -354,24 +362,74 @@ async function watchPreviewBuilds(
     );
     for (const { repo, branch } of previews) {
       const build = await branchBuild(credentials, repo, branch).catch(() => null);
-      const key = `build:${repo}:${build?.hash ?? ""}`;
+      const url = build?.failedUrl;
+      // Per build: a re-run that fails again on the same commit is told again.
+      const key = `build:${url ?? `${repo}:${build?.hash ?? ""}`}`;
       if (build?.ci !== "failed" || state.handled[key]) continue;
       state.handled[key] = new Date().toISOString();
-      const url = build.failedUrl ?? null;
-      void (url ? diagnoseOnce(url) : Promise.resolve(null)).then(async (diagnosis) => {
-        noticePreviewFailed(config, issue, repo, branch, url && buildPageUrl(url), diagnosis);
+      void (url ? diagnoseOnce(url, issue.key) : Promise.resolve(null)).then(async (diagnosis) => {
+        const rebuild =
+          url && diagnosis && diagnosis.kind !== "code"
+            ? await rebuildOnce(config, `rebuild:${repo}:${build.hash}`, url)
+            : null;
+        noticePreviewFailed(
+          config,
+          issue,
+          repo,
+          branch,
+          url ? buildPageUrl(url) : null,
+          diagnosis,
+          rebuild,
+        );
         await recordAction({
           action: "build-failed",
           subject: issue.key,
           title: issue.summary,
-          detail: diagnosis
-            ? `${repo} ${branch} · ${diagnosis.kind === "infra" ? "infra" : diagnosis.kind === "code" ? "código" : "?"} · ${diagnosis.stage}: ${diagnosis.cause} → ${diagnosis.fix}`
-            : `${repo} ${branch}`,
+          detail: [
+            diagnosis
+              ? `${repo} ${branch} · ${diagnosis.kind === "infra" ? "infra" : diagnosis.kind === "code" ? "código" : "?"} · ${diagnosis.stage}: ${diagnosis.cause} → ${diagnosis.fix}`
+              : `${repo} ${branch}`,
+            rebuild ? REBUILD_PT[rebuild] : "",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          ...(rebuild === "done" ? { live: true } : {}),
         });
-        recordEvent("boardWatcher.buildFailed", { key: issue.key, repo, kind: diagnosis?.kind });
+        recordEvent("boardWatcher.buildFailed", {
+          key: issue.key,
+          repo,
+          kind: diagnosis?.kind,
+          rebuild,
+        });
       });
     }
   }
+}
+
+const REBUILD_PT: Record<RebuildOutcome, string> = {
+  done: "rodou o build de novo",
+  would: "rodaria o build de novo (chave desligada)",
+  again: "já tinha rodado de novo neste commit e falhou de novo",
+  refused: "o Jenkins recusou rodar de novo",
+};
+
+/** A non-code failure's build runs again once per commit (with the switch on); a second failure
+ *  on the same commit is left to the user. */
+async function rebuildOnce(
+  config: BoardWatcherConfig,
+  key: string,
+  url: string,
+): Promise<RebuildOutcome> {
+  const already = (await loadState()).handled[key];
+  if (already) return "again";
+  if (!config.live?.rebuild) return "would";
+  const ok = await rebuildJob(url).catch(() => false);
+  await serial(async () => {
+    const state = await loadState();
+    state.handled[key] = new Date().toISOString();
+    await saveState(state);
+  });
+  return ok ? "done" : "refused";
 }
 
 /** Build diagnoses by the build's link, so each failed build's log is read once; `null` = tried
@@ -379,7 +437,7 @@ async function watchPreviewBuilds(
 const diagnoses = new Map<string, BuildDiagnosis | null>();
 const diagnosing = new Set<string>();
 
-function diagnoseOnce(url: string): Promise<BuildDiagnosis | null> {
+function diagnoseOnce(url: string, subject: string): Promise<BuildDiagnosis | null> {
   if (diagnoses.has(url)) return Promise.resolve(diagnoses.get(url) ?? null);
   diagnosing.add(url);
   return diagnoseBuild(url)
@@ -388,8 +446,54 @@ function diagnoseOnce(url: string): Promise<BuildDiagnosis | null> {
       if (diagnoses.size > 200) diagnoses.clear();
       diagnoses.set(url, diagnosis);
       diagnosing.delete(url);
+      if (diagnosis?.incident) noteIncident(diagnosis.incident, buildPageUrl(url), subject);
       return diagnosis;
     });
+}
+
+/** Infra failures seen lately, by incident, to tell one incident once instead of per build. */
+const INCIDENT_WINDOW_MS = 3 * 60 * 60_000;
+const incidents = new Map<
+  string,
+  { builds: Map<string, { subject: string; at: number }>; noticedAt: number }
+>();
+
+function noteIncident(
+  incident: NonNullable<BuildDiagnosis["incident"]>,
+  url: string,
+  subject: string,
+): void {
+  const now = Date.now();
+  const seen = incidents.get(incident.signature) ?? {
+    builds: new Map<string, { subject: string; at: number }>(),
+    noticedAt: 0,
+  };
+  seen.builds.set(url, { subject, at: now });
+  for (const [build, { at }] of seen.builds) {
+    if (now - at > INCIDENT_WINDOW_MS) seen.builds.delete(build);
+  }
+  incidents.set(incident.signature, seen);
+  if (seen.builds.size < 2 || now - seen.noticedAt < INCIDENT_WINDOW_MS) return;
+  seen.noticedAt = now;
+  const builds = [...seen.builds].map(([buildUrl, b]) => ({ subject: b.subject, url: buildUrl }));
+  noticeInfraIncident(incident, builds);
+  void recordAction({
+    action: "notify",
+    subject: `Infra: ${incident.agent}`,
+    title: "",
+    detail: `urgent: ${incident.problem} em ${builds.length} builds (${builds.map((b) => b.subject).join(", ")}) · ${incident.evidence}`,
+  });
+  recordEvent("boardWatcher.infraIncident", { agent: incident.agent, builds: builds.length });
+}
+
+/** Failed builds of the open PRs (anyone's) are read too, during business hours, so an infra
+ *  incident shows across builds and not only the user's. */
+function diagnoseOpenPrBuilds(prs: PullRequest[], config: BoardWatcherConfig): void {
+  if (!isBusinessTime(new Date(), config.businessHours)) return;
+  for (const pr of prs) {
+    const url = pr.failedBuild?.url;
+    if (url && !diagnoses.has(url) && !diagnosing.has(url)) void diagnoseOnce(url, prSubject(pr));
+  }
 }
 
 /** The "CI failed" decisions get their build's diagnosis in the background (the Board shows it
@@ -397,7 +501,8 @@ function diagnoseOnce(url: string): Promise<BuildDiagnosis | null> {
 function diagnoseDecisionBuilds(decisions: Decision[]): void {
   for (const decision of decisions) {
     const url = decision.failedBuild?.url;
-    if (url && !diagnoses.has(url) && !diagnosing.has(url)) void diagnoseOnce(url);
+    if (url && !diagnoses.has(url) && !diagnosing.has(url))
+      void diagnoseOnce(url, decision.subject);
   }
 }
 

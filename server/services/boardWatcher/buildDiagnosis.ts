@@ -20,7 +20,97 @@ export type BuildDiagnosis = {
   stage: string;
   cause: string;
   fix: string;
+  /** For an infra failure, what it has in common with others of the same incident (the agent
+   *  and the kind of error, read from the log, not the model) and the error line as evidence. */
+  incident?: { signature: string; agent: string; problem: string; evidence: string };
 };
+
+/** Infra errors worth grouping across builds, with how to say them in pt-BR. */
+const INFRA_ERRORS: [RegExp, (m: RegExpExecArray) => string][] = [
+  [
+    /connect to host (\S+) port (\d+): (Network unreachable|Connection timed out|Connection refused)/,
+    (m) => `sem conexão com ${m[1]}:${m[2]}`,
+  ],
+  [
+    /Could not resolve host:? (\S+)|getaddrinfo (?:EAI_AGAIN|ENOTFOUND) (\S+)/,
+    (m) => `não resolve o DNS de ${m[1] ?? m[2]}`,
+  ],
+  [
+    /(ETIMEDOUT|ECONNRESET|socket hang up).*?(registry\.\S+|https?:\/\/\S+)?/,
+    (m) => `rede instável${m[2] ? ` com ${m[2]}` : ""}`,
+  ],
+  [/No space left on device/, () => "disco cheio"],
+  [
+    /(?:Agent|agent) \S+ (?:was|went) offline|Cannot contact \S+: java/,
+    () => "agente caiu durante o build",
+  ],
+];
+
+/** The incident an infra failure belongs to: the agent running the step that broke and the kind
+ *  of error. Null when the log shows no known infra error. */
+export function infraIncident(log: string): BuildDiagnosis["incident"] | null {
+  const lines = log.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    for (const [pattern, describe] of INFRA_ERRORS) {
+      const match = pattern.exec(line);
+      if (!match) continue;
+      const agent =
+        lines
+          .slice(0, i)
+          .reverse()
+          .map((l) => /Running on (\S+?)(?:\.[\w.-]+)? in /.exec(l)?.[1])
+          .find(Boolean) ?? "agente desconhecido";
+      const problem = describe(match);
+      return {
+        signature: `${agent}|${problem}`,
+        agent,
+        problem,
+        evidence: line.replace(/^\[[^\]]+\]\s*/, "").trim().slice(0, 200),
+      };
+    }
+  }
+  return null;
+}
+
+/** The job's page from a build's (`…/job/x/5/` → `…/job/x/`). */
+export function jobPageUrl(buildPage: string): string {
+  return buildPage.replace(/\d+\/?$/, "");
+}
+
+function jenkinsAuth(): string | null {
+  const user = process.env.JENKINS_USER;
+  const token = process.env.JENKINS_TOKEN;
+  return user && token ? `Basic ${Buffer.from(`${user}:${token}`).toString("base64")}` : null;
+}
+
+/** What happened to a failed build: run again, would be (switch off), already run again on this
+ *  commit, or Jenkins said no. */
+export type RebuildOutcome = "done" | "would" | "again" | "refused";
+
+/** Starts a new build of the job a failed build belongs to (same branch, its latest commit);
+ *  false without the token or when Jenkins refuses. */
+export async function rebuildJob(statusUrl: string): Promise<boolean> {
+  const auth = jenkinsAuth();
+  if (!auth) return false;
+  const page = buildPageUrl(statusUrl);
+  const root = new URL(page).origin;
+  const crumb = await apiFetch("jenkins", `${root}/crumbIssuer/api/json`, {
+    headers: { Authorization: auth },
+  })
+    .then((r) =>
+      r.ok ? (r.json() as Promise<{ crumb: string; crumbRequestField: string }>) : null,
+    )
+    .catch(() => null);
+  const response = await apiFetch("jenkins", `${jobPageUrl(page)}build`, {
+    method: "POST",
+    headers: {
+      Authorization: auth,
+      ...(crumb ? { [crumb.crumbRequestField]: crumb.crumb } : {}),
+    },
+  });
+  return response.ok;
+}
 
 const OUTPUT_SCHEMA = {
   type: "object",
@@ -53,11 +143,10 @@ export function logExcerpt(log: string): string {
 }
 
 async function fetchLog(statusUrl: string): Promise<string | null> {
-  const user = process.env.JENKINS_USER;
-  const token = process.env.JENKINS_TOKEN;
-  if (!user || !token) return null;
+  const auth = jenkinsAuth();
+  if (!auth) return null;
   const response = await apiFetch("jenkins", `${buildPageUrl(statusUrl)}consoleText`, {
-    headers: { Authorization: `Basic ${Buffer.from(`${user}:${token}`).toString("base64")}` },
+    headers: { Authorization: auth },
     signal: AbortSignal.timeout(30_000),
   });
   if (!response.ok) throw new Error(`Jenkins answered ${response.status}.`);
@@ -109,7 +198,12 @@ ${logExcerpt(log)}`;
       },
     );
     const envelope = JSON.parse(stdout) as { is_error?: boolean; structured_output?: unknown };
-    return envelope.is_error ? null : ((envelope.structured_output as BuildDiagnosis) ?? null);
+    const diagnosis = envelope.is_error
+      ? null
+      : (envelope.structured_output as BuildDiagnosis | null);
+    if (!diagnosis) return null;
+    const incident = diagnosis.kind === "code" ? null : infraIncident(log);
+    return incident ? { ...diagnosis, incident } : diagnosis;
   } catch {
     return null;
   }

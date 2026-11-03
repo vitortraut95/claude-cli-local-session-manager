@@ -61,6 +61,7 @@ export async function getAutomationSettings(): Promise<AutomationSettings> {
       comments: config?.live?.comments === true,
       approve: config?.live?.approve === true,
       startProgress: config?.live?.startProgress === true,
+      rebuild: config?.live?.rebuild === true,
     },
     limits,
     businessHours: {
@@ -96,6 +97,7 @@ const FEATURE_KEYS: Record<keyof AutomationFeatures, [string, string]> = {
 export const LIVE_KEYS: (keyof AutomationLive)[] = [
   "devQueue",
   "startProgress",
+  "rebuild",
   "testClaim",
   "comments",
   "approve",

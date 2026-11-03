@@ -49,6 +49,7 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
     comments?: boolean;
     approve?: boolean;
     startProgress?: boolean;
+    rebuild?: boolean;
   };
   /** The user's account id on the board and the code host. */
   me: string;

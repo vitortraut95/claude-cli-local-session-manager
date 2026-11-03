@@ -2,7 +2,7 @@ import { getUserPreferences } from "../preferencesService.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./config.js";
 import { buildNoticeCard, buildNoticesCard, postTeamsCard, type Notice } from "./teamsCards.js";
 import type { PullRequestNews } from "./bitbucket.js";
-import type { BuildDiagnosis } from "./buildDiagnosis.js";
+import type { BuildDiagnosis, RebuildOutcome } from "./buildDiagnosis.js";
 import { prSubject, type BoardIssue, type PullRequest, type ReviewFinding } from "./types.js";
 
 /**
@@ -255,8 +255,15 @@ export function noticeNewsOnMyPr(
   });
 }
 
+const REBUILD_SUMMARY: Record<RebuildOutcome, string> = {
+  done: "Rodei o build de novo; se falhar de novo, te aviso.",
+  would: 'Rodaria o build de novo (a chave "Rodar build de novo" está desligada).',
+  again: "Já rodei de novo uma vez neste commit e falhou de novo: precisa de alguém.",
+  refused: "Tentei rodar o build de novo, mas o Jenkins recusou.",
+};
+
 /** A preview build of a ticket the user cares about (theirs, or a test it claimed) failed, with
- *  why when the log could be read: old code would be tested, or the PR can't be checked. */
+ *  why when the log could be read and whether it was run again. */
 export function noticePreviewFailed(
   config: BoardWatcherConfig,
   issue: BoardIssue,
@@ -264,15 +271,17 @@ export function noticePreviewFailed(
   branch: string,
   buildUrl: string | null,
   diagnosis: BuildDiagnosis | null,
+  rebuild: RebuildOutcome | null = null,
 ): void {
   const kind =
     diagnosis?.kind === "infra" ? " (infra)" : diagnosis?.kind === "code" ? " (código)" : "";
+  const what = diagnosis
+    ? `${repo} ${branch}, em ${diagnosis.stage}: ${short(diagnosis.cause, 160)}`
+    : `${short(issue.summary, 80)}. O build de ${repo} ${branch} falhou.`;
   enqueue({
-    level: "urgent",
+    level: rebuild === "done" ? "info" : "urgent",
     title: `${issue.key} · build do preview falhou${kind}`,
-    summary: diagnosis
-      ? `${repo} ${branch}, em ${diagnosis.stage}: ${short(diagnosis.cause, 160)}`
-      : `${short(issue.summary, 80)}. O build de ${repo} ${branch} falhou.`,
+    summary: rebuild ? `${what} ${REBUILD_SUMMARY[rebuild]}` : what,
     details: diagnosis
       ? [
           { heading: "Causa provável", items: [diagnosis.cause] },
@@ -282,6 +291,29 @@ export function noticePreviewFailed(
     links: [
       ...link("Abrir no Jenkins", buildUrl),
       ...link("Abrir a tarefa", issueUrl(config, issue.key)),
+    ],
+  });
+}
+
+/** One infra problem behind several failed builds: told once, with a message for DevOps. */
+export function noticeInfraIncident(
+  incident: NonNullable<BuildDiagnosis["incident"]>,
+  builds: { subject: string; url: string }[],
+): void {
+  const list = builds.map((b) => b.subject).join(", ");
+  const message = [
+    `Oi! O agente ${incident.agent} do Jenkins está com ${incident.problem}: ${builds.length} builds falharam no mesmo ponto (${list}).`,
+    `Erro: ${incident.evidence}`,
+    `Exemplo: ${builds[0]?.url ?? ""}`,
+    "Conseguem dar uma olhada?",
+  ].join("\n");
+  enqueue({
+    level: "urgent",
+    title: `Infra · ${incident.agent}: ${incident.problem}`,
+    summary: `${builds.length} builds falharam pelo mesmo motivo (${short(list, 120)}). Não é código: rodar de novo deve passar quando a infra voltar.`,
+    details: [
+      { heading: "Builds", items: builds.map((b) => `${b.subject}: ${b.url}`) },
+      { heading: "Mensagem pronta pro DevOps", items: [message] },
     ],
   });
 }

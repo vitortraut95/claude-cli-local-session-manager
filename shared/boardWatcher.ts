@@ -31,6 +31,9 @@ export type AutomationLive = {
   approve: boolean;
   /** One started task of mine at a time is moved to In Progress in Jira. */
   startProgress: boolean;
+  /** A preview build of mine (or of a claimed test) that failed for infra reasons is run again,
+   *  once per commit, in Jenkins. */
+  rebuild: boolean;
 };
 
 export type AutomationLimits = {
