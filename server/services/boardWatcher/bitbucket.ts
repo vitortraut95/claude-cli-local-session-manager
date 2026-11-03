@@ -283,6 +283,58 @@ export async function pullRequestNews(
   };
 }
 
+export type PullRequestRef = { repo: string; id: string; title: string; at: string };
+
+/** The PRs updated since `since` that `me` opened or approved, with when (approval: their last
+ *  participation). */
+export async function pullRequestsTouchedBy(
+  credentials: BitbucketCredentials,
+  repos: string[],
+  me: string,
+  since: string,
+): Promise<{ opened: PullRequestRef[]; approved: PullRequestRef[] }> {
+  const query = encodeURIComponent(`updated_on > ${since}`);
+  const pages = await Promise.all(
+    repos.map(async (repo) => {
+      const page = await get<{
+        values?: {
+          id: number;
+          title: string;
+          created_on: string;
+          author?: { account_id?: string };
+          participants?: {
+            state?: string | null;
+            participated_on?: string | null;
+            user?: { account_id?: string };
+          }[];
+        }[];
+      }>(
+        credentials,
+        `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}/pullrequests` +
+          `?q=${query}&state=OPEN&state=MERGED&state=DECLINED&pagelen=50` +
+          "&fields=values.id,values.title,values.created_on,values.author.account_id," +
+          "values.participants.state,values.participants.participated_on," +
+          "values.participants.user.account_id",
+      );
+      return (page.values ?? []).map((pr) => ({ repo, ...pr }));
+    }),
+  );
+  const prs = pages.flat();
+  return {
+    opened: prs
+      .filter((pr) => pr.author?.account_id === me)
+      .map((pr) => ({ repo: pr.repo, id: String(pr.id), title: pr.title, at: pr.created_on })),
+    approved: prs.flatMap((pr) => {
+      const mine = pr.participants?.find(
+        (p) => p.user?.account_id === me && p.state === "approved",
+      );
+      return mine?.participated_on
+        ? [{ repo: pr.repo, id: String(pr.id), title: pr.title, at: mine.participated_on }]
+        : [];
+    }),
+  };
+}
+
 /** The build (Jenkins status) of a branch's latest commit, preferring the branch's own job over
  *  the PR's; null when the branch is gone (merged and deleted). */
 export async function branchBuild(
