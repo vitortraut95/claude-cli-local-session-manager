@@ -18,6 +18,8 @@ export type Session = {
   /** True when workingDirectory is a linked git worktree; false when missing or not a git repo. */
   isWorktree: boolean;
   updatedAt: string;
+  /** Just the first prompt, truncated (empty when none); `GET /sessions/search` searches them
+   *  all. */
   prompts: string[];
   isActive: boolean;
   directoryMissing: boolean;
@@ -118,4 +120,16 @@ export type HistorySummary = {
   heavyDurationS: number;
   heavyBlocked: number;
   errors: { ts: string; type: string; message: string }[];
+};
+
+/** One thing the agent did after a prompt: a reply, or a tool call (name + its main input). */
+export type TranscriptItem =
+  | { kind: "text"; text: string }
+  | { kind: "tool"; name: string; summary: string; isError: boolean };
+
+/** A prompt sent in the session and everything the agent did until the next one. */
+export type TranscriptTurn = {
+  prompt: string;
+  timestamp: string | null;
+  items: TranscriptItem[];
 };

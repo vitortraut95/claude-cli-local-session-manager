@@ -7,12 +7,15 @@ import type {
   HistorySummary,
   ResumeOpenResult,
   ScanProgress,
+  TranscriptTurn,
 } from "../../shared/session";
 export type {
   HistoryEvent,
   HistorySummary,
   ResumeOpenResult,
   ScanProgress,
+  TranscriptItem,
+  TranscriptTurn,
 } from "../../shared/session";
 
 const client = axios.create({
@@ -34,6 +37,12 @@ export async function fetchSessions(): Promise<Session[]> {
 
 /** Scan progress, polled while the initial `fetchSessions()` is in flight. Best-effort: callers
  *  swallow errors. */
+/** Ids of the sessions whose prompts contain `query` (`Session.prompts` only has the first). */
+export async function searchSessionPrompts(query: string): Promise<string[]> {
+  const { data } = await client.get<{ ids: string[] }>("/search", { params: { q: query } });
+  return data.ids;
+}
+
 export async function fetchScanProgress(): Promise<ScanProgress> {
   const { data } = await client.get<ScanProgress>("/scan-progress");
   return data;
@@ -135,12 +144,13 @@ export async function setBranches(id: string, origin: string, destination: strin
   );
 }
 
-/** Full prompts for one session (`Session.prompts` is truncated). */
-export async function fetchSessionPrompts(id: string): Promise<string[]> {
+/** Every prompt of one session with what the agent did after it (`Session.prompts` is truncated
+ *  and capped). */
+export async function fetchSessionTranscript(id: string): Promise<TranscriptTurn[]> {
   const { data } = await withServerErrorMessage(() =>
-    client.get<{ prompts: string[] }>(`/${encodeURIComponent(id)}/prompts`),
+    client.get<{ turns: TranscriptTurn[] }>(`/${encodeURIComponent(id)}/transcript`),
   );
-  return data.prompts;
+  return data.turns;
 }
 
 /** PR/compare URL for `branch` on GitHub or Bitbucket; throws when the remote isn't recognized.

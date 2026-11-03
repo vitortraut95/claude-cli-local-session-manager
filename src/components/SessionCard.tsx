@@ -30,7 +30,7 @@ import { LinkifiedText } from "./LinkifiedText";
 import { MissingDirectoryNotice } from "./MissingDirectoryNotice";
 import { TaskModal } from "./TaskModal";
 import { TaskReposLine } from "./TaskReposLine";
-import { PromptPreviewModal } from "./PromptPreviewModal";
+import { SessionTranscriptModal } from "./SessionTranscriptModal";
 import { NicknameModal } from "./NicknameModal";
 import { SessionBranchesModal } from "./SessionBranchesModal";
 import { OpenPrBaseChoiceModal } from "./OpenPrBaseChoiceModal";
@@ -551,11 +551,9 @@ export function SessionCard({
         )}
       </div>
 
-      <PromptPreviewModal
-        session={session}
-        open={openModal?.kind === "preview"}
-        onClose={closeModal}
-      />
+      {openModal?.kind === "preview" && (
+        <SessionTranscriptModal session={session} onClose={closeModal} />
+      )}
       {openModal?.kind === "task" && (
         <TaskModal
           session={session}
