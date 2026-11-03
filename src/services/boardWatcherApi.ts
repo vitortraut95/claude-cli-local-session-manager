@@ -4,6 +4,7 @@ import type {
   AutomationSettings,
   AutomationSettingsInput,
   BoardWatcherStatus,
+  DailyPreview,
   HistoryFilter,
   WatcherActionEntry,
   WatcherFeedback,
@@ -18,6 +19,7 @@ export type {
   AutomationSettings,
   AutomationSettingsInput,
   BoardWatcherStatus,
+  DailyPreview,
   WatcherActionEntry,
   WatcherActionKind,
   WatcherDecision,
@@ -54,6 +56,12 @@ export async function resumeBoardWatcher(): Promise<BoardWatcherStatus> {
 /** Sends the Teams digest now; doesn't move the scheduled ones. */
 export async function sendBoardWatcherDigestNow(): Promise<void> {
   await withServerErrorMessage(() => client.post("/digest"));
+}
+
+/** The daily summary built now (takes a few seconds: it drafts the text). */
+export async function fetchDailyPreview(): Promise<DailyPreview> {
+  const { data } = await withServerErrorMessage(() => client.get<DailyPreview>("/daily"));
+  return data;
 }
 
 export async function fetchAutomationSettings(): Promise<AutomationSettings> {

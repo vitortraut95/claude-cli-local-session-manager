@@ -15,6 +15,7 @@ import {
   pauseBoardWatcher,
   resumeBoardWatcher,
   runBoardWatcherNow,
+  previewDaily,
   sendBoardWatcherDigestNow,
 } from "../services/boardWatcherService.js";
 
@@ -38,6 +39,11 @@ boardWatcherRouter.post("/resume", async (_req, res) => {
 boardWatcherRouter.post("/digest", async (_req, res) => {
   await sendBoardWatcherDigestNow();
   res.status(204).end();
+});
+
+/** The daily summary right now, to read in the Board (nothing goes to Teams). */
+boardWatcherRouter.get("/daily", async (_req, res) => {
+  res.json(await previewDaily());
 });
 
 boardWatcherRouter.post("/pause", async (_req, res) => {

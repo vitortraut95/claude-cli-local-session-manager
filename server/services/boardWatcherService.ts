@@ -1,6 +1,6 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { BoardWatcherStatus, WatcherCalls } from "../../shared/boardWatcher.js";
+import type { BoardWatcherStatus, DailyPreview, WatcherCalls } from "../../shared/boardWatcher.js";
 import { takeCallCounts } from "./boardWatcher/http.js";
 import { backupWatcherFiles, restoreMissingWatcherFiles } from "./boardWatcher/backup.js";
 import { recordEvent } from "../utils/history.js";
@@ -9,6 +9,7 @@ import { getUserPreferences } from "./preferencesService.js";
 import { getMaxUsagePercent } from "./usageService.js";
 import { findRemoteSessionUrl } from "./session/remoteUrl.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
+import { ConflictError } from "../utils/httpError.js";
 import {
   isBusinessDay,
   isBusinessTime,
@@ -17,7 +18,12 @@ import {
   nextBusinessStart,
   toMinutes,
 } from "./boardWatcher/businessTime.js";
-import { buildDailyCard, draftDailyText, gatherDailyFacts } from "./boardWatcher/dailySummary.js";
+import {
+  buildDailyCard,
+  draftDailyText,
+  gatherDailyFacts,
+  sections,
+} from "./boardWatcher/dailySummary.js";
 import { buildPageUrl, diagnoseBuild } from "./boardWatcher/buildDiagnosis.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
 import type { Decision } from "./boardWatcher/decide.js";
@@ -182,7 +188,10 @@ async function sendDigestIfDue(
   const since = state.lastDigestAt
     ? new Date(state.lastDigestAt)
     : new Date(now.getTime() - 24 * 60 * 60_000);
-  const entries = await readActions(since);
+  // Build failures and PR news went out as they happened; alone they make no digest.
+  const entries = (await readActions(since)).filter(
+    (e) => e.action !== "build-failed" && e.action !== "pr-news",
+  );
   // Nothing happened since the last one: no card (the next one still covers from `since`).
   if (entries.length === 0) return;
   await postTeamsCard(webhook, buildActionsDigest(entries, config, since));
@@ -345,8 +354,16 @@ async function watchPreviewBuilds(
       const url = build.failedUrl ?? null;
       void (url ? diagnoseBuild(url) : Promise.resolve(null))
         .catch(() => null)
-        .then((diagnosis) => {
+        .then(async (diagnosis) => {
           noticePreviewFailed(config, issue, repo, branch, url && buildPageUrl(url), diagnosis);
+          await recordAction({
+            action: "build-failed",
+            subject: issue.key,
+            title: issue.summary,
+            detail: diagnosis
+              ? `${repo} ${branch} · ${diagnosis.kind === "infra" ? "infra" : diagnosis.kind === "code" ? "código" : "?"} · ${diagnosis.stage}: ${diagnosis.cause} → ${diagnosis.fix}`
+              : `${repo} ${branch}`,
+          });
           recordEvent("boardWatcher.buildFailed", { key: issue.key, repo, kind: diagnosis?.kind });
         });
     }
@@ -373,6 +390,18 @@ async function noticeNewsOnMyPullRequests(
       const news = await pullRequestNews(credentials, pr, since, config.me);
       if (news.comments.length === 0 && news.changesRequested.length === 0) continue;
       noticeNewsOnMyPr(config, pr, news);
+      await recordAction({
+        action: "pr-news",
+        subject: prSubject(pr),
+        title: pr.title,
+        detail: [
+          ...news.changesRequested.map((who) => `${who} pediu mudanças`),
+          ...news.comments.map(
+            (c) =>
+              `${c.author}: ${c.file ? `${c.file}${c.line ? `:${c.line}` : ""} — ` : ""}${c.body}`,
+          ),
+        ].join("\n"),
+      });
       recordEvent("boardWatcher.myPrNews", {
         subject: prSubject(pr),
         comments: news.comments.length,
@@ -913,6 +942,17 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
     testClaimsToday: state.testClaims.day === today ? state.testClaims.count : 0,
     lastDecisions,
   };
+}
+
+/** The daily summary now, for the Board (nothing is sent). */
+export async function previewDaily(): Promise<DailyPreview> {
+  const config = await loadBoardWatcherConfig();
+  if (!config?.jira || !config.bitbucket) {
+    throw new ConflictError("BOARD_WATCHER_NOT_CONFIGURED", "The watcher isn't set up.");
+  }
+  const facts = await gatherDailyFacts(config, new Date());
+  const parts = sections(facts);
+  return { dayLabel: facts.dayLabel, ...parts, text: await draftDailyText(facts) };
 }
 
 /** For a digest on demand ("send it now"), from the actions since the last one. */
