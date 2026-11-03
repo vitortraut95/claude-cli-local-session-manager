@@ -45,7 +45,7 @@ import {
 } from "./boardWatcher/instantNotices.js";
 import { rotateActions } from "./boardWatcher/history.js";
 import { LIVE_KEYS } from "./boardWatcher/settings.js";
-import { networkProblem } from "./boardWatcher/network.js";
+import { networkProblem, remindOnDesktop } from "./boardWatcher/network.js";
 import { isTestReport, testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
 import { addTestEntryIfAbsent, requeueTestEntry } from "./taskQueueService.js";
@@ -610,6 +610,16 @@ export function startBoardWatcher(): void {
     );
   });
   void look();
+  void remindNetworkAtStart();
+}
+
+/** Tells the user on the desktop when the app starts (usually at login) without the network the
+ *  tests need, instead of only once a test is held. */
+async function remindNetworkAtStart(): Promise<void> {
+  const config = await loadBoardWatcherConfig().catch(() => null);
+  if (!config?.enabled || config.test?.enabled === false) return;
+  const problem = await networkProblem(config.test?.requires);
+  if (problem) remindOnDesktop(problem);
 }
 
 /** A look right now, instead of waiting for the next one. */

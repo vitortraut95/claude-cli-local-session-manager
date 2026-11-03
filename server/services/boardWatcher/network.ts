@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 
 /**
@@ -35,4 +36,23 @@ export async function networkProblem(
     if (disabled.trim() !== "1") problems.push("IPv6 on");
   }
   return problems.length ? problems.join(" and ") : null;
+}
+
+/** A desktop notification (`notify-send`) of what to fix, so it's done before a test waits on
+ *  it. Best-effort: without a notification daemon nothing shows. */
+export function remindOnDesktop(problem: string): void {
+  const steps = [
+    problem.includes("VPN") && "conecte a VPN (GlobalProtect)",
+    problem.includes("IPv6") && "desligue o IPv6",
+  ].filter(Boolean);
+  execFile(
+    "notify-send",
+    [
+      "--urgency=critical",
+      "--app-name=Claude Session Manager",
+      "Testes do board vão esperar",
+      `Antes do primeiro teste: ${steps.join(" e ")}.`,
+    ],
+    () => undefined,
+  );
 }
