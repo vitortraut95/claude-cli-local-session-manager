@@ -16,6 +16,7 @@ import {
   toMinutes,
 } from "./boardWatcher/businessTime.js";
 import { buildDailyCard, draftDailyText, gatherDailyFacts } from "./boardWatcher/dailySummary.js";
+import { buildPageUrl, diagnoseBuild } from "./boardWatcher/buildDiagnosis.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
 import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
@@ -271,6 +272,7 @@ async function lookLocked(): Promise<void> {
     lastDecisions = await runTick(deps, state, config, now);
     await warnUnwatchedPullRequests(config, issues, state);
     await noticeNewsOnMyPullRequests(config, prs, state, now);
+    await watchPreviewBuilds(config, issues, state);
     state.lastTickAt = now.toISOString();
     state.lastError = null;
     recordEvent("boardWatcher.tick", {
@@ -289,6 +291,41 @@ async function lookLocked(): Promise<void> {
     if (config?.enabled) await saveState(state);
     running = false;
     schedule(config);
+  }
+}
+
+/** The `env/` preview builds of the tickets the user cares about (theirs under way, the tests it
+ *  claimed): a failure is told once per commit, with the cause read from the Jenkins log when
+ *  the token is set. Best-effort. */
+async function watchPreviewBuilds(
+  config: BoardWatcherConfig,
+  issues: BoardIssue[],
+  state: WatcherState,
+): Promise<void> {
+  if (!config.bitbucket || config.notifications?.instant === false) return;
+  const credentials = bitbucketCredentialsFromEnv(config.bitbucket.workspace);
+  const watched = issues.filter(
+    (i) =>
+      state.claimedTests.includes(i.key) ||
+      (i.assigneeId === config.me && !config.columns.todo.includes(i.statusId)),
+  );
+  for (const issue of watched) {
+    const previews = (await ticketPullRequests(issue.key, config)).filter((pr) =>
+      pr.branch.startsWith("env/"),
+    );
+    for (const { repo, branch } of previews) {
+      const build = await branchBuild(credentials, repo, branch).catch(() => null);
+      const key = `build:${repo}:${build?.hash ?? ""}`;
+      if (build?.ci !== "failed" || state.handled[key]) continue;
+      state.handled[key] = new Date().toISOString();
+      const url = build.failedUrl ?? null;
+      void (url ? diagnoseBuild(url) : Promise.resolve(null))
+        .catch(() => null)
+        .then((diagnosis) => {
+          noticePreviewFailed(config, issue, repo, branch, url && buildPageUrl(url), diagnosis);
+          recordEvent("boardWatcher.buildFailed", { key: issue.key, repo, kind: diagnosis?.kind });
+        });
+    }
   }
 }
 
@@ -573,8 +610,6 @@ async function ticketPullRequests(
 
 /** A preview build younger than this without any status yet is taken as not started. */
 const BUILD_START_GRACE_MS = 45 * 60_000;
-/** Failed builds already told about, by commit, so each is said once. */
-const failedBuildsNoticed = new Set<string>();
 
 /** Why the ticket's `env/` previews aren't ready to test (building, failed, not started), or null.
  *  Branches without a preview job or gone after the merge don't hold it. Best-effort: when
@@ -589,13 +624,8 @@ async function previewWait(issue: BoardIssue, config: BoardWatcherConfig): Promi
     const build = await branchBuild(credentials, repo, branch).catch(() => null);
     if (!build) continue;
     if (build.ci === "running") return `preview building (${repo} ${branch})`;
-    if (build.ci === "failed") {
-      if (!failedBuildsNoticed.has(build.hash)) {
-        failedBuildsNoticed.add(build.hash);
-        noticePreviewFailed(config, issue, repo, branch);
-      }
-      return `preview build failed (${repo} ${branch})`;
-    }
+    // Told about (with why) by `watchPreviewBuilds`.
+    if (build.ci === "failed") return `preview build failed (${repo} ${branch})`;
     if (build.ci === "none" && Date.now() - Date.parse(build.date) < BUILD_START_GRACE_MS) {
       return `preview build not started (${repo} ${branch})`;
     }

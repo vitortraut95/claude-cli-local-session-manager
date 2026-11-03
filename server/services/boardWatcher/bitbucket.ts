@@ -341,7 +341,7 @@ export async function branchBuild(
   credentials: BitbucketCredentials,
   repo: string,
   branch: string,
-): Promise<{ ci: PullRequest["ci"]; hash: string; date: string } | null> {
+): Promise<{ ci: PullRequest["ci"]; hash: string; date: string; failedUrl?: string } | null> {
   const base = `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}`;
   const ref = await get<{ target?: { hash?: string; date?: string } }>(
     credentials,
@@ -349,16 +349,18 @@ export async function branchBuild(
   ).catch(() => null);
   const hash = ref?.target?.hash;
   if (!hash) return null;
-  const statuses = await get<{ values?: { state: string; name?: string }[] }>(
+  const statuses = await get<{ values?: { state: string; name?: string; url?: string }[] }>(
     credentials,
-    `${base}/commit/${hash}/statuses?pagelen=50&fields=values.state,values.name`,
+    `${base}/commit/${hash}/statuses?pagelen=50&fields=values.state,values.name,values.url`,
   );
   const all = statuses.values ?? [];
   const own = all.filter((s) => s.name?.includes(branch));
+  const relevant = own.length ? own : all;
   return {
-    ci: ciState((own.length ? own : all).map((s) => s.state)),
+    ci: ciState(relevant.map((s) => s.state)),
     hash,
     date: ref.target?.date ?? "",
+    failedUrl: relevant.find((s) => s.state === "FAILED" || s.state === "STOPPED")?.url,
   };
 }
 
