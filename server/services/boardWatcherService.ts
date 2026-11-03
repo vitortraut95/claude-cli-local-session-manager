@@ -14,6 +14,7 @@ import { buildActionsDigest } from "./boardWatcher/digest.js";
 import { getLessons, getScoreboard } from "./boardWatcher/feedback.js";
 import {
   bitbucketCredentialsFromEnv,
+  branchBuild,
   findPullRequestsForKey,
   listOpenPullRequests,
   pullRequestHead,
@@ -38,6 +39,7 @@ import {
   noticeTestsNeedNetwork,
   noticeWeakDescription,
   noticeReviewBlocked,
+  noticePreviewFailed,
   noticeTestDone,
   noticeUnwatchedPullRequests,
   noticeWatcherError,
@@ -350,7 +352,23 @@ async function drainJobs(): Promise<void> {
           noticeNetworkBlocked(network);
           return;
         }
-        await runTestJob(test, config);
+        // A test against a preview still building (or whose build failed) would check old code:
+        // the first one whose previews are ready goes, the others wait their turn.
+        const waits: string[] = [];
+        let ready: typeof test | undefined;
+        for (const candidate of state.pendingTests) {
+          const wait = await previewWait(candidate.issue, config);
+          if (!wait) {
+            ready = candidate;
+            break;
+          }
+          waits.push(`${candidate.issue.key} ${wait}`);
+        }
+        if (!ready) {
+          jobsBlockedBy = `tests waiting: ${waits.join("; ")}`;
+          return;
+        }
+        await runTestJob(ready, config);
         continue;
       }
       const subject = prSubject(pr);
@@ -465,6 +483,38 @@ async function ticketPullRequests(
     console.warn(`[board-watcher] Couldn't look up ${key}'s PRs:`, err);
     return [];
   });
+}
+
+/** A preview build younger than this without any status yet is taken as not started. */
+const BUILD_START_GRACE_MS = 45 * 60_000;
+/** Failed builds already told about, by commit, so each is said once. */
+const failedBuildsNoticed = new Set<string>();
+
+/** Why the ticket's `env/` previews aren't ready to test (building, failed, not started), or null.
+ *  Branches without a preview job or gone after the merge don't hold it. Best-effort: when
+ *  Bitbucket can't be read, the test goes ahead. */
+async function previewWait(issue: BoardIssue, config: BoardWatcherConfig): Promise<string | null> {
+  if (!config.bitbucket) return null;
+  const credentials = bitbucketCredentialsFromEnv(config.bitbucket.workspace);
+  const previews = (await ticketPullRequests(issue.key, config)).filter((pr) =>
+    pr.branch.startsWith("env/"),
+  );
+  for (const { repo, branch } of previews) {
+    const build = await branchBuild(credentials, repo, branch).catch(() => null);
+    if (!build) continue;
+    if (build.ci === "running") return `preview building (${repo} ${branch})`;
+    if (build.ci === "failed") {
+      if (!failedBuildsNoticed.has(build.hash)) {
+        failedBuildsNoticed.add(build.hash);
+        noticePreviewFailed(config, issue, repo, branch);
+      }
+      return `preview build failed (${repo} ${branch})`;
+    }
+    if (build.ci === "none" && Date.now() - Date.parse(build.date) < BUILD_START_GRACE_MS) {
+      return `preview build not started (${repo} ${branch})`;
+    }
+  }
+  return null;
 }
 
 /** Adds a claimed ticket to the app's task queue as a test entry; the scheduler launches it
