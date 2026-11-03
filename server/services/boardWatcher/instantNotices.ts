@@ -2,6 +2,7 @@ import { getUserPreferences } from "../preferencesService.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./config.js";
 import { buildNoticeCard, buildNoticesCard, postTeamsCard, type Notice } from "./teamsCards.js";
 import type { PullRequestNews } from "./bitbucket.js";
+import type { BuildDiagnosis } from "./buildDiagnosis.js";
 import { prSubject, type BoardIssue, type PullRequest, type ReviewFinding } from "./types.js";
 
 /**
@@ -254,18 +255,34 @@ export function noticeNewsOnMyPr(
   });
 }
 
-/** A claimed test waits on a preview whose build failed: it would test old code. */
+/** A preview build of a ticket the user cares about (theirs, or a test it claimed) failed, with
+ *  why when the log could be read: old code would be tested, or the PR can't be checked. */
 export function noticePreviewFailed(
   config: BoardWatcherConfig,
   issue: BoardIssue,
   repo: string,
   branch: string,
+  buildUrl: string | null,
+  diagnosis: BuildDiagnosis | null,
 ): void {
+  const kind =
+    diagnosis?.kind === "infra" ? " (infra)" : diagnosis?.kind === "code" ? " (código)" : "";
   enqueue({
     level: "urgent",
-    title: `${issue.key} · build do preview falhou`,
-    summary: `${short(issue.summary, 80)}. O build de ${repo} ${branch} falhou; o teste espera um build que passe.`,
-    links: link("Abrir a tarefa", issueUrl(config, issue.key)),
+    title: `${issue.key} · build do preview falhou${kind}`,
+    summary: diagnosis
+      ? `${repo} ${branch}, em ${diagnosis.stage}: ${short(diagnosis.cause, 160)}`
+      : `${short(issue.summary, 80)}. O build de ${repo} ${branch} falhou.`,
+    details: diagnosis
+      ? [
+          { heading: "Causa provável", items: [diagnosis.cause] },
+          { heading: "O que fazer", items: [diagnosis.fix] },
+        ]
+      : [],
+    links: [
+      ...link("Abrir no Jenkins", buildUrl),
+      ...link("Abrir a tarefa", issueUrl(config, issue.key)),
+    ],
   });
 }
 
