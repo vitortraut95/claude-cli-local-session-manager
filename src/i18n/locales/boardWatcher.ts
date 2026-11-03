@@ -83,12 +83,12 @@ export const boardWatcher = {
     "Só funciona com o review de PRs ligado.",
   ),
   "automation.feature.reviewUnapprovedDeploying": dict(
-    "Unapproved PRs going to deploy",
-    "PRs sem aprovação indo pro deploy",
+    "Unapproved PRs in Validation and Wait Deploy",
+    "PRs sem aprovação em Validation e Wait Deploy",
   ),
   "automation.feature.reviewUnapprovedDeploying.description": dict(
-    "Also reviews colleagues' PRs whose ticket already passed Code Review (Validation, Ready for Deployment) without any approval, before they merge at the deploy.",
-    "Revisa também os PRs de colegas cuja tarefa já passou de Code Review (Validation, Ready for Deployment) sem nenhuma aprovação, antes de entrarem no deploy.",
+    "Also reviews colleagues' PRs with no approval whose ticket is already in the Validation or Wait Deploy column.",
+    "Revisa também os PRs de colegas sem nenhuma aprovação cuja tarefa já está na coluna Validation ou Wait Deploy.",
   ),
   "automation.feature.testQueue": dict("Test queue", "Fila de teste"),
   "automation.feature.testQueue.description": dict(

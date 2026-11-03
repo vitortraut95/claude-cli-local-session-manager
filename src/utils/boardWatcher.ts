@@ -58,7 +58,7 @@ const SERVER_TEXT_PT: [RegExp, string][] = [
     "dando tempo pro time revisar ($1 de $2 minutos úteis)",
   ],
   [/ready for review/, "pronta pra review"],
-  [/past Code Review without any approval/, "passou de Code Review sem nenhuma aprovação"],
+  [/past Code Review without any approval/, "em Validation/Wait Deploy sem nenhuma aprovação"],
   [/pushed since the user's approval/, "push novo depois do seu aprove"],
   [/left for a person:/, "deixada pra uma pessoa:"],
   [/^Paused from the app$/, "pausado pelo app"],

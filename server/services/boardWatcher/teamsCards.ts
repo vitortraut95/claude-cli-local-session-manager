@@ -30,7 +30,7 @@ const REASONS_PT: [RegExp, string][] = [
   [/test plan in comment \S+/, "tem plano de teste"],
   [/no ticket in the PR title or branch/, "sem LED no título ou na branch do PR"],
   [/ticket (.+) isn't in Code Review yet/, "$1 ainda não está em Code Review"],
-  [/past Code Review without any approval/, "passou de Code Review sem nenhuma aprovação"],
+  [/past Code Review without any approval/, "em Validation/Wait Deploy sem nenhuma aprovação"],
 ];
 
 export function reasonPtBr(reason: string): string {
