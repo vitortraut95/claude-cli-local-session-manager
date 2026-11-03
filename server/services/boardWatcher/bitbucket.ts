@@ -18,7 +18,7 @@ type RawPullRequest = {
   updated_on?: string;
   author?: { account_id?: string };
   source?: { commit?: { hash?: string }; branch?: { name?: string } };
-  destination?: { branch?: { name?: string } };
+  destination?: { branch?: { name?: string }; commit?: { hash?: string } };
   participants?: {
     role: string;
     state?: string | null;
@@ -36,6 +36,7 @@ const PR_FIELDS = [
   "values.source.commit.hash",
   "values.source.branch.name",
   "values.destination.branch.name",
+  "values.destination.commit.hash",
   "values.participants.role",
   "values.participants.state",
   "values.participants.user.account_id",
@@ -229,6 +230,7 @@ async function toPullRequest(
     hasConflicts: false,
     sourceBranch: raw.source?.branch?.name,
     destinationBranch: raw.destination?.branch?.name,
+    destinationHash: raw.destination?.commit?.hash,
     sourceHash: hash,
   };
 }
