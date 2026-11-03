@@ -225,6 +225,21 @@ export function noticeWeakDescription(
   });
 }
 
+/** A claimed test waits on a preview whose build failed: it would test old code. */
+export function noticePreviewFailed(
+  config: BoardWatcherConfig,
+  issue: BoardIssue,
+  repo: string,
+  branch: string,
+): void {
+  enqueue({
+    level: "urgent",
+    title: `${issue.key} · build do preview falhou`,
+    summary: `${short(issue.summary, 80)}. O build de ${repo} ${branch} falhou; o teste espera um build que passe.`,
+    links: link("Abrir a tarefa", issueUrl(config, issue.key)),
+  });
+}
+
 /** Tests are waiting because the network isn't as they need it (VPN, IPv6). */
 export function noticeTestsNeedNetwork(problem: string): void {
   const vpn = problem.includes("VPN");

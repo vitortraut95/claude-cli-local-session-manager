@@ -216,11 +216,38 @@ export async function markStaleApprovals(
       const hash = activity
         .map((a) => a.update)
         .filter((u) => u && Date.parse(u.date) <= approvedAt)
-        .sort((a, b) => Date.parse(b?.date ?? "") - Date.parse(a?.date ?? ""))[0]?.source?.commit
-        ?.hash;
+        .sort((a, b) => Date.parse(b?.date ?? "") - Date.parse(a?.date ?? ""))[0]?.source
+        ?.commit?.hash;
       if (hash && !sameCommit(hash, pr.sourceHash)) pr.approvedCommit = hash;
     }),
   );
+}
+
+/** The build (Jenkins status) of a branch's latest commit, preferring the branch's own job over
+ *  the PR's; null when the branch is gone (merged and deleted). */
+export async function branchBuild(
+  credentials: BitbucketCredentials,
+  repo: string,
+  branch: string,
+): Promise<{ ci: PullRequest["ci"]; hash: string; date: string } | null> {
+  const base = `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}`;
+  const ref = await get<{ target?: { hash?: string; date?: string } }>(
+    credentials,
+    `${base}/refs/branches/${encodeURIComponent(branch)}?fields=target.hash,target.date`,
+  ).catch(() => null);
+  const hash = ref?.target?.hash;
+  if (!hash) return null;
+  const statuses = await get<{ values?: { state: string; name?: string }[] }>(
+    credentials,
+    `${base}/commit/${hash}/statuses?pagelen=50&fields=values.state,values.name`,
+  );
+  const all = statuses.values ?? [];
+  const own = all.filter((s) => s.name?.includes(branch));
+  return {
+    ci: ciState((own.length ? own : all).map((s) => s.state)),
+    hash,
+    date: ref.target?.date ?? "",
+  };
 }
 
 /** The PRs (open or merged) of `repos` whose title or source branch has `key`, newest first:
