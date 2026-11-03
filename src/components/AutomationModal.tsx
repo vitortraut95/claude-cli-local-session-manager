@@ -90,6 +90,11 @@ const LIVE_ROWS: {
     label: "automation.live.approve",
     description: "automation.live.approve.description",
   },
+  {
+    key: "rebuild",
+    label: "automation.live.rebuild",
+    description: "automation.live.rebuild.description",
+  },
 ];
 
 const LIMIT_LABELS: Record<keyof AutomationLimits, TranslationKey> = {

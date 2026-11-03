@@ -45,6 +45,11 @@ export const boardWatcher = {
     "Approves in your name when nothing blocks it. Skipped if the PR got a new push after the review.",
     "Aprova no seu nome quando nada bloqueia. Não aprova se o PR recebeu push depois do review.",
   ),
+  "automation.live.rebuild": dict("Run failed builds again", "Rodar build de novo"),
+  "automation.live.rebuild.description": dict(
+    "When a preview build of your tasks (or of a test it claimed) fails for infra reasons, runs it again in Jenkins once per commit. If it fails again, you're told.",
+    "Quando o build de preview de uma tarefa sua (ou de um teste que ele puxou) falha por infra, roda de novo no Jenkins, uma vez por commit. Se falhar de novo, você é avisado.",
+  ),
   "automation.notConfigured": dict(
     "Not available yet: the boardWatcher.json file with the board ids is missing. Set it up on the server first.",
     "Ainda não dá pra ligar: falta o arquivo boardWatcher.json com os ids do board. Configure-o no servidor primeiro.",
