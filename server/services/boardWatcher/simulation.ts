@@ -95,6 +95,7 @@ export function createBoardDeps(
     ...config.columns.waitTest,
     ...config.columns.testing,
     ...(config.columns.codeReview ?? []),
+    ...(config.codeReview?.unapprovedDeploying ? (config.columns.deploying ?? []) : []),
   ].join(",");
 
   const record = (entry: Omit<ActionEntry, "ts" | "title"> & { title?: string }) =>

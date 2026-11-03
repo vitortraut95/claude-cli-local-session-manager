@@ -60,6 +60,8 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
     testing: string[];
     codeReview?: string[];
     inProgress?: string[];
+    /** After the test, until the PR merges at the deploy (Validation, Ready for Deployment). */
+    deploying?: string[];
   };
   /** Where a claimed test is moved to. */
   testingStatusId: string;
@@ -76,7 +78,8 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
   /** Automation switches (all on unless false): queue my To Do tickets, look at colleagues' PRs,
    *  and the Teams notices. */
   todo?: { enabled?: boolean };
-  codeReview?: { enabled?: boolean };
+  /** `unapprovedDeploying`: also review the PRs nobody approved whose ticket is in `deploying`. */
+  codeReview?: { enabled?: boolean; unapprovedDeploying?: boolean };
   notifications?: { instant?: boolean; digest?: boolean };
   /** A summary for the daily meeting (yesterday, today, what's stuck), sent `leadMinutes` before
    *  `meetingAt` ("HH:MM", business timezone) on business days. Off without it. */

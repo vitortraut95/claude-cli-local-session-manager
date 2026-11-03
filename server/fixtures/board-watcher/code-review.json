@@ -682,5 +682,138 @@
         }
       }
     ]
+  },
+  {
+    "name": "with the switch on, a PR past Code Review that nobody approved is reviewed",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "inProgress": ["in-progress"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"],
+        "deploying": ["ready-deploy"]
+      },
+      "codeReview": {
+        "unapprovedDeploying": true
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-95",
+            "statusId": "ready-deploy",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          },
+          {
+            "key": "DEMO-96",
+            "statusId": "ready-deploy",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "bia"
+          }
+        ],
+        "prs": [
+          {
+            "id": "80",
+            "repo": "web",
+            "title": "DEMO-95: sem aprovação",
+            "sourceBranch": "env/DEMO-95",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          },
+          {
+            "id": "81",
+            "repo": "web",
+            "title": "DEMO-96: já aprovado por alguém",
+            "sourceBranch": "env/DEMO-96",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "none"
+              },
+              {
+                "id": "ana",
+                "state": "approved"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#80"],
+          "decisions": {
+            "web#80": "review",
+            "web#81": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "with the switch off, a PR past Code Review isn't reviewed even without approvals",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "inProgress": ["in-progress"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"],
+        "deploying": ["ready-deploy"]
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-95",
+            "statusId": "ready-deploy",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          },
+          {
+            "key": "DEMO-96",
+            "statusId": "ready-deploy",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "bia"
+          }
+        ],
+        "prs": [
+          {
+            "id": "80",
+            "repo": "web",
+            "title": "DEMO-95: sem aprovação",
+            "sourceBranch": "env/DEMO-95",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          },
+          {
+            "id": "81",
+            "repo": "web",
+            "title": "DEMO-96: já aprovado por alguém",
+            "sourceBranch": "env/DEMO-96",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "none"
+              },
+              {
+                "id": "ana",
+                "state": "approved"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#80": "none",
+            "web#81": "none"
+          }
+        }
+      }
+    ]
   }
 ]
