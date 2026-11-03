@@ -1,10 +1,14 @@
 import type { Session, TaskRepoRef } from "./session.js";
 
 /** "Refine tasks" modal: the pasted tickets (links or keys, one or more per line, any text around
- *  them) and free-form notes appended to the prompt. */
+ *  them), a sprint name and free-form notes appended to the prompt. All optional: with no tickets
+ *  nor sprint the skill offers the team's open and upcoming sprints. */
 export type RefinementInput = {
   tasks: string;
   notes: string;
+  sprint?: string;
+  /** Skip the technical round with the devs and go straight to the PO comments. */
+  directToPo?: boolean;
 };
 
 export type ProjectFolderOption = {

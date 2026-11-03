@@ -241,12 +241,14 @@ function extractStringArray(body: unknown, key: string): string[] {
     : [];
 }
 
-/** "Refine tasks": pasted tickets + notes, handed to `taskRefinementSkill` in a new session. */
+/** "Refine tasks": pasted tickets/sprint + notes, handed to `taskRefinementSkill` in a new session. */
 tasksRouter.post("/refinement", async (req, res) => {
   const { sessionId } = await launchRefinement(
     {
       tasks: extractStringField(req.body, "tasks"),
       notes: extractStringField(req.body, "notes"),
+      sprint: extractStringField(req.body, "sprint"),
+      directToPo: extractBooleanField(req.body, "directToPo", false),
     },
     extractLayoutField(req.body),
   );
