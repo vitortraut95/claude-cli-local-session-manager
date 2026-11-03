@@ -441,7 +441,8 @@
         "todo": ["todo"],
         "waitTest": ["wait-test"],
         "testing": ["testing"],
-        "codeReview": ["code-review"]
+        "codeReview": ["code-review"],
+        "inProgress": ["in-progress"]
       }
     },
     "ticks": [
@@ -630,6 +631,54 @@
         },
         "expect": {
           "effects": ["comment web#62 blocking", "notify digest: Not approved: web#62"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a PR whose ticket is past Code Review (or off the board) isn't listed",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "inProgress": ["in-progress"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"]
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-91",
+            "statusId": "testing",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          }
+        ],
+        "prs": [
+          {
+            "id": "70",
+            "repo": "web",
+            "title": "DEMO-90: já em deploy",
+            "sourceBranch": "env/DEMO-90",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          },
+          {
+            "id": "71",
+            "repo": "web",
+            "title": "DEMO-91: já testando",
+            "sourceBranch": "env/DEMO-91",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#70": "none",
+            "web#71": "none"
+          }
         }
       }
     ]

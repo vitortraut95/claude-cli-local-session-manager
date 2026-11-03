@@ -263,6 +263,15 @@ export function decidePullRequests(
   const inCodeReview = new Map(
     issues.filter((i) => codeReviewColumn?.includes(i.statusId)).map((i) => [i.key, i.statusSince]),
   );
+  const beforeCodeReview = new Set(
+    issues
+      .filter(
+        (i) =>
+          config.columns.todo.includes(i.statusId) ||
+          config.columns.inProgress?.includes(i.statusId),
+      )
+      .map((i) => i.key),
+  );
 
   for (const pr of prs) {
     const subject = prSubject(pr);
@@ -282,7 +291,11 @@ export function decidePullRequests(
       .at(-1);
     if (codeReviewColumn && keys.length === 0) wait("no ticket in the PR title or branch");
     else if (codeReviewColumn && !reachedCodeReview) {
-      wait(`ticket ${keys.join(", ")} isn't in Code Review yet`);
+      // Past Code Review (tested, deploying: the PR merges at the deploy) or off the board: not
+      // the user's to review, so not listed either.
+      if (keys.some((key) => beforeCodeReview.has(key))) {
+        wait(`ticket ${keys.join(", ")} isn't in Code Review yet`);
+      }
     } else if (pr.draft) skip("draft");
     else if (pr.hasConflicts) skip("has conflicts");
     else if (pr.ci === "failed") skip("CI failed");
