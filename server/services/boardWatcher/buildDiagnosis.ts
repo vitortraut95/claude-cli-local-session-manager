@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import os from "node:os";
 import { promisify } from "node:util";
 import { sanitizedSpawnEnv } from "../../utils/spawnEnv.js";
+import { apiFetch } from "./http.js";
 
 /**
  * Why a preview build failed: the Jenkins log of the build (read with the user's API token,
@@ -55,7 +56,7 @@ async function fetchLog(statusUrl: string): Promise<string | null> {
   const user = process.env.JENKINS_USER;
   const token = process.env.JENKINS_TOKEN;
   if (!user || !token) return null;
-  const response = await fetch(`${buildPageUrl(statusUrl)}consoleText`, {
+  const response = await apiFetch("jenkins", `${buildPageUrl(statusUrl)}consoleText`, {
     headers: { Authorization: `Basic ${Buffer.from(`${user}:${token}`).toString("base64")}` },
     signal: AbortSignal.timeout(30_000),
   });

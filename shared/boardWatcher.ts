@@ -171,8 +171,18 @@ export type BoardWatcherStatus = {
   today: { reviews: number; tests: number; durationMs: number; costUsd: number };
   /** Why pending reviews/tests aren't starting (e.g. the plan's usage limit), or null. */
   jobsBlockedBy: string | null;
+  /** The API calls of the last look (and anything running alongside it) and over the last hour,
+   *  against Bitbucket's hourly limit. */
+  calls: WatcherCalls | null;
   scoreboard: WatcherScoreboard;
   lastDecisions: WatcherDecision[];
+};
+
+export type WatcherCalls = {
+  lastLook: { jira: number; bitbucket: number; jenkins: number };
+  lastLookMs: number;
+  retries: number;
+  lastHour: { jira: number; bitbucket: number; jenkins: number };
 };
 
 /** The user's verdict on something the watcher did (a history entry), for calibration. */

@@ -252,6 +252,11 @@ export const boardWatcher = {
     "A review or test session is running",
     "Uma sessão de review ou teste está rodando",
   ),
+  "board.now.calls": dict(
+    "Last look: {seconds}s, {jira} Jira, {bitbucket} Bitbucket and {jenkins} Jenkins calls · Bitbucket in the last hour: {hour} of ~1000.",
+    "Última olhada: {seconds}s, {jira} chamadas ao Jira, {bitbucket} ao Bitbucket e {jenkins} ao Jenkins · Bitbucket na última hora: {hour} de ~1000.",
+  ),
+  "board.now.retries": dict("({count} retried)", "({count} repetidas)"),
   "board.now.idle": dict("Nothing running", "Nada rodando"),
   "board.now.pendingReviews": dict("Pending reviews", "Reviews pendentes"),
   "board.now.pendingTests": dict("Pending tests", "Testes pendentes"),
