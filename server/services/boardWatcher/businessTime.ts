@@ -31,7 +31,7 @@ function localParts(
   };
 }
 
-function toMinutes(hhmm: string): number {
+export function toMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
   return (h ?? 0) * 60 + (m ?? 0);
 }
@@ -43,6 +43,25 @@ export function isBusinessTime(date: Date, hours: BusinessHours): boolean {
     minutes >= toMinutes(hours.start) &&
     minutes < toMinutes(hours.end)
   );
+}
+
+/** Minutes since local midnight, in the business timezone. */
+export function localMinutes(date: Date, hours: BusinessHours): number {
+  return localParts(date, hours.timezone).minutes;
+}
+
+export function isBusinessDay(date: Date, hours: BusinessHours): boolean {
+  return hours.days.includes(localParts(date, hours.timezone).weekday);
+}
+
+/** The last business day before `now`'s, as "YYYY-MM-DD" (a Monday's is the Friday before). */
+export function previousBusinessDay(now: Date, hours: BusinessHours): string {
+  const today = localDay(now, hours);
+  for (let back = 1; back <= 14; back += 1) {
+    const date = new Date(now.getTime() - back * 24 * 60 * 60_000);
+    if (localDay(date, hours) !== today && isBusinessDay(date, hours)) return localDay(date, hours);
+  }
+  return today;
 }
 
 /** "YYYY-MM-DD" in the business timezone, for per-day limits. */

@@ -140,6 +140,56 @@ export async function linkedPullRequests(
   );
 }
 
+/** Every status's name by id ("10052" → "Ready for Deployment"). */
+export async function statusNames(credentials: JiraCredentials): Promise<Map<string, string>> {
+  const statuses = await get<{ id: string; name: string }[]>(credentials, "/rest/api/3/status");
+  return new Map(statuses.map((status) => [status.id, status.name]));
+}
+
+export type StatusChange = { key: string; summary: string; at: string; from: string; to: string };
+
+/** Status changes the user (`me`) made on issues matching `jql`, by name ("In Progress"). */
+export async function statusChangesBy(
+  credentials: JiraCredentials,
+  jql: string,
+  me: string,
+): Promise<StatusChange[]> {
+  const params = new URLSearchParams({
+    jql,
+    fields: "summary",
+    expand: "changelog",
+    maxResults: "50",
+  });
+  const page = await get<{
+    issues: {
+      key: string;
+      fields: { summary?: string };
+      changelog?: {
+        histories?: {
+          created: string;
+          author?: { accountId?: string };
+          items: { field: string; fromString?: string | null; toString?: string | null }[];
+        }[];
+      };
+    }[];
+  }>(credentials, `/rest/api/3/search/jql?${params.toString()}`);
+  return page.issues.flatMap((issue) =>
+    (issue.changelog?.histories ?? [])
+      .filter((h) => h.author?.accountId === me)
+      .flatMap((h) =>
+        h.items
+          .filter((item) => item.field === "status")
+          .map((item) => ({
+            key: issue.key,
+            summary: issue.fields.summary ?? "",
+            at: h.created,
+            from: item.fromString ?? "",
+            to: item.toString ?? "",
+          })),
+      ),
+  );
+}
+
 /** Every issue matching `jql`, with comments and the status history, up to `limit`. */
 export async function searchIssues(
   credentials: JiraCredentials,

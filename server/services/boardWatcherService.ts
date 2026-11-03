@@ -7,7 +7,15 @@ import { getUserPreferences } from "./preferencesService.js";
 import { getMaxUsagePercent } from "./usageService.js";
 import { findRemoteSessionUrl } from "./session/remoteUrl.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
-import { isBusinessTime, localDay, nextBusinessStart } from "./boardWatcher/businessTime.js";
+import {
+  isBusinessDay,
+  isBusinessTime,
+  localDay,
+  localMinutes,
+  nextBusinessStart,
+  toMinutes,
+} from "./boardWatcher/businessTime.js";
+import { buildDailyCard, draftDailyText, gatherDailyFacts } from "./boardWatcher/dailySummary.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
 import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
@@ -84,6 +92,8 @@ const ERROR_ALERT_EVERY_MS = 2 * 60 * 60_000;
 type PersistedState = WatcherState & {
   lastTickAt: string | null;
   lastDigestAt: string | null;
+  /** The day ("YYYY-MM-DD") the last daily summary went out. */
+  lastDailyDay?: string;
   lastError: { message: string; at: string; alertedAt: string | null } | null;
 };
 
@@ -157,6 +167,41 @@ async function sendDigestIfDue(
   await postTeamsCard(webhook, buildActionsDigest(entries, config, since));
   state.lastDigestAt = now.toISOString();
   recordEvent("boardWatcher.digest", { entries: entries.length });
+}
+
+/** After the meeting this long, a missed summary isn't sent any more (it's for the meeting). */
+const DAILY_LATE_MINUTES = 30;
+
+/** The daily summary, once per business day, from `leadMinutes` before the meeting. Best-effort:
+ *  a failure is logged and retried at the next look. */
+async function sendDailyIfDue(
+  state: PersistedState,
+  config: BoardWatcherConfig,
+  now: Date,
+): Promise<void> {
+  const webhook = process.env.TEAMS_WEBHOOK_URL;
+  if (!config.daily || !webhook || !isBusinessDay(now, config.businessHours)) return;
+  const today = localDay(now, config.businessHours);
+  if (state.lastDailyDay === today) return;
+  const meeting = toMinutes(config.daily.meetingAt);
+  const minutes = localMinutes(now, config.businessHours);
+  if (
+    minutes < meeting - (config.daily.leadMinutes ?? 15) ||
+    minutes > meeting + DAILY_LATE_MINUTES
+  ) {
+    return;
+  }
+  try {
+    const facts = await gatherDailyFacts(config, now);
+    await postTeamsCard(webhook, buildDailyCard(facts, await draftDailyText(facts)));
+    state.lastDailyDay = today;
+    recordEvent("boardWatcher.daily", {
+      day: facts.day,
+      items: facts.moved.length + facts.commits.length,
+    });
+  } catch (err) {
+    console.warn("[board-watcher] Couldn't send the daily summary:", err);
+  }
 }
 
 function alertError(state: PersistedState, message: string, now: Date): void {
@@ -234,6 +279,7 @@ async function lookLocked(): Promise<void> {
       durationMs: Date.now() - started,
     });
     await sendDigestIfDue(state, config, now);
+    await sendDailyIfDue(state, config, now);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.warn("[board-watcher] Look failed:", message);

@@ -78,6 +78,9 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
   todo?: { enabled?: boolean };
   codeReview?: { enabled?: boolean };
   notifications?: { instant?: boolean; digest?: boolean };
+  /** A summary for the daily meeting (yesterday, today, what's stuck), sent `leadMinutes` before
+   *  `meetingAt` ("HH:MM", business timezone) on business days. Off without it. */
+  daily?: { meetingAt: string; leadMinutes?: number };
   /** What happens to a claimed Wait Test ticket: `queue` (default) adds it to the app's task
    *  queue as a test entry, launched by the scheduler like any other; `headless` runs an
    *  unattended test session (`claudeTester.ts`, with `skill`). */
