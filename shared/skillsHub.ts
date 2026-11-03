@@ -78,6 +78,10 @@ export type SkillDetails = {
   description: string;
   /** Other skills it declares it depends on (`requires-skills`). */
   requiresSkills: string[];
+  /** `metadata.author` / `metadata.version` from the frontmatter; null when not set. Optional: an
+   *  older backend omits them. */
+  author?: string | null;
+  version?: string | null;
   /** SKILL.md without its frontmatter (markdown). */
   body: string;
   /** Every other file in the skill folder (references, scripts), relative to it. */
