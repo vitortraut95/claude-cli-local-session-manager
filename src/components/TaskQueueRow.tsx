@@ -6,10 +6,17 @@ import {
   Rocket,
   RotateCcw,
   Trash2,
+  X,
 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { ProjectFolderOption } from "../services/tasksApi";
-import { branchNameFor, type DraftEntry, isMissingSetup, NO_REPO_VALUE } from "../utils/taskQueue";
+import {
+  branchNameFor,
+  type DraftEntry,
+  entryKeys,
+  isMissingSetup,
+  NO_REPO_VALUE,
+} from "../utils/taskQueue";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { Select } from "./Select";
@@ -28,7 +35,13 @@ type TaskQueueRowProps = {
   projects: ProjectFolderOption[];
   branchTypes: string[];
   saving: boolean;
+  /** Entries this one can take in (not launched, not launching). */
+  groupCandidates: DraftEntry[];
   onUpdate: (patch: Partial<DraftEntry>) => void;
+  /** Takes the entry `key` in: done together, in this entry's branch and session. */
+  onGroup: (key: string) => void;
+  /** Turns the grouped `key` back into an entry of its own, right after this one. */
+  onUngroup: (key: string) => void;
   onRemove: () => void;
   onStartNow: () => void;
   onRetry: () => void;
@@ -37,6 +50,23 @@ type TaskQueueRowProps = {
   onDisarmDrag: () => void;
 };
 
+function TaskKeyLink({ taskKey, link }: { taskKey: string; link: string | null }) {
+  if (!link) {
+    return <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{taskKey}</span>;
+  }
+  return (
+    <a
+      href={link}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-1 text-sm font-medium text-gray-900 hover:underline dark:text-gray-100"
+    >
+      {taskKey}
+      <ExternalLink className="h-3.5 w-3.5 text-gray-400" />
+    </a>
+  );
+}
+
 /** One queue entry's contents: editable until it's launched (or launching), a summary after. */
 export function TaskQueueRow({
   entry,
@@ -44,7 +74,10 @@ export function TaskQueueRow({
   projects,
   branchTypes,
   saving,
+  groupCandidates,
   onUpdate,
+  onGroup,
+  onUngroup,
   onRemove,
   onStartNow,
   onRetry,
@@ -101,21 +134,24 @@ export function TaskQueueRow({
               <GripVertical className="h-4 w-4" />
             </span>
           )}
-          {entry.link ? (
-            <a
-              href={entry.link}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1 text-sm font-medium text-gray-900 hover:underline dark:text-gray-100"
-            >
-              {entry.key}
-              <ExternalLink className="h-3.5 w-3.5 text-gray-400" />
-            </a>
-          ) : (
-            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {entry.key}
+          <TaskKeyLink taskKey={entry.key} link={entry.link} />
+          {entry.groupedTasks.map((task) => (
+            <span key={task.key} className="flex items-center gap-1">
+              <span className="text-sm text-gray-400">+</span>
+              <TaskKeyLink taskKey={task.key} link={task.link} />
+              {!locked && (
+                <button
+                  type="button"
+                  onClick={() => onUngroup(task.key)}
+                  title={t("taskQueueModal.ungroup")}
+                  aria-label={t("taskQueueModal.ungroup")}
+                  className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
             </span>
-          )}
+          ))}
           {renderState()}
           {locked && <TaskQueueKindBadge kind={entry.kind} />}
           {locked && entry.noRepo && <TaskQueueNoRepoChip />}
@@ -184,6 +220,29 @@ export function TaskQueueRow({
             onChange={(kind) => onUpdate({ kind })}
             large={false}
           />
+
+          {groupCandidates.length > 0 && (
+            <>
+              <span>{t("taskQueueModal.groupLabel")}</span>
+              <div className="w-72">
+                <Select
+                  value=""
+                  onChange={(event) => {
+                    if (event.target.value) onGroup(event.target.value);
+                  }}
+                  aria-label={t("taskQueueModal.groupLabel")}
+                  className="py-1"
+                >
+                  <option value="">{t("taskQueueModal.groupPlaceholder")}</option>
+                  {groupCandidates.map((candidate) => (
+                    <option key={candidate.key} value={candidate.key}>
+                      {entryKeys(candidate).join(" + ")}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </>
+          )}
 
           <span>{t("taskQueueModal.reposLabel")}</span>
           <div className="flex flex-wrap items-center gap-1.5">

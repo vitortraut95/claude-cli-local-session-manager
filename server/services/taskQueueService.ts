@@ -4,6 +4,7 @@ import { isTaskKey, normalizeTaskKey } from "../utils/taskKeys.js";
 import { recordEvent } from "../utils/history.js";
 import { SAFE_BRANCH_NAME } from "./taskService.js";
 import { getQueue, setQueue, type QueueEntry, type QueueEntryInput } from "../utils/taskStore.js";
+import type { QueueGroupedTask } from "../../shared/tasks.js";
 
 /**
  * The task queue: tickets pasted in to be worked on, each tied to the repo(s) it'll be done in.
@@ -34,6 +35,21 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
   }
   const link =
     isRecord(raw) && typeof raw.link === "string" && raw.link.trim() ? raw.link.trim() : null;
+  const groupedTasks: QueueGroupedTask[] = [];
+  for (const task of isRecord(raw) && Array.isArray(raw.groupedTasks) ? raw.groupedTasks : []) {
+    const groupedKey = isRecord(task) && typeof task.key === "string" ? task.key : "";
+    const normalized = normalizeTaskKey(groupedKey);
+    if (!normalized || !isTaskKey(normalized)) {
+      throw new BadRequestError(
+        "TASK_INVALID_KEY",
+        `"${groupedKey}" isn't a ticket key (e.g. PROJ-123).`,
+      );
+    }
+    if (normalized === key || groupedTasks.some((t) => t.key === normalized)) continue;
+    const groupedLink =
+      isRecord(task) && typeof task.link === "string" && task.link.trim() ? task.link.trim() : null;
+    groupedTasks.push({ key: normalized, link: groupedLink });
+  }
   const noRepo = isRecord(raw) && raw.noRepo === true;
   const folders = !noRepo && isRecord(raw) && Array.isArray(raw.repos) ? raw.repos : [];
 
@@ -76,6 +92,7 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
   return {
     key,
     link,
+    groupedTasks,
     kind,
     repos,
     noRepo,
@@ -87,19 +104,28 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
   };
 }
 
-/** Replaces the whole queue (the modal saves its full list); a repeated key keeps the first. */
+/** Replaces the whole queue (the modal saves its full list); a repeated key — an entry's own or
+ *  grouped — keeps the first. */
 export async function saveTaskQueue(body: unknown): Promise<QueueEntry[]> {
   const rawEntries = isRecord(body) && Array.isArray(body.entries) ? body.entries : [];
   const entries: QueueEntryInput[] = [];
+  const seen = new Set<string>();
   for (const raw of rawEntries) {
     const entry = await parseEntry(raw);
-    if (!entries.some((e) => e.key === entry.key)) entries.push(entry);
+    if (seen.has(entry.key)) continue;
+    entry.groupedTasks = entry.groupedTasks?.filter((task) => !seen.has(task.key));
+    for (const task of [entry, ...(entry.groupedTasks ?? [])]) seen.add(task.key);
+    entries.push(entry);
   }
   const previous = new Map((await getQueue()).map((entry) => [entry.key, entry]));
   await setQueue(entries);
   const stored = await getQueue();
   recordQueueChanges(previous, stored);
   return stored;
+}
+
+function groupedKeysText(entry: QueueEntry): string {
+  return (entry.groupedTasks ?? []).map((task) => task.key).join(",");
 }
 
 /** Added / removed / re-targeted entries and retries (a cleared error), for the history. */
@@ -111,6 +137,7 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
       recordEvent("queue.added", {
         key: entry.key,
         link: entry.link,
+        groupedKeys: (entry.groupedTasks ?? []).map((task) => task.key),
         kind: entry.kind,
         repos: entry.repos,
         noRepo: entry.noRepo,
@@ -123,6 +150,7 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
     if (entry.launchedAt) continue;
     if (
       before.kind !== entry.kind ||
+      groupedKeysText(before) !== groupedKeysText(entry) ||
       before.noRepo !== entry.noRepo ||
       before.branchPrefix !== entry.branchPrefix ||
       before.branch !== entry.branch ||
@@ -132,6 +160,7 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
     ) {
       recordEvent("queue.updated", {
         key: entry.key,
+        groupedKeys: (entry.groupedTasks ?? []).map((task) => task.key),
         kind: entry.kind,
         repos: entry.repos,
         noRepo: entry.noRepo,

@@ -86,9 +86,15 @@ export type WorktreeSetupResult = {
 /** "dev" = develop the task (new branch and worktree); "test" = test someone else's branch. */
 export type QueueKind = "dev" | "test";
 
+/** A ticket done together with the entry's own, in the same branch and session. */
+export type QueueGroupedTask = { key: string; link: string | null };
+
 export type QueueEntry = {
   key: string;
   link: string | null;
+  /** Other tickets delivered with this one: the branch, worktree and session are the entry's
+   *  (named after `key`); the prompt lists every link. Optional for an older backend (= none). */
+  groupedTasks?: QueueGroupedTask[];
   kind: QueueKind;
   repos: string[];
   /** No repo on purpose: the session opens in the first workspace dir, with no branch. */
@@ -113,6 +119,7 @@ export type QueueEntryInput = Pick<
   QueueEntry,
   | "key"
   | "link"
+  | "groupedTasks"
   | "kind"
   | "repos"
   | "noRepo"

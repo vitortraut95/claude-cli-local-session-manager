@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { ProjectFolderOption, QueueKind } from "../services/tasksApi";
-import { type DraftEntry, NO_REPO_VALUE, parsePastedTasks } from "../utils/taskQueue";
+import { type DraftEntry, entryKeys, NO_REPO_VALUE, parsePastedTasks } from "../utils/taskQueue";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { SettingRow } from "./SettingRow";
@@ -19,7 +19,7 @@ const TEXTAREA_CLASSNAME =
 type TaskQueueFormProps = {
   projects: ProjectFolderOption[];
   branchTypes: string[];
-  /** Keys already in the list: pasting one again is reported, not added. */
+  /** Keys already in the list (grouped ones too): pasting one again is reported, not added. */
   listedKeys: Set<string>;
   onAdd: (entries: DraftEntry[]) => void;
 };
@@ -45,8 +45,13 @@ export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: Task
       showToast(t("taskQueueModal.noneFound"), "error");
       return;
     }
-    const fresh = pasted.filter((task) => !listedKeys.has(task.key));
-    const repeated = pasted.filter((task) => listedKeys.has(task.key)).map((task) => task.key);
+    const repeated = pasted.flatMap(entryKeys).filter((key) => listedKeys.has(key));
+    const fresh = pasted
+      .filter((task) => !listedKeys.has(task.key))
+      .map((task) => ({
+        ...task,
+        groupedTasks: task.groupedTasks.filter((grouped) => !listedKeys.has(grouped.key)),
+      }));
     onAdd(
       fresh.map((task) => ({
         ...task,
