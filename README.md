@@ -100,7 +100,7 @@ opens the browser. Stop the app by closing that terminal.
   free slot across every session (default 1 at a time) and for that much free RAM, runs each one
   in its own cgroup with a RAM/CPU cap (`systemd-run --user --scope`) at low CPU/IO priority, and
   caps Node's heap at ~85% of the RAM cap (a `docker run` gets the same caps as flags) — so a runaway run fails alone (137 = RAM cap, 134 =
-  heap cap) instead of freezing the machine. Dev-server containers (`docker run … next dev`,
+  heap cap) instead of freezing the machine. It also refuses to start (exit 75) when the temp dir can't fit 512 MB — `/tmp` is often a tmpfs with a per-user quota, and builds writing there die halfway. Dev-server containers (`docker run … next dev`,
   `yarn dev`, vite, storybook) are blocked too and started as `heavy-run --preview docker run …`:
   at most N previews at once across sessions (default 5, counted by a container label), each with
   a RAM cap (default 4 GB) and 2 CPUs. Each task keeps one preview running for you to validate
