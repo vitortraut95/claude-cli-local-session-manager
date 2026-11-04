@@ -60,6 +60,42 @@ export function TaskQueueList({
     setOverKey(null);
   };
 
+  const groupEntry = (key: string, otherKey: string) =>
+    setEntries((current) => {
+      const other = current.find((e) => e.key === otherKey);
+      if (!other) return current;
+      return current
+        .filter((e) => e.key !== otherKey)
+        .map((e) =>
+          e.key === key
+            ? {
+                ...e,
+                groupedTasks: [
+                  ...e.groupedTasks,
+                  { key: other.key, link: other.link },
+                  ...other.groupedTasks,
+                ],
+              }
+            : e,
+        );
+    });
+  // The split-off ticket keeps the group's setup, so it can launch on its own as is.
+  const ungroupTask = (key: string, taskKey: string) =>
+    setEntries((current) => {
+      const index = current.findIndex((e) => e.key === key);
+      const entry = current[index];
+      const task = entry?.groupedTasks.find((t) => t.key === taskKey);
+      if (!entry || !task) return current;
+      const next = [...current];
+      next.splice(
+        index,
+        1,
+        { ...entry, groupedTasks: entry.groupedTasks.filter((t) => t.key !== taskKey) },
+        { ...entry, ...task, groupedTasks: [], launchedAt: null, sessionId: null, error: null },
+      );
+      return next;
+    });
+
   const pending = entries.filter((e) => !e.launchedAt);
   const missingSetupCount = pending.filter(isMissingSetup).length;
   const launchedCount = entries.length - pending.length;
@@ -134,7 +170,16 @@ export function TaskQueueList({
                   projects={projects}
                   branchTypes={branchTypes}
                   saving={saving}
+                  groupCandidates={
+                    locked
+                      ? []
+                      : entries.filter(
+                          (e) => e.key !== entry.key && !e.launchedAt && !isLaunching(e.key),
+                        )
+                  }
                   onUpdate={(patch) => updateEntry(entry.key, patch)}
+                  onGroup={(otherKey) => groupEntry(entry.key, otherKey)}
+                  onUngroup={(taskKey) => ungroupTask(entry.key, taskKey)}
                   onRemove={() =>
                     setEntries((current) => current.filter((e) => e.key !== entry.key))
                   }
