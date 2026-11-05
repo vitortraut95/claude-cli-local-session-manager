@@ -28,6 +28,9 @@ export type BoardWatcherLimits = {
   maxApprovesPerDay: number;
   maxClaimedTests: number;
   maxClaimsPerDay: number;
+  /** My tasks the watcher queued that can be in development at once (ticket still in To Do or
+   *  In Progress); the next To Do one is only queued when a slot frees. */
+  maxDevTasks: number;
   /** Business minutes a ticket sits in Wait Test before the watcher takes it, so people go first. */
   waitTestGraceMinutes: number;
   /** Out of 5, see `descriptionGate.ts`. */
@@ -121,6 +124,7 @@ export const DEFAULT_LIMITS: BoardWatcherLimits = {
   maxApprovesPerDay: 8,
   maxClaimedTests: 2,
   maxClaimsPerDay: 4,
+  maxDevTasks: 1,
   waitTestGraceMinutes: 60,
   descriptionMinScore: 3,
 };

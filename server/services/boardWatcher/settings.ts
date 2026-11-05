@@ -25,6 +25,7 @@ const LIMIT_RANGES: Record<keyof AutomationLimits, [number, number]> = {
   waitTestGraceMinutes: [0, 1440],
   maxClaimedTests: [1, 10],
   maxClaimsPerDay: [1, 50],
+  maxDevTasks: [1, 10],
   maxApprovesPerDay: [1, 100],
   maxCommentsPerPr: [0, 20],
   maxReviewRounds: [1, 20],

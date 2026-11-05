@@ -59,6 +59,14 @@ export function decideIssues(
   let claimed = state.claimedTests.filter((key) => stillTesting.has(key)).length;
   const businessTime = isBusinessTime(now, config.businessHours);
   const waitingTests: BoardIssue[] = [];
+  // My tasks it queued whose ticket is still being developed hold the dev slots.
+  const developing = new Set([...config.columns.todo, ...(config.columns.inProgress ?? [])]);
+  let devTasks = issues.filter(
+    (i) =>
+      i.assigneeId === config.me &&
+      developing.has(i.statusId) &&
+      state.handled[`dev:${i.key}`] !== undefined,
+  ).length;
 
   for (const issue of issues) {
     const subject = issue.key;
@@ -66,16 +74,27 @@ export function decideIssues(
       if (config.todo?.enabled === false) continue;
       if (issue.assigneeId !== config.me || state.handled[`dev:${subject}`]) continue;
       const verdict = gradeDescription(issue, config.descriptionMinScore);
-      decisions.push(
-        verdict.passed
-          ? { subject, action: "enqueue-dev", reason: `description scored ${verdict.score}/5` }
-          : {
-              subject,
-              action: "weak-description",
-              reason: `description scored ${verdict.score}/5: ${verdict.missing.join(", ")}`,
-              ref: fingerprint(issue.description),
-            },
-      );
+      if (!verdict.passed) {
+        decisions.push({
+          subject,
+          action: "weak-description",
+          reason: `description scored ${verdict.score}/5: ${verdict.missing.join(", ")}`,
+          ref: fingerprint(issue.description),
+        });
+      } else if (devTasks >= config.maxDevTasks) {
+        decisions.push({
+          subject,
+          action: "wait",
+          reason: `${devTasks} of my tasks already in development`,
+        });
+      } else {
+        devTasks += 1;
+        decisions.push({
+          subject,
+          action: "enqueue-dev",
+          reason: `description scored ${verdict.score}/5`,
+        });
+      }
       continue;
     }
 
