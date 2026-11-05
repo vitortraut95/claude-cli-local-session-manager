@@ -94,6 +94,10 @@ export const skillsHub = {
   ),
   "skillsHub.manage.detached": dict("(detached)", "(detached)"),
   "skillsHub.manage.dirty": dict("local changes", "mudanças locais"),
+  "skillsHub.manage.requiredBy": dict(
+    "Linked as a dependency of: {names}",
+    "Linkada como dependência de: {names}",
+  ),
   "skillsHub.manage.duplicates": dict(
     "Same skill name in more than one checked catalog: {names} — only the first catalog's is linked.",
     "Mesmo nome de skill em mais de um catálogo marcado: {names} — só a do primeiro catálogo é linkada.",
@@ -202,6 +206,8 @@ export const skillsHub = {
   "skillsHub.preview.noDescription": dict("No description.", "Sem descrição."),
   "skillsHub.preview.whenUsed": dict("When Claude uses it", "Quando o Claude usa"),
   "skillsHub.preview.requires": dict("Depends on:", "Depende de:"),
+  "skillsHub.preview.author": dict("Author:", "Autor:"),
+  "skillsHub.preview.version": dict("Version:", "Versão:"),
   "skillsHub.preview.files": dict("Files that come with it", "Arquivos que vêm junto"),
   "skillsHub.preview.loadError": dict(
     "Couldn't read this skill.",

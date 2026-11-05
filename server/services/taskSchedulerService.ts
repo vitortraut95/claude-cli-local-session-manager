@@ -17,8 +17,10 @@ import { getFreeMemoryPercent, getMemoryPressure } from "../utils/systemResource
 import {
   getQueue,
   getTaskStore,
+  queueEntryTasks,
   setTaskStatus,
   updateQueueEntry,
+  upsertTask,
   type QueueEntry,
 } from "../utils/taskStore.js";
 import type { SchedulerBlock, SchedulerStatus } from "../../shared/tasks.js";
@@ -117,6 +119,9 @@ function errorMessage(err: unknown): string {
 const PROMPT_TEXT = {
   en: {
     task: "Task",
+    groupedTasks:
+      "Tasks delivered together, in this one branch and a single PR (every commit names all " +
+      "the keys):",
     noRepo:
       "No repo was picked for this task: this is the folder the repos live in ({dir}). If it " +
       "needs code changes, find the repo(s) here first.",
@@ -128,6 +133,9 @@ const PROMPT_TEXT = {
   },
   pt: {
     task: "Tarefa",
+    groupedTasks:
+      "Tarefas entregues juntas, nesta mesma branch e num PR só (todo commit cita todas as " +
+      "chaves):",
     noRepo:
       "Nenhum repo foi escolhido para esta tarefa: esta é a pasta onde ficam os repos ({dir}). " +
       "Se ela precisar mudar código, ache o(s) repo(s) aqui antes.",
@@ -139,8 +147,8 @@ const PROMPT_TEXT = {
   },
 };
 
-/** Same message "New task" composes: `Task: <link>`, the default prompt, the extra-dirs note and
- *  the shared node_modules warning. `linked` = absolute paths of the linked node_modules;
+/** Same message "New task" composes: `Task: <link>` (or every link of a grouped entry), the
+ *  default prompt, the extra-dirs note and the shared node_modules warning. `linked` = absolute paths of the linked node_modules;
  *  `noRepoDir` = where a task with no repo opens. */
 function composePrompt(
   prefs: UserPreferences,
@@ -150,8 +158,11 @@ function composePrompt(
   noRepoDir: string | null = null,
 ): string {
   const text = PROMPT_TEXT[prefs.language ?? "en"];
+  const tasks = queueEntryTasks(entry);
   return [
-    `${text.task}: ${entry.link ?? entry.key}`,
+    tasks.length > 1
+      ? [text.groupedTasks, ...tasks.map((task) => `- ${task.link ?? task.key}`)].join("\n")
+      : `${text.task}: ${entry.link ?? entry.key}`,
     prefs.defaultPrompt.trim(),
     noRepoDir ? text.noRepo.replace("{dir}", noRepoDir) : "",
     addDirs.length > 0 ? text.extraDirs.replace("{dirs}", addDirs.join(", ")) : "",
@@ -159,6 +170,35 @@ function composePrompt(
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+/** `<prefix>/<key>`, or just the key; a grouped entry joins every key with "-" (the worktree
+ *  folder follows the branch name). The branch is still tied to the first key in `repoBranches`. */
+function queueEntryBranch(entry: QueueEntry): string {
+  const keys = queueEntryTasks(entry)
+    .map((task) => task.key)
+    .join("-");
+  return entry.branchPrefix ? `${entry.branchPrefix}/${keys}` : keys;
+}
+
+/** A grouped entry's session label and `--name` carry every key. */
+function queueEntryNickname(entry: QueueEntry): string {
+  return queueEntryTasks(entry)
+    .map((task) => task.link ?? task.key)
+    .join(" + ");
+}
+
+function queueEntryName(entry: QueueEntry): string {
+  return queueEntryTasks(entry)
+    .map((task) => task.key)
+    .join(" + ");
+}
+
+async function setGroupStatus(entry: QueueEntry): Promise<void> {
+  for (const task of queueEntryTasks(entry)) {
+    await upsertTask(task.key, task.link);
+    await setTaskStatus(task.key, "in_progress", "scheduler");
+  }
 }
 
 /** A retry after a failure past the worktree step finds the branch already there: reuse that
@@ -218,8 +258,8 @@ async function launchNoRepoEntry(
     prompt: composePrompt(prefs, entry, [], [], dir),
     permissionModeAuto: prefs.useAutoPermissionModeByDefault,
     repoRoot: "",
-    nickname: entry.link ?? entry.key,
-    name: entry.key,
+    nickname: queueEntryNickname(entry),
+    name: queueEntryName(entry),
   });
   if (sessionId) {
     pendingLaunches.set(sessionId, Date.now());
@@ -230,7 +270,7 @@ async function launchNoRepoEntry(
     sessionId,
     error: null,
   });
-  await setTaskStatus(entry.key, "in_progress", "scheduler");
+  await setGroupStatus(entry);
   return {
     sessionId,
     branch: "",
@@ -265,7 +305,7 @@ async function launchDevEntry(
 ): Promise<LaunchOutcome | null> {
   const [mainFolder, ...extraFolders] = entry.repos;
   if (!mainFolder) return null;
-  const branch = entry.branchPrefix ? `${entry.branchPrefix}/${entry.key}` : entry.key;
+  const branch = queueEntryBranch(entry);
 
   const repo = await getRepoInfo(mainFolder);
   const base = entry.baseBranch ?? repo.defaultBaseBranch;
@@ -320,8 +360,8 @@ async function launchDevEntry(
     prompt: composePrompt(prefs, entry, addDirs, linked),
     permissionModeAuto: prefs.useAutoPermissionModeByDefault,
     repoRoot: repo.repoRoot,
-    nickname: entry.link ?? entry.key,
-    name: entry.key,
+    nickname: queueEntryNickname(entry),
+    name: queueEntryName(entry),
     originBranch: base,
     destinationBranch: branch,
     addDirs,
@@ -337,7 +377,7 @@ async function launchDevEntry(
     // Launched anyway; kept so the modal can say which extra repo is missing.
     error: extraErrors.length > 0 ? extraErrors.join("\n") : null,
   });
-  await setTaskStatus(entry.key, "in_progress", "scheduler");
+  await setGroupStatus(entry);
   return {
     sessionId,
     branch,
@@ -412,6 +452,7 @@ async function launchTracked(
   const extra = now ? { now: true } : {};
   recordEvent("queue.launch.started", {
     key: entry.key,
+    groupedKeys: (entry.groupedTasks ?? []).map((task) => task.key),
     kind: entry.kind,
     repos: entry.repos,
     ...extra,

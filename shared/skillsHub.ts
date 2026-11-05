@@ -2,9 +2,22 @@
  *  each as `<catalog>/<skill>`. */
 export type SkillsSelection = { catalogs: string[]; skills: string[] };
 
-export type HubSkill = { name: string; description: string; dir: string };
+export type HubSkill = {
+  name: string;
+  description: string;
+  dir: string;
+  /** Its `requires-skills` as written (`[<catalog>/]<skill>[@<range>]`). Optional: an older
+   *  backend omits it. */
+  requires?: string[];
+};
 
-export type HubCatalog = { name: string; skills: HubSkill[] };
+export type HubCatalog = {
+  name: string;
+  skills: HubSkill[];
+  /** `catalog/<name>/requires-skills`: skills of other catalogs the team uses, linked along with
+   *  the whole catalog. Optional: an older backend omits it. */
+  requires?: string[];
+};
 
 /**
  * - `linked`: the skills dir already links to this exact folder.
@@ -22,6 +35,9 @@ export type SkillStatus = {
   state: SkillLinkState;
   /** For `conflict`: what currently owns the name (a path, or `catalog:<name>` for a duplicate). */
   conflictWith?: string;
+  /** Set when it's linked only because selected skills/catalogs depend on it (`<catalog>/<skill>`
+   *  or `<catalog>`), not because it was picked. */
+  requiredBy?: string[];
 };
 
 export type InstalledSkill = {
@@ -78,6 +94,10 @@ export type SkillDetails = {
   description: string;
   /** Other skills it declares it depends on (`requires-skills`). */
   requiresSkills: string[];
+  /** `metadata.author` / `metadata.version` from the frontmatter; null when not set. Optional: an
+   *  older backend omits them. */
+  author?: string | null;
+  version?: string | null;
   /** SKILL.md without its frontmatter (markdown). */
   body: string;
   /** Every other file in the skill folder (references, scripts), relative to it. */

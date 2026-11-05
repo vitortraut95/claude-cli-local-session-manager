@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { HISTORY_FILE } from "../utils/history.js";
 import type { HistoryEvent, HistorySummary } from "../../shared/session.js";
@@ -10,13 +10,25 @@ export type { HistoryEvent, HistorySummary } from "../../shared/session.js";
  * or — for heavy-run events, which only know their folder — ran inside its worktree.
  */
 
+/** Parsed once per `mtime`+`size`: the session list reads it on every load. */
+let historyCache: { mtimeMs: number; size: number; events: HistoryEvent[] } | null = null;
+
 export async function readHistory(): Promise<HistoryEvent[]> {
   let raw: string;
   try {
+    const s = await stat(HISTORY_FILE);
+    if (historyCache?.mtimeMs === s.mtimeMs && historyCache.size === s.size) {
+      return historyCache.events;
+    }
     raw = await readFile(HISTORY_FILE, "utf8");
+    historyCache = { mtimeMs: s.mtimeMs, size: s.size, events: parseHistory(raw) };
+    return historyCache.events;
   } catch {
     return [];
   }
+}
+
+function parseHistory(raw: string): HistoryEvent[] {
   const events: HistoryEvent[] = [];
   for (const line of raw.split("\n")) {
     if (!line.trim()) continue;
@@ -44,6 +56,38 @@ function isInside(dir: unknown, root: string): boolean {
   const resolved = path.resolve(dir);
   const base = path.resolve(root);
   return resolved === base || resolved.startsWith(`${base}${path.sep}`);
+}
+
+/** `events.some((e) => belongsTo(e, target))` for many targets: built once, then O(1) per target
+ *  instead of a pass over every event. */
+export function historyMatcher(events: HistoryEvent[]): (target: HistoryTarget) => boolean {
+  const keys = new Set<unknown>();
+  const sessionIds = new Set<unknown>();
+  /** Every event folder and its ancestors, so "event ran inside this worktree" is one lookup. */
+  const folders = new Set<string>();
+  const addFolder = (dir: unknown) => {
+    if (typeof dir !== "string") return;
+    for (let current = path.resolve(dir); !folders.has(current);) {
+      folders.add(current);
+      const parent = path.dirname(current);
+      if (parent === current) break;
+      current = parent;
+    }
+  };
+  for (const event of events) {
+    keys.add(event.key);
+    keys.add(event.heldBy);
+    sessionIds.add(event.sessionId);
+    addFolder(event.worktreePath);
+    if (event.type === "sessions.resumeOpen" && Array.isArray(event.resumed)) {
+      for (const r of event.resumed) sessionIds.add((r as { id?: unknown }).id);
+    }
+    if (event.type.startsWith("heavy.")) addFolder(event.cwd);
+  }
+  return (target) =>
+    (!!target.taskKey && keys.has(target.taskKey)) ||
+    sessionIds.has(target.sessionId) ||
+    (!!target.worktreePath && folders.has(path.resolve(target.worktreePath)));
 }
 
 export function belongsTo(event: HistoryEvent, target: HistoryTarget): boolean {

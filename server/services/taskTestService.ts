@@ -20,6 +20,7 @@ import { AppError, ConflictError, errorMessage } from "../utils/httpError.js";
 import {
   getTaskStore,
   markTestSession,
+  queueEntryTasks,
   setSessionStatus,
   setTestWorktrees,
   type QueueEntry,
@@ -199,7 +200,11 @@ export async function launchTestEntry(
 ): Promise<TestLaunchOutcome | null> {
   const [mainFolder] = entry.repos;
   if (!mainFolder && !entry.noRepo) return null;
-  const skill = await resolveInstalledSkill(prefs.taskTestSkill, "TASK_TEST_SKILL_NOT_INSTALLED");
+  const skill = await resolveInstalledSkill(
+    prefs.taskTestSkill,
+    "TASK_TEST_SKILL_NOT_INSTALLED",
+    "taskTestSkill",
+  );
 
   const worktrees: string[] = [];
   const linked: string[] = [];
@@ -223,7 +228,9 @@ export async function launchTestEntry(
   }
 
   const text = PROMPT_TEXT[prefs.language ?? "en"];
-  const link = entry.link ?? entry.key;
+  // A grouped entry tests every ticket on the first one's branch.
+  const tasks = queueEntryTasks(entry);
+  const link = tasks.map((task) => task.link ?? task.key).join(" ");
   const sessionId = randomUUID();
   const statusCommand = (status: "waiting_user" | "done") =>
     `curl -s -X PATCH http://localhost:${API_PORT}/sessions/${sessionId}/status ` +
@@ -248,8 +255,8 @@ export async function launchTestEntry(
       prompt,
       permissionModeAuto: prefs.taskTestPermissionModeAuto,
       repoRoot: "",
-      nickname: text.nickname.replace("{link}", link),
-      name: text.name.replace("{key}", entry.key),
+      nickname: text.nickname.replace("{link}", tasks.map((t) => t.link ?? t.key).join(" + ")),
+      name: text.name.replace("{key}", tasks.map((t) => t.key).join(" + ")),
       addDirs: worktrees,
       sessionId,
     });

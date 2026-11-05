@@ -65,10 +65,6 @@ export const apiErrors = {
     "The configured test skill isn't installed on this machine anymore. Choose another one or install it again.",
     "A skill de teste configurada não está mais instalada nesta máquina. Escolha outra ou instale de novo.",
   ),
-  "apiError.refinementTasksRequired": dict(
-    "Paste at least one task (link or key).",
-    "Cole pelo menos uma tarefa (link ou chave).",
-  ),
   "apiError.taskRefinementSkillRequired": dict(
     "Choose the refinement skill first.",
     "Escolha a skill de refinamento primeiro.",

@@ -18,6 +18,7 @@ export {
   syncSkillsHub,
 } from "./skillsHub/sync.js";
 export { getSkillDetails } from "./skillsHub/skillDetails.js";
+export { listInstalledSkills } from "./skillsHub/catalog.js";
 export {
   cloneSkillsHub,
   openSkillsFolder,

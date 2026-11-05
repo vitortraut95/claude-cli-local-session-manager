@@ -12,7 +12,10 @@
 #   - with Node's heap capped below that (NODE_OPTIONS --max-old-space-size), so tsc/jest fail with
 #     a clear "heap out of memory" instead of crawling in GC right at the cgroup limit;
 #   - at low CPU/IO priority (nice, ionice, cgroup weights), so the desktop stays responsive;
-#   - only once enough RAM is actually free and the machine isn't under memory pressure (PSI).
+#   - only once enough RAM is actually free and the machine isn't under memory pressure (PSI);
+#   - never with the temp dir full: /tmp is often a tmpfs (RAM, with a per-user quota `df` doesn't
+#     show), and a build that can't write its temp files or logs there dies halfway, leaving
+#     half-done cleanups behind. It stops right away (exit 75, nothing ran) and says what to free.
 # With --preview it starts a dev-server container instead: at most N previews running across every
 # session (counted by the label it adds), each with a RAM/CPU cap and low CPU weight.
 # Waiting gives up after MAX_WAIT_S (exit 75, nothing ran) so a session never hangs on it.
@@ -24,6 +27,9 @@ MAX_WAIT_S=900
 # PSI memory `some avg10` (% of the last 10s something stalled on memory) at or above which
 # nothing starts.
 MAX_MEMORY_PRESSURE=10
+# Free space (MB) the temp dir must really have — probed by allocating it, so a tmpfs user quota
+# counts too.
+MIN_TMP_FREE_MB=512
 PREVIEW_LABEL=claude-session-manager.preview
 PREVIEW_CPUS=2
 
@@ -123,6 +129,27 @@ wait_for_resources() {
       "memory pressure ${memory_pressure:-0}%)..."
   done
 }
+
+# Allocates MIN_TMP_FREE_MB in the temp dir and frees it again; no space (or quota) → stop now:
+# waiting wouldn't help, only deleting files there does.
+check_tmp_space() {
+  local dir=${TMPDIR:-/tmp} probe err=
+  command -v fallocate >/dev/null 2>&1 || return 0
+  if probe=$(mktemp -p "$dir" .heavy-run-space.XXXXXX 2>/dev/null); then
+    err=$(fallocate -l "${MIN_TMP_FREE_MB}M" "$probe" 2>&1) && err=
+    rm -f "$probe"
+    [ -z "$err" ] && return 0
+    # A filesystem without fallocate says nothing about free space: don't block on it.
+    [[ "$err" == *"not supported"* ]] && return 0
+  fi
+  record heavy.tmp_full HR_F_mode="$mode" HR_F_dir="$dir"
+  echo "heavy-run: less than ${MIN_TMP_FREE_MB} MB free in $dir (often a tmpfs: RAM, with a" \
+    "per-user quota) — nothing ran. Builds and logs would die halfway there. Free it first" \
+    "(du -sh $dir/claude-$(id -u)/* 2>/dev/null | sort -h | tail) and keep build copies and" \
+    "measurement output under ~/.cache, not in the scratchpad/temp dir." >&2
+  exit 75
+}
+check_tmp_space
 
 if [ "$mode" = preview ]; then
   while :; do

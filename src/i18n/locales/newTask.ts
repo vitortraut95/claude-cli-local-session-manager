@@ -237,25 +237,43 @@ export const newTask = {
   ),
   "taskRefinementSkill.title": dict("Refinement skill", "Skill de refinamento"),
   "taskRefinementSkill.description": dict(
-    "The skill \"Refine tasks\" runs with the pasted tasks to estimate them and draft the questions for the PO.",
-    "A skill que o \"Refinar tarefas\" roda com as tarefas coladas pra pontuar e levantar as perguntas pro PO.",
+    "The skill \"Refine tasks\" runs with the chosen sprint or tasks to estimate them and draft the questions for the PO.",
+    "A skill que o \"Refinar tarefas\" roda com a sprint ou as tarefas escolhidas pra pontuar e levantar as perguntas pro PO.",
   ),
   "refinementModal.title": dict("Refine tasks", "Refinar tarefas"),
   "refinementModal.intro": dict(
-    "Paste one or more tasks (link or key, one per line; \"- 3\" after one is the current estimate). A new session reads each one, estimates it, suggests merging or splitting and drafts the questions for the PO. Nothing is written to Jira without your OK.",
-    "Cole uma ou mais tarefas (link ou chave, uma por linha; \"- 3\" depois de uma é a pontuação atual). Uma sessão nova lê cada uma, pontua, sugere juntar ou separar e levanta as perguntas pro PO. Nada vai pro Jira sem o seu OK.",
+    "Name a sprint to refine all of it, or paste specific tasks (link or key, one per line). A new session prepares the whole batch, goes through the technical round with the devs one card at a time and then writes the comments for the PO. Nothing is written to Jira without your OK; \"resume the refinement\" in the session picks up where it stopped.",
+    "Informe uma sprint pra refinar ela toda, ou cole tarefas específicas (link ou chave, uma por linha). Uma sessão nova prepara o lote todo, passa pela etapa técnica com os devs um card por vez e depois monta os comentários pro PO. Nada vai pro Jira sem o seu OK; \"retoma o refinamento\" na sessão volta de onde parou.",
   ),
   "refinementModal.skillLabel": dict("Skill", "Skill"),
   "refinementModal.skillRequired": dict(
-    "Choose the refinement skill to paste the tasks.",
-    "Escolha a skill de refinamento pra colar as tarefas.",
+    "Choose the refinement skill to fill in the sprint or the tasks.",
+    "Escolha a skill de refinamento pra informar a sprint ou as tarefas.",
   ),
-  "refinementModal.tasksLabel": dict("Tasks", "Tarefas"),
+  "refinementModal.sprintLabel": dict("Sprint (optional)", "Sprint (opcional)"),
+  "refinementModal.sprintPlaceholder": dict(
+    "e.g. Team Q4SP3 11/04 - 11/17",
+    "ex.: Time Q4SP3 04/11 - 17/11",
+  ),
+  "refinementModal.tasksLabel": dict("Tasks (optional)", "Tarefas (opcional)"),
   "refinementModal.tasksPlaceholder": dict(
-    "https://your-site.atlassian.net/browse/PROJ-123 - 3\nPROJ-124",
-    "https://seu-site.atlassian.net/browse/PROJ-123 - 3\nPROJ-124",
+    "https://your-site.atlassian.net/browse/PROJ-123\nPROJ-124",
+    "https://seu-site.atlassian.net/browse/PROJ-123\nPROJ-124",
   ),
   "refinementModal.detected": dict("{count} task(s): {keys}", "{count} tarefa(s): {keys}"),
+  "refinementModal.wholeSprint": dict(
+    "No tasks: the skill lists the sprint's cards and confirms which ones to refine.",
+    "Sem tarefas: a skill lista os cards da sprint e confirma quais refinar.",
+  ),
+  "refinementModal.nothingChosen": dict(
+    "Neither sprint nor tasks: the skill offers the team's open and upcoming sprints.",
+    "Sem sprint nem tarefas: a skill oferece as sprints abertas e as próximas do time.",
+  ),
+  "refinementModal.directToPoLabel": dict("Straight to the PO", "Direto pro PO"),
+  "refinementModal.directToPoExplanation": dict(
+    "Skips the technical round with the devs. For a single card or when the team isn't together.",
+    "Pula a etapa técnica com os devs. Pra quando for um card só ou o time não estiver junto.",
+  ),
   "refinementModal.notesLabel": dict("Additional notes", "Observações adicionais"),
   "refinementModal.notesPlaceholder": dict(
     "Exceptions the skill doesn't cover, e.g. \"PROJ-123 already has the backend ready\". Sent along with the tasks; the first line also goes into the session name.",

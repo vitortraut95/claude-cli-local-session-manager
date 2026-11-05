@@ -52,6 +52,26 @@ export function SkillPreviewModal({ catalog, name, onClose }: SkillPreviewModalP
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       {details && (
         <div className="flex flex-col gap-4">
+          {(details.author ?? details.version) && (
+            <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+              {details.author && (
+                <span>
+                  {t("skillsHub.preview.author")}{" "}
+                  <span className="font-medium text-gray-800 dark:text-gray-200">
+                    {details.author}
+                  </span>
+                </span>
+              )}
+              {details.version && (
+                <span>
+                  {t("skillsHub.preview.version")}{" "}
+                  <span className="font-mono text-gray-800 dark:text-gray-200">
+                    {details.version}
+                  </span>
+                </span>
+              )}
+            </p>
+          )}
           {details.description && (
             <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-200">
               <p className="mb-1 text-xs font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">

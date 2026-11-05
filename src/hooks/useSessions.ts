@@ -192,8 +192,34 @@ export function useSessions() {
     return labels;
   }, [sessions]);
 
+  // Prompts are searched on the server (the list only carries each session's first): matching ids
+  // for the query, fetched after a pause in typing and again when the list reloads.
+  const [promptMatches, setPromptMatches] = useState<{ query: string; ids: Set<string> } | null>(
+    null,
+  );
+  useEffect(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return;
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      sessionsApi
+        .searchSessionPrompts(query)
+        .then((ids) => {
+          if (!cancelled) setPromptMatches({ query, ids: new Set(ids) });
+        })
+        .catch(() => {
+          // Best-effort: the other fields still match locally.
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [searchQuery, sessions]);
+
   const filteredSessions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
+    const promptMatchIds = promptMatches?.query === query ? promptMatches.ids : null;
     const filtered = sessions.filter((session) => {
       const matchesQuery =
         !query ||
@@ -205,7 +231,8 @@ export function useSessions() {
           session.gitBranch ?? "",
           session.taskKey ?? "",
           ...session.prompts,
-        ].some((field) => field.toLowerCase().includes(query));
+        ].some((field) => field.toLowerCase().includes(query)) ||
+        !!promptMatchIds?.has(session.id);
       const matchesProject = !projectFilter || session.project === projectFilter;
       return (
         matchesQuery && matchesProject && matchesWorkStatusFilter(session.status, statusFilter)
@@ -213,7 +240,7 @@ export function useSessions() {
     });
 
     return [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [sessions, searchQuery, projectFilter, statusFilter]);
+  }, [sessions, searchQuery, promptMatches, projectFilter, statusFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filteredSessions.length / perPage));
   // Clamp for display without writing back to the URL — a stale `page` param renders the

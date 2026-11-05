@@ -3,7 +3,7 @@ import path from "node:path";
 import { recordEvent } from "./history.js";
 import { REPO_ROOT } from "./repoRoot.js";
 import { WORK_STATUSES, type WorkStatus } from "../../shared/session.js";
-import type { QueueEntry, QueueEntryInput } from "../../shared/tasks.js";
+import type { QueueEntry, QueueEntryInput, QueueGroupedTask } from "../../shared/tasks.js";
 export { WORK_STATUSES, type WorkStatus } from "../../shared/session.js";
 export type { QueueEntry, QueueEntryInput } from "../../shared/tasks.js";
 
@@ -177,6 +177,13 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
       store.queue.push({
         key: raw.key.trim(),
         link: asTextOrNull(raw.link),
+        groupedTasks: Array.isArray(raw.groupedTasks)
+          ? raw.groupedTasks.flatMap((task) =>
+              isRecord(task) && typeof task.key === "string" && task.key.trim()
+                ? [{ key: task.key.trim(), link: asTextOrNull(task.link) }]
+                : [],
+            )
+          : [],
         kind: raw.kind === "test" ? "test" : "dev",
         repos: Array.isArray(raw.repos)
           ? [...new Set(raw.repos.filter((r): r is string => typeof r === "string" && !!r.trim()))]
@@ -609,6 +616,11 @@ export async function setTaskStatus(
     recordEvent("status.changed", { key, from, to: status, source });
     emitStoreChange({ kind: "status", key, sessionId: null, from, to: status });
   }
+}
+
+/** The entry's own ticket first, then the ones grouped with it. */
+export function queueEntryTasks(entry: QueueEntry): QueueGroupedTask[] {
+  return [{ key: entry.key, link: entry.link }, ...(entry.groupedTasks ?? [])];
 }
 
 export async function getQueue(): Promise<QueueEntry[]> {

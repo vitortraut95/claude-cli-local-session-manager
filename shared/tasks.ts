@@ -1,10 +1,14 @@
 import type { Session, TaskRepoRef } from "./session.js";
 
 /** "Refine tasks" modal: the pasted tickets (links or keys, one or more per line, any text around
- *  them) and free-form notes appended to the prompt. */
+ *  them), a sprint name and free-form notes appended to the prompt. All optional: with no tickets
+ *  nor sprint the skill offers the team's open and upcoming sprints. */
 export type RefinementInput = {
   tasks: string;
   notes: string;
+  sprint?: string;
+  /** Skip the technical round with the devs and go straight to the PO comments. */
+  directToPo?: boolean;
 };
 
 export type ProjectFolderOption = {
@@ -82,9 +86,15 @@ export type WorktreeSetupResult = {
 /** "dev" = develop the task (new branch and worktree); "test" = test someone else's branch. */
 export type QueueKind = "dev" | "test";
 
+/** A ticket done together with the entry's own, in the same branch and session. */
+export type QueueGroupedTask = { key: string; link: string | null };
+
 export type QueueEntry = {
   key: string;
   link: string | null;
+  /** Other tickets delivered with this one: the branch, worktree and session are the entry's
+   *  (named after `key`); the prompt lists every link. Optional for an older backend (= none). */
+  groupedTasks?: QueueGroupedTask[];
   kind: QueueKind;
   repos: string[];
   /** No repo on purpose: the session opens in the first workspace dir, with no branch. */
@@ -109,6 +119,7 @@ export type QueueEntryInput = Pick<
   QueueEntry,
   | "key"
   | "link"
+  | "groupedTasks"
   | "kind"
   | "repos"
   | "noRepo"
