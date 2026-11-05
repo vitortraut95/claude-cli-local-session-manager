@@ -435,5 +435,36 @@
         }
       }
     ]
+  },
+  {
+    "name": "outside business hours my task waits and is queued when they start",
+    "ticks": [
+      {
+        "now": "2026-10-28T18:30:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-1",
+            "summary": "Botão Contratar abre plano errado",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-1": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-29T09:00:00-03:00",
+        "expect": {
+          "effects": ["enqueue dev DEMO-1"],
+          "decisions": {
+            "DEMO-1": "enqueue-dev"
+          }
+        }
+      }
+    ]
   }
 ]

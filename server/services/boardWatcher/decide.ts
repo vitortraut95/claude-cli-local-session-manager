@@ -81,6 +81,8 @@ export function decideIssues(
           reason: `description scored ${verdict.score}/5: ${verdict.missing.join(", ")}`,
           ref: fingerprint(issue.description),
         });
+      } else if (!businessTime) {
+        decisions.push({ subject, action: "wait", reason: "outside business hours" });
       } else if (devTasks >= config.maxDevTasks) {
         decisions.push({
           subject,

@@ -273,7 +273,7 @@ export function WatcherHistory({ refreshKey, ...feedbackProps }: WatcherHistoryP
         </p>
       )}
       {groups !== null && groups.length > 0 && (
-        <ul className="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+        <ul className="flex flex-col divide-y divide-gray-100 rounded-xl border border-gray-200 dark:divide-white/5 dark:border-white/10 dark:bg-white/[0.02]">
           {groups.map((group) => (
             <HistoryGroup key={group.subject} group={group} {...feedbackProps} />
           ))}

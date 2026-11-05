@@ -1,11 +1,13 @@
 import axios from "axios";
 import { withServerErrorMessage } from "../utils/apiClient";
+import { demoActions, demoActivity, demoStatus, isBoardDemo } from "../utils/boardDemo";
 import type {
+  WatcherActivity,
   AutomationSetupStatus,
   BitbucketRepoOption,
   BoardColumnsAnswer,
   BoardRole,
-  SetupFeaturesInput,
+  SetupFinishInput,
   AutomationSettings,
   AutomationSettingsInput,
   BoardWatcherStatus,
@@ -17,13 +19,16 @@ import type {
   WatcherHistoryPage,
 } from "../../shared/boardWatcher";
 export type {
+  WatcherActivity,
+  WatcherActivityEvent,
+  WatcherActivityKind,
   AutomationSetupStatus,
   BitbucketRepoOption,
   BoardColumn,
   BoardColumnsAnswer,
   BoardRole,
   SecretState,
-  SetupFeaturesInput,
+  SetupFinishInput,
   WatcherFeedback,
   WatcherScoreboard,
   AutomationFeatures,
@@ -47,28 +52,33 @@ const client = axios.create({
 });
 
 export async function fetchBoardWatcherStatus(): Promise<BoardWatcherStatus> {
+  if (isBoardDemo()) return demoStatus();
   const { data } = await withServerErrorMessage(() => client.get<BoardWatcherStatus>("/status"));
   return data;
 }
 
 /** A look at the board right away, instead of waiting for the next one. */
 export async function runBoardWatcherNow(): Promise<BoardWatcherStatus> {
+  if (isBoardDemo()) return demoStatus();
   const { data } = await withServerErrorMessage(() => client.post<BoardWatcherStatus>("/run"));
   return data;
 }
 
 export async function pauseBoardWatcher(): Promise<BoardWatcherStatus> {
+  if (isBoardDemo()) return demoStatus();
   const { data } = await withServerErrorMessage(() => client.post<BoardWatcherStatus>("/pause"));
   return data;
 }
 
 export async function resumeBoardWatcher(): Promise<BoardWatcherStatus> {
+  if (isBoardDemo()) return demoStatus();
   const { data } = await withServerErrorMessage(() => client.post<BoardWatcherStatus>("/resume"));
   return data;
 }
 
 /** Sends the Teams digest now; doesn't move the scheduled ones. */
 export async function sendBoardWatcherDigestNow(): Promise<void> {
+  if (isBoardDemo()) return;
   await withServerErrorMessage(() => client.post("/digest"));
 }
 
@@ -82,6 +92,7 @@ export async function fetchHomologCandidates(key: string): Promise<HomologCandid
 
 /** Replays the branch's latest build pointed at homolog; the new build's Jenkins page. */
 export async function pointToHomolog(repo: string, branch: string): Promise<{ buildUrl: string }> {
+  if (isBoardDemo()) throw new Error(`Demo: ${repo} ${branch} wasn't pointed to homolog.`);
   const { data } = await withServerErrorMessage(() =>
     client.post<{ buildUrl: string }>("/homolog", { repo, branch }),
   );
@@ -111,6 +122,7 @@ export async function saveAutomationSettings(
 
 /** The latest recorded actions, newest first. */
 export async function fetchWatcherActions(limit = 200): Promise<WatcherActionEntry[]> {
+  if (isBoardDemo()) return demoActions().slice(-limit);
   const { data } = await withServerErrorMessage(() =>
     client.get<WatcherActionEntry[]>("/actions", { params: { limit } }),
   );
@@ -228,9 +240,18 @@ export async function saveSetupExtras(input: {
   return data;
 }
 
-export async function finishSetup(features: SetupFeaturesInput): Promise<AutomationSetupStatus> {
+export async function finishSetup(input: SetupFinishInput): Promise<AutomationSetupStatus> {
   const { data } = await withServerErrorMessage(() =>
-    client.post<AutomationSetupStatus>("/setup/finish", features),
+    client.post<AutomationSetupStatus>("/setup/finish", input),
+  );
+  return data;
+}
+
+/** The live feed's steps after `after` (a seq) and what's running now. */
+export async function fetchWatcherActivity(after: number): Promise<WatcherActivity> {
+  if (isBoardDemo()) return demoActivity(after);
+  const { data } = await withServerErrorMessage(() =>
+    client.get<WatcherActivity>("/activity", { params: { after } }),
   );
   return data;
 }

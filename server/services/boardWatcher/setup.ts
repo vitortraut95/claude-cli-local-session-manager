@@ -11,14 +11,15 @@ import {
   type BoardColumnsAnswer,
   type BoardRole,
   type SecretState,
-  type SetupFeaturesInput,
+  type SetupFinishInput,
 } from "../../../shared/boardWatcher.js";
 import { BadRequestError } from "../../utils/httpError.js";
 import { sanitizedSpawnEnv } from "../../utils/spawnEnv.js";
 import { getWorkspaceRepos } from "../workspaceService.js";
-import { BOARD_WATCHER_CONFIG_FILE } from "./config.js";
+import { BOARD_WATCHER_CONFIG_FILE, type BoardWatcherConfig } from "./config.js";
 import { apiFetch } from "./http.js";
 import { saveSecrets, secretFromEnvironment, secretIsSet, type SecretName } from "./secrets.js";
+import { featuresOf, liveOf, writeSwitches } from "./settings.js";
 
 /**
  * The automations setup panel: each step checks what it's given against the real service (Jira,
@@ -126,15 +127,11 @@ export async function getSetupStatus(): Promise<AutomationSetupStatus> {
     extras: {
       teams: secretState("TEAMS_WEBHOOK_URL"),
       jenkinsUser: secretState("JENKINS_USER"),
+      jenkinsUserId: process.env.JENKINS_USER ?? null,
       jenkinsToken: secretState("JENKINS_TOKEN"),
     },
-    features: {
-      codeReview: raw.codeReview?.enabled !== false,
-      reviewSessions: raw.review?.enabled === true,
-      devQueue: raw.todo?.enabled === true,
-      testQueue: raw.test?.enabled === true,
-      notices: raw.notifications?.instant !== false,
-    },
+    features: featuresOf(raw as Partial<BoardWatcherConfig>),
+    live: liveOf(raw as Partial<BoardWatcherConfig>),
     enabled: raw.enabled === true,
   };
 }
@@ -397,28 +394,21 @@ export async function saveExtras(input: {
   });
 }
 
-/** Last step: turns the watcher on with the chosen automations, every real write still off. */
-export async function finishSetup(features: SetupFeaturesInput): Promise<void> {
+/** Last step: turns the watcher on with the automations' modes chosen (simulation unless one
+ *  is set to run for real). */
+export async function finishSetup(input: SetupFinishInput): Promise<void> {
   const raw = await readRaw();
   if (!raw.me || !raw.jira?.site)
     throw new BadRequestError("SETUP_JIRA_FIRST", "Set up Jira first.");
   if (!raw.columns?.codeReview?.length) {
     throw new BadRequestError("SETUP_NO_CODE_REVIEW", "Map the board's columns first.");
   }
-  if (!raw.bitbucket?.repos?.length)
+  if (!raw.bitbucket?.repos?.length) {
     throw new BadRequestError("SETUP_NO_REPOS", "Pick the repos first.");
+  }
   await patchRaw((next) => {
     next.enabled = true;
     next.mode = "simulate";
-    next.codeReview = { ...next.codeReview, enabled: features.codeReview };
-    next.review = { ...next.review, enabled: features.reviewSessions };
-    next.todo = { ...next.todo, enabled: features.devQueue };
-    next.test = { ...next.test, enabled: features.testQueue };
-    next.notifications = {
-      ...next.notifications,
-      instant: features.notices,
-      digest: features.notices,
-    };
-    next.live = { ...next.live };
+    writeSwitches(next, input.features, input.live);
   });
 }
