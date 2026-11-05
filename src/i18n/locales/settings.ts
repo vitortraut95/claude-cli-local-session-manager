@@ -167,6 +167,11 @@ export const settings = {
     "Every Claude session the app opens starts with Remote Control, named after its task: follow and answer it in the Claude app (Code) while the PC and its terminal stay on. Applies to sessions opened from now on. While connected, the conversation is stored on Anthropic's servers.",
     "Toda sessão do Claude que o app abrir começa com Remote Control, com o nome da tarefa: dá para acompanhar e responder pelo app do Claude (Code) enquanto o PC e o terminal dela estiverem ligados. Vale para as sessões abertas daqui em diante. Enquanto conectada, a conversa fica nos servidores da Anthropic.",
   ),
+  "settings.boardAutomations.title": dict("Board automations", "Automações do Board"),
+  "settings.boardAutomations.description": dict(
+    "Turns on the Board (button in the header) and its automations: code review and PR approval, To Do and test queues, homolog, rebuilds and Teams notices. Off, none of them runs, and whatever is running stops right away (reviews and tests waiting stay queued for when it's back on).",
+    "Liga o Board (botão no header) e as automações dele: code review e aprovação de PR, filas de To Do e de testes, homolog, rebuild e avisos no Teams. Desligado, nenhuma delas roda, e o que estiver rodando para na hora (reviews e testes na fila ficam guardados pra quando voltar a ligar).",
+  ),
   "settings.terminalLayout.title": dict("Where sessions open", "Onde as sessões abrem"),
   "settings.terminalLayout.description": dict(
     'A terminal tab per session (Warp when installed), or all of them as panes of one Limux workspace ("Claude — tarefas") in its own window — each new session joins it, and its pane closes when Claude quits. Applies to New task, the queue, New session and Resume. Needs Limux (github.com/am-will/limux) — installed and updated from here, no sudo; without it, tabs are used. Closing the Limux window ends the sessions in it (they stay resumable).',

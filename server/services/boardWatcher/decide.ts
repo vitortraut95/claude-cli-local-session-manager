@@ -98,7 +98,11 @@ export function decideIssues(
       continue;
     }
 
-    if (config.columns.waitTest.includes(issue.statusId) && config.test?.enabled !== false) {
+    if (
+      config.columns.waitTest.includes(issue.statusId) &&
+      config.test?.enabled !== false &&
+      config.testingStatusId
+    ) {
       waitingTests.push(issue);
     }
   }

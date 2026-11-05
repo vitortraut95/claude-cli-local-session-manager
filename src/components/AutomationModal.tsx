@@ -1,3 +1,4 @@
+import { Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -13,6 +14,8 @@ import type {
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { HHMM_PATTERN, LIMIT_BOUNDS } from "../utils/boardWatcher";
 import { Input } from "./Input";
+import { AutomationSetupModal } from "./AutomationSetupModal";
+import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { SettingRow } from "./SettingRow";
 
@@ -178,12 +181,15 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
   const { showToast } = useToast();
   const [settings, setSettings] = useState<AutomationSettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [setupOpen, setSetupOpen] = useState(false);
   // Typed text per number/time field, committed on blur (or Enter) like SchedulerPanel.
   const [drafts, setDrafts] = useState<
     Partial<Record<keyof AutomationLimits | "start" | "end", string>>
   >({});
 
+  // Re-read when the setup panel closes: it may have just written the file.
   useEffect(() => {
+    if (setupOpen) return;
     let cancelled = false;
     boardWatcherApi
       .fetchAutomationSettings()
@@ -196,7 +202,7 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [t, setupOpen]);
 
   const save = async (input: AutomationSettingsInput) => {
     if (!settings) return;
@@ -248,7 +254,14 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
   const anyLive = settings ? Object.values(settings.live).some(Boolean) : false;
 
   return (
-    <Modal open title={t("automation.title")} onClose={onClose} size="xxl">
+    <Modal
+      open
+      title={t("automation.title")}
+      onClose={() => {
+        if (!setupOpen) onClose();
+      }}
+      size="xxl"
+    >
       {loadError && <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>}
       {!loadError && !settings && <p className="text-sm text-gray-500 dark:text-gray-400">…</p>}
       {settings && (
@@ -258,9 +271,18 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
           </p>
 
           {!settings.configured ? (
-            <p className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 dark:border-gray-800 dark:text-gray-400">
-              {t("automation.notConfigured")}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {t("automation.notConfigured")}
+              </p>
+              <Button
+                size="sm"
+                onClick={() => setSetupOpen(true)}
+                icon={<Settings className="h-3.5 w-3.5" />}
+              >
+                {t("settings.boardAutomations.setup")}
+              </Button>
+            </div>
           ) : (
             <>
               <div className="flex items-center justify-between gap-4">
@@ -439,6 +461,7 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
           )}
         </div>
       )}
+      {setupOpen && <AutomationSetupModal onClose={() => setSetupOpen(false)} />}
     </Modal>
   );
 }

@@ -36,6 +36,8 @@ export type ReviewOutput = ReviewResult & {
 
 export type ReviewContext = {
   repoPath: string;
+  /** Kills the session (the automations switch went off). */
+  signal?: AbortSignal;
   jiraSite?: string;
   /** Other open PRs, to find the related ones. */
   openPrs: PullRequest[];
@@ -261,6 +263,7 @@ export async function runClaudeReview(
       cwd: worktree,
       env: sanitizedSpawnEnv(),
       timeout: REVIEW_TIMEOUT_MS,
+      signal: context.signal,
       maxBuffer: 32 * 1024 * 1024,
     });
     return { ...parseOutput(stdout), model: model ?? "default", size };

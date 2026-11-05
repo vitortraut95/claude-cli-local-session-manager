@@ -1,3 +1,4 @@
+import { automationsStopped } from "./beta.js";
 /**
  * Teams messages for the board watcher, posted to a Workflows "Send webhook alerts to a chat"
  * URL as Adaptive Cards 1.2 (newer versions are rejected by the Flow bot). Text is in pt-BR, the
@@ -106,6 +107,8 @@ export function buildUrgentCard(options: {
 }
 
 export async function postTeamsCard(webhookUrl: string, content: CardElement): Promise<void> {
+  // Nothing goes out while the automations beta is off.
+  if (automationsStopped()) return;
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

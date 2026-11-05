@@ -53,6 +53,8 @@ export type TestContext = {
   skill?: string;
   model?: string;
   maxBudgetUsd?: number;
+  /** Kills the session (the automations switch went off). */
+  signal?: AbortSignal;
 };
 
 const OUTPUT_SCHEMA = {
@@ -260,6 +262,7 @@ export async function runClaudeTest(
     cwd: evidenceDir,
     env,
     timeout: TEST_TIMEOUT_MS,
+    signal: context.signal,
     maxBuffer: 64 * 1024 * 1024,
   });
   const envelope = JSON.parse(stdout) as {

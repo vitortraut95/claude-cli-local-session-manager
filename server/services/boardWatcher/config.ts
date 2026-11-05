@@ -67,7 +67,7 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
     /** After the test, until the PR merges at the deploy (Validation, Ready for Deployment). */
     deploying?: string[];
   };
-  /** Where a claimed test is moved to. */
+  /** Where a claimed test is moved to ("" = no Testing column: tests aren't claimed). */
   testingStatusId: string;
   /** Where the user's started task is moved to, one at a time (`decideProgress`). */
   inProgressStatusId?: string;
@@ -148,8 +148,10 @@ export async function loadBoardWatcherConfig(): Promise<BoardWatcherConfig | nul
   );
   if (raw === null) return null;
   const parsed = JSON.parse(raw) as Partial<BoardWatcherConfig> & { approveDelayHours?: number };
-  if (!parsed.me || !parsed.columns || !parsed.testingStatusId) {
-    throw new Error(`${BOARD_WATCHER_CONFIG_FILE} needs "me", "columns" and "testingStatusId".`);
+  if (!parsed.me || !parsed.columns) {
+    // Halfway through the setup panel (not turned on yet): no watcher, no error.
+    if (!parsed.enabled) return null;
+    throw new Error(`${BOARD_WATCHER_CONFIG_FILE} needs "me" and "columns".`);
   }
   // Older files set the delay in hours.
   const { approveDelayHours, ...rest } = parsed;
@@ -159,6 +161,14 @@ export async function loadBoardWatcherConfig(): Promise<BoardWatcherConfig | nul
   return {
     ...DEFAULT_LIMITS,
     ...rest,
+    // A board without the test columns (code review only) leaves them empty.
+    columns: {
+      todo: [],
+      waitTest: [],
+      testing: [],
+      ...(parsed.columns as Partial<BoardWatcherConfig["columns"]>),
+    },
+    testingStatusId: parsed.testingStatusId ?? "",
     businessHours: { ...DEFAULT_BUSINESS_HOURS, ...parsed.businessHours },
   } as BoardWatcherConfig;
 }

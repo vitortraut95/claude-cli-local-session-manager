@@ -1,6 +1,11 @@
 import axios from "axios";
 import { withServerErrorMessage } from "../utils/apiClient";
 import type {
+  AutomationSetupStatus,
+  BitbucketRepoOption,
+  BoardColumnsAnswer,
+  BoardRole,
+  SetupFeaturesInput,
   AutomationSettings,
   AutomationSettingsInput,
   BoardWatcherStatus,
@@ -12,6 +17,13 @@ import type {
   WatcherHistoryPage,
 } from "../../shared/boardWatcher";
 export type {
+  AutomationSetupStatus,
+  BitbucketRepoOption,
+  BoardColumn,
+  BoardColumnsAnswer,
+  BoardRole,
+  SecretState,
+  SetupFeaturesInput,
   WatcherFeedback,
   WatcherScoreboard,
   AutomationFeatures,
@@ -138,6 +150,87 @@ export async function saveWatcherFeedback(
 ): Promise<WatcherFeedback> {
   const { data } = await withServerErrorMessage(() =>
     client.post<WatcherFeedback>("/feedback", input),
+  );
+  return data;
+}
+
+// The automations setup panel (answers even with the beta off).
+
+export async function fetchSetupStatus(): Promise<AutomationSetupStatus> {
+  const { data } = await withServerErrorMessage(() => client.get<AutomationSetupStatus>("/setup"));
+  return data;
+}
+
+export async function setupJira(input: {
+  site: string;
+  email: string;
+  token: string;
+}): Promise<{ displayName: string; accountId: string }> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ displayName: string; accountId: string }>("/setup/jira", input),
+  );
+  return data;
+}
+
+export async function readBoardColumns(board: string): Promise<BoardColumnsAnswer> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<BoardColumnsAnswer>("/setup/board/columns", { board }),
+  );
+  return data;
+}
+
+export async function saveBoardColumns(
+  board: string,
+  mapping: Partial<Record<BoardRole, string[]>>,
+): Promise<AutomationSetupStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<AutomationSetupStatus>("/setup/board", { board, mapping }),
+  );
+  return data;
+}
+
+export async function setupBitbucket(input: {
+  workspace: string;
+  email: string;
+  token: string;
+}): Promise<{ displayName: string }> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<{ displayName: string }>("/setup/bitbucket", input),
+  );
+  return data;
+}
+
+export async function fetchBitbucketRepos(): Promise<BitbucketRepoOption[]> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<BitbucketRepoOption[]>("/setup/repos"),
+  );
+  return data;
+}
+
+export async function saveSetupRepos(
+  repos: string[],
+  localRepos: Record<string, string>,
+): Promise<AutomationSetupStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<AutomationSetupStatus>("/setup/repos", { repos, localRepos }),
+  );
+  return data;
+}
+
+export async function saveSetupExtras(input: {
+  teamsWebhook?: string;
+  jenkinsUser?: string;
+  jenkinsToken?: string;
+}): Promise<AutomationSetupStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<AutomationSetupStatus>("/setup/extras", input),
+  );
+  return data;
+}
+
+export async function finishSetup(features: SetupFeaturesInput): Promise<AutomationSetupStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<AutomationSetupStatus>("/setup/finish", features),
   );
   return data;
 }

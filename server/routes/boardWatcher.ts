@@ -9,7 +9,19 @@ import { listFeedback, saveFeedback } from "../services/boardWatcher/feedback.js
 import { readActions } from "../services/boardWatcher/simulation.js";
 import { historyPage } from "../services/boardWatcher/history.js";
 import { HISTORY_FILTERS } from "../../shared/boardWatcher.js";
-import { BadRequestError, NotFoundError } from "../utils/httpError.js";
+import { BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
+import { automationsOn } from "../services/boardWatcher/beta.js";
+import {
+  finishSetup,
+  getSetupStatus,
+  listBitbucketRepos,
+  readBoardColumns,
+  saveBoardColumns,
+  saveExtras,
+  saveRepos,
+  setupBitbucket,
+  setupJira,
+} from "../services/boardWatcher/setup.js";
 import {
   getBoardWatcherStatus,
   pauseBoardWatcher,
@@ -22,6 +34,101 @@ import {
 } from "../services/boardWatcherService.js";
 
 export const boardWatcherRouter = Router();
+
+const body = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+const text = (value: unknown): string | undefined =>
+  typeof value === "string" ? value : undefined;
+
+// The setup panel answers even with the beta off: it's opened from Settings to turn it on.
+boardWatcherRouter.get("/setup", async (_req, res) => {
+  res.json(await getSetupStatus());
+});
+
+boardWatcherRouter.post("/setup/jira", async (req, res) => {
+  const b = body(req.body);
+  res.json(await setupJira({ site: text(b.site), email: text(b.email), token: text(b.token) }));
+});
+
+boardWatcherRouter.post("/setup/board/columns", async (req, res) => {
+  res.json(await readBoardColumns(text(body(req.body).board) ?? ""));
+});
+
+boardWatcherRouter.post("/setup/board", async (req, res) => {
+  const b = body(req.body);
+  const mapping = body(b.mapping);
+  await saveBoardColumns({
+    board: text(b.board) ?? "",
+    mapping: Object.fromEntries(
+      Object.entries(mapping).map(([role, names]) => [
+        role,
+        Array.isArray(names) ? names.filter((n): n is string => typeof n === "string") : [],
+      ]),
+    ),
+  });
+  res.json(await getSetupStatus());
+});
+
+boardWatcherRouter.post("/setup/bitbucket", async (req, res) => {
+  const b = body(req.body);
+  res.json(
+    await setupBitbucket({
+      workspace: text(b.workspace),
+      email: text(b.email),
+      token: text(b.token),
+    }),
+  );
+});
+
+boardWatcherRouter.get("/setup/repos", async (_req, res) => {
+  res.json(await listBitbucketRepos());
+});
+
+boardWatcherRouter.post("/setup/repos", async (req, res) => {
+  const b = body(req.body);
+  const repos = Array.isArray(b.repos)
+    ? b.repos.filter((r): r is string => typeof r === "string")
+    : [];
+  const localRepos = Object.fromEntries(
+    Object.entries(body(b.localRepos)).filter(
+      (e): e is [string, string] => typeof e[1] === "string",
+    ),
+  );
+  await saveRepos({ repos, localRepos });
+  res.json(await getSetupStatus());
+});
+
+boardWatcherRouter.post("/setup/extras", async (req, res) => {
+  const b = body(req.body);
+  await saveExtras({
+    teamsWebhook: text(b.teamsWebhook),
+    jenkinsUser: text(b.jenkinsUser),
+    jenkinsToken: text(b.jenkinsToken),
+  });
+  res.json(await getSetupStatus());
+});
+
+boardWatcherRouter.post("/setup/finish", async (req, res) => {
+  const b = body(req.body);
+  await finishSetup({
+    codeReview: b.codeReview !== false,
+    reviewSessions: b.reviewSessions === true,
+    devQueue: b.devQueue === true,
+    testQueue: b.testQueue === true,
+    notices: b.notices !== false,
+  });
+  // Turned on with the beta already on: the first look runs now.
+  if (await automationsOn()) await runBoardWatcherNow();
+  res.json(await getSetupStatus());
+});
+
+// The automations beta is off (Settings): nothing of the watcher answers, so nothing runs from here.
+boardWatcherRouter.use(async (_req, _res, next) => {
+  if (await automationsOn()) return next();
+  next(new ConflictError("AUTOMATIONS_OFF", "The board automations beta is off in Settings."));
+});
 
 boardWatcherRouter.get("/status", async (_req, res) => {
   res.json(await getBoardWatcherStatus());

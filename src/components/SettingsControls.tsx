@@ -10,11 +10,14 @@ export function PreferenceRow({
   title,
   description,
   keyName,
+  badge,
   preview,
   extra,
   control,
 }: {
   title: string;
+  /** Shown right after the title (e.g. a beta tag). */
+  badge?: ReactNode;
   description: string;
   keyName: keyof UserPreferences;
   preview?: ReactNode;
@@ -27,6 +30,7 @@ export function PreferenceRow({
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-baseline gap-x-2 text-sm font-medium text-gray-900 dark:text-gray-100">
           {title}
+          {badge}
           <code className="text-[10px] font-normal text-gray-400 dark:text-gray-500">
             {keyName}
           </code>

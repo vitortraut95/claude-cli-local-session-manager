@@ -20,6 +20,7 @@ import { useUpdate } from "../hooks/useUpdate";
 import { useUsageLimits } from "../hooks/useUsageLimits";
 import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
 import { AutomationModal } from "./AutomationModal";
+import { BetaBadge } from "./BetaBadge";
 import { BoardWatcherModal } from "./BoardWatcherModal";
 import { Button } from "./Button";
 import { CleanupModal } from "./CleanupModal";
@@ -76,6 +77,7 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
   const [showTaskQueueModal, setShowTaskQueueModal] = useState(false);
   const [showAutomationModal, setShowAutomationModal] = useState(false);
   const [showBoardModal, setShowBoardModal] = useState(false);
+  const [automationsOn, setAutomationsOn] = useState(false);
   // The one "bring my open tasks back" button: "Open grid" with the Limux grid layout (brings
   // Limux up too), "Resume open tasks" with tabs.
   const [gridLayout, setGridLayout] = useState(false);
@@ -96,6 +98,7 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
         .then((prefs) => {
           if (cancelled) return;
           setGridLayout(prefs.terminalLayout === "limux-grid");
+          setAutomationsOn(prefs.boardAutomations ?? false);
           setSetupPrefs(
             prefs.workspaceDirs == null ||
               prefs.jenkinsBaseUrl === null ||
@@ -191,13 +194,18 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
           >
             {t("header.taskQueue")}
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => setShowBoardModal(true)}
-            icon={<Kanban className="h-4 w-4" />}
-          >
-            {t("header.board")}
-          </Button>
+          {automationsOn && (
+            <Button
+              variant="outline"
+              onClick={() => setShowBoardModal(true)}
+              icon={<Kanban className="h-4 w-4" />}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                {t("header.board")}
+                <BetaBadge />
+              </span>
+            </Button>
+          )}
           <Tooltip
             content={t(gridLayout ? "header.grid.tooltip" : "sessionsPage.resumeOpen.tooltip")}
           >
@@ -300,7 +308,7 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
         onFindingExecuted={onSessionsChanged}
       />
       {/* Automation is opened from the Board and goes back to it when closed. */}
-      {showAutomationModal && (
+      {automationsOn && showAutomationModal && (
         <AutomationModal
           onClose={() => {
             setShowAutomationModal(false);
@@ -308,7 +316,7 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
           }}
         />
       )}
-      {showBoardModal && (
+      {automationsOn && showBoardModal && (
         <BoardWatcherModal
           onClose={() => setShowBoardModal(false)}
           onOpenAutomation={() => {

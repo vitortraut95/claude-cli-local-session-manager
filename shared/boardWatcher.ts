@@ -252,3 +252,70 @@ export type WatcherScoreboard = {
 export function feedbackEntryKey(entry: Pick<WatcherActionEntry, "ts" | "action" | "subject">) {
   return `${entry.ts}|${entry.action}|${entry.subject}`;
 }
+
+/** The setup panel's roles for the board's columns (`boardWatcher.json` → `columns`). */
+export const BOARD_ROLES = [
+  "todo",
+  "inProgress",
+  "codeReview",
+  "waitTest",
+  "testing",
+  "deploying",
+] as const;
+export type BoardRole = (typeof BOARD_ROLES)[number];
+
+/** A token or URL the automations use: saved (by the panel), from the environment, or missing. */
+export type SecretState = "saved" | "environment" | "missing";
+
+/** What's configured so far, for the setup panel's steps. */
+export type AutomationSetupStatus = {
+  claude: { installed: boolean; version: string | null };
+  jira: {
+    site: string | null;
+    email: string | null;
+    token: SecretState;
+    /** The account id found from the token (`boardWatcher.json` → `me`). */
+    me: string | null;
+  };
+  board: {
+    boardId: number | null;
+    boardUrl: string | null;
+    /** Status ids per role, as saved. */
+    columns: Partial<Record<BoardRole, string[]>> | null;
+  };
+  bitbucket: {
+    workspace: string | null;
+    email: string | null;
+    token: SecretState;
+    repos: string[];
+    localRepos: Record<string, string>;
+  };
+  extras: { teams: SecretState; jenkinsUser: SecretState; jenkinsToken: SecretState };
+  features: {
+    codeReview: boolean;
+    reviewSessions: boolean;
+    devQueue: boolean;
+    testQueue: boolean;
+    notices: boolean;
+  };
+  /** `boardWatcher.json` → `enabled`: the setup was finished. */
+  enabled: boolean;
+};
+
+export type BoardColumn = { name: string; statusIds: string[] };
+
+export type BoardColumnsAnswer = {
+  boardId: number;
+  boardName: string;
+  columns: BoardColumn[];
+  /** Column names per role, guessed from their names (or the saved mapping). */
+  suggested: Partial<Record<BoardRole, string[]>>;
+};
+
+export type BitbucketRepoOption = {
+  slug: string;
+  /** A local clone found in the workspace folders (or the saved one). */
+  localPath: string | null;
+};
+
+export type SetupFeaturesInput = AutomationSetupStatus["features"];

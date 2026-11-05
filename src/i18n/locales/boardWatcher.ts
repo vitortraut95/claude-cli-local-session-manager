@@ -51,8 +51,8 @@ export const boardWatcher = {
     "Quando o build de preview de uma tarefa sua (ou de um teste que ele puxou) falha por infra, roda de novo no Jenkins, uma vez por commit. Se falhar de novo, você é avisado.",
   ),
   "automation.notConfigured": dict(
-    "Not available yet: the boardWatcher.json file with the board ids is missing. Set it up on the server first.",
-    "Ainda não dá pra ligar: falta o arquivo boardWatcher.json com os ids do board. Configure-o no servidor primeiro.",
+    "Not set up yet: Jira, the board and Bitbucket are missing. The setup panel walks you through it, step by step.",
+    "Ainda não configurado: faltam o Jira, o board e o Bitbucket. O painel de configuração te guia, etapa por etapa.",
   ),
   "automation.loadError": dict(
     "Couldn't load the automation settings.",
