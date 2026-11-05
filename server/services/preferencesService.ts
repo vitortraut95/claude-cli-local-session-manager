@@ -41,6 +41,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   taskRefinementSkill: "",
   taskTestPermissionModeAuto: true,
   remoteControl: false,
+  boardAutomations: false,
   theme: null,
   orchestrator: {
     enabled: true,
@@ -246,6 +247,10 @@ function normalizePreferences(value: unknown): UserPreferences {
       typeof parsed.remoteControl === "boolean"
         ? parsed.remoteControl
         : DEFAULT_PREFERENCES.remoteControl,
+    boardAutomations:
+      typeof parsed.boardAutomations === "boolean"
+        ? parsed.boardAutomations
+        : DEFAULT_PREFERENCES.boardAutomations,
     theme:
       parsed.theme === "light" || parsed.theme === "dark"
         ? parsed.theme
@@ -278,16 +283,26 @@ export function getPreferencesPath(): string {
 
 let writeQueue: Promise<unknown> = Promise.resolve();
 
+type PreferencesListener = (next: UserPreferences, previous: UserPreferences) => void;
+const listeners: PreferencesListener[] = [];
+
+/** Called after every write, with the preferences before and after it. */
+export function onPreferencesSaved(listener: PreferencesListener): void {
+  listeners.push(listener);
+}
+
 /** The only way to write the file: read → `mutate` → atomic temp-file + rename, serialized on one
  *  in-process queue so concurrent writers can't drop each other's changes. */
 export function updateUserPreferences(
   mutate: (current: UserPreferences) => UserPreferences,
 ): Promise<void> {
   const run = writeQueue.then(async () => {
-    const next = mutate(await getUserPreferences());
+    const previous = await getUserPreferences();
+    const next = mutate(previous);
     const tmpPath = `${PREFERENCES_PATH}.tmp-${process.pid}-${Date.now()}`;
     await writeFile(tmpPath, `${JSON.stringify(next, null, 2)}\n`, "utf-8");
     await rename(tmpPath, PREFERENCES_PATH);
+    for (const listener of listeners) listener(next, previous);
   });
   // A failed write must not wedge every later one.
   writeQueue = run.catch(() => undefined);

@@ -54,6 +54,9 @@ claude-session-manager.desktop
 .claude/*
 # Board watcher: this machine's board ids and its state between ticks (server/services/boardWatcher).
 /boardWatcher.json
+/boardWatcher.json.tmp-*
+/boardWatcher.secrets.json
+/boardWatcher.secrets.json.tmp-*
 /boardWatcher-state.json
 /boardWatcher-state.json.tmp
 /boardWatcher-actions.jsonl

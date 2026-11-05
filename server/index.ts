@@ -5,12 +5,16 @@ import { cleanupRouter } from "./routes/cleanup.js";
 import { sessionsRouter } from "./routes/sessions.js";
 import { systemRouter } from "./routes/system.js";
 import { tasksRouter } from "./routes/tasks.js";
+import { loadSecretsIntoEnv } from "./services/boardWatcher/secrets.js";
 import { startBoardWatcher } from "./services/boardWatcherService.js";
 import { autoUpdateSkillsHubOnStart } from "./services/skillsHubService.js";
 import { startTaskScheduler } from "./services/taskSchedulerService.js";
 import { API_PORT } from "./utils/apiPort.js";
 import { errorHandler } from "./utils/httpError.js";
 import { migrateTaskStore } from "./utils/taskStore.js";
+
+// The tokens saved by the automations setup panel, where the environment has none.
+loadSecretsIntoEnv();
 
 const app = express();
 app.use(cors());

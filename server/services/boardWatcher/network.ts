@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { automationsStopped } from "./beta.js";
 
 /**
  * What a test session needs from the machine's network before it starts (`test.requires` in
@@ -41,6 +42,7 @@ export async function networkProblem(
 /** A desktop notification (`notify-send`) of what to fix, so it's done before a test waits on
  *  it. Best-effort: without a notification daemon nothing shows. */
 export function remindOnDesktop(problem: string): void {
+  if (automationsStopped()) return;
   const steps = [
     problem.includes("VPN") && "conecte a VPN (GlobalProtect)",
     problem.includes("IPv6") && "desligue o IPv6",

@@ -104,6 +104,10 @@ export type UserPreferences = {
    *  it can be followed and answered from the Claude app on the phone. Optional: older files lack
    *  it (default off). */
   remoteControl: boolean;
+  /** The board automations beta: shows the header's "Board" button and lets the board watcher
+   *  run; off, nothing of it runs and anything running stops. Optional: older files lack it
+   *  (default off). */
+  boardAutomations: boolean;
 };
 
 export type WorkspaceDirStatus = { dir: string; exists: boolean; repoCount: number };

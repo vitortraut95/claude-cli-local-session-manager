@@ -87,6 +87,15 @@ import { isTestReport, testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
 import { addTestEntryIfAbsent, requeueTestEntry } from "./taskQueueService.js";
 import {
+  automationSignal,
+  automationsOn,
+  automationsStopped,
+  guardDeps,
+  rearmAutomations,
+  stopAutomations,
+} from "./boardWatcher/beta.js";
+import { onPreferencesSaved } from "./preferencesService.js";
+import {
   emptyWatcherState,
   prSubject,
   type BoardIssue,
@@ -275,8 +284,9 @@ async function lookLocked(): Promise<void> {
   });
   lastConfig = config;
   const state = await loadState();
+  const signal = automationSignal();
   try {
-    if (!config?.enabled) return;
+    if (!config?.enabled || !(await automationsOn())) return;
     const onReview = config.review?.enabled
       ? (pr: WatcherState["pendingReviews"][number]) => {
           if (!state.pendingReviews.some((p) => prSubject(p) === prSubject(pr))) {
@@ -299,12 +309,15 @@ async function lookLocked(): Promise<void> {
         : undefined;
     await rotateActionsDaily(now);
     await backupDaily(now, config);
-    const deps = createBoardDeps(
-      config,
-      () => new Date(),
-      onReview,
-      onTest,
-      (issue, missing) => void sendWeakDescriptionQuestions(config, issue, missing),
+    const deps = guardDeps(
+      createBoardDeps(
+        config,
+        () => new Date(),
+        onReview,
+        onTest,
+        (issue, missing) => void sendWeakDescriptionQuestions(config, issue, missing),
+      ),
+      signal,
     );
     let issues: BoardIssue[] = [];
     let prs: PullRequest[] = [];
@@ -333,6 +346,10 @@ async function lookLocked(): Promise<void> {
     await sendDigestIfDue(state, config, now);
     await sendDailyIfDue(state, config, now);
   } catch (err) {
+    if (signal.aborted) {
+      recordEvent("boardWatcher.stopped", { during: "look" });
+      return;
+    }
     const message = err instanceof Error ? err.message : String(err);
     console.warn("[board-watcher] Look failed:", message);
     recordEvent("boardWatcher.error", { message });
@@ -684,7 +701,8 @@ async function drainJobs(): Promise<void> {
     for (;;) {
       const config = await loadBoardWatcherConfig().catch(() => null);
       const state = await loadState();
-      if (!config?.enabled || !config.bitbucket) return;
+      if (!config?.enabled || !config.bitbucket || !(await automationsOn())) return;
+      const signal = automationSignal();
       // A review ends in a comment or an approval, which only happen in business hours: the
       // session waits for them (queued reviews start with the next look then).
       const pr =
@@ -727,7 +745,8 @@ async function drainJobs(): Promise<void> {
           jobsBlockedBy = `tests waiting: ${waits.join("; ")}`;
           return;
         }
-        await runTestJob(ready, config);
+        await runTestJob(ready, config, signal);
+        if (signal.aborted) return;
         continue;
       }
       const subject = prSubject(pr);
@@ -755,6 +774,7 @@ async function drainJobs(): Promise<void> {
         const openPrs = await listOpenPullRequests(credentials, [pr.repo]);
         const output = await runClaudeReview(pr, {
           repoPath,
+          signal,
           jiraSite: config.jira?.site,
           openPrs,
           model: config.review?.model,
@@ -783,7 +803,10 @@ async function drainJobs(): Promise<void> {
           await applyReview(
             pr,
             output,
-            createBoardDeps(config, () => new Date()),
+            guardDeps(
+              createBoardDeps(config, () => new Date()),
+              signal,
+            ),
             state,
             config,
           );
@@ -804,6 +827,11 @@ async function drainJobs(): Promise<void> {
         }
         outcome = `${output.findings.length} finding(s), ${output.verdict}`;
       } catch (err) {
+        // Switched off: the PR stays queued for when it's back on, with no failure told.
+        if (signal.aborted) {
+          recordEvent("boardWatcher.stopped", { during: "review", subject });
+          return;
+        }
         outcome = err instanceof Error ? err.message : String(err);
         console.warn(`[board-watcher] Review of ${subject} failed:`, outcome);
         await serial(async () => {
@@ -908,6 +936,7 @@ async function queueTestJob(
 async function runTestJob(
   job: WatcherState["pendingTests"][number],
   config: BoardWatcherConfig,
+  signal: AbortSignal,
 ): Promise<void> {
   const { issue, planId } = job;
   const started = Date.now();
@@ -926,6 +955,7 @@ async function runTestJob(
       model: config.test?.model,
       maxBudgetUsd: config.test?.maxBudgetUsd,
       lessons: await getLessons("test"),
+      signal,
     });
     const next =
       output.verdict === "failed"
@@ -950,6 +980,11 @@ async function runTestJob(
     });
     outcome = output.verdict;
   } catch (err) {
+    // Switched off: the test stays queued for when it's back on, with no failure told.
+    if (signal.aborted) {
+      recordEvent("boardWatcher.stopped", { during: "test", key: issue.key });
+      return;
+    }
     outcome = err instanceof Error ? err.message : String(err);
     console.warn(`[board-watcher] Test of ${issue.key} failed:`, outcome);
     await recordAction({
@@ -960,13 +995,17 @@ async function runTestJob(
     });
     noticeJobFailed("test", issue.key, issue.summary, outcome, issueUrl(config, issue.key));
   } finally {
-    await serial(async () => {
-      const state = await loadState();
-      state.pendingTests = state.pendingTests.filter((t) => t.issue.key !== issue.key);
-      await saveState(state);
-    });
-    recordEvent("boardWatcher.test", { key: issue.key, outcome, durationMs: Date.now() - started });
+    if (!signal.aborted) await finishTestJob(issue.key, outcome, started);
   }
+}
+
+async function finishTestJob(key: string, outcome: string, started: number): Promise<void> {
+  await serial(async () => {
+    const state = await loadState();
+    state.pendingTests = state.pendingTests.filter((t) => t.issue.key !== key);
+    await saveState(state);
+  });
+  recordEvent("boardWatcher.test", { key, outcome, durationMs: Date.now() - started });
 }
 
 /** "Tests waiting for the network" goes out at most this often. */
@@ -988,6 +1027,7 @@ const lastWaitingNotice = new Map<string, number>();
 async function noticeStoreChange(change: StoreChange): Promise<void> {
   const config = await loadBoardWatcherConfig().catch(() => null);
   if (!config?.enabled || config.notifications?.instant === false) return;
+  if (!(await automationsOn())) return;
   if (change.kind === "queue-error") {
     noticeQueueError(change.key, change.error);
     return;
@@ -1005,7 +1045,31 @@ async function noticeStoreChange(change: StoreChange): Promise<void> {
   await noticeWaitingForYou(key, name, remoteUrl);
 }
 
+/** The beta switch (Settings): off stops the next look, kills a running review or test session
+ *  and holds every notice; back on, a look runs right away. */
+function onAutomationsSwitch(on: boolean): void {
+  if (on) {
+    rearmAutomations();
+    recordEvent("boardWatcher.switch", { on });
+    void look();
+    return;
+  }
+  stopAutomations();
+  if (timer) clearTimeout(timer);
+  timer = null;
+  nextLookAt = null;
+  jobsBlockedBy = null;
+  recordEvent("boardWatcher.switch", { on });
+}
+
 export function startBoardWatcher(): void {
+  onPreferencesSaved((next, previous) => {
+    const on = next.boardAutomations === true;
+    if (on !== (previous.boardAutomations === true)) onAutomationsSwitch(on);
+  });
+  void automationsOn().then((on) => {
+    if (!on) stopAutomations();
+  });
   onStoreChange((change) => {
     void noticeStoreChange(change).catch((err: unknown) =>
       console.warn("[board-watcher] Couldn't send the notice:", err),
@@ -1031,7 +1095,7 @@ export function startBoardWatcher(): void {
  *  tests need, instead of only once a test is held. */
 async function remindNetworkAtStart(): Promise<void> {
   const config = await loadBoardWatcherConfig().catch(() => null);
-  if (!config?.enabled || config.test?.enabled === false) return;
+  if (!config?.enabled || config.test?.enabled === false || !(await automationsOn())) return;
   const problem = await networkProblem(config.test?.requires);
   if (problem) remindOnDesktop(problem);
 }
@@ -1176,6 +1240,7 @@ async function followHomologBuild(
 ): Promise<void> {
   for (let i = 0; i < HOMOLOG_MAX_POLLS; i += 1) {
     await new Promise((resolve) => setTimeout(resolve, HOMOLOG_POLL_MS));
+    if (automationsStopped()) return;
     const result = await buildResult(buildUrl).catch(() => null);
     if (!result) continue;
     const diagnosis =
