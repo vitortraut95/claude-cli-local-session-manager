@@ -549,6 +549,35 @@ export function upsertTask(key: string, link: string | null): Promise<void> {
 /** Who changed a status, for the history: the user on a card, or the scheduler on launch. */
 export type StatusSource = "user" | "scheduler";
 
+/** A task's (`key`) or a key-less session's (`sessionId`) status change, or a queue entry's
+ *  launch error, for whoever wants to react to them (the board watcher's Teams notices). */
+export type StoreChange =
+  | {
+      kind: "status";
+      key: string | null;
+      sessionId: string | null;
+      from: WorkStatus | null;
+      to: WorkStatus | null;
+    }
+  | { kind: "queue-error"; key: string; error: string };
+
+const changeListeners: ((change: StoreChange) => void)[] = [];
+
+export function onStoreChange(listener: (change: StoreChange) => void): void {
+  changeListeners.push(listener);
+}
+
+/** A listener's failure never breaks the write that triggered it. */
+function emitStoreChange(change: StoreChange): void {
+  for (const listener of changeListeners) {
+    try {
+      listener(change);
+    } catch (err) {
+      console.warn("[tasks.json] A change listener failed:", err);
+    }
+  }
+}
+
 /** `null` clears it. */
 export async function setSessionStatus(
   id: string,
@@ -557,7 +586,10 @@ export async function setSessionStatus(
 ): Promise<void> {
   const from = (await readStore()).sessions[id]?.status ?? null;
   await updateSession(id, { status });
-  if (from !== status) recordEvent("status.changed", { sessionId: id, from, to: status, source });
+  if (from !== status) {
+    recordEvent("status.changed", { sessionId: id, from, to: status, source });
+    emitStoreChange({ kind: "status", key: null, sessionId: id, from, to: status });
+  }
 }
 
 /** Creates the task entry if missing (a key only inferred from a branch has none yet). */
@@ -580,7 +612,10 @@ export async function setTaskStatus(
     changed = true;
     return true;
   });
-  if (changed) recordEvent("status.changed", { key, from, to: status, source });
+  if (changed) {
+    recordEvent("status.changed", { key, from, to: status, source });
+    emitStoreChange({ kind: "status", key, sessionId: null, from, to: status });
+  }
 }
 
 /** The entry's own ticket first, then the ones grouped with it. */
@@ -616,14 +651,15 @@ export function setQueue(entries: QueueEntryInput[]): Promise<void> {
 }
 
 /** Patches one entry in place (no-op when it was removed meanwhile). */
-export function updateQueueEntry(
+export async function updateQueueEntry(
   key: string,
   patch: Partial<Pick<QueueEntry, "launchedAt" | "sessionId" | "error">>,
 ): Promise<void> {
-  return mutateStore((store) => {
+  await mutateStore((store) => {
     const entry = store.queue.find((e) => e.key === key);
     if (!entry) return false;
     Object.assign(entry, patch);
     return true;
   });
+  if (patch.error) emitStoreChange({ kind: "queue-error", key, error: patch.error });
 }

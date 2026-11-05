@@ -1,0 +1,439 @@
+[
+  {
+    "name": "my task with a good description is queued once",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-1",
+            "summary": "Botão Contratar abre plano errado",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-1"],
+          "decisions": {
+            "DEMO-1": "enqueue-dev"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-1": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "vague description: reported once, queued after it's improved",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-2",
+            "summary": "Ajustar banner da home",
+            "description": "Ajustar o banner da home que está estranho no celular.",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["notify digest: Weak description: DEMO-2"],
+          "decisions": {
+            "DEMO-2": "weak-description"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-2": "weak-description"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T15:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-2",
+            "summary": "Ajustar banner da home",
+            "description": "Na página home (https://demo.example.com) o banner principal corta o texto no celular.\n\nCritérios de aceite:\n- No celular (360 px) o texto do banner deve aparecer inteiro\n- No desktop nada muda\n\nFigma: https://www.figma.com/design/abc123/Demo?node-id=1-2",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-2"],
+          "decisions": {
+            "DEMO-2": "enqueue-dev"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "title only is not queued",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-3",
+            "summary": "Corrigir checkout",
+            "description": "",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["notify digest: Weak description: DEMO-3"],
+          "decisions": {
+            "DEMO-3": "weak-description"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "visual change without Figma is not queued",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-4",
+            "summary": "Novo layout do card de planos",
+            "description": "Na página de planos, trocar o card:\n- título maior\n- preço em destaque\nO card deve seguir o novo padrão.",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["notify digest: Weak description: DEMO-4"],
+          "decisions": {
+            "DEMO-4": "weak-description"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "unassigned and colleagues' tasks are left alone",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-5",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": null
+          },
+          {
+            "key": "DEMO-6",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": "ana"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-5": "none",
+            "DEMO-6": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "task assigned to me between two looks is queued then",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-7",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": null
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-7": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-7",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-7"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "only one of my tasks is In Progress; the next started one moves up when it leaves",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "inProgress": ["in-progress"]
+      },
+      "inProgressStatusId": "in-progress"
+    },
+    "state": {
+      "handled": {
+        "dev:DEMO-70": "x",
+        "dev:DEMO-71": "x",
+        "dev:DEMO-72": "x"
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-70",
+            "statusId": "in-progress",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-71",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-73",
+            "statusId": "in-progress",
+            "assigneeId": "ana",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          }
+        ],
+        "startedDevKeys": ["DEMO-71", "DEMO-72"],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-71": "wait",
+            "DEMO-72": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-70",
+            "statusId": "code-review",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-71",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          }
+        ],
+        "expect": {
+          "effects": ["transition DEMO-71 -> in-progress"],
+          "decisions": {
+            "DEMO-71": "start-progress",
+            "DEMO-72": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:20:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-71": "none",
+            "DEMO-72": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T20:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-71",
+            "statusId": "code-review",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-72": "wait"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "a task not started yet isn't moved to In Progress",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "inProgress": ["in-progress"]
+      },
+      "inProgressStatusId": "in-progress"
+    },
+    "state": {
+      "handled": {
+        "dev:DEMO-74": "x"
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-74",
+            "statusId": "todo",
+            "assigneeId": "me",
+            "description": "**Contexto**\n\nTrocar o texto do banner.\n\n**Critérios de aceite**\n\n1. Dado que abro a home, então vejo o texto novo.\n\nPágina: https://example.com/\n\nResultado esperado: texto novo no banner. Figma: https://figma.example.com/x"
+          }
+        ],
+        "startedDevKeys": [],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-74": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "one of my tasks in development at a time: the next waits until the first leaves To Do",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-10",
+            "summary": "Botão Contratar errado em planos",
+            "description": "Na página planos (https://demo.example.com/planos) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me"
+          },
+          {
+            "key": "DEMO-11",
+            "summary": "Botão Contratar errado em vps",
+            "description": "Na página vps (https://demo.example.com/vps) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-10"],
+          "decisions": {
+            "DEMO-10": "enqueue-dev",
+            "DEMO-11": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-10": "none",
+            "DEMO-11": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T16:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-10",
+            "summary": "Botão Contratar errado em planos",
+            "description": "Na página planos (https://demo.example.com/planos) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me",
+            "statusId": "code-review"
+          },
+          {
+            "key": "DEMO-11",
+            "summary": "Botão Contratar errado em vps",
+            "description": "Na página vps (https://demo.example.com/vps) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-11"],
+          "decisions": {
+            "DEMO-11": "enqueue-dev"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "limit of 2 queues two of my tasks at once",
+    "config": {
+      "maxDevTasks": 2
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-10",
+            "summary": "Botão Contratar errado em planos",
+            "description": "Na página planos (https://demo.example.com/planos) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me"
+          },
+          {
+            "key": "DEMO-11",
+            "summary": "Botão Contratar errado em vps",
+            "description": "Na página vps (https://demo.example.com/vps) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-10", "enqueue dev DEMO-11"],
+          "decisions": {
+            "DEMO-10": "enqueue-dev",
+            "DEMO-11": "enqueue-dev"
+          }
+        }
+      }
+    ]
+  }
+]

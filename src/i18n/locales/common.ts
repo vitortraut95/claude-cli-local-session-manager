@@ -1,6 +1,7 @@
 import { dict } from "../dict";
 
 export const common = {
+  "common.beta": dict("Beta", "Beta"),
   "header.subtitle": dict("Manage your local sessions", "Gerencie suas sessões locais"),
   "header.newTask": dict("New task", "Nova tarefa"),
   "header.skills": dict("Skills", "Skills"),

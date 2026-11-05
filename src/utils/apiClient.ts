@@ -27,6 +27,19 @@ export async function withServerErrorMessage<T>(request: () => Promise<T>): Prom
 
 /** Server `AppError` code → translation key. An unmapped code shows the server's English message. */
 const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
+  SETUP_MISSING_TOKEN: "apiError.setupMissingToken",
+  SETUP_BAD_SITE: "apiError.setupBadSite",
+  SETUP_MISSING_EMAIL: "apiError.setupMissingEmail",
+  SETUP_UNREACHABLE: "apiError.setupUnreachable",
+  SETUP_BAD_CREDENTIALS: "apiError.setupBadCredentials",
+  SETUP_JIRA_FIRST: "apiError.setupJiraFirst",
+  SETUP_BAD_BOARD: "apiError.setupBadBoard",
+  SETUP_NO_CODE_REVIEW: "apiError.setupNoCodeReview",
+  SETUP_BAD_WORKSPACE: "apiError.setupBadWorkspace",
+  SETUP_BITBUCKET_FIRST: "apiError.setupBitbucketFirst",
+  SETUP_NO_REPOS: "apiError.setupNoRepos",
+  SETUP_BAD_WEBHOOK: "apiError.setupBadWebhook",
+  AUTOMATIONS_OFF: "apiError.automationsOff",
   SESSION_NOT_FOUND: "apiError.sessionNotFound",
   SESSION_ACTIVE: "apiError.sessionActive",
   INVALID_SESSION_ID: "apiError.invalidSessionId",

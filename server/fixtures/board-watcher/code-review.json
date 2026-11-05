@@ -1,0 +1,819 @@
+[
+  {
+    "name": "clean PR 2 business hours after the push is approved once",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "12",
+            "repo": "web",
+            "title": "PR 12",
+            "lastPushAt": "2026-10-28T11:30:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#12"],
+          "decisions": {
+            "web#12": "review"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#12": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "fresh PR waits for people to review first",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "13",
+            "repo": "web",
+            "title": "PR 13",
+            "lastPushAt": "2026-10-28T13:30:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#13": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T15:30:00-03:00",
+        "expect": {
+          "effects": ["approve web#13"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "PR pushed Friday evening: waits over the weekend, approved Monday",
+    "ticks": [
+      {
+        "now": "2026-10-31T10:00:00-03:00",
+        "prs": [
+          {
+            "id": "15",
+            "repo": "web",
+            "title": "PR 15",
+            "lastPushAt": "2026-10-30T17:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#15": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-11-02T09:30:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#15": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-11-02T10:00:00-03:00",
+        "expect": {
+          "effects": ["approve web#15"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "blocking finding: commented, not approved, reported",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "14",
+            "repo": "web",
+            "title": "PR 14",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "reviews": {
+          "web#14": {
+            "findings": [
+              {
+                "severity": "blocking",
+                "body": "Null deref quando o carrinho está vazio"
+              },
+              {
+                "severity": "minor",
+                "body": "Nome de variável"
+              }
+            ]
+          }
+        },
+        "expect": {
+          "effects": ["comment web#14 blocking", "notify digest: Not approved: web#14"]
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#14": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "many findings: at most 3 comments, approved when none blocks",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "16",
+            "repo": "web",
+            "title": "PR 16",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "reviews": {
+          "web#16": {
+            "findings": [
+              {
+                "severity": "major",
+                "body": "Achado 0"
+              },
+              {
+                "severity": "major",
+                "body": "Achado 1"
+              },
+              {
+                "severity": "major",
+                "body": "Achado 2"
+              },
+              {
+                "severity": "major",
+                "body": "Achado 3"
+              },
+              {
+                "severity": "major",
+                "body": "Achado 4"
+              },
+              {
+                "severity": "minor",
+                "body": "estilo"
+              }
+            ]
+          }
+        },
+        "expect": {
+          "effects": [
+            "comment web#16 major",
+            "comment web#16 major",
+            "comment web#16 major",
+            "approve web#16"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "draft, conflicts, red CI, changes requested: skipped; running CI waits",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "20",
+            "repo": "web",
+            "title": "PR 20",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "draft": true
+          },
+          {
+            "id": "21",
+            "repo": "web",
+            "title": "PR 21",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "hasConflicts": true
+          },
+          {
+            "id": "22",
+            "repo": "web",
+            "title": "PR 22",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "ci": "failed"
+          },
+          {
+            "id": "23",
+            "repo": "web",
+            "title": "PR 23",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "none"
+              },
+              {
+                "id": "bia",
+                "state": "changes_requested"
+              }
+            ]
+          },
+          {
+            "id": "24",
+            "repo": "web",
+            "title": "PR 24",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "ci": "running"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#20": "skip",
+            "web#21": "skip",
+            "web#22": "skip",
+            "web#23": "skip",
+            "web#24": "wait"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "my own PRs and PRs I'm not reviewing are left alone",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "25",
+            "repo": "web",
+            "title": "PR 25",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "authorId": "me",
+            "reviewers": [
+              {
+                "id": "ana",
+                "state": "none"
+              }
+            ]
+          },
+          {
+            "id": "26",
+            "repo": "web",
+            "title": "PR 26",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "bia",
+                "state": "none"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#25": "none",
+            "web#26": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "new push resets my approval and is reviewed again",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "30",
+            "repo": "web",
+            "title": "PR 30",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#30"]
+        }
+      },
+      {
+        "now": "2026-10-29T13:00:00-03:00",
+        "prs": [
+          {
+            "id": "30",
+            "repo": "web",
+            "title": "PR 30",
+            "lastPushAt": "2026-10-29T10:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "none"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#30"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "review round limit: skipped",
+    "state": {
+      "reviewRounds": {
+        "web#31": 3
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "31",
+            "repo": "web",
+            "title": "PR 31",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#31": "skip"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "PR I already approved is left alone",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "40",
+            "repo": "web",
+            "title": "PR 40",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "approved"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#40": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "product questions go to the digest, not the PR",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "41",
+            "repo": "web",
+            "title": "PR 41",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "reviews": {
+          "web#41": {
+            "findings": [
+              {
+                "severity": "major",
+                "topic": "product",
+                "body": "Os preços dependem de confirmação do PMM."
+              },
+              {
+                "severity": "blocking",
+                "topic": "product",
+                "body": "A remoção das LPs não está na LED; confirmar com o PO."
+              },
+              {
+                "severity": "major",
+                "body": "Falta tratar lista vazia."
+              }
+            ]
+          }
+        },
+        "expect": {
+          "effects": [
+            "comment web#41 major",
+            "notify digest: Product questions: web#41",
+            "approve web#41"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "PR waits until its ticket is in Code Review",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"],
+        "inProgress": ["in-progress"]
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-80",
+            "statusId": "in-progress",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          }
+        ],
+        "prs": [
+          {
+            "id": "50",
+            "repo": "web",
+            "title": "DEMO-80: carrossel novo",
+            "sourceBranch": "env/DEMO-80",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#50": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-80",
+            "statusId": "code-review",
+            "statusSince": "2026-10-28T14:05:00-03:00",
+            "assigneeId": "ana"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#50": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T16:10:00-03:00",
+        "expect": {
+          "effects": ["approve web#50"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "bundled PR counts when one of its tickets is in Code Review; PR with no ticket waits",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"]
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-81",
+            "statusId": "in-progress",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          },
+          {
+            "key": "DEMO-82",
+            "statusId": "code-review",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          }
+        ],
+        "prs": [
+          {
+            "id": "51",
+            "repo": "web",
+            "title": "DEMO-81 e DEMO-82",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          },
+          {
+            "id": "52",
+            "repo": "web",
+            "title": "Ajuste de lint",
+            "sourceBranch": "chore/lint",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#51"],
+          "decisions": {
+            "web#52": "wait"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "a PR pushed after the user's approval is reviewed again, without approving twice",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "60",
+            "repo": "web",
+            "title": "PR 60",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "approved"
+              }
+            ],
+            "approvedCommit": "aaa111"
+          },
+          {
+            "id": "61",
+            "repo": "web",
+            "title": "PR 61",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "approved"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#60": "review",
+            "web#61": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#60": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "a blocking finding pushed after the user's approval is commented and reported",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "62",
+            "repo": "web",
+            "title": "PR 62",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "approved"
+              }
+            ],
+            "approvedCommit": "aaa111"
+          }
+        ],
+        "reviews": {
+          "web#62": {
+            "findings": [
+              {
+                "severity": "blocking",
+                "body": "Quebra o checkout"
+              }
+            ]
+          }
+        },
+        "expect": {
+          "effects": ["comment web#62 blocking", "notify digest: Not approved: web#62"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "a PR whose ticket is past Code Review (or off the board) isn't listed",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "inProgress": ["in-progress"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"]
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-91",
+            "statusId": "testing",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          }
+        ],
+        "prs": [
+          {
+            "id": "70",
+            "repo": "web",
+            "title": "DEMO-90: já em deploy",
+            "sourceBranch": "env/DEMO-90",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          },
+          {
+            "id": "71",
+            "repo": "web",
+            "title": "DEMO-91: já testando",
+            "sourceBranch": "env/DEMO-91",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#70": "none",
+            "web#71": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "with the switch on, a PR past Code Review that nobody approved is reviewed",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "inProgress": ["in-progress"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"],
+        "deploying": ["ready-deploy"]
+      },
+      "codeReview": {
+        "unapprovedDeploying": true
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-95",
+            "statusId": "ready-deploy",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          },
+          {
+            "key": "DEMO-96",
+            "statusId": "ready-deploy",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "bia"
+          }
+        ],
+        "prs": [
+          {
+            "id": "80",
+            "repo": "web",
+            "title": "DEMO-95: sem aprovação",
+            "sourceBranch": "env/DEMO-95",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          },
+          {
+            "id": "81",
+            "repo": "web",
+            "title": "DEMO-96: já aprovado por alguém",
+            "sourceBranch": "env/DEMO-96",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "none"
+              },
+              {
+                "id": "ana",
+                "state": "approved"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#80"],
+          "decisions": {
+            "web#80": "review",
+            "web#81": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "with the switch off, a PR past Code Review isn't reviewed even without approvals",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "inProgress": ["in-progress"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"],
+        "deploying": ["ready-deploy"]
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-95",
+            "statusId": "ready-deploy",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          },
+          {
+            "key": "DEMO-96",
+            "statusId": "ready-deploy",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "bia"
+          }
+        ],
+        "prs": [
+          {
+            "id": "80",
+            "repo": "web",
+            "title": "DEMO-95: sem aprovação",
+            "sourceBranch": "env/DEMO-95",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          },
+          {
+            "id": "81",
+            "repo": "web",
+            "title": "DEMO-96: já aprovado por alguém",
+            "sourceBranch": "env/DEMO-96",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "reviewers": [
+              {
+                "id": "me",
+                "state": "none"
+              },
+              {
+                "id": "ana",
+                "state": "approved"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#80": "none",
+            "web#81": "none"
+          }
+        }
+      }
+    ]
+  }
+]

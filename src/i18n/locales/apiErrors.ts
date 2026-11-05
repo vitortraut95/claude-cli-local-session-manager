@@ -1,7 +1,49 @@
 import { dict } from "../dict";
 
 export const apiErrors = {
-  // Server error codes (see resolveApiErrorMessage) — generic, since only the code is known.
+  "apiError.setupMissingToken": dict("Paste the API token.", "Cole o API token."),
+  "apiError.setupBadSite": dict(
+    "Use the Jira site, e.g. company.atlassian.net.",
+    "Use o site do Jira, por exemplo empresa.atlassian.net.",
+  ),
+  "apiError.setupMissingEmail": dict("Fill in your e-mail.", "Preencha o seu e-mail."),
+  "apiError.setupUnreachable": dict(
+    "Couldn't reach the service. Check the address and your network.",
+    "Não deu pra falar com o serviço. Confira o endereço e a sua rede.",
+  ),
+  "apiError.setupBadCredentials": dict(
+    "This e-mail and token were refused. Check both (the token may have expired).",
+    "Esse e-mail e token foram recusados. Confira os dois (o token pode ter expirado).",
+  ),
+  "apiError.setupJiraFirst": dict("Set up Jira first.", "Configure o Jira primeiro."),
+  "apiError.setupBadBoard": dict(
+    "Couldn't read this board. Paste the board's link (…/boards/<number>).",
+    "Não deu pra ler esse board. Cole o link do board (…/boards/<número>).",
+  ),
+  "apiError.setupNoCodeReview": dict(
+    "Pick which column is Code Review.",
+    "Escolha qual coluna é a de Code Review.",
+  ),
+  "apiError.setupBadWorkspace": dict(
+    "This token can't read that workspace. Check the name and the token's permissions.",
+    "Esse token não consegue ler esse workspace. Confira o nome e as permissões do token.",
+  ),
+  "apiError.setupBitbucketFirst": dict(
+    "Set up Bitbucket first.",
+    "Configure o Bitbucket primeiro.",
+  ),
+  "apiError.setupNoRepos": dict(
+    "Pick at least one repo, with its local clone.",
+    "Escolha pelo menos um repositório, com o clone local.",
+  ),
+  "apiError.setupBadWebhook": dict(
+    "The Teams workflow URL is an https:// link.",
+    "A URL do workflow do Teams é um link https://.",
+  ),
+  "apiError.automationsOff": dict(
+    "The board automations beta is off in Settings.",
+    "O beta das automações do Board está desligado nas Settings.",
+  ),
   "apiError.sessionNotFound": dict("Session not found.", "Sessão não encontrada."),
   "apiError.sessionActive": dict(
     "This session (or its folder) is already open in another terminal.",

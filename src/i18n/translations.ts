@@ -12,6 +12,8 @@ import { taskQueue } from "./locales/taskQueue";
 import { workStatus } from "./locales/workStatus";
 import { history } from "./locales/history";
 import { preview } from "./locales/preview";
+import { boardWatcher } from "./locales/boardWatcher";
+import { automationSetup } from "./locales/automationSetup";
 
 export type { Language };
 
@@ -45,6 +47,8 @@ export const translations = {
   ...workStatus,
   ...history,
   ...preview,
+  ...boardWatcher,
+  ...automationSetup,
 } satisfies Record<string, Dict>;
 
 export type TranslationKey = keyof typeof translations;
