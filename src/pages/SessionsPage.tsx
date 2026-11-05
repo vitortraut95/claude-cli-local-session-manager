@@ -12,6 +12,7 @@ import { WorkStatusFilter } from "../components/WorkStatusFilter";
 import { ResumeConflictModal } from "../components/ResumeConflictModal";
 import { SearchBar } from "../components/SearchBar";
 import { SessionCard } from "../components/SessionCard";
+import { TaskStatusSidebar } from "../components/TaskStatusSidebar";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSessions } from "../hooks/useSessions";
 import type { Session } from "../../shared/session";
@@ -21,6 +22,7 @@ import { RefreshCw, Trash2, X } from "lucide-react";
 export function SessionsPage() {
   const {
     sessions,
+    allSessions,
     filteredCount,
     loading,
     scanProgress,
@@ -177,33 +179,37 @@ export function SessionsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <Header
-        onSessionCreated={refreshSoon}
-        onSessionsChanged={refreshSoon}
-      />
-      <main className="px-4 pt-3 pb-6 sm:px-6">
-        <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center max-w-5xl mx-auto">
-          <SearchBar value={searchQuery} onChange={setSearchQuery} />
-          <ProjectFilter
-            projects={projects}
-            projectLabels={projectLabels}
-            value={projectFilter}
-            onChange={setProjectFilter}
-          />
-          <WorkStatusFilter value={statusFilter} onChange={setStatusFilter} />
+      <Header onSessionCreated={refreshSoon} onSessionsChanged={refreshSoon} />
+      <div className="flex flex-col lg:flex-row lg:items-start">
+        <TaskStatusSidebar
+          sessions={allSessions}
+          activeKey={searchQuery.trim()}
+          onSelectTask={handleFilterByTask}
+        />
+        <main className="min-w-0 flex-1 px-4 pt-3 pb-6 sm:px-6">
+          <div className="mb-6 flex flex-col gap-3 sm:sticky sm:top-2 sm:z-10 sm:flex-row sm:flex-wrap sm:items-center max-w-5xl mx-auto">
+            <SearchBar value={searchQuery} onChange={setSearchQuery} />
+            <ProjectFilter
+              projects={projects}
+              projectLabels={projectLabels}
+              value={projectFilter}
+              onChange={setProjectFilter}
+            />
+            <WorkStatusFilter value={statusFilter} onChange={setStatusFilter} />
 
-          <Button
-            variant="outline"
-            onClick={refresh}
-            disabled={loading}
-            className="shadow-sm"
-            icon={<RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />}
-          >
-            {t("sessionsPage.refresh")}
-          </Button>
-        </div>
-        {renderContent()}
-      </main>
+            <Button
+              variant="outline"
+              onClick={refresh}
+              disabled={loading}
+              className="shadow-sm"
+              icon={<RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />}
+            >
+              {t("sessionsPage.refresh")}
+            </Button>
+          </div>
+          {renderContent()}
+        </main>
+      </div>
 
       <ConfirmDialog
         open={sessionPendingDeletion !== null}

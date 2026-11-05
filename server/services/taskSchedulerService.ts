@@ -9,7 +9,7 @@ import {
   resolveBaseBranch,
 } from "./taskService.js";
 import { cleanupFinishedTests, launchTestEntry } from "./taskTestService.js";
-import { getCachedClaudeUsageStatus, getClaudeUsageStatus } from "./usageService.js";
+import { getMaxUsagePercent } from "./usageService.js";
 import { firstWorkspaceDir } from "./workspaceService.js";
 import { recordEvent } from "../utils/history.js";
 import { BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
@@ -70,17 +70,6 @@ async function countActiveSessions(): Promise<number> {
   return active.size + pendingLaunches.size;
 }
 
-/** Only fetched when something is ready to launch; otherwise the last reading, if any. */
-async function getUsagePercent(fetch: boolean): Promise<number | null> {
-  try {
-    const status = fetch ? await getClaudeUsageStatus() : getCachedClaudeUsageStatus();
-    const limits = status?.limits ?? [];
-    return limits.length > 0 ? Math.max(...limits.map((limit) => limit.percent)) : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function getSchedulerStatus(): Promise<SchedulerStatus> {
   const [prefs, queue, activeSessions, freeMemoryPercent, memoryPressure] = await Promise.all([
     getUserPreferences(),
@@ -90,7 +79,7 @@ export async function getSchedulerStatus(): Promise<SchedulerStatus> {
     getMemoryPressure(),
   ]);
   const waiting = queue.filter(isReady).length;
-  const usagePercent = await getUsagePercent(waiting > 0);
+  const usagePercent = await getMaxUsagePercent(waiting > 0);
   const { enabled, maxSessions, minFreeMemoryPercent, maxUsagePercent, launchSpacingMinutes } =
     prefs.orchestrator;
 

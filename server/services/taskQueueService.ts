@@ -178,3 +178,87 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
     if (!keys.has(key)) recordEvent("queue.removed", { key, launched: Boolean(before.launchedAt) });
   }
 }
+
+/**
+ * Adds a test entry for `key` at the end of the queue unless the key is already there (queued or
+ * launched). For the board watcher, which queues the Wait Test tickets it picks up.
+ */
+export async function addTestEntryIfAbsent(entry: {
+  key: string;
+  link: string | null;
+  repos: string[];
+  branch: string | null;
+}): Promise<boolean> {
+  const queue = await getQueue();
+  if (queue.some((e) => e.key === entry.key)) return false;
+  await saveTaskQueue({
+    entries: [
+      ...queue,
+      {
+        key: entry.key,
+        link: entry.link,
+        kind: "test",
+        repos: entry.repos,
+        noRepo: entry.repos.length === 0,
+        branchPrefix: null,
+        branch: entry.branch,
+        baseBranch: null,
+        useLocalBaseBranch: false,
+        error: null,
+      },
+    ],
+  });
+  return true;
+}
+
+/**
+ * Queues `key` for a test again: a fresh test entry replaces an earlier one that already
+ * launched (its session is over: the ticket got a fix after a failed test). An entry still
+ * waiting to launch is left as it is (false).
+ */
+export async function requeueTestEntry(entry: {
+  key: string;
+  link: string | null;
+  repos: string[];
+  branch: string | null;
+}): Promise<boolean> {
+  const queue = await getQueue();
+  const existing = queue.find((e) => e.key === entry.key);
+  if (existing && !existing.launchedAt) return false;
+  // Removed first, so the new entry comes back without the old launch fields.
+  if (existing) await saveTaskQueue({ entries: queue.filter((e) => e.key !== entry.key) });
+  return addTestEntryIfAbsent(entry);
+}
+
+/**
+ * Adds a dev entry for `key` at the end of the queue unless the key is already there. For the
+ * board watcher, which queues the user's own To Do tickets; with no repo it waits in the queue
+ * for one to be chosen.
+ */
+export async function addDevEntryIfAbsent(entry: {
+  key: string;
+  link: string | null;
+  repos: string[];
+  branchPrefix: string | null;
+}): Promise<boolean> {
+  const queue = await getQueue();
+  if (queue.some((e) => e.key === entry.key)) return false;
+  await saveTaskQueue({
+    entries: [
+      ...queue,
+      {
+        key: entry.key,
+        link: entry.link,
+        kind: "dev",
+        repos: entry.repos,
+        noRepo: false,
+        branchPrefix: entry.branchPrefix,
+        branch: null,
+        baseBranch: null,
+        useLocalBaseBranch: false,
+        error: null,
+      },
+    ],
+  });
+  return true;
+}

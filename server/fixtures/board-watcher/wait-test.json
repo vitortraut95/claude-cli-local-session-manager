@@ -1,0 +1,1121 @@
+[
+  {
+    "name": "colleague's task with a test plan is claimed once",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-10",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": ["transition DEMO-10 -> testing", "enqueue test DEMO-10"],
+          "decisions": {
+            "DEMO-10": "claim-test"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-10": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "no test plan, already tested, or my own task: skipped",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-11",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/41"
+              }
+            ]
+          },
+          {
+            "key": "DEMO-12",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              },
+              {
+                "id": "c2",
+                "authorId": "bia",
+                "created": "2026-10-27T15:00:00-03:00",
+                "body": "**Teste da tarefa DEMO-12 - Seletor de ciclo**\n\n**Resultado:** Aprovado"
+              }
+            ]
+          },
+          {
+            "key": "DEMO-13",
+            "statusId": "wait-test",
+            "assigneeId": "me",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-11": "skip",
+            "DEMO-12": "skip",
+            "DEMO-13": "skip"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "new test plan after a test report is claimed again",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-14",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-26T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              },
+              {
+                "id": "c2",
+                "authorId": "bia",
+                "created": "2026-10-26T15:00:00-03:00",
+                "body": "**Teste da tarefa DEMO-14 - Seletor de ciclo**\n\n**Resultado:** Aprovado"
+              },
+              {
+                "id": "c3",
+                "authorId": "ana",
+                "created": "2026-10-27T11:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": ["transition DEMO-14 -> testing", "enqueue test DEMO-14"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "weekend: waits, claims on Monday",
+    "ticks": [
+      {
+        "now": "2026-10-31T10:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-15",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-30T17:30:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-15": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-11-02T09:05:00-03:00",
+        "expect": {
+          "effects": ["transition DEMO-15 -> testing", "enqueue test DEMO-15"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "someone already testing: left alone",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-16",
+            "statusId": "testing",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-16": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "at most 2 claimed tests; the next one goes when one leaves Testing",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-20",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-21",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-22",
+            "statusId": "wait-test",
+            "assigneeId": "bia",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [
+            "transition DEMO-20 -> testing",
+            "enqueue test DEMO-20",
+            "transition DEMO-21 -> testing",
+            "enqueue test DEMO-21"
+          ],
+          "decisions": {
+            "DEMO-22": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T16:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-20",
+            "statusId": "validation",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-21",
+            "statusId": "testing",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-22",
+            "statusId": "wait-test",
+            "assigneeId": "bia",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**O que foi feito**\n\n* Corrigido o seletor de ciclo.\n\n---\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": ["transition DEMO-22 -> testing", "enqueue test DEMO-22"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "plan with numbered subheadings is found but curl steps are left for a person; 'QA: aprovado' counts as tested",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-30",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "## Como testar\n\nO blog fica para outra tarefa.\n\n### 1. Portal do cliente\n\nDepois da tag rc, rode o curl em cada URL:\n\n- https://demo.example.com/suporte\n\n### 2. Site\n\n- Abra a página de segurança e clique no link do rodapé."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-30": "skip"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T15:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-31",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "## Como testar\n\nO blog fica para outra tarefa.\n\n### 1. Portal do cliente\n\nDepois da tag rc, rode o curl em cada URL:\n\n- https://demo.example.com/suporte\n\n### 2. Site\n\n- Abra a página de segurança e clique no link do rodapé."
+              },
+              {
+                "id": "c2",
+                "authorId": "bia",
+                "created": "2026-10-28T09:00:00-03:00",
+                "body": "**QA: aprovado com ressalvas**\n\n**O que foi testado e passou**\n\n1. **Links trocados**\n  - As URLs novas respondem 200."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-31": "skip"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "testing steps as bullets with no heading count as a plan",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-32",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "- Feita a troca do relatório no CMS;\n- Verificar se a página abre corretamente, inclusive fora da VPN\n- Clicar em \"Relatório 2º semestre\" na página https://demo.example.com/mapa-do-site e conferir o PDF"
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": ["transition DEMO-32 -> testing", "enqueue test DEMO-32"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "short 'Resultado: aprovado' report counts as tested",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-33",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "- Feita a troca do relatório no CMS;\n- Verificar se a página abre corretamente, inclusive fora da VPN\n- Clicar em \"Relatório 2º semestre\" na página https://demo.example.com/mapa-do-site e conferir o PDF"
+              },
+              {
+                "id": "c2",
+                "authorId": "bia",
+                "created": "2026-10-27T16:00:00-03:00",
+                "body": "Teste DEMO-33 (menos JS na home)\nResultado: aprovado com ressalvas.\n- Home rolada até o fim, sem erro no console."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-33": "skip"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "delivery notes with no testing steps are not a plan",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-34",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "Parte 1 – Técnico\n\n- Pedido: hreflang sem barra no final.\n- Feito: o hreflang agora aponta para a URL sem barra.\n\nParte 2 – Metatags\n\n- Pedido: novo title.\n- Feito: title trocado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-34": "skip"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "a failed test report listing steps is not a new plan",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-35",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-26T10:00:00-03:00",
+                "body": "- Feita a troca do relatório no CMS;\n- Verificar se a página abre corretamente, inclusive fora da VPN\n- Clicar em \"Relatório 2º semestre\" na página https://demo.example.com/mapa-do-site e conferir o PDF"
+              },
+              {
+                "id": "c2",
+                "authorId": "bia",
+                "created": "2026-10-27T16:00:00-03:00",
+                "body": "**Teste da tarefa DEMO-35 - Vitrine**\n**Resultado:** Reprovado\n\n**Para o PO**\n\n1. Abrir a página da vitrine e conferir cada aplicação.\n2. Verificar as imagens."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-35": "skip"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "waits 1 business hour in Wait Test so people go first",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-40",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-28T13:30:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-40": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:30:00-03:00",
+        "expect": {
+          "effects": ["transition DEMO-40 -> testing", "enqueue test DEMO-40"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "oldest in Wait Test is claimed first",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-41",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-42",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-43",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-26T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [
+            "transition DEMO-43 -> testing",
+            "enqueue test DEMO-43",
+            "transition DEMO-42 -> testing",
+            "enqueue test DEMO-42"
+          ],
+          "decisions": {
+            "DEMO-41": "wait"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "at most 4 claims a day",
+    "config": {
+      "maxClaimedTests": 10
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-50",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-20T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-51",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-21T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-52",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-22T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-53",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-23T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-54",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-24T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-55",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-25T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [
+            "transition DEMO-50 -> testing",
+            "enqueue test DEMO-50",
+            "transition DEMO-51 -> testing",
+            "enqueue test DEMO-51",
+            "transition DEMO-52 -> testing",
+            "enqueue test DEMO-52",
+            "transition DEMO-53 -> testing",
+            "enqueue test DEMO-53"
+          ],
+          "decisions": {
+            "DEMO-54": "wait",
+            "DEMO-55": "wait"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "plans needing a person (no link, CMS, confirm with someone) are left alone",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-60",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "**Como testar**\n\n1. Abra a home. Esperado: banner novo."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-61",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "**Como testar**\n\n1. No CMS, publique o arquivo. Esperado: aparece em https://demo.example.com/docs"
+              }
+            ]
+          },
+          {
+            "key": "DEMO-62",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "**Como testar**\n\n1. Abra https://demo.example.com/precos\n2. Confirmar com o PMM se o preço está certo."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-60": "skip",
+            "DEMO-61": "skip",
+            "DEMO-62": "skip"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "claims that stay in Wait Test (not moved on the board) still hold their slot",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-70",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-71",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [
+            "transition DEMO-70 -> testing",
+            "enqueue test DEMO-70",
+            "transition DEMO-71 -> testing",
+            "enqueue test DEMO-71"
+          ],
+          "decisions": {
+            "DEMO-72": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-70",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-71",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-72": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T15:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-70",
+            "statusId": "validation",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-71",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-72",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-27T09:00:00-03:00",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/40\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout.\n2. Escolha cada ciclo. Esperado: valor atualizado."
+              }
+            ]
+          }
+        ],
+        "expect": {
+          "effects": ["transition DEMO-72 -> testing", "enqueue test DEMO-72"]
+        }
+      }
+    ]
+  },
+  {
+    "name": "failed test in Testing is retested once after the fix push",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-60",
+            "statusId": "testing",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "r1",
+                "authorId": "me",
+                "created": "2026-10-28T11:00:00-03:00",
+                "body": "**Resultado: reprovado**\n\n1. O botão não aparece no mobile."
+              }
+            ]
+          }
+        ],
+        "prs": [
+          {
+            "id": "60",
+            "repo": "web",
+            "title": "[DEMO-60] Botão no mobile",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T10:00:00-03:00",
+            "reviewers": []
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-60": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T15:00:00-03:00",
+        "prs": [
+          {
+            "id": "60",
+            "repo": "web",
+            "title": "[DEMO-60] Botão no mobile",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T14:30:00-03:00",
+            "reviewers": []
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue retest DEMO-60"],
+          "decisions": {
+            "DEMO-60": "retest"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T15:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-60": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T16:00:00-03:00",
+        "prs": [
+          {
+            "id": "60",
+            "repo": "web",
+            "title": "[DEMO-60] Botão no mobile",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T15:40:00-03:00",
+            "reviewers": []
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue retest DEMO-60"],
+          "decisions": {
+            "DEMO-60": "retest"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "no retest when the failed report isn't mine, the last report passed, or it's off hours",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-61",
+            "statusId": "testing",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "r1",
+                "authorId": "bia",
+                "created": "2026-10-28T11:00:00-03:00",
+                "body": "**Resultado: reprovado**\n\n1. O botão não aparece no mobile."
+              }
+            ]
+          },
+          {
+            "key": "DEMO-62",
+            "statusId": "testing",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "r1",
+                "authorId": "me",
+                "created": "2026-10-28T11:00:00-03:00",
+                "body": "**Resultado: reprovado**\n\n1. O botão não aparece no mobile."
+              },
+              {
+                "id": "r2",
+                "authorId": "me",
+                "created": "2026-10-28T12:00:00-03:00",
+                "body": "Resultado: aprovado"
+              }
+            ]
+          }
+        ],
+        "prs": [
+          {
+            "id": "61",
+            "repo": "web",
+            "title": "[DEMO-61] a",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T13:00:00-03:00",
+            "reviewers": []
+          },
+          {
+            "id": "62",
+            "repo": "web",
+            "title": "[DEMO-62] b",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T13:00:00-03:00",
+            "reviewers": []
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-61": "none",
+            "DEMO-62": "none"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T20:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-63",
+            "statusId": "testing",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "r1",
+                "authorId": "me",
+                "created": "2026-10-28T11:00:00-03:00",
+                "body": "**Resultado: reprovado**\n\n1. O botão não aparece no mobile."
+              }
+            ]
+          }
+        ],
+        "prs": [
+          {
+            "id": "63",
+            "repo": "web",
+            "title": "fix/DEMO-63 ajuste",
+            "authorId": "ana",
+            "lastPushAt": "2026-10-28T13:00:00-03:00",
+            "reviewers": []
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-63": "wait"
+          }
+        }
+      }
+    ]
+  }
+]

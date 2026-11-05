@@ -1,0 +1,70 @@
+[
+  {
+    "name": "daily approval cap: pauses and alerts before reviewing past it",
+    "config": {
+      "maxApprovesPerDay": 2
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "1",
+            "repo": "web",
+            "title": "PR 1",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          },
+          {
+            "id": "2",
+            "repo": "web",
+            "title": "PR 2",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          },
+          {
+            "id": "3",
+            "repo": "web",
+            "title": "PR 3",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#1", "approve web#2", "notify urgent: Daily approval cap reached"]
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#3": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "approval count resets the next day",
+    "state": {
+      "approvals": {
+        "day": "2026-10-27",
+        "count": 8
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "4",
+            "repo": "web",
+            "title": "PR 4",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#4"]
+        }
+      }
+    ]
+  }
+]

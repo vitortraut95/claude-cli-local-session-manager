@@ -112,6 +112,7 @@ function isValidPreferences(
       typeof candidate.taskRefinementSkill === "string") &&
     (candidate.taskTestPermissionModeAuto === undefined ||
       typeof candidate.taskTestPermissionModeAuto === "boolean") &&
+    (candidate.remoteControl === undefined || typeof candidate.remoteControl === "boolean") &&
     (candidate.theme === undefined ||
       candidate.theme === null ||
       candidate.theme === "light" ||
@@ -146,7 +147,7 @@ tasksRouter.put("/preferences", async (req, res) => {
         "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
         "autoUpdateOnStart? }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
         "{ label, url }[] }, taskTestSkill?: string, taskRefinementSkill?: string, " +
-        "taskTestPermissionModeAuto?: boolean, " +
+        "taskTestPermissionModeAuto?: boolean, remoteControl?: boolean, " +
         'theme?: "light"|"dark"|null, orchestrator?: { enabled, maxSessions, ' +
         "minFreeMemoryPercent, maxUsagePercent }, worktreeSetup?: { [project]: " +
         '{ linkNodeModules, copyEnvFiles } }, terminalLayout?: "tabs"|"limux-grid" }.',

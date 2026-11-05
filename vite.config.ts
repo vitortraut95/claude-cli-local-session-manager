@@ -22,6 +22,7 @@ export default defineConfig({
       "/system": "http://localhost:58231",
       "/tasks": "http://localhost:58231",
       "/cleanup": "http://localhost:58231",
+      "/board-watcher": "http://localhost:58231",
     },
     // `.claude/` holds worktrees of this repo (full source copies); Vite ignores .gitignore, so
     // creating/removing one there would trigger a full page reload.
