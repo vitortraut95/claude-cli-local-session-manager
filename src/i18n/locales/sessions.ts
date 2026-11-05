@@ -28,15 +28,18 @@ export const sessions = {
   "jenkinsLinksModal.project": dict("{project} (all branches)", "{project} (todas as branches)"),
   "jenkinsLinksModal.pullRequests": dict("Pull requests", "Pull requests"),
   "jenkinsLinksModal.tags": dict("Tags", "Tags"),
-  "promptPreviewModal.loading": dict("Loading prompts…", "Carregando prompts…"),
-  "promptPreviewModal.empty": dict(
+  "transcriptModal.loading": dict("Loading conversation…", "Carregando conversa…"),
+  "transcriptModal.empty": dict(
     "No prompts found for this session.",
     "Nenhum prompt encontrado para esta sessão.",
   ),
-  "promptPreviewModal.loadError": dict(
-    "Couldn't load the full prompt text — showing a possibly truncated version.",
-    "Não foi possível carregar o texto completo do prompt — mostrando uma versão possivelmente truncada.",
+  "transcriptModal.loadError": dict(
+    "Couldn't load the conversation — showing only the start of the prompts.",
+    "Não foi possível carregar a conversa — mostrando só o começo dos prompts.",
   ),
+  "transcriptModal.you": dict("You", "Você"),
+  "transcriptModal.toolCount": dict("{count} action(s)", "{count} ação(ões)"),
+  "transcriptModal.noReply": dict("No reply from the agent.", "Sem resposta do agente."),
   "sessionCard.copyCommand.error": dict(
     "Could not copy the command.",
     "Não foi possível copiar o comando.",
@@ -129,10 +132,10 @@ export const sessions = {
   "sessionCard.worktreeTooltip": dict("Git worktree — {path}", "Worktree do git — {path}"),
   "sessionCard.worktreeNameLabel": dict("Worktree name: {name}", "Nome do worktree: {name}"),
   "sessionCard.previewTooltip": dict(
-    "Preview prompts sent in this session",
-    "Veja os prompts enviados nesta sessão",
+    "See the conversation: prompts, replies and agent actions",
+    "Veja a conversa: prompts, respostas e ações do agente",
   ),
-  "sessionCard.previewAriaLabel": dict("Preview prompts", "Ver prompts"),
+  "sessionCard.previewAriaLabel": dict("See conversation", "Ver conversa"),
   "sessionCard.openJenkinsTooltip": dict(
     "Jenkins links for this project and branch",
     "Links do Jenkins deste projeto e branch",

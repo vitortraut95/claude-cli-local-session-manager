@@ -24,6 +24,7 @@ export type {
   ProjectFolderOption,
   QueueEntry,
   QueueEntryInput,
+  QueueGroupedTask,
   QueueKind,
   RefinementInput,
   RepoInfo,

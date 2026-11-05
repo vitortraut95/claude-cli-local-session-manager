@@ -81,7 +81,10 @@ opens the browser. Stop the app by closing that terminal.
 - **Team skills** — optional integration with your team's own skills repo (a git repo with a
   `catalog/<catalog>/` tree of skills; its URL is asked on first start and kept only in your local
   `userPreferences.json`): the New task/New session modals invite you to clone it, you pick whole catalogs and/or single skills, and
-  their skills get linked into `~/.claude/skills`; the hub is fast-forwarded on server start (when
+  their skills get linked into `~/.claude/skills`, together with the skills they declare in
+  `requires-skills` (and a catalog's own `catalog/<catalog>/requires-skills`); a picked skill that
+  moves to another catalog is followed, and a skill shortcut naming a renamed skill finds it by
+  "formerly <name>" in its description; the hub is fast-forwarded on server start (when
   clean) and on "Update now", which also links new skills (Settings → "Team skills" to manage)
 - **Task queue** — paste a list of tickets (links or keys) that are ready to be worked on and pick
   the repo(s) of each one (the first is the main repo). A scheduler then launches them on its own,
@@ -90,14 +93,16 @@ opens the browser. Stop the app by closing that terminal.
   (default 6, every session counts), at least 5 min since the last launch (a session's memory
   shows up minutes after it opens), enough free RAM, no memory pressure (PSI) and Claude plan
   usage under a limit. Pause/resume and the limits live in the queue window; a launched task gets
-  the "in progress" status. Kept in the local `tasks.json`
+  the "in progress" status. Tickets joined by `+` (`PROJ-1 + PROJ-2`), or grouped later with
+  "Together with", are done together: one branch with every key (`env/PROJ-1-PROJ-2`), one
+  session, every link in the prompt. Kept in the local `tasks.json`
 - **Heavy commands** — optional (Task queue window → "Turn on"): a PreToolUse hook in
   `~/.claude/settings.json` blocks tests, typecheck, lint, builds, installs and `git commit`/`push`
   (their hooks) run directly and has Claude rerun them through `scripts/heavy-run`, which waits for a
   free slot across every session (default 1 at a time) and for that much free RAM, runs each one
   in its own cgroup with a RAM/CPU cap (`systemd-run --user --scope`) at low CPU/IO priority, and
   caps Node's heap at ~85% of the RAM cap (a `docker run` gets the same caps as flags) — so a runaway run fails alone (137 = RAM cap, 134 =
-  heap cap) instead of freezing the machine. Dev-server containers (`docker run … next dev`,
+  heap cap) instead of freezing the machine. It also refuses to start (exit 75) when the temp dir can't fit 512 MB — `/tmp` is often a tmpfs with a per-user quota, and builds writing there die halfway. Dev-server containers (`docker run … next dev`,
   `yarn dev`, vite, storybook) are blocked too and started as `heavy-run --preview docker run …`:
   at most N previews at once across sessions (default 5, counted by a container label), each with
   a RAM cap (default 4 GB) and 2 CPUs. Each task keeps one preview running for you to validate
@@ -161,7 +166,7 @@ Yarn workspaces monorepo: the root is the frontend, `server/` is the backend.
 | DELETE | `/tasks/by-key/:key/repos`            | Unlink `{ repoRoot, branch }` from the task (branch and worktree stay)         |
 | GET    | `/tasks/by-key/:key/pr-url`           | "Open PR" link for one of the task's repos (`?repoRoot=&branch=&base=`)        |
 | GET    | `/tasks/queue`                        | The task queue: `{ key, link, repos, addedAt }[]` (first repo = main)          |
-| PUT    | `/tasks/queue`                        | Replace the queue `{ entries: { key, link?, repos }[] }` (repos → repo roots)  |
+| PUT    | `/tasks/queue`                        | Replace the queue `{ entries: { key, link?, groupedTasks?, repos }[] }` (repos → repo roots) |
 | GET    | `/tasks/queue/status`                 | Scheduler state: live sessions, free RAM, plan usage, what it's waiting on     |
 | POST   | `/tasks/queue/run`                    | Run a scheduler check now (launches the next ready task if there's room)       |
 | GET    | `/tasks/heavy-run/hook`               | Whether the heavy-tests hook is in `~/.claude/settings.json`                   |

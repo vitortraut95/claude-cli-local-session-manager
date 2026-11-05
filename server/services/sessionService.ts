@@ -8,8 +8,9 @@ export { findSessionFilePath, isSafeSessionId } from "./session/lookup.js";
 export {
   getScanProgress,
   getSessionHistory,
-  getSessionPrompts,
+  getSessionTranscript,
   listSessions,
+  searchSessionPrompts,
 } from "./session/listing.js";
 export { buildPrUrl, getSessionPrUrl } from "./session/prUrl.js";
 export {

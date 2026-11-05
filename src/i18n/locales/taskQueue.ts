@@ -63,12 +63,21 @@ export const taskQueue = {
     "achada no origin pela chave",
   ),
   "taskQueueModal.pasteLabel": dict(
-    "Tasks (links or keys, one per line)",
-    "Tarefas (links ou chaves, uma por linha)",
+    "Tasks (links or keys, one per line; join with + to do them together in one branch)",
+    "Tarefas (links ou chaves, uma por linha; junte com + pra fazer juntas numa branch só)",
   ),
   "taskQueueModal.pastePlaceholder": dict(
-    "https://your-company.atlassian.net/browse/PROJ-123\nPROJ-124",
-    "https://sua-empresa.atlassian.net/browse/PROJ-123\nPROJ-124",
+    "https://your-company.atlassian.net/browse/PROJ-123\nPROJ-124 + PROJ-125",
+    "https://sua-empresa.atlassian.net/browse/PROJ-123\nPROJ-124 + PROJ-125",
+  ),
+  "taskQueueModal.groupLabel": dict("Together with", "Junto com"),
+  "taskQueueModal.groupPlaceholder": dict(
+    "Do another task in this branch…",
+    "Fazer outra tarefa nesta branch…",
+  ),
+  "taskQueueModal.ungroup": dict(
+    "Split off: back to its own entry",
+    "Separar: volta a ser um item próprio",
   ),
   "taskQueueModal.pasteRepo": dict("Repo", "Repo"),
   "taskQueueModal.pasteRepo.hint": dict(

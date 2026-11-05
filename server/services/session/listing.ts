@@ -1,10 +1,16 @@
 import { realpathSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import path from "node:path";
-import type { ScanProgress, Session, SessionPreview } from "../../../shared/session.js";
+import type {
+  ScanProgress,
+  Session,
+  SessionPreview,
+  TranscriptTurn,
+} from "../../../shared/session.js";
 import { listPreviewServers, previewsFor, type PreviewServer } from "../previewService.js";
 import {
   belongsTo,
+  historyMatcher,
   readHistory,
   summarize,
   type HistoryEvent,
@@ -14,15 +20,14 @@ import {
 import {
   findJsonlFiles,
   getClaudeProjectsDir,
-  readFullSessionPrompts,
-  readSessionCustomTitle,
+  persistScanCache,
   readSessionHead,
-  readSessionLatestGitBranch,
-  readSessionPrompts,
-  readSessionRecap,
+  readSessionSummary,
+  readSessionTranscript,
   type SessionHead,
 } from "../../utils/claudeProjects.js";
-import { getDefaultBaseBranch, getGitDirs } from "../../utils/git.js";
+import { mapWithConcurrency } from "../../utils/concurrency.js";
+import { readDefaultBaseBranch, readGitDirs } from "../../utils/git.js";
 import { REPO_ROOT } from "../../utils/repoRoot.js";
 import { inferTaskKey } from "../../utils/taskKeys.js";
 import { collectTaskRepos } from "../../utils/taskRepos.js";
@@ -68,13 +73,10 @@ type BuiltSession = Omit<
 
 async function buildSession(filePath: string): Promise<BuiltSession | null> {
   try {
-    const [head, fileStat, prompts, customTitle, recap, latestGitBranch] = await Promise.all([
-      readSessionHead(filePath),
-      stat(filePath),
-      readSessionPrompts(filePath),
-      readSessionCustomTitle(filePath),
-      readSessionRecap(filePath),
-      readSessionLatestGitBranch(filePath),
+    const fileStat = await stat(filePath);
+    const [head, { prompts, customTitle, recap, latestGitBranch }] = await Promise.all([
+      readSessionHead(filePath, fileStat),
+      readSessionSummary(filePath, fileStat),
     ]);
     const id = head.sessionId ?? path.basename(filePath, ".jsonl");
     // An unknown cwd isn't treated as missing.
@@ -105,47 +107,61 @@ async function buildSession(filePath: string): Promise<BuiltSession | null> {
   }
 }
 
-/** Progress of the in-flight `listSessions` scan (slow on a cold cache). Process-wide: a second
- *  concurrent scan overwrites it. */
+/** Progress of the in-flight `listSessions` scan (slow on a cold cache). Process-wide, which
+ *  holds because `scanInFlight` allows one scan at a time. */
 const scanProgress: ScanProgress = { total: 0, done: 0, scanning: false };
+/** Callers arriving mid-scan share it instead of starting another. */
+let scanInFlight: Promise<Session[]> | null = null;
+/** Lowercased prompts of every session, from the last scan: the list only carries the first one
+ *  (`searchSessionPrompts` covers the rest without shipping them to the browser). */
+let promptsTextById = new Map<string, string>();
+let scannedOnce = false;
 
 export function getScanProgress(): ScanProgress {
   return { ...scanProgress };
 }
 
-export async function listSessions(): Promise<Session[]> {
+export function listSessions(): Promise<Session[]> {
+  if (scanInFlight) return scanInFlight;
   scanProgress.total = 0;
   scanProgress.done = 0;
   scanProgress.scanning = true;
-  try {
-    return await listSessionsUncached();
-  } finally {
+  scanInFlight = listSessionsUncached().finally(() => {
     scanProgress.scanning = false;
-  }
+    scanInFlight = null;
+  });
+  return scanInFlight;
 }
+
+/** Transcripts read (and git processes run) at once on a cold cache: bounds open files, processes
+ *  and memory for any number of sessions. */
+const SCAN_CONCURRENCY = 16;
 
 async function listSessionsUncached(): Promise<Session[]> {
   const files = await findJsonlFiles(getClaudeProjectsDir());
   scanProgress.total = files.length;
   const [built, activeIds, store] = await Promise.all([
-    Promise.all(
-      files.map(async (file) => {
-        const result = await buildSession(file);
-        scanProgress.done += 1;
-        return result;
-      }),
-    ),
+    mapWithConcurrency(files, SCAN_CONCURRENCY, async (file) => {
+      const result = await buildSession(file);
+      scanProgress.done += 1;
+      return result;
+    }),
     getActiveResumeSessionIds(),
     getTaskStore(),
   ]);
 
   const sessions = built.filter((session): session is BuiltSession => session !== null);
+  persistScanCache(files);
+  promptsTextById = new Map(sessions.map((s) => [s.id, s.prompts.join("\n").toLowerCase()]));
+  scannedOnce = true;
 
   // Once per unique workingDirectory, not per session.
   const uniqueDirs = [
     ...new Set(sessions.map((s) => s.workingDirectory).filter((d) => d !== null)),
   ];
-  const gitDirsList = await Promise.all(uniqueDirs.map((dir) => getGitDirs(dir)));
+  const gitDirsList = await mapWithConcurrency(uniqueDirs, SCAN_CONCURRENCY, (dir) =>
+    readGitDirs(dir),
+  );
   const gitDirsByDir = new Map(uniqueDirs.map((dir, i) => [dir, gitDirsList[i]]));
   // git reports real paths, so compare against REPO_ROOT's real path too (symlinked checkout).
   const appRepoRoot = realpathSync(REPO_ROOT);
@@ -154,7 +170,7 @@ async function listSessionsUncached(): Promise<Session[]> {
     ...new Set(gitDirsList.filter((d) => d !== null).map((d) => path.dirname(d.commonGitDir))),
   ];
   const defaultBranches = await Promise.all(
-    uniqueRepoRoots.map((root) => getDefaultBaseBranch(root).catch(() => null)),
+    uniqueRepoRoots.map((root) => readDefaultBaseBranch(root).catch(() => null)),
   );
   const defaultBranchByRoot = new Map(uniqueRepoRoots.map((root, i) => [root, defaultBranches[i]]));
 
@@ -188,6 +204,7 @@ async function listSessionsUncached(): Promise<Session[]> {
         recordedTaskKey === null && !testKey ? inferTaskKey(saved?.destination ?? gitBranch) : null;
       return {
         ...session,
+        prompts: session.prompts.slice(0, 1),
         project,
         gitBranch,
         nickname,
@@ -220,13 +237,14 @@ async function listSessionsUncached(): Promise<Session[]> {
     ),
   ];
   const missingDefaults = await Promise.all(
-    missingRoots.map((root) => getDefaultBaseBranch(root).catch(() => null)),
+    missingRoots.map((root) => readDefaultBaseBranch(root).catch(() => null)),
   );
   missingRoots.forEach((root, i) => defaultBranchByRoot.set(root, missingDefaults[i]));
   for (const repo of [...reposByTask.values()].flat()) {
     repo.defaultBranch = defaultBranchByRoot.get(repo.repoRoot) ?? null;
   }
   const [history, servers] = await Promise.all([readHistory(), listPreviewServers()]);
+  const hasHistory = historyMatcher(history);
   return decorated.map((session) => {
     const withRepos = session.taskKey
       ? { ...session, taskRepos: reposByTask.get(session.taskKey) ?? [] }
@@ -234,7 +252,7 @@ async function listSessionsUncached(): Promise<Session[]> {
     const target = historyTargetOf(withRepos);
     return {
       ...withRepos,
-      hasHistory: history.some((event) => belongsTo(event, target)),
+      hasHistory: hasHistory(target),
       previews: sessionPreviews(withRepos, servers),
     };
   });
@@ -285,9 +303,20 @@ export async function getSessionHistory(
   return { events, summary: summarize(events, history) };
 }
 
-/** Untruncated prompts of one session (`Session.prompts` is truncated). */
-export async function getSessionPrompts(id: string): Promise<string[]> {
+/** Ids of the sessions whose prompts (up to 30, truncated) contain `query`, case-insensitive. */
+export async function searchSessionPrompts(query: string): Promise<string[]> {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
+  if (!scannedOnce) await listSessions();
+  const ids: string[] = [];
+  for (const [id, text] of promptsTextById) if (text.includes(needle)) ids.push(id);
+  return ids;
+}
+
+/** Every prompt of one session with what the agent did after it (`Session.prompts` is truncated
+ *  and capped). */
+export async function getSessionTranscript(id: string): Promise<TranscriptTurn[]> {
   const filePath = await findSessionFilePath(id);
   if (!filePath) throw new SessionNotFoundError(id);
-  return readFullSessionPrompts(filePath);
+  return readSessionTranscript(filePath);
 }

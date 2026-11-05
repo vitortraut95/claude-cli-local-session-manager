@@ -37,12 +37,65 @@ export function readFrontmatterList(frontmatter: string, key: string): string[] 
   return items;
 }
 
-async function readSkillDescription(skillMdPath: string): Promise<string> {
+/** A scalar one level down, e.g. `metadata:` → `  author: Name`. */
+export function readFrontmatterNestedScalar(
+  frontmatter: string,
+  parent: string,
+  key: string,
+): string | null {
+  const lines = frontmatter.split(/\r?\n/);
+  const index = lines.findIndex((line) => line.startsWith(`${parent}:`));
+  if (index === -1) return null;
+  for (const line of lines.slice(index + 1)) {
+    if (line.trim() !== "" && !/^\s/.test(line)) break;
+    const match = new RegExp(`^\\s+${key}:\\s*(.+)$`).exec(line);
+    if (match) return match[1]!.trim().replace(/^["']|["']$/g, "") || null;
+  }
+  return null;
+}
+
+async function readSkillMeta(
+  skillMdPath: string,
+): Promise<{ description: string; requires: string[] }> {
   try {
     const raw = await readFile(skillMdPath, "utf-8");
-    return readFrontmatterScalar(FRONTMATTER_PATTERN.exec(raw)?.[1] ?? "", "description");
+    const frontmatter = FRONTMATTER_PATTERN.exec(raw)?.[1] ?? "";
+    return {
+      description: readFrontmatterScalar(frontmatter, "description"),
+      requires: readFrontmatterList(frontmatter, "requires-skills"),
+    };
   } catch {
-    return "";
+    return { description: "", requires: [] };
+  }
+}
+
+async function readSkillDescription(skillMdPath: string): Promise<string> {
+  return (await readSkillMeta(skillMdPath)).description;
+}
+
+/** A `requires-skills` entry (`[<catalog>/]<skill>[@<range>]`, maybe with a `# comment`) as
+ *  `<catalog>/<skill>`; no catalog = the declaring one. The range isn't checked: the clone holds
+ *  one version of each skill. */
+export function parseSkillRef(raw: string, defaultCatalog: string): string {
+  const id = raw
+    .replace(/\s+#.*$/, "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .split("@")[0]!
+    .trim();
+  return id.includes("/") ? id : `${defaultCatalog}/${id}`;
+}
+
+/** `catalog/<name>/requires-skills`: one ref per line, `#` comments. */
+async function readCatalogRequires(catalogDir: string): Promise<string[]> {
+  try {
+    const raw = await readFile(path.join(catalogDir, "requires-skills"), "utf-8");
+    return raw
+      .split(/\r?\n/)
+      .map((line) => line.replace(/#.*$/, "").trim())
+      .filter((line) => line !== "");
+  } catch {
+    return [];
   }
 }
 
@@ -67,11 +120,7 @@ async function listCatalogSkills(catalogDir: string): Promise<HubSkill[]> {
       } catch {
         continue;
       }
-      found.set(entry.name, {
-        name: entry.name,
-        description: await readSkillDescription(skillMd),
-        dir,
-      });
+      found.set(entry.name, { name: entry.name, dir, ...(await readSkillMeta(skillMd)) });
     }
   }
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name));
@@ -91,6 +140,7 @@ export async function listCatalogs(hubPath: string): Promise<HubCatalog[]> {
       .map(async (entry) => ({
         name: entry.name,
         skills: await listCatalogSkills(path.join(catalogRoot, entry.name)),
+        requires: await readCatalogRequires(path.join(catalogRoot, entry.name)),
       })),
   );
   return catalogs.filter((c) => c.skills.length > 0).sort((a, b) => a.name.localeCompare(b.name));

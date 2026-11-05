@@ -7,7 +7,7 @@ import * as preferencesApi from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import type { QueueEntry, SchedulerStatus } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
-import { type DraftEntry, toDraft } from "../utils/taskQueue";
+import { type DraftEntry, entryKeys, toDraft } from "../utils/taskQueue";
 import { Modal } from "./Modal";
 import { SchedulerPanel } from "./SchedulerPanel";
 import { TaskQueueForm } from "./TaskQueueForm";
@@ -87,6 +87,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
           return {
             ...entry,
             repos: server.launchedAt ? server.repos : entry.repos,
+            groupedTasks: server.launchedAt ? (server.groupedTasks ?? []) : entry.groupedTasks,
             noRepo: server.launchedAt ? (server.noRepo ?? false) : entry.noRepo,
             kind: server.launchedAt ? (server.kind ?? "dev") : entry.kind,
             branchPrefix: server.launchedAt ? (server.branchPrefix ?? null) : entry.branchPrefix,
@@ -143,6 +144,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
         ({
           key,
           link,
+          groupedTasks,
           kind,
           repos,
           noRepo,
@@ -154,6 +156,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
         }) => ({
           key,
           link,
+          groupedTasks,
           kind,
           repos,
           noRepo,
@@ -239,7 +242,7 @@ export function TaskQueueModal({ onClose, onSessionCreated }: TaskQueueModalProp
         <TaskQueueForm
           projects={projects}
           branchTypes={branchTypes}
-          listedKeys={new Set(entries.map((e) => e.key))}
+          listedKeys={new Set(entries.flatMap(entryKeys))}
           onAdd={(fresh) => setEntries((current) => [...current, ...fresh])}
         />
 
