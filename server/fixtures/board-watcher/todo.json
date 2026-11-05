@@ -340,5 +340,100 @@
         }
       }
     ]
+  },
+  {
+    "name": "one of my tasks in development at a time: the next waits until the first leaves To Do",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-10",
+            "summary": "Botão Contratar errado em planos",
+            "description": "Na página planos (https://demo.example.com/planos) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me"
+          },
+          {
+            "key": "DEMO-11",
+            "summary": "Botão Contratar errado em vps",
+            "description": "Na página vps (https://demo.example.com/vps) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-10"],
+          "decisions": {
+            "DEMO-10": "enqueue-dev",
+            "DEMO-11": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-10": "none",
+            "DEMO-11": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T16:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-10",
+            "summary": "Botão Contratar errado em planos",
+            "description": "Na página planos (https://demo.example.com/planos) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me",
+            "statusId": "code-review"
+          },
+          {
+            "key": "DEMO-11",
+            "summary": "Botão Contratar errado em vps",
+            "description": "Na página vps (https://demo.example.com/vps) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-11"],
+          "decisions": {
+            "DEMO-11": "enqueue-dev"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "limit of 2 queues two of my tasks at once",
+    "config": {
+      "maxDevTasks": 2
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-10",
+            "summary": "Botão Contratar errado em planos",
+            "description": "Na página planos (https://demo.example.com/planos) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me"
+          },
+          {
+            "key": "DEMO-11",
+            "summary": "Botão Contratar errado em vps",
+            "description": "Na página vps (https://demo.example.com/vps) o botão Contratar abre o plano errado.\n\nCritérios de aceite:\n- O carrinho deve abrir com o plano clicado\n- Nada muda nos outros planos\n\n![](print.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-10", "enqueue dev DEMO-11"],
+          "decisions": {
+            "DEMO-10": "enqueue-dev",
+            "DEMO-11": "enqueue-dev"
+          }
+        }
+      }
+    ]
   }
 ]

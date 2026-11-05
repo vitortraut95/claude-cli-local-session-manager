@@ -106,7 +106,8 @@ export function createBoardDeps(
       listIssues: async () => {
         const issues = await searchIssues(
           jiraCredentials,
-          `(${jira.scopeJql}) AND sprint in openSprints() AND status in (${statusIds})`,
+          // Board order, so the next To Do task queued is the one on top.
+          `(${jira.scopeJql}) AND sprint in openSprints() AND status in (${statusIds}) ORDER BY Rank ASC`,
           300,
         );
         for (const issue of issues) {

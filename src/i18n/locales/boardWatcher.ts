@@ -124,6 +124,10 @@ export const boardWatcher = {
     "Testes em andamento ao mesmo tempo",
   ),
   "automation.limit.maxClaimsPerDay": dict("Tests claimed per day", "Testes pegos por dia"),
+  "automation.limit.maxDevTasks": dict(
+    "My tasks in development at once",
+    "Tarefas minhas em desenvolvimento ao mesmo tempo",
+  ),
   "automation.limit.maxApprovesPerDay": dict("Approvals per day", "Aprovações por dia"),
   "automation.limit.maxCommentsPerPr": dict("Comments per PR", "Comentários por PR"),
   "automation.limit.maxReviewRounds": dict("Review rounds per PR", "Rodadas de review por PR"),
@@ -146,6 +150,10 @@ export const boardWatcher = {
   "automation.limit.maxClaimsPerDay.description": dict(
     "Most tasks it picks up for testing in a single day.",
     "Máximo de tarefas que ele pega para teste num mesmo dia.",
+  ),
+  "automation.limit.maxDevTasks.description": dict(
+    "How many of your To Do tasks it puts in the development queue at once. A slot frees when the task leaves To Do/In Progress (e.g. goes to Code Review); then the next one in board order goes in.",
+    "Quantas tarefas suas de To Do ele coloca na fila de desenvolvimento ao mesmo tempo. A vaga libera quando a tarefa sai de To Do/In Progress (por exemplo, vai para Code Review); aí entra a próxima, na ordem do board.",
   ),
   "automation.limit.maxApprovesPerDay.description": dict(
     "On reaching this many approvals in a day it pauses everything and alerts you: that many is a sign something's off.",

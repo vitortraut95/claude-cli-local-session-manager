@@ -41,6 +41,7 @@ export type AutomationLimits = {
   waitTestGraceMinutes: number;
   maxClaimedTests: number;
   maxClaimsPerDay: number;
+  maxDevTasks: number;
   maxApprovesPerDay: number;
   maxCommentsPerPr: number;
   maxReviewRounds: number;
