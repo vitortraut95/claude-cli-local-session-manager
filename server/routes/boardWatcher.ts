@@ -11,6 +11,7 @@ import { historyPage } from "../services/boardWatcher/history.js";
 import { HISTORY_FILTERS } from "../../shared/boardWatcher.js";
 import { BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
 import { automationsOn } from "../services/boardWatcher/beta.js";
+import { readActivity } from "../services/boardWatcher/activity.js";
 import {
   finishSetup,
   getSetupStatus,
@@ -112,13 +113,7 @@ boardWatcherRouter.post("/setup/extras", async (req, res) => {
 
 boardWatcherRouter.post("/setup/finish", async (req, res) => {
   const b = body(req.body);
-  await finishSetup({
-    codeReview: b.codeReview !== false,
-    reviewSessions: b.reviewSessions === true,
-    devQueue: b.devQueue === true,
-    testQueue: b.testQueue === true,
-    notices: b.notices !== false,
-  });
+  await finishSetup({ features: body(b.features), live: body(b.live) });
   // Turned on with the beta already on: the first look runs now.
   if (await automationsOn()) await runBoardWatcherNow();
   res.json(await getSetupStatus());
@@ -128,6 +123,12 @@ boardWatcherRouter.post("/setup/finish", async (req, res) => {
 boardWatcherRouter.use(async (_req, _res, next) => {
   if (await automationsOn()) return next();
   next(new ConflictError("AUTOMATIONS_OFF", "The board automations beta is off in Settings."));
+});
+
+/** The live feed: the steps after `after` (a seq) and what's running now. */
+boardWatcherRouter.get("/activity", (req, res) => {
+  const after = Number(req.query.after);
+  res.json(readActivity(Number.isFinite(after) ? after : 0));
 });
 
 boardWatcherRouter.get("/status", async (_req, res) => {

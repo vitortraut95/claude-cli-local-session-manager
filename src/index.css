@@ -26,3 +26,112 @@ body {
     }
   }
 }
+
+/* The Board's watcher eye (WatcherEye): the pupil looks around, the lid blinks, a ring scans
+   while it's analyzing. All still when the system asks for less motion. */
+@keyframes watcher-look {
+  0%,
+  18% {
+    transform: translate(0, 0);
+  }
+  24%,
+  40% {
+    transform: translate(5px, -1px);
+  }
+  46%,
+  62% {
+    transform: translate(-5px, 1px);
+  }
+  68%,
+  84% {
+    transform: translate(2px, 2px);
+  }
+  90%,
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes watcher-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.08);
+  }
+}
+
+@keyframes watcher-scan {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes watcher-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.watcher-look {
+  animation: watcher-look 9s ease-in-out infinite;
+}
+.watcher-blink {
+  animation: watcher-blink 5.5s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+.watcher-scan {
+  animation: watcher-scan 2.4s linear infinite;
+  transform-origin: 50% 50%;
+}
+.watcher-glow {
+  animation: watcher-glow 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watcher-look,
+  .watcher-blink,
+  .watcher-scan,
+  .watcher-glow {
+    animation: none;
+  }
+}
+
+/* A new line in the Board's live feed. */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The Board's running step: a light sweeps across it. */
+@keyframes watcher-shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.watcher-shimmer { animation: watcher-shimmer 2.2s ease-in-out infinite; }
+
+/* A faint dot grid behind the Board's hero, in the eye's violet. */
+.watcher-dots {
+  background-image: radial-gradient(rgb(139 92 246 / 0.18) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watcher-shimmer {
+    animation: none;
+    opacity: 0;
+  }
+}

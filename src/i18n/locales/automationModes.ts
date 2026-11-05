@@ -1,0 +1,109 @@
+import { dict } from "../dict";
+
+/** The automations as cards with one mode each (`AutomationModesEditor`). */
+export const automationModes = {
+  "automationModes.title": dict("Automations", "Automações"),
+  "automationModes.intro": dict(
+    "Each automation has one mode. Simulation only shows in the Board what it would do; On does it, in your name, and tells you on Teams.",
+    "Cada automação tem um modo. Simulação só mostra no Board o que faria; Ligado faz, no seu nome, e avisa no Teams.",
+  ),
+  "automationModes.mode.off": dict("Off", "Desligado"),
+  "automationModes.mode.simulate": dict("Simulation", "Simulação"),
+  "automationModes.mode.live": dict("On", "Ligado"),
+  "automationModes.simulate.note": dict(
+    "Only shows in the Board what it would do.",
+    "Só mostra no Board o que faria.",
+  ),
+  "automationModes.unavailable": dict("Not available: {reason}", "Indisponível: {reason}"),
+
+  "automationModes.codeReview.title": dict(
+    "Code review of colleagues' PRs",
+    "Code review dos PRs de colegas",
+  ),
+  "automationModes.codeReview.description": dict(
+    "Reviews with Claude the PRs where you're a reviewer, once it's your turn.",
+    "Revisa com o Claude os PRs em que você é revisor, quando chega a sua vez.",
+  ),
+  "automationModes.codeReview.sessions": dict("Review with Claude", "Revisar com o Claude"),
+  "automationModes.codeReview.sessions.help": dict(
+    "Unchecked, it only lists the PRs due for you (doesn't use your plan).",
+    "Desmarcado, só lista os PRs na sua vez (não usa o seu plano).",
+  ),
+  "automationModes.codeReview.comments": dict(
+    "Comment the findings on the PR",
+    "Comentar os achados no PR",
+  ),
+  "automationModes.codeReview.comments.help": dict(
+    "In your name; the minor ones never.",
+    "No seu nome; os menores nunca.",
+  ),
+  "automationModes.codeReview.approve": dict(
+    "Approve when nothing blocks",
+    "Aprovar quando nada bloqueia",
+  ),
+  "automationModes.codeReview.approve.help": dict(
+    "In your name. Not if the PR got a push after the review.",
+    "No seu nome. Não aprova se o PR recebeu push depois do review.",
+  ),
+  "automationModes.codeReview.unapproved": dict(
+    "Also PRs with no approval in Validation / Wait Deploy",
+    "Também PRs sem aprovação em Validation / Wait Deploy",
+  ),
+  "automationModes.codeReview.unapproved.help": dict(
+    "Colleagues' PRs nobody approved whose ticket is already past Code Review.",
+    "PRs de colegas que ninguém aprovou e cuja tarefa já passou do Code Review.",
+  ),
+
+  "automationModes.devQueue.title": dict("My To Do tasks", "Minhas tarefas de To Do"),
+  "automationModes.devQueue.description": dict(
+    "Puts your To Do tasks with a good description in the app's development queue, one at a time.",
+    "Coloca as suas tarefas de To Do com boa descrição na fila de desenvolvimento do app, uma de cada vez.",
+  ),
+  "automationModes.devQueue.live.note": dict(
+    "Adds them to the app's queue (only you see it). With no repo in the task, it waits for you to pick one.",
+    "Adiciona na fila do app (só você vê). Sem repositório citado na tarefa, espera você escolher.",
+  ),
+  "automationModes.devQueue.startProgress": dict(
+    "Move to In Progress on the board (one at a time)",
+    "Mover pra In Progress no board (uma por vez)",
+  ),
+  "automationModes.devQueue.startProgress.help": dict(
+    "Only one of your tasks is In Progress; the others wait in To Do and go up when it leaves.",
+    "Só uma tarefa sua fica em In Progress; as outras esperam em To Do e sobem quando ela sair.",
+  ),
+
+  "automationModes.testQueue.title": dict("Tests in Wait Test", "Testes em Wait Test"),
+  "automationModes.testQueue.description": dict(
+    "Picks up colleagues' Wait Test tasks that have a test plan and puts them in the test queue.",
+    "Pega tarefas de colegas em Wait Test com plano de teste e coloca na fila de teste.",
+  ),
+  "automationModes.testQueue.live.note": dict(
+    "Moves the card from Wait Test to Testing in Jira when it picks the test up (the team sees it).",
+    "Move o card de Wait Test pra Testing no Jira quando pega o teste (o time vê).",
+  ),
+
+  "automationModes.rebuild.title": dict("Run a build again", "Rodar build de novo"),
+  "automationModes.rebuild.description": dict(
+    "When a preview build of yours (or of a test it picked up) fails, it reads the Jenkins log. If it's an infra failure (agent down, network or registry timeout, cache, no disk space) or the cause isn't clear, it runs the build again. A code failure (test, lint, types) isn't run again: you only get the diagnosis.",
+    "Quando um build de preview seu (ou de um teste que ele pegou) falha, ele lê o log do Jenkins. Se for falha de infra (agente fora, timeout de rede ou registry, cache, falta de espaço) ou a causa não estiver clara, roda o build de novo. Falha de código (teste, lint, tipos) não roda de novo: você só recebe o diagnóstico.",
+  ),
+  "automationModes.rebuild.live.note": dict(
+    "Runs it again in Jenkins at most once per commit. If it fails again on the same commit, it stops and tells you.",
+    "Roda de novo no Jenkins no máximo uma vez por commit. Se falhar de novo no mesmo commit, ele para e te avisa.",
+  ),
+
+  "automationModes.notices.title": dict("Notices on Teams", "Avisos no Teams"),
+  "automationModes.notices.description": dict(
+    "Always real: they're messages to you.",
+    "Sempre de verdade: são mensagens pra você.",
+  ),
+  "automationModes.notices.instant": dict("Right away", "Na hora"),
+  "automationModes.notices.instant.help": dict(
+    "Test finished, a review it wouldn't approve, failures, a pause.",
+    "Teste terminado, review que não aprovaria, falhas, pausa.",
+  ),
+  "automationModes.notices.digest": dict(
+    "Digest when business hours start and 10 minutes before they end",
+    "Resumo no começo do horário e 10 minutos antes de ele acabar",
+  ),
+};
