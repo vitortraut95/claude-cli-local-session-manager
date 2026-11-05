@@ -37,7 +37,7 @@ export type AutomationLive = {
 };
 
 export type AutomationLimits = {
-  approveDelayHours: number;
+  approveDelayMinutes: number;
   waitTestGraceMinutes: number;
   maxClaimedTests: number;
   maxClaimsPerDay: number;

@@ -281,7 +281,7 @@ export function decidePullRequests(
   const decisions: Decision[] = [];
   if (config.codeReview?.enabled === false) return decisions;
   const businessTime = isBusinessTime(now, config.businessHours);
-  const delayMinutes = config.approveDelayHours * 60;
+  const delayMinutes = config.approveDelayMinutes;
   const codeReviewColumn = config.columns.codeReview;
   const inCodeReview = new Map(
     issues.filter((i) => codeReviewColumn?.includes(i.statusId)).map((i) => [i.key, i.statusSince]),

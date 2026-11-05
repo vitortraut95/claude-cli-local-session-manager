@@ -21,7 +21,7 @@ import {
  */
 
 const LIMIT_RANGES: Record<keyof AutomationLimits, [number, number]> = {
-  approveDelayHours: [0, 48],
+  approveDelayMinutes: [0, 2880],
   waitTestGraceMinutes: [0, 1440],
   maxClaimedTests: [1, 10],
   maxClaimsPerDay: [1, 50],
@@ -144,6 +144,7 @@ export async function saveAutomationSettings(body: unknown): Promise<AutomationS
       );
     }
     raw[limit] = value;
+    if (limit === "approveDelayMinutes") delete raw.approveDelayHours;
   }
   if (input.businessHours) {
     const hours = section(raw, "businessHours");

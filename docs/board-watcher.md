@@ -139,7 +139,7 @@ The board's ids live in the gitignored `boardWatcher.json` at the repo root:
 }
 ```
 
-Any limit above can be overridden there too (`approveDelayHours`, `maxApprovesPerDay`, …,
+Any limit above can be overridden there too (`approveDelayMinutes`, `maxApprovesPerDay`, …,
 `businessHours`). The column ids come from `GET /rest/agile/1.0/board/<id>/configuration`.
 
 ## Next

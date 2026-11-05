@@ -98,7 +98,7 @@ const LIVE_ROWS: {
 ];
 
 const LIMIT_LABELS: Record<keyof AutomationLimits, TranslationKey> = {
-  approveDelayHours: "automation.limit.approveDelayHours",
+  approveDelayMinutes: "automation.limit.approveDelayMinutes",
   waitTestGraceMinutes: "automation.limit.waitTestGraceMinutes",
   maxClaimedTests: "automation.limit.maxClaimedTests",
   maxClaimsPerDay: "automation.limit.maxClaimsPerDay",
@@ -110,7 +110,7 @@ const LIMIT_LABELS: Record<keyof AutomationLimits, TranslationKey> = {
 };
 
 const LIMIT_DESCRIPTIONS: Record<keyof AutomationLimits, TranslationKey> = {
-  approveDelayHours: "automation.limit.approveDelayHours.description",
+  approveDelayMinutes: "automation.limit.approveDelayMinutes.description",
   waitTestGraceMinutes: "automation.limit.waitTestGraceMinutes.description",
   maxClaimedTests: "automation.limit.maxClaimedTests.description",
   maxClaimsPerDay: "automation.limit.maxClaimsPerDay.description",
