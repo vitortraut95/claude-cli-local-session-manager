@@ -111,9 +111,9 @@ export const boardWatcher = {
     "Resumo no Teams às 9h e às 18h",
   ),
   "automation.limits": dict("Limits", "Limites"),
-  "automation.limit.approveDelayHours": dict(
-    "Hours to wait before approving",
-    "Horas de espera antes de aprovar",
+  "automation.limit.approveDelayMinutes": dict(
+    "Minutes to wait before approving",
+    "Minutos de espera antes de aprovar",
   ),
   "automation.limit.waitTestGraceMinutes": dict(
     "Wait Test grace minutes",
@@ -135,9 +135,9 @@ export const boardWatcher = {
     "Minimum description score (0-5)",
     "Nota mínima da descrição (0 a 5)",
   ),
-  "automation.limit.approveDelayHours.description": dict(
-    "Business hours since a PR's last push before it's reviewed and approved, so colleagues get to review first.",
-    "Horas úteis desde o último push de um PR antes de ele revisar e aprovar, para os colegas revisarem primeiro.",
+  "automation.limit.approveDelayMinutes.description": dict(
+    "Business minutes since a PR's last push before it's reviewed and approved, so colleagues get to review first.",
+    "Minutos úteis desde o último push de um PR antes de ele revisar e aprovar, para os colegas revisarem primeiro.",
   ),
   "automation.limit.waitTestGraceMinutes.description": dict(
     "Business minutes a task sits in Wait Test before it's picked up, so whoever is free takes it first.",

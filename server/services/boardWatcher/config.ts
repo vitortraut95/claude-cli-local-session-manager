@@ -20,8 +20,8 @@ export type BusinessHours = {
 };
 
 export type BoardWatcherLimits = {
-  /** Business hours since the PR's last push before approving, so people get to review first. */
-  approveDelayHours: number;
+  /** Business minutes since the PR's last push before approving, so people get to review first. */
+  approveDelayMinutes: number;
   maxCommentsPerPr: number;
   maxReviewRounds: number;
   /** Past this the watcher pauses itself: that many approvals in a day means something's off. */
@@ -118,7 +118,7 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
 };
 
 export const DEFAULT_LIMITS: BoardWatcherLimits = {
-  approveDelayHours: 2,
+  approveDelayMinutes: 120,
   maxCommentsPerPr: 3,
   maxReviewRounds: 3,
   maxApprovesPerDay: 8,
@@ -147,13 +147,18 @@ export async function loadBoardWatcherConfig(): Promise<BoardWatcherConfig | nul
     },
   );
   if (raw === null) return null;
-  const parsed = JSON.parse(raw) as Partial<BoardWatcherConfig>;
+  const parsed = JSON.parse(raw) as Partial<BoardWatcherConfig> & { approveDelayHours?: number };
   if (!parsed.me || !parsed.columns || !parsed.testingStatusId) {
     throw new Error(`${BOARD_WATCHER_CONFIG_FILE} needs "me", "columns" and "testingStatusId".`);
   }
+  // Older files set the delay in hours.
+  const { approveDelayHours, ...rest } = parsed;
+  if (rest.approveDelayMinutes === undefined && typeof approveDelayHours === "number") {
+    rest.approveDelayMinutes = approveDelayHours * 60;
+  }
   return {
     ...DEFAULT_LIMITS,
-    ...parsed,
+    ...rest,
     businessHours: { ...DEFAULT_BUSINESS_HOURS, ...parsed.businessHours },
   } as BoardWatcherConfig;
 }
