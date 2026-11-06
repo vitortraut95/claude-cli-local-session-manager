@@ -342,8 +342,9 @@ export function decidePullRequests(
       .filter((since): since is string => Boolean(since))
       .sort()
       .at(-1);
-    if (codeReviewColumn && keys.length === 0) wait("no ticket in the PR title or branch");
-    else if (codeReviewColumn && !reachedCodeReview) {
+    // No ticket in the title or branch = off the board: not the user's to review, not listed.
+    if (codeReviewColumn && keys.length === 0) continue;
+    if (codeReviewColumn && !reachedCodeReview) {
       // Past Code Review (tested, deploying: the PR merges at the deploy) or off the board: not
       // the user's to review, so not listed either.
       if (keys.some((key) => beforeCodeReview.has(key))) {
