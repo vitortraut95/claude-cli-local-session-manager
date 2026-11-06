@@ -142,10 +142,10 @@ export function createBoardDeps(
           console.warn("[board-watcher] Couldn't check approvals against new pushes:", err),
         );
         // Only the PRs the user may review: a conflicted one isn't worth a review session.
-        const candidates = others.filter((pr) =>
-          pr.reviewers.some(
-            (r) => r.id === config.me && (r.state !== "approved" || pr.approvedCommit),
-          ),
+        const candidates = others.filter(
+          (pr) =>
+            !pr.reviewers.some((r) => r.id === config.me && r.state === "approved") ||
+            pr.approvedCommit,
         );
         await markConflicts(candidates, bitbucket.localRepos ?? {}).catch((err: unknown) =>
           console.warn("[board-watcher] Couldn't check PR conflicts:", err),

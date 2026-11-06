@@ -12,8 +12,9 @@ import { prSubject, type BoardIssue, type PullRequest, type WatcherState } from 
 
 /**
  * Pure decisions for one look at the board: what to queue, claim or review, and why the rest is
- * skipped or waiting. No I/O here; `tick.ts` carries them out. Issues and PRs the user has no
- * part in (unassigned, someone else's, not a reviewer) get no decision at all.
+ * skipped or waiting. No I/O here; `tick.ts` carries them out. Issues the user has no part in
+ * (unassigned, someone else's) and PRs off the board get no decision at all. Every PR of someone
+ * else is the user's to review, whoever is listed as a reviewer.
  */
 
 export type DecisionAction =
@@ -315,7 +316,7 @@ export function decidePullRequests(
     if (pr.authorId === config.me) continue;
     const mine = pr.reviewers.find((r) => r.id === config.me);
     // Bitbucket keeps an approval through new pushes; those are reviewed (`approvedCommit`).
-    if (!mine || (mine.state === "approved" && !pr.approvedCommit)) continue;
+    if (mine?.state === "approved" && !pr.approvedCommit) continue;
     if (state.handled[`review:${subject}`] === pr.lastPushAt) continue;
 
     const keys = ticketKeysOf(pr);
