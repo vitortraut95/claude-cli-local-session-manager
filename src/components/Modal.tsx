@@ -43,8 +43,6 @@ type ModalProps = {
   /** "night": always the dark theme inside, on a deep background with a violet glow (the
    *  Board), whatever the app's theme. */
   tone?: "default" | "night";
-  /** Buttons shown next to the close button. */
-  headerActions?: ReactNode;
 };
 
 /**
@@ -72,7 +70,6 @@ export function Modal({
   onSecondary,
   secondaryLabel,
   tone = "default",
-  headerActions,
 }: ModalProps) {
   const { t } = useLanguage();
   const resolvedConfirmLabel = confirmLabel ?? t("modal.confirmDefault");
@@ -123,17 +120,14 @@ export function Modal({
               {title}
             </h2>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {headerActions}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClose}
-              aria-label={t("modal.closeAriaLabel")}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClose}
+            aria-label={t("modal.closeAriaLabel")}
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-8 py-4">{children}</div>

@@ -216,15 +216,6 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
       size="full"
       tone="night"
       icon={<WatcherEye state={eyeState} className="h-5 w-8" />}
-      headerActions={
-        <ToolbarIconButton
-          tooltip={t("settings.boardAutomations.setup")}
-          ariaLabel={t("settings.boardAutomations.setup")}
-          icon={<Settings />}
-          color="violet"
-          onClick={() => setTool("setup")}
-        />
-      }
     >
       <div className="flex flex-col gap-5">
         {statusError && (
@@ -247,7 +238,7 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
         {status && (
           // A 1px gradient frame around the hero, in the eye's colors.
           <div className="rounded-2xl bg-gradient-to-r from-violet-500/70 via-fuchsia-500/50 to-cyan-400/70 p-px shadow-lg shadow-violet-500/10 dark:shadow-violet-900/30">
-            <section className="relative flex flex-col gap-4 overflow-hidden rounded-[15px] bg-gradient-to-br from-violet-950/90 via-gray-950 to-fuchsia-950/60 p-6 lg:flex-row lg:items-center">
+            <section className="relative flex flex-col gap-3 overflow-hidden rounded-[15px] bg-gradient-to-br from-violet-950/90 via-gray-950 to-fuchsia-950/60 px-5 py-3 lg:flex-row lg:items-center">
               <div
                 aria-hidden="true"
                 className="watcher-dots pointer-events-none absolute inset-0 opacity-60 [mask-image:linear-gradient(to_right,black,transparent_70%)]"
@@ -264,9 +255,9 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                 <div className="relative shrink-0">
                   <div
                     aria-hidden="true"
-                    className="absolute -inset-6 rounded-full bg-[radial-gradient(circle,rgb(139_92_246/0.35),transparent_65%)]"
+                    className="absolute -inset-4 rounded-full bg-[radial-gradient(circle,rgb(139_92_246/0.35),transparent_65%)]"
                   />
-                  <WatcherEye state={eyeState} className="relative h-20 w-32" />
+                  <WatcherEye state={eyeState} className="relative h-12 w-20" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -280,27 +271,29 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 flex items-center gap-2 bg-gradient-to-r from-violet-200 via-fuchsia-200 to-cyan-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent">
-                    {eyeText}
-                    {offHoursList && (
-                      <Tooltip content={offHoursList}>
-                        <button
-                          type="button"
-                          aria-label={t("board.offHours.info")}
-                          className="rounded-full text-violet-500 hover:text-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 dark:text-violet-300 dark:hover:text-violet-100"
-                        >
-                          <Info className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {status.nextLookAt
-                      ? t("board.nextLookIn", { when: formatUpdatedAt(status.nextLookAt) })
-                      : t("board.never")}
+                  <p className="flex flex-wrap items-baseline gap-x-3">
+                    <span className="flex items-center gap-2 bg-gradient-to-r from-violet-200 via-fuchsia-200 to-cyan-200 bg-clip-text text-xl font-semibold tracking-tight text-transparent">
+                      {eyeText}
+                      {offHoursList && (
+                        <Tooltip content={offHoursList}>
+                          <button
+                            type="button"
+                            aria-label={t("board.offHours.info")}
+                            className="rounded-full text-violet-500 hover:text-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 dark:text-violet-300 dark:hover:text-violet-100"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
+                      )}
+                    </span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      {status.nextLookAt
+                        ? t("board.nextLookIn", { when: formatUpdatedAt(status.nextLookAt) })
+                        : t("board.never")}
+                    </span>
                   </p>
                   {settings && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {modes.map(({ automation, mode }) => (
                         <button
                           key={automation}
@@ -432,6 +425,13 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                     </div>
                   )}
                 </AnchoredMenu>
+                <ToolbarIconButton
+                  tooltip={t("settings.boardAutomations.setup")}
+                  ariaLabel={t("settings.boardAutomations.setup")}
+                  icon={<Settings />}
+                  color="violet"
+                  onClick={() => setTool("setup")}
+                />
               </div>
             </section>
           </div>
