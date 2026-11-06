@@ -527,7 +527,8 @@ const MODE_CHIP: Record<AutomationMode, string> = {
   off: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10 before:bg-gray-500",
   simulate:
     "bg-violet-500/10 text-violet-200 ring-1 ring-inset ring-violet-400/30 before:bg-violet-400",
-  live: "bg-amber-500/10 text-amber-200 ring-1 ring-inset ring-amber-400/30 before:bg-amber-400",
+  live:
+    "bg-emerald-500/10 text-emerald-200 ring-1 ring-inset ring-emerald-400/30 before:bg-emerald-400",
 };
 
 const MODE_LABEL: Record<AutomationMode, TranslationKey> = {
