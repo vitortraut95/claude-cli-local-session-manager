@@ -31,7 +31,7 @@ const STEP_LABELS: Record<SetupStepKey, TranslationKey> = {
 /**
  * The guided setup of the board automations: a checklist on the left that fills in as each step
  * is checked and saved (like New task's progress), the current step's form on the right. Opens on
- * the first step not done yet; any step can be revisited.
+ * the first step not done yet; any step can be revisited and keeps what was typed in it.
  */
 export function AutomationSetupModal({ onClose }: { onClose: () => void }) {
   const { t } = useLanguage();
@@ -39,6 +39,27 @@ export function AutomationSetupModal({ onClose }: { onClose: () => void }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [current, setCurrent] = useState<SetupStepKey | null>(null);
   const [skipped, setSkipped] = useState<Set<SetupStepKey>>(new Set());
+  // Steps opened so far stay mounted (hidden), so switching tabs keeps what was typed.
+  const [opened, setOpened] = useState<Set<SetupStepKey>>(new Set());
+  const [resets, setResets] = useState<Partial<Record<SetupStepKey, number>>>({});
+
+  /** Moves to another step; the one left stays mounted unless `reset` drops it. */
+  const goTo = (step: SetupStepKey, reset: SetupStepKey[] = []) => {
+    setOpened((prev) => {
+      const next = new Set(prev);
+      if (current) next.add(current);
+      for (const dropped of reset) next.delete(dropped);
+      return next;
+    });
+    if (reset.length) {
+      setResets((prev) => {
+        const next = { ...prev };
+        for (const dropped of reset) next[dropped] = (next[dropped] ?? 0) + 1;
+        return next;
+      });
+    }
+    setCurrent(step);
+  };
 
   const reload = useCallback(async () => {
     try {
@@ -79,18 +100,19 @@ export function AutomationSetupModal({ onClose }: { onClose: () => void }) {
     if (!next) return;
     const nowDone = setupStepsDone(next);
     const after = SETUP_STEPS.slice(SETUP_STEPS.indexOf(from) + 1);
-    setCurrent(after.find((step) => !nowDone[step] && !skipped.has(step)) ?? after[0] ?? from);
+    // The steps after it read what was just saved: they open fresh.
+    goTo(after.find((step) => !nowDone[step] && !skipped.has(step)) ?? after[0] ?? from, after);
   };
 
   const skip = (step: SetupStepKey) => {
     setSkipped((prev) => new Set(prev).add(step));
     const after = SETUP_STEPS.slice(SETUP_STEPS.indexOf(step) + 1);
-    setCurrent(after[0] ?? step);
+    goTo(after[0] ?? step);
   };
 
   const back = (step: SetupStepKey) => {
     const index = SETUP_STEPS.indexOf(step);
-    if (index > 0) setCurrent(SETUP_STEPS[index - 1] ?? step);
+    if (index > 0) goTo(SETUP_STEPS[index - 1] ?? step);
   };
 
   const stepProps = (step: SetupStepKey) => ({
@@ -155,7 +177,7 @@ export function AutomationSetupModal({ onClose }: { onClose: () => void }) {
                     <li key={step} className="shrink-0">
                       <button
                         type="button"
-                        onClick={() => setCurrent(step)}
+                        onClick={() => goTo(step)}
                         aria-current={isCurrent ? "step" : undefined}
                         className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${
                           isCurrent
@@ -189,21 +211,23 @@ export function AutomationSetupModal({ onClose }: { onClose: () => void }) {
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {SETUP_STEPS.indexOf(current) + 1}. {t(STEP_LABELS[current])}
               </h3>
-              <div className="mt-2">
-                {current === "claude" && (
-                  <ClaudeStep {...stepProps("claude")} onRecheck={() => void reload()} />
-                )}
-                {current === "jira" && <JiraStep {...stepProps("jira")} />}
-                {current === "board" && <BoardStep {...stepProps("board")} />}
-                {current === "bitbucket" && <BitbucketStep {...stepProps("bitbucket")} />}
-                {current === "repos" && <ReposStep {...stepProps("repos")} />}
-                {current === "extras" && (
-                  <ExtrasStep {...stepProps("extras")} onSkip={() => skip("extras")} />
-                )}
-                {current === "finish" && (
-                  <FinishStep {...stepProps("finish")} allDone={done} onClose={onClose} />
-                )}
-              </div>
+              {SETUP_STEPS.filter((step) => step === current || opened.has(step)).map((step) => (
+                <div key={`${step}-${resets[step] ?? 0}`} className="mt-2" hidden={step !== current}>
+                  {step === "claude" && (
+                    <ClaudeStep {...stepProps("claude")} onRecheck={() => void reload()} />
+                  )}
+                  {step === "jira" && <JiraStep {...stepProps("jira")} />}
+                  {step === "board" && <BoardStep {...stepProps("board")} />}
+                  {step === "bitbucket" && <BitbucketStep {...stepProps("bitbucket")} />}
+                  {step === "repos" && <ReposStep {...stepProps("repos")} />}
+                  {step === "extras" && (
+                    <ExtrasStep {...stepProps("extras")} onSkip={() => skip("extras")} />
+                  )}
+                  {step === "finish" && (
+                    <FinishStep {...stepProps("finish")} allDone={done} onClose={onClose} />
+                  )}
+                </div>
+              ))}
             </section>
           </div>
         </>
