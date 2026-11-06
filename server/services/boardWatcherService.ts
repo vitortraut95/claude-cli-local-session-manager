@@ -555,10 +555,15 @@ function noteIncident(
 }
 
 /** Failed builds of the open PRs (anyone's) are read too, during business hours, so an infra
- *  incident shows across builds and not only the user's. */
+ *  incident shows across builds and not only the user's. Someone else's build only counts while
+ *  it can still be part of an incident (failed within the incident window). */
 function diagnoseOpenPrBuilds(prs: PullRequest[], config: BoardWatcherConfig): void {
-  if (!isBusinessTime(new Date(), config.businessHours)) return;
+  const now = Date.now();
+  if (!isBusinessTime(new Date(now), config.businessHours)) return;
   for (const pr of prs) {
+    const at = pr.failedBuild?.at ? Date.parse(pr.failedBuild.at) : NaN;
+    const recent = now - at <= INCIDENT_WINDOW_MS;
+    if (pr.authorId !== config.me && !recent) continue;
     const url = pr.failedBuild?.url;
     if (url && !diagnoses.has(url) && !diagnosing.has(url)) void diagnoseOnce(url, prSubject(pr));
   }
