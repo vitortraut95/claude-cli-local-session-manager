@@ -39,6 +39,7 @@ import { DailyPreviewPanel } from "./DailyPreviewPanel";
 import { HomologPanel } from "./HomologPanel";
 import { AutomationSetupModal } from "./AutomationSetupModal";
 import { Modal } from "./Modal";
+import { ToolbarIconButton } from "./ToolbarIconButton";
 import { BetaBadge } from "./BetaBadge";
 import { LiveActivityPanel } from "./LiveActivityPanel";
 import { WatcherEye, type EyeState } from "./WatcherEye";
@@ -215,20 +216,17 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
       size="full"
       tone="night"
       icon={<WatcherEye state={eyeState} className="h-5 w-8" />}
+      headerActions={
+        <ToolbarIconButton
+          tooltip={t("settings.boardAutomations.setup")}
+          ariaLabel={t("settings.boardAutomations.setup")}
+          icon={<Settings />}
+          color="violet"
+          onClick={() => setTool("setup")}
+        />
+      }
     >
       <div className="flex flex-col gap-5">
-        <div className="-mt-3 -mb-3 flex justify-end">
-          <Tooltip content={t("settings.boardAutomations.setup")}>
-            <button
-              type="button"
-              aria-label={t("settings.boardAutomations.setup")}
-              onClick={() => setTool("setup")}
-              className="rounded-full p-1 text-gray-500 hover:bg-white/5 hover:text-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-          </Tooltip>
-        </div>
         {statusError && (
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm text-red-600 dark:text-red-400">{statusError}</p>
@@ -527,8 +525,7 @@ const MODE_CHIP: Record<AutomationMode, string> = {
   off: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10 before:bg-gray-500",
   simulate:
     "bg-violet-500/10 text-violet-200 ring-1 ring-inset ring-violet-400/30 before:bg-violet-400",
-  live:
-    "bg-emerald-500/10 text-emerald-200 ring-1 ring-inset ring-emerald-400/30 before:bg-emerald-400",
+  live: "bg-emerald-500/10 text-emerald-200 ring-1 ring-inset ring-emerald-400/30 before:bg-emerald-400",
 };
 
 const MODE_LABEL: Record<AutomationMode, TranslationKey> = {
