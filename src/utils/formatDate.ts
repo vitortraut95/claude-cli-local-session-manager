@@ -1,4 +1,13 @@
-const relativeFormatter = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });
+const relativeFormatters = new Map<string, Intl.RelativeTimeFormat>();
+
+function relativeFormatter(locale: string): Intl.RelativeTimeFormat {
+  let formatter = relativeFormatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+    relativeFormatters.set(locale, formatter);
+  }
+  return formatter;
+}
 const absoluteFormatter = new Intl.DateTimeFormat("en-US", {
   day: "2-digit",
   month: "2-digit",
@@ -11,20 +20,30 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-/** Renders a recent timestamp as relative time ("5 minutes ago"), falling back to an absolute date beyond ~2 days. */
-export function formatUpdatedAt(iso: string): string {
+/** Renders a recent timestamp as relative time ("5 minutes ago"), falling back to an absolute date
+ *  beyond ~2 days. `language` picks the words ("há 5 minutos" in Portuguese); English by default. */
+export function formatUpdatedAt(iso: string, language: "en" | "pt" = "en"): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
 
   const diffMs = date.getTime() - Date.now();
   const absDiffMs = Math.abs(diffMs);
+  const relative = relativeFormatter(language === "pt" ? "pt-BR" : "en-US");
 
-  if (absDiffMs < MINUTE) return "just now";
-  if (absDiffMs < HOUR) return relativeFormatter.format(Math.round(diffMs / MINUTE), "minute");
-  if (absDiffMs < DAY) return relativeFormatter.format(Math.round(diffMs / HOUR), "hour");
-  if (absDiffMs < 2 * DAY) return relativeFormatter.format(Math.round(diffMs / DAY), "day");
+  if (absDiffMs < MINUTE) return language === "pt" ? "agora" : "just now";
+  if (absDiffMs < HOUR) return relative.format(Math.round(diffMs / MINUTE), "minute");
+  if (absDiffMs < DAY) return relative.format(Math.round(diffMs / HOUR), "hour");
+  if (absDiffMs < 2 * DAY) return relative.format(Math.round(diffMs / DAY), "day");
 
-  return absoluteFormatter.format(date);
+  return language === "pt"
+    ? date.toLocaleString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : absoluteFormatter.format(date);
 }
 
 /** Renders a millisecond duration compactly ("42m", "1h 12m", "3h") for the "active time" stat. */

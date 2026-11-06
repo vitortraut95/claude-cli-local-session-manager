@@ -13,6 +13,8 @@ type PreviewLinksProps = {
   previews: SessionPreview[];
   /** Fired after a preview was stopped, started or removed, so the list reloads. */
   onChanged: () => void;
+  /** "list": every URL in a column with its name (the session panel), instead of a menu. */
+  variant?: "menu" | "list";
 };
 
 type Confirming = { preview: SessionPreview; action: "stop" | "remove" };
@@ -30,7 +32,7 @@ function hostAndPort(url: string): string {
  * (frees its memory, stays listed) and started again, or removed — which otherwise only happens
  * when the task is marked done.
  */
-export function PreviewLinks({ previews, onChanged }: PreviewLinksProps) {
+export function PreviewLinks({ previews, onChanged, variant = "menu" }: PreviewLinksProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [confirming, setConfirming] = useState<Confirming | null>(null);
@@ -95,6 +97,114 @@ export function PreviewLinks({ previews, onChanged }: PreviewLinksProps) {
       </Tooltip>
     );
 
+  const renderItem = (preview: SessionPreview) =>
+    preview.running === false ? (
+      <span
+        key={preview.id}
+        className="flex items-center overflow-hidden rounded-md border border-dashed border-gray-300 dark:border-gray-700"
+      >
+        <Tooltip content={t("preview.stoppedState", { name: preview.name, url: preview.url })}>
+          <span className="px-1.5 py-0.5 font-mono text-gray-400 line-through dark:text-gray-500">
+            {hostAndPort(preview.url)}
+          </span>
+        </Tooltip>
+        <Tooltip content={t("preview.start", { name: preview.name })}>
+          <button
+            type="button"
+            onClick={() => void handleStart(preview)}
+            disabled={startingId !== null}
+            aria-label={t("preview.start", { name: preview.name })}
+            className={`${BUTTON} hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-950/40 dark:hover:text-green-400`}
+          >
+            {startingId === preview.id ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Play className="h-3 w-3" />
+            )}
+          </button>
+        </Tooltip>
+        {removeButton(preview)}
+      </span>
+    ) : (
+      <span
+        key={preview.id}
+        className="flex items-center overflow-hidden rounded-md border border-gray-200 dark:border-gray-700"
+      >
+        <Tooltip content={t("preview.open", { name: preview.name })}>
+          <a
+            href={preview.url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 px-1.5 py-0.5 font-mono text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            {hostAndPort(preview.url)}
+            <ExternalLink className="h-3 w-3 text-gray-400" />
+          </a>
+        </Tooltip>
+        {preview.inWorktree && (
+          <Tooltip content={t("preview.stop", { name: preview.name })}>
+            <button
+              type="button"
+              onClick={() => setConfirming({ preview, action: "stop" })}
+              aria-label={t("preview.stop", { name: preview.name })}
+              className={`${BUTTON} hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/40 dark:hover:text-amber-400`}
+            >
+              <Square className="h-3 w-3" />
+            </button>
+          </Tooltip>
+        )}
+        {removeButton(preview)}
+      </span>
+    );
+
+  const confirmDialog = (
+    <ConfirmDialog
+      open={confirming !== null}
+      title={t(
+        confirming?.action === "remove" ? "preview.removeConfirmTitle" : "preview.stopConfirmTitle",
+      )}
+      message={t(
+        confirming?.action === "remove"
+          ? "preview.removeConfirmMessage"
+          : "preview.stopConfirmMessage",
+        { name: confirming?.preview.name ?? "", url: confirming?.preview.url ?? "" },
+      )}
+      confirmLabel={t(
+        confirming?.action === "remove" ? "preview.removeConfirm" : "preview.stopConfirm",
+      )}
+      isLoading={busy}
+      onConfirm={() => void handleConfirm()}
+      onCancel={() => setConfirming(null)}
+    />
+  );
+
+  if (variant === "list") {
+    return (
+      <ul className="flex flex-col gap-2 text-xs">
+        {previews.map((preview) => (
+          <li key={preview.id} className="flex min-w-0 items-center gap-2">
+            <span
+              aria-hidden="true"
+              className={`h-2 w-2 shrink-0 rounded-full ${
+                preview.running === false
+                  ? "border-[1.5px] border-gray-400 dark:border-gray-500"
+                  : "bg-emerald-500 dark:bg-emerald-400"
+              }`}
+            />
+            {renderItem(preview)}
+            <span
+              className="min-w-0 truncate text-gray-500 dark:text-gray-400"
+              title={preview.name}
+            >
+              {preview.name}
+            </span>
+          </li>
+        ))}
+        {confirmDialog}
+      </ul>
+    );
+  }
+
   return (
     <div className="flex min-w-0 items-center text-xs">
       <AnchoredMenu
@@ -111,91 +221,9 @@ export function PreviewLinks({ previews, onChanged }: PreviewLinksProps) {
           </>
         }
       >
-        {() =>
-          previews.map((preview) =>
-            preview.running === false ? (
-              <span
-                key={preview.id}
-                className="flex items-center overflow-hidden rounded-md border border-dashed border-gray-300 dark:border-gray-700"
-              >
-                <Tooltip
-                  content={t("preview.stoppedState", { name: preview.name, url: preview.url })}
-                >
-                  <span className="px-1.5 py-0.5 font-mono text-gray-400 line-through dark:text-gray-500">
-                    {hostAndPort(preview.url)}
-                  </span>
-                </Tooltip>
-                <Tooltip content={t("preview.start", { name: preview.name })}>
-                  <button
-                    type="button"
-                    onClick={() => void handleStart(preview)}
-                    disabled={startingId !== null}
-                    aria-label={t("preview.start", { name: preview.name })}
-                    className={`${BUTTON} hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-950/40 dark:hover:text-green-400`}
-                  >
-                    {startingId === preview.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Play className="h-3 w-3" />
-                    )}
-                  </button>
-                </Tooltip>
-                {removeButton(preview)}
-              </span>
-            ) : (
-              <span
-                key={preview.id}
-                className="flex items-center overflow-hidden rounded-md border border-gray-200 dark:border-gray-700"
-              >
-                <Tooltip content={t("preview.open", { name: preview.name })}>
-                  <a
-                    href={preview.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1 px-1.5 py-0.5 font-mono text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    {hostAndPort(preview.url)}
-                    <ExternalLink className="h-3 w-3 text-gray-400" />
-                  </a>
-                </Tooltip>
-                {preview.inWorktree && (
-                  <Tooltip content={t("preview.stop", { name: preview.name })}>
-                    <button
-                      type="button"
-                      onClick={() => setConfirming({ preview, action: "stop" })}
-                      aria-label={t("preview.stop", { name: preview.name })}
-                      className={`${BUTTON} hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/40 dark:hover:text-amber-400`}
-                    >
-                      <Square className="h-3 w-3" />
-                    </button>
-                  </Tooltip>
-                )}
-                {removeButton(preview)}
-              </span>
-            ),
-          )
-        }
+        {() => previews.map(renderItem)}
       </AnchoredMenu>
-      <ConfirmDialog
-        open={confirming !== null}
-        title={t(
-          confirming?.action === "remove"
-            ? "preview.removeConfirmTitle"
-            : "preview.stopConfirmTitle",
-        )}
-        message={t(
-          confirming?.action === "remove"
-            ? "preview.removeConfirmMessage"
-            : "preview.stopConfirmMessage",
-          { name: confirming?.preview.name ?? "", url: confirming?.preview.url ?? "" },
-        )}
-        confirmLabel={t(
-          confirming?.action === "remove" ? "preview.removeConfirm" : "preview.stopConfirm",
-        )}
-        isLoading={busy}
-        onConfirm={() => void handleConfirm()}
-        onCancel={() => setConfirming(null)}
-      />
+      {confirmDialog}
     </div>
   );
 }

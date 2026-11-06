@@ -46,7 +46,7 @@ export function WorkStatusSelect({
           onChange={(event) => onChange((event.target.value || null) as WorkStatus | null)}
           disabled={saving}
           aria-label={t("workStatus.ariaLabel")}
-          className={`cursor-pointer appearance-none h-5 rounded-full border py-0 pl-2.5 pr-6 text-xs leading-4 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10 disabled:cursor-wait disabled:opacity-60 dark:focus:ring-gray-100/10 ${WORK_STATUS_CLASSES[value ?? "none"]}`}
+          className={`cursor-pointer appearance-none h-5 rounded-full border py-0 pl-2.5 pr-6 text-xs leading-4 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-500/25 disabled:cursor-wait disabled:opacity-60 dark:focus:ring-violet-400/30 ${WORK_STATUS_CLASSES[value ?? "none"]}`}
         >
           {(!testKey || value === null) && (
             <option value="" disabled={Boolean(testKey)}>

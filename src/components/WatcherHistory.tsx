@@ -263,7 +263,7 @@ export function WatcherHistory({ refreshKey, linkBases, ...feedbackProps }: Watc
               onClick={() => setFilter(option)}
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 filter === option
-                  ? "border-gray-900 bg-gray-900 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900"
+                  ? "border-violet-600 bg-violet-600 text-white dark:border-violet-400 dark:bg-violet-400/15 dark:text-violet-200"
                   : "border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
               }`}
             >

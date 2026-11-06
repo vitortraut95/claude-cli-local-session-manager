@@ -23,9 +23,9 @@ type NewSessionModalProps = {
 
 const TEXTAREA_CLASSNAME =
   "w-full rounded-lg border border-gray-300 bg-white p-3 text-sm text-gray-900 placeholder:text-gray-400 " +
-  "focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-gray-700 " +
-  "dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-gray-600 " +
-  "dark:focus:ring-gray-100/10";
+  "focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-gray-700 " +
+  "dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-violet-400 " +
+  "dark:focus:ring-violet-400/30";
 
 /**
  * Project + team skills + prompt, then `claude "<prompt>"` in the project's root. A session already
@@ -189,6 +189,7 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
       onSecondary={resetForm}
       secondaryLabel={t("newTaskModal.clear")}
       size="xxxl"
+      placement="side"
     >
       <div className="flex flex-col gap-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">{t("newSessionModal.intro")}</p>

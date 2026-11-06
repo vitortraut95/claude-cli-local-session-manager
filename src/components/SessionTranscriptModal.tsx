@@ -10,6 +10,8 @@ import type { Session, TranscriptItem, TranscriptTurn } from "../../shared/sessi
 type SessionTranscriptModalProps = {
   session: Session;
   onClose: () => void;
+  /** The prompt shown first (its index in the conversation); the first one by default. */
+  initialIndex?: number;
 };
 
 /** How much of each prompt the left column shows. */
@@ -27,10 +29,14 @@ function formatTime(iso: string | null): string {
 
 /** Prompts on the left; the selected one, with the agent's replies and tool calls, on the right.
  *  Mounted only while open, so each open fetches again (an active session keeps growing). */
-export function SessionTranscriptModal({ session, onClose }: SessionTranscriptModalProps) {
+export function SessionTranscriptModal({
+  session,
+  onClose,
+  initialIndex = 0,
+}: SessionTranscriptModalProps) {
   const [turns, setTurns] = useState<TranscriptTurn[] | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [selected, setSelected] = useState(0);
+  const [selected, setSelected] = useState(initialIndex);
   const { t } = useLanguage();
 
   useEffect(() => {
@@ -52,7 +58,8 @@ export function SessionTranscriptModal({ session, onClose }: SessionTranscriptMo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id]);
 
-  const current = turns?.[selected];
+  // Clamped: the conversation may be shorter than the index asked for (fallback to prompts only).
+  const current = turns?.[Math.min(selected, Math.max(0, (turns?.length ?? 1) - 1))];
 
   return (
     <Modal open title={session.title} onClose={onClose} size="xxxl">
@@ -78,7 +85,7 @@ export function SessionTranscriptModal({ session, onClose }: SessionTranscriptMo
                       onClick={() => setSelected(index)}
                       className={`w-full rounded-lg border p-3 text-left text-sm transition-colors ${
                         index === selected
-                          ? "border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/40"
+                          ? "border-violet-300 bg-violet-50 dark:border-violet-700 dark:bg-violet-950/40"
                           : "border-gray-100 bg-gray-50 hover:border-gray-300 dark:border-gray-800 dark:bg-gray-800/50 dark:hover:border-gray-600"
                       }`}
                     >
@@ -101,8 +108,8 @@ export function SessionTranscriptModal({ session, onClose }: SessionTranscriptMo
             {current && (
               // Keyed so each prompt opens scrolled to the top.
               <div key={selected} className="min-h-0 overflow-y-auto pr-1">
-                <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-sm text-gray-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-gray-200">
-                  <span className="mb-1 block text-xs font-medium text-blue-500 dark:text-blue-400">
+                <div className="mb-4 rounded-lg border border-violet-100 bg-violet-50/60 p-3 text-sm text-gray-800 dark:border-violet-900 dark:bg-violet-950/30 dark:text-gray-200">
+                  <span className="mb-1 block text-xs font-medium text-violet-600 dark:text-violet-400">
                     {t("transcriptModal.you")} · #{selected + 1} {formatTime(current.timestamp)}
                   </span>
                   <p className="whitespace-pre-wrap break-words">

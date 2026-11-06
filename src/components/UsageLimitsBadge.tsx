@@ -10,6 +10,8 @@ type UsageLimitsBadgeProps = {
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
+  /** "sidebar": one bar per limit, full width, for the navigation's footer. */
+  variant?: "badge" | "sidebar";
 };
 
 type Translate = (key: TranslationKey, params?: Record<string, string | number>) => string;
@@ -64,7 +66,13 @@ function formatResetsAt(resetsAt: string | null, t: Translate): string | null {
   return t("usageLimitsBadge.resetsIn", { relative, absolute });
 }
 
-export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLimitsBadgeProps) {
+export function UsageLimitsBadge({
+  status,
+  loading,
+  error,
+  onRefresh,
+  variant = "badge",
+}: UsageLimitsBadgeProps) {
   const { t } = useLanguage();
   const limits = status?.limits ?? [];
   const maxPercent = limits.reduce((max, limit) => Math.max(max, limit.percent), 0);
@@ -128,6 +136,59 @@ export function UsageLimitsBadge({ status, loading, error, onRefresh }: UsageLim
       <p className="text-gray-400">{t("usageLimitsBadge.clickToRefresh")}</p>
     </div>
   );
+
+  if (variant === "sidebar") {
+    return (
+      <Tooltip content={tooltipContent}>
+        <button
+          type="button"
+          onClick={onRefresh}
+          aria-label={`${t("usageLimitsBadge.title")}: ${compactText}`}
+          className="flex w-full flex-col gap-2 rounded-lg border border-gray-200 p-3 text-left transition-colors hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700"
+        >
+          {limits.length === 0 ? (
+            <span className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              {loading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Gauge className="h-3.5 w-3.5" />
+              )}
+              {compactText}
+            </span>
+          ) : (
+            limits.map((limit) => {
+              const percent = Math.round(limit.percent);
+              return (
+                <span key={limit.kind} className="flex flex-col gap-1">
+                  <span className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>{fullLabel(limit.kind, t)}</span>
+                    <span className="font-medium text-gray-900 tabular-nums dark:text-gray-100">
+                      {percent}%
+                    </span>
+                  </span>
+                  <span
+                    className="h-1 rounded-full bg-gray-200 dark:bg-gray-800"
+                    aria-hidden="true"
+                  >
+                    <span
+                      className={`block h-1 rounded-full ${
+                        percent >= 90
+                          ? "bg-red-500"
+                          : percent >= 70
+                            ? "bg-amber-500"
+                            : "bg-emerald-500 dark:bg-emerald-400"
+                      }`}
+                      style={{ width: `${Math.min(100, percent)}%` }}
+                    />
+                  </span>
+                </span>
+              );
+            })
+          )}
+        </button>
+      </Tooltip>
+    );
+  }
 
   return (
     <Tooltip content={tooltipContent}>

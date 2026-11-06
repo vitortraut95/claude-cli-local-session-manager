@@ -19,7 +19,7 @@ export function ProjectFilter({ projects, projectLabels, value, onChange }: Proj
       onChange={(event) => onChange(event.target.value)}
       aria-label={t("projectFilter.ariaLabel")}
       icon={<Folder className="h-4 w-4" />}
-      className="sm:w-56"
+      className="sm:w-48"
     >
       <option value="">{t("projectFilter.allProjects")}</option>
       {projects.map((project) => (

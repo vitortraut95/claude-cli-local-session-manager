@@ -128,6 +128,7 @@ export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalP
       onCancel={onClose}
       cancelLabel={t("cleanupModal.close")}
       size="xl"
+      placement="side"
     >
       <div className="flex flex-col gap-2 mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
         <p>

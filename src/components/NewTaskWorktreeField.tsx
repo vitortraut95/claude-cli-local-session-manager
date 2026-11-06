@@ -29,7 +29,7 @@ export function NewTaskWorktreeField({ form }: { form: NewTaskForm }) {
               setUseWorktree(event.target.checked);
               setUseWorktreeTouched(true);
             }}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+            className="mt-0.5 h-4 w-4 shrink-0 accent-violet-600 dark:accent-violet-400"
           />
           {t("newTaskModal.useWorktreeLabel")}
         </label>

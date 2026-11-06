@@ -290,7 +290,7 @@ function TriStateCheckbox({
       }}
       checked={checked}
       onChange={onChange}
-      className="h-4 w-4 accent-gray-900 dark:accent-gray-100"
+      className="h-4 w-4 accent-violet-600 dark:accent-violet-400"
     />
   );
 }

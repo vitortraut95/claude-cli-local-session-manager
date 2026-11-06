@@ -45,7 +45,7 @@ export function NewTaskBranchFields({ form }: { form: NewTaskForm }) {
             type="checkbox"
             checked={useLocalBaseBranch}
             onChange={(event) => setUseLocalBaseBranch(event.target.checked)}
-            className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-gray-900 dark:accent-gray-100"
+            className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-violet-600 dark:accent-violet-400"
           />
           {t("newTaskModal.useLocalBaseBranchLabel")}
         </label>
