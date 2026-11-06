@@ -411,17 +411,6 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                         <Send className="h-3.5 w-3.5" />
                         {t("board.action.digest")}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          close();
-                          onOpenAutomation();
-                        }}
-                        className="flex items-center gap-2 px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                      >
-                        <Workflow className="h-3.5 w-3.5" />
-                        {t("board.action.automation")}
-                      </button>
                     </div>
                   )}
                 </AnchoredMenu>
