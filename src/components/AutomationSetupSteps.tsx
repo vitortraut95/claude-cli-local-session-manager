@@ -4,17 +4,15 @@ import {
   ExternalLink,
   Info,
   Loader2,
-  Search,
   XCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { TranslationKey } from "../i18n/translations";
 import * as boardWatcherApi from "../services/boardWatcherApi";
 import * as preferencesApi from "../services/preferencesApi";
 import type {
   AutomationSetupStatus,
-  BitbucketRepoOption,
   BoardColumnsAnswer,
   BoardRole,
   SecretState,
@@ -608,140 +606,6 @@ export function BitbucketStep({ status, onDone, onBack }: StepProps) {
   );
 }
 
-export function ReposStep({ status, onDone, onBack }: StepProps) {
-  const { t } = useLanguage();
-  const [options, setOptions] = useState<BitbucketRepoOption[] | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set(status.bitbucket.repos));
-  const [paths, setPaths] = useState<Record<string, string>>(status.bitbucket.localRepos);
-  const [filter, setFilter] = useState("");
-  const loading = useStepAction();
-  const saving = useStepAction();
-
-  useEffect(() => {
-    void loading.run(async () => {
-      const list = await boardWatcherApi.fetchBitbucketRepos();
-      setOptions(list);
-      setPaths((current) => {
-        const next = { ...current };
-        for (const option of list) {
-          if (!next[option.slug] && option.localPath) next[option.slug] = option.localPath;
-        }
-        return next;
-      });
-    });
-    // Only on open.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const visible = useMemo(() => {
-    const query = filter.trim().toLowerCase();
-    const list = options ?? [];
-    // Selected first, then the ones with a clone here, then the rest (most recent first).
-    const rank = (o: BitbucketRepoOption) => (selected.has(o.slug) ? 0 : o.localPath ? 1 : 2);
-    return list
-      .filter((o) => !query || o.slug.toLowerCase().includes(query))
-      .sort((a, b) => rank(a) - rank(b));
-  }, [options, filter, selected]);
-
-  const toggle = (slug: string) =>
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
-
-  const save = () =>
-    void saving.run(async () => {
-      const repos = [...selected];
-      await boardWatcherApi.saveSetupRepos(
-        repos,
-        Object.fromEntries(repos.map((repo) => [repo, paths[repo] ?? ""])),
-      );
-      await onDone();
-    });
-
-  const missingPath = [...selected].some((repo) => !paths[repo]?.trim());
-
-  return (
-    <div className="flex flex-col gap-3">
-      <Description>{t("automationSetup.repos.description")}</Description>
-      {loading.busy && (
-        <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          {t("automationSetup.repos.loading")}
-        </p>
-      )}
-      <Feedback error={loading.error} />
-      {options && (
-        <>
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <Input
-                aria-label={t("automationSetup.repos.filter")}
-                placeholder={t("automationSetup.repos.filter")}
-                icon={<Search className="h-4 w-4" />}
-                value={filter}
-                onChange={(event) => setFilter(event.target.value)}
-              />
-            </div>
-            <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
-              {t("automationSetup.repos.selected", { count: selected.size })}
-            </span>
-          </div>
-          <ul className="max-h-72 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
-            {visible.map((option) => {
-              const on = selected.has(option.slug);
-              const id = `setup-repo-${option.slug}`;
-              return (
-                <li key={option.slug} className="px-3 py-2">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      onChange={() => toggle(option.slug)}
-                      className="h-4 w-4 rounded border-gray-300 accent-violet-600 dark:border-gray-600"
-                    />
-                    <span className="font-mono text-xs">{option.slug}</span>
-                  </label>
-                  {on && (
-                    <div className="mt-1.5 pl-6">
-                      <Input
-                        id={id}
-                        aria-label={`${t("automationSetup.repos.localPath")}: ${option.slug}`}
-                        placeholder={t("automationSetup.repos.localPath")}
-                        className="py-1 font-mono text-xs"
-                        value={paths[option.slug] ?? ""}
-                        spellCheck={false}
-                        onChange={(event) =>
-                          setPaths((current) => ({ ...current, [option.slug]: event.target.value }))
-                        }
-                      />
-                      {!paths[option.slug]?.trim() && (
-                        <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
-                          {t("automationSetup.repos.notFound")}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
-      <Feedback error={saving.error} />
-      <Actions
-        onBack={onBack}
-        primaryLabel={t("automationSetup.saveAndContinue")}
-        onPrimary={save}
-        busy={saving.busy}
-        disabled={!options || selected.size === 0 || missingPath}
-      />
-    </div>
-  );
-}
-
 export function ExtrasStep({ status, onDone, onBack, onSkip }: StepProps & { onSkip: () => void }) {
   const { t } = useLanguage();
   const [teamsWebhook, setTeamsWebhook] = useState("");
@@ -889,7 +753,7 @@ export function FinishStep({
   const [finished, setFinished] = useState(false);
   const [betaOn, setBetaOn] = useState(true);
   const { busy, error, run } = useStepAction();
-  const requiredDone = ["claude", "jira", "board", "bitbucket", "repos"].every((s) => allDone[s]);
+  const requiredDone = ["claude", "jira", "board", "bitbucket"].every((s) => allDone[s]);
 
   const submit = () =>
     void run(async () => {

@@ -1,3 +1,4 @@
+import { localRepoPaths, sprintRepos } from "./boardWatcher/sprintRepos.js";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
@@ -76,7 +77,6 @@ import {
   noticeNewsOnMyPr,
   noticePreviewFailed,
   noticeTestDone,
-  noticeUnwatchedPullRequests,
   noticeWatcherError,
   prUrl,
 } from "./boardWatcher/instantNotices.js";
@@ -103,7 +103,6 @@ import {
   type PullRequest,
   type WatcherState,
 } from "./boardWatcher/types.js";
-import { jiraCredentialsFromEnv, linkedPullRequests } from "./boardWatcher/jira.js";
 
 /**
  * Runs the board watcher inside the server: a look at the board every 10 minutes in business
@@ -365,7 +364,6 @@ async function lookLocked(): Promise<void> {
       String(lastDecisions.filter((d) => d.action !== "wait" && d.action !== "skip").length),
     );
     diagnoseDecisionBuilds(lastDecisions);
-    await warnUnwatchedPullRequests(config, issues, state);
     await noticeNewsOnMyPullRequests(config, prs, state, now);
     await watchPreviewBuilds(config, issues, state);
     diagnoseOpenPrBuilds(prs, config);
@@ -654,38 +652,6 @@ async function noticeNewsOnMyPullRequests(
   }
 }
 
-/** Once per arrival in Code Review, tells the user about the ticket's PRs (open or merged) in
- *  repos missing from `bitbucket.repos`, which no review looks at. Not for the user's own
- *  tickets. Best-effort. */
-async function warnUnwatchedPullRequests(
-  config: BoardWatcherConfig,
-  issues: BoardIssue[],
-  state: WatcherState,
-): Promise<void> {
-  if (!config.jira || !config.bitbucket) return;
-  const credentials = jiraCredentialsFromEnv(config.jira.site);
-  const watched = new Set(config.bitbucket.repos);
-  const arrived = issues.filter(
-    (i) =>
-      config.columns.codeReview?.includes(i.statusId) &&
-      i.assigneeId !== config.me &&
-      state.handled[`unwatched:${i.key}`] !== i.statusSince,
-  );
-  for (const issue of arrived) {
-    try {
-      const prs = (await linkedPullRequests(credentials, issue.key)).filter(
-        (pr) => pr.status !== "DECLINED" && !watched.has(pr.repo.split("/").at(-1) ?? ""),
-      );
-      state.handled[`unwatched:${issue.key}`] = issue.statusSince;
-      if (prs.length === 0) continue;
-      noticeUnwatchedPullRequests(config, issue.key, issue.summary, prs);
-      recordEvent("boardWatcher.unwatchedPrs", { key: issue.key, prs: prs.length });
-    } catch (err) {
-      console.warn(`[board-watcher] Couldn't list the PRs of ${issue.key}:`, err);
-    }
-  }
-}
-
 /** The questions to unblock a weak To Do description, drafted and sent to Teams (best-effort:
  *  without them, the notice still says what's missing). */
 async function sendWeakDescriptionQuestions(
@@ -823,8 +789,8 @@ async function drainJobs(): Promise<void> {
       const started = Date.now();
       let outcome: string;
       try {
-        const repoPath = config.bitbucket.localRepos?.[pr.repo];
-        if (!repoPath) throw new Error(`No local clone of ${pr.repo} in bitbucket.localRepos.`);
+        const repoPath = (await localRepoPaths(config, [pr.repo]))[pr.repo];
+        if (!repoPath) throw new Error(`No local clone of ${pr.repo} in the workspace folders.`);
         const credentials = bitbucketCredentialsFromEnv(config.bitbucket.workspace);
         // Merged, closed or pushed to while it waited: no session for it. A new push is queued
         // again by the next look, with the new commit.
@@ -939,7 +905,7 @@ async function ticketPullRequests(
   if (!config.bitbucket) return [];
   return findPullRequestsForKey(
     bitbucketCredentialsFromEnv(config.bitbucket.workspace),
-    config.bitbucket.repos,
+    await sprintRepos(config),
     key,
   ).catch((err: unknown) => {
     console.warn(`[board-watcher] Couldn't look up ${key}'s PRs:`, err);
@@ -985,7 +951,7 @@ async function queueTestJob(
   const repos = await findTestRepos(
     issue,
     comments,
-    config.bitbucket?.localRepos ?? {},
+    await localRepoPaths(config, await sprintRepos(config)),
     await ticketPullRequests(issue.key, config),
   );
   const added = await (job.retest ? requeueTestEntry : addTestEntryIfAbsent)({
@@ -1026,7 +992,7 @@ async function runTestJob(
     const plan = issue.comments.find((c) => c.id === planId);
     if (!plan) throw new Error(`Plan comment ${planId} is gone.`);
     const output = await runClaudeTest(issue, plan, {
-      localRepos: config.bitbucket?.localRepos ?? {},
+      localRepos: await localRepoPaths(config, await sprintRepos(config)),
       prBranches: await ticketPullRequests(issue.key, config),
       skill: config.test?.skill,
       model: config.test?.model,

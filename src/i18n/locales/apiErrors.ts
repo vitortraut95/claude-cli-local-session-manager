@@ -36,10 +36,6 @@ export const apiErrors = {
     "Set up Bitbucket first.",
     "Configure o Bitbucket primeiro.",
   ),
-  "apiError.setupNoRepos": dict(
-    "Pick at least one repo, with its local clone.",
-    "Escolha pelo menos um repositório, com o clone local.",
-  ),
   "apiError.setupBadWebhook": dict(
     "The Teams workflow URL is an https:// link.",
     "A URL do workflow do Teams é um link https://.",

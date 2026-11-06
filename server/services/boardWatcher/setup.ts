@@ -1,12 +1,9 @@
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
 import { readFile, rename, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { promisify } from "node:util";
 import {
   BOARD_ROLES,
   type AutomationSetupStatus,
-  type BitbucketRepoOption,
   type BoardColumn,
   type BoardColumnsAnswer,
   type BoardRole,
@@ -15,7 +12,6 @@ import {
 } from "../../../shared/boardWatcher.js";
 import { BadRequestError } from "../../utils/httpError.js";
 import { sanitizedSpawnEnv } from "../../utils/spawnEnv.js";
-import { getWorkspaceRepos } from "../workspaceService.js";
 import { BOARD_WATCHER_CONFIG_FILE, type BoardWatcherConfig } from "./config.js";
 import { apiFetch } from "./http.js";
 import { jiraApiBase } from "./jira.js";
@@ -45,7 +41,7 @@ type RawConfig = Record<string, unknown> & {
   testingStatusId?: string;
   inProgressStatusId?: string;
   jira?: { site?: string; boardId?: number; boardUrl?: string; scopeJql?: string };
-  bitbucket?: { workspace?: string; repos?: string[]; localRepos?: Record<string, string> };
+  bitbucket?: { workspace?: string; localRepos?: Record<string, string> };
   todo?: { enabled?: boolean };
   codeReview?: { enabled?: boolean };
   review?: { enabled?: boolean };
@@ -134,8 +130,6 @@ export async function getSetupStatus(): Promise<AutomationSetupStatus> {
       workspace: raw.bitbucket?.workspace ?? null,
       email: process.env.BITBUCKET_EMAIL ?? null,
       token: secretState("BITBUCKET_TOKEN"),
-      repos: raw.bitbucket?.repos ?? [],
-      localRepos: raw.bitbucket?.localRepos ?? {},
     },
     extras: {
       teams: secretState("TEAMS_WEBHOOK_URL"),
@@ -374,55 +368,9 @@ export async function setupBitbucket(input: {
     BITBUCKET_TOKEN: typedChange(input.token, "BITBUCKET_TOKEN"),
   });
   await patchRaw((raw) => {
-    raw.bitbucket = { repos: [], ...raw.bitbucket, workspace };
+    raw.bitbucket = { ...raw.bitbucket, workspace };
   });
   return { displayName: me.display_name ?? email };
-}
-
-/** The workspace's repos (most recently updated first), each with a local clone when found. */
-export async function listBitbucketRepos(): Promise<BitbucketRepoOption[]> {
-  const raw = await readRaw();
-  const workspace = raw.bitbucket?.workspace;
-  const email = process.env.BITBUCKET_EMAIL;
-  const token = process.env.BITBUCKET_TOKEN;
-  if (!workspace || !email || !token) {
-    throw new BadRequestError("SETUP_BITBUCKET_FIRST", "Set up Bitbucket first.");
-  }
-  const headers = { Authorization: basicAuth(email, token), Accept: "application/json" };
-  const slugs: string[] = [];
-  let url: string | undefined =
-    `https://api.bitbucket.org/2.0/repositories/${encodeURIComponent(workspace)}?pagelen=100&sort=-updated_on&fields=next,values.slug`;
-  for (let page = 0; url && page < 5; page += 1) {
-    const response = await apiFetch("bitbucket", url, { headers });
-    if (!response.ok) throw new BadRequestError("SETUP_UNREACHABLE", "Couldn't list the repos.");
-    const body = (await response.json()) as { next?: string; values: { slug: string }[] };
-    slugs.push(...body.values.map((v) => v.slug));
-    url = body.next;
-  }
-  const local = new Map(
-    (await getWorkspaceRepos()).map((repoPath) => [path.basename(repoPath), repoPath]),
-  );
-  const saved = raw.bitbucket?.localRepos ?? {};
-  return slugs.map((slug) => ({ slug, localPath: saved[slug] ?? local.get(slug) ?? null }));
-}
-
-export async function saveRepos(input: {
-  repos: string[];
-  localRepos: Record<string, string>;
-}): Promise<void> {
-  const repos = [...new Set(input.repos.map((r) => r.trim()).filter(Boolean))];
-  if (repos.length === 0) throw new BadRequestError("SETUP_NO_REPOS", "Pick at least one repo.");
-  const localRepos: Record<string, string> = {};
-  for (const repo of repos) {
-    const dir = input.localRepos[repo]?.trim();
-    if (!dir || !existsSync(path.join(dir, ".git"))) {
-      throw new BadRequestError("SETUP_BAD_CLONE", `${repo}: no git clone at "${dir ?? ""}".`);
-    }
-    localRepos[repo] = dir;
-  }
-  await patchRaw((raw) => {
-    raw.bitbucket = { ...raw.bitbucket, repos, localRepos };
-  });
 }
 
 /** Step "Notices" (optional): the Teams workflow URL and Jenkins user/token; "" removes one. */
@@ -450,9 +398,6 @@ export async function finishSetup(input: SetupFinishInput): Promise<void> {
     throw new BadRequestError("SETUP_JIRA_FIRST", "Set up Jira first.");
   if (!raw.columns?.codeReview?.length) {
     throw new BadRequestError("SETUP_NO_CODE_REVIEW", "Map the board's columns first.");
-  }
-  if (!raw.bitbucket?.repos?.length) {
-    throw new BadRequestError("SETUP_NO_REPOS", "Pick the repos first.");
   }
   await patchRaw((next) => {
     next.enabled = true;

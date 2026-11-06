@@ -1,3 +1,4 @@
+import { localRepoPaths, sprintRepos } from "./sprintRepos.js";
 import { execFile } from "node:child_process";
 import os from "node:os";
 import { promisify } from "node:util";
@@ -48,10 +49,14 @@ async function git(repo: string, args: string[]): Promise<string> {
 type Commit = { at: string; group: string; subject: string };
 
 /** The user's commits since `since` in the local clones (every branch), each once. */
-async function commitsSince(config: BoardWatcherConfig, since: Date): Promise<Commit[]> {
+async function commitsSince(
+  config: BoardWatcherConfig,
+  repos: string[],
+  since: Date,
+): Promise<Commit[]> {
   const seen = new Set<string>();
   const commits: Commit[] = [];
-  for (const [repo, repoPath] of Object.entries(config.bitbucket?.localRepos ?? {})) {
+  for (const [repo, repoPath] of Object.entries(await localRepoPaths(config, repos))) {
     const email = await git(repoPath, ["config", "user.email"]).catch(() => "");
     if (!email) continue;
     const log = await git(repoPath, [
@@ -89,17 +94,18 @@ export async function gatherDailyFacts(config: BoardWatcherConfig, now: Date): P
   const jira = jiraCredentialsFromEnv(config.jira.site);
   const bitbucket = bitbucketCredentialsFromEnv(config.bitbucket.workspace);
 
+  const repos = await sprintRepos(config);
   const [changes, commits, touched, mine, names, myPrs] = await Promise.all([
     statusChangesBy(jira, "status CHANGED BY currentUser() AFTER -10d", config.me),
-    commitsSince(config, since),
-    pullRequestsTouchedBy(bitbucket, config.bitbucket.repos, config.me, since.toISOString()),
+    commitsSince(config, repos, since),
+    pullRequestsTouchedBy(bitbucket, repos, config.me, since.toISOString()),
     searchIssues(
       jira,
       `(${config.jira.scopeJql}) AND sprint in openSprints() AND assignee = currentUser() AND statusCategory != Done`,
       50,
     ),
     statusNames(jira),
-    listOpenPullRequests(bitbucket, config.bitbucket.repos).then((prs) =>
+    listOpenPullRequests(bitbucket, repos).then((prs) =>
       prs.filter((pr) => pr.authorId === config.me),
     ),
   ]);
@@ -134,7 +140,7 @@ export async function gatherDailyFacts(config: BoardWatcherConfig, now: Date): P
     }
     if (config.columns.todo.includes(issue.statusId)) continue;
     const previews = (
-      await findPullRequestsForKey(bitbucket, config.bitbucket.repos, issue.key).catch(() => [])
+      await findPullRequestsForKey(bitbucket, repos, issue.key).catch(() => [])
     ).filter((pr) => pr.branch.startsWith("env/"));
     for (const { repo, branch } of previews) {
       const build = await branchBuild(bitbucket, repo, branch).catch(() => null);

@@ -4,7 +4,6 @@ import { demoActions, demoActivity, demoStatus, isBoardDemo } from "../utils/boa
 import type {
   WatcherActivity,
   AutomationSetupStatus,
-  BitbucketRepoOption,
   BoardColumnsAnswer,
   BoardRole,
   SetupFinishInput,
@@ -23,7 +22,6 @@ export type {
   WatcherActivityEvent,
   WatcherActivityKind,
   AutomationSetupStatus,
-  BitbucketRepoOption,
   BoardColumn,
   BoardColumnsAnswer,
   BoardRole,
@@ -209,23 +207,6 @@ export async function setupBitbucket(input: {
 }): Promise<{ displayName: string }> {
   const { data } = await withServerErrorMessage(() =>
     client.post<{ displayName: string }>("/setup/bitbucket", input),
-  );
-  return data;
-}
-
-export async function fetchBitbucketRepos(): Promise<BitbucketRepoOption[]> {
-  const { data } = await withServerErrorMessage(() =>
-    client.get<BitbucketRepoOption[]>("/setup/repos"),
-  );
-  return data;
-}
-
-export async function saveSetupRepos(
-  repos: string[],
-  localRepos: Record<string, string>,
-): Promise<AutomationSetupStatus> {
-  const { data } = await withServerErrorMessage(() =>
-    client.post<AutomationSetupStatus>("/setup/repos", { repos, localRepos }),
   );
   return data;
 }

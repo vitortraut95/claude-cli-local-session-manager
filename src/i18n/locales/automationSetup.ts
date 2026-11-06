@@ -44,7 +44,6 @@ export const automationSetup = {
   "automationSetup.step.jira": dict("Jira", "Jira"),
   "automationSetup.step.board": dict("Board columns", "Colunas do board"),
   "automationSetup.step.bitbucket": dict("Bitbucket", "Bitbucket"),
-  "automationSetup.step.repos": dict("Repositories", "Repositórios"),
   "automationSetup.step.extras": dict("Teams and Jenkins", "Teams e Jenkins"),
   "automationSetup.step.finish": dict("Turn on", "Ativar"),
 
@@ -105,21 +104,6 @@ export const automationSetup = {
   ),
   "automationSetup.bitbucket.ok": dict("Connected as {name}.", "Conectado como {name}."),
 
-  "automationSetup.repos.description": dict(
-    "The repos whose PRs it reviews. Each needs a local clone: the review runs in a temporary worktree of it. Clones in your workspace folders are found on their own.",
-    "Os repositórios cujos PRs ele revisa. Cada um precisa de um clone local: o review roda numa worktree temporária dele. Os clones nas suas pastas de trabalho são achados sozinhos.",
-  ),
-  "automationSetup.repos.filter": dict("Filter repos…", "Filtrar repositórios…"),
-  "automationSetup.repos.loading": dict(
-    "Listing the workspace's repos…",
-    "Listando os repositórios do workspace…",
-  ),
-  "automationSetup.repos.selected": dict("{count} selected", "{count} selecionado(s)"),
-  "automationSetup.repos.localPath": dict("Local clone folder", "Pasta do clone local"),
-  "automationSetup.repos.notFound": dict(
-    "No clone found: type the folder.",
-    "Nenhum clone achado: digite a pasta.",
-  ),
 
   "automationSetup.extras.description": dict(
     "Optional. Without them it works the same, only the notices stay in the app and failed builds aren't diagnosed.",

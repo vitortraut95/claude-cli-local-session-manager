@@ -76,9 +76,9 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
   /** Where the board lives. Only the active sprint's issues are considered; `scopeJql` narrows
    *  searches to the team's issues. */
   jira?: { site: string; boardId?: number; scopeJql: string; boardUrl?: string };
-  /** The team's repos whose open PRs are reviewed; `localRepos` maps each to its local clone,
-   *  where review worktrees are made. */
-  bitbucket?: { workspace: string; repos: string[]; localRepos?: Record<string, string> };
+  /** The repos come from the active sprint's PRs (`sprintRepos.ts`); `localRepos` pins a repo's
+   *  local clone when it isn't found in the workspace folders by its name. */
+  bitbucket?: { workspace: string; localRepos?: Record<string, string> };
   /** Automation switches (all on unless false): queue my To Do tickets, look at colleagues' PRs,
    *  and the Teams notices. */
   todo?: { enabled?: boolean };

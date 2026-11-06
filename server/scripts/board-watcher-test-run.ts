@@ -9,13 +9,14 @@ import { loadBoardWatcherConfig } from "../services/boardWatcher/config.js";
 import { runClaudeTest } from "../services/boardWatcher/claudeTester.js";
 import { flushNotices, noticeTestDone } from "../services/boardWatcher/instantNotices.js";
 import { jiraCredentialsFromEnv, searchIssues } from "../services/boardWatcher/jira.js";
+import { localRepoPaths, sprintRepos } from "../services/boardWatcher/sprintRepos.js";
 import { isTestPlan, isTestReport } from "../services/boardWatcher/testPlan.js";
 
 async function main(): Promise<void> {
   const key = process.argv[2];
   const config = await loadBoardWatcherConfig();
-  if (!key || !config?.jira || !config.bitbucket?.localRepos) {
-    throw new Error("Usage: board-watcher:test-run KEY (needs jira and bitbucket.localRepos).");
+  if (!key || !config?.jira) {
+    throw new Error("Usage: board-watcher:test-run KEY (needs jira).");
   }
   const [issue] = await searchIssues(jiraCredentialsFromEnv(config.jira.site), `key = ${key}`, 1);
   if (!issue) throw new Error(`${key} not found.`);
@@ -30,7 +31,7 @@ async function main(): Promise<void> {
 
   const started = Date.now();
   const output = await runClaudeTest(issue, plan, {
-    localRepos: config.bitbucket.localRepos,
+    localRepos: await localRepoPaths(config, await sprintRepos(config)),
     skill: config.test?.skill,
     model: config.test?.model,
     maxBudgetUsd: config.test?.maxBudgetUsd,

@@ -140,12 +140,16 @@ export type LinkedPullRequest = {
   url: string;
 };
 
-/** The Bitbucket PRs linked to an issue (Jira's development panel: by key in title or branch). */
+/** The Bitbucket PRs linked to an issue (Jira's development panel: by key in title or branch).
+ *  `knownId` saves reading the issue's id. */
 export async function linkedPullRequests(
   credentials: JiraCredentials,
   key: string,
+  knownId?: string,
 ): Promise<LinkedPullRequest[]> {
-  const { id } = await get<{ id: string }>(credentials, `/rest/api/3/issue/${key}?fields=id`);
+  const id =
+    knownId ??
+    (await get<{ id: string }>(credentials, `/rest/api/3/issue/${key}?fields=id`)).id;
   const params = new URLSearchParams({
     issueId: id,
     applicationType: "bitbucket",
@@ -248,6 +252,29 @@ export async function searchIssues(
     pageToken = page.nextPageToken;
   }
   return issues.slice(0, limit);
+}
+
+/** Just the id and key of every issue the JQL finds (a light search: only `key` is asked for). */
+export async function issueRefs(
+  credentials: JiraCredentials,
+  jql: string,
+  limit = 300,
+): Promise<{ id: string; key: string }[]> {
+  const refs: { id: string; key: string }[] = [];
+  let pageToken: string | undefined;
+  while (refs.length < limit) {
+    const params = new URLSearchParams({ jql, fields: "key", maxResults: "100" });
+    if (pageToken) params.set("nextPageToken", pageToken);
+    const page = await get<{
+      issues: { id: string; key: string }[];
+      nextPageToken?: string;
+      isLast?: boolean;
+    }>(credentials, `/rest/api/3/search/jql?${params.toString()}`);
+    refs.push(...page.issues.map(({ id, key }) => ({ id, key })));
+    if (page.isLast !== false || !page.nextPageToken) break;
+    pageToken = page.nextPageToken;
+  }
+  return refs.slice(0, limit);
 }
 
 function toJiraIssue(raw: RawIssue): JiraIssue {

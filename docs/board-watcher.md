@@ -86,8 +86,12 @@ Each finding comes back with severity, file, line and `topic`: questions for PO/
 (copy, prices, Figma parity) are `product` and are never posted; they stay in the actions log.
 A PR bundling more than one ticket is normal for the team: scope is never flagged, but all of its
 code is reviewed.
-Reviews run one at a time after a look, with a cost cap per review (`review.maxBudgetUsd`); the
-local clone of each repo comes from `bitbucket.localRepos`.
+Reviews run one at a time after a look, with a cost cap per review (`review.maxBudgetUsd`).
+
+The repos aren't configured: they're every repo with a PR linked to an issue of the active sprint
+(Jira's development panel, re-read per issue every 30 min, `sprintRepos.ts`). Each repo's local
+clone is the folder with its name in the workspace folders, unless `bitbucket.localRepos` pins
+another.
 
 ### Test session
 
