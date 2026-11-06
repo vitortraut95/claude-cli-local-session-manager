@@ -40,7 +40,7 @@ import {
   type RebuildOutcome,
 } from "./boardWatcher/buildDiagnosis.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
-import type { Decision } from "./boardWatcher/decide.js";
+import { handledMark, type Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
 import { getLessons, getScoreboard } from "./boardWatcher/feedback.js";
 import {
@@ -60,7 +60,13 @@ import {
   TESTS_DIR,
   type TestOutput,
 } from "./boardWatcher/claudeTester.js";
-import { createBoardDeps, readActions, recordAction } from "./boardWatcher/simulation.js";
+import {
+  ACTIONS_FILE,
+  createBoardDeps,
+  readActions,
+  recordAction,
+  type ActionEntry,
+} from "./boardWatcher/simulation.js";
 import { draftPoQuestions } from "./boardWatcher/poQuestions.js";
 import { postTeamsCard, reasonPtBr } from "./boardWatcher/teamsCards.js";
 import {
@@ -80,7 +86,7 @@ import {
   noticeWatcherError,
   prUrl,
 } from "./boardWatcher/instantNotices.js";
-import { rotateActions } from "./boardWatcher/history.js";
+import { ARCHIVE_FILE, rotateActions } from "./boardWatcher/history.js";
 import { LIVE_KEYS } from "./boardWatcher/settings.js";
 import { networkProblem, remindOnDesktop } from "./boardWatcher/network.js";
 import { isTestReport, testPlanStatus } from "./boardWatcher/testPlan.js";
@@ -138,6 +144,8 @@ type PersistedState = WatcherState & {
   /** The day ("YYYY-MM-DD") the last daily summary went out. */
   lastDailyDay?: string;
   lastError: { message: string; at: string; alertedAt: string | null } | null;
+  /** Marks in `handled` from before simulated ones carried `sim:` were checked once. */
+  simMarksMigrated?: boolean;
 };
 
 let timer: NodeJS.Timeout | null = null;
@@ -179,8 +187,49 @@ function serial<T>(fn: () => Promise<T>): Promise<T> {
 
 async function loadState(): Promise<PersistedState> {
   const raw = await readFile(STATE_FILE, "utf8").catch(() => null);
-  const base = { ...emptyWatcherState(), lastTickAt: null, lastDigestAt: null, lastError: null };
-  return raw ? { ...base, ...(JSON.parse(raw) as Partial<PersistedState>) } : base;
+  const base: PersistedState = {
+    ...emptyWatcherState(),
+    lastTickAt: null,
+    lastDigestAt: null,
+    lastError: null,
+  };
+  const state: PersistedState = raw
+    ? { ...base, ...(JSON.parse(raw) as Partial<PersistedState>) }
+    : base;
+  if (!state.simMarksMigrated) {
+    await markSimulatedHandled(state);
+    state.simMarksMigrated = true;
+    await saveState(state);
+  }
+  return state;
+}
+
+/** The action kinds behind each mark that, logged with `live`, mean it was done for real. */
+const MARK_ACTIONS: Record<string, string[]> = {
+  dev: ["enqueue-dev"],
+  test: ["claim-test"],
+  review: ["comment", "approve"],
+};
+
+/** Older marks don't say whether they were simulated: the actions log does. A mark with no real
+ *  action behind it gets `sim:`, so turning that automation on picks it up again. */
+async function markSimulatedHandled(state: PersistedState): Promise<void> {
+  const logs = await Promise.all(
+    [ARCHIVE_FILE, ACTIONS_FILE].map((file) => readFile(file, "utf8").catch(() => "")),
+  );
+  const live = new Set<string>();
+  for (const line of logs.join("\n").split("\n").filter(Boolean)) {
+    const entry = JSON.parse(line) as ActionEntry;
+    if (!entry.live) continue;
+    for (const [kind, actions] of Object.entries(MARK_ACTIONS)) {
+      if (actions.includes(entry.action)) live.add(`${kind}:${entry.subject}`);
+    }
+  }
+  for (const [key, value] of Object.entries(state.handled)) {
+    const kind = key.split(":")[0] ?? "";
+    if (!MARK_ACTIONS[kind] || value.startsWith("sim:") || live.has(key)) continue;
+    state.handled[key] = handledMark(value, false);
+  }
 }
 
 async function saveState(state: PersistedState): Promise<void> {

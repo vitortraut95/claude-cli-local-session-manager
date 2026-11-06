@@ -369,6 +369,11 @@ export const boardWatcher = {
   ),
   "board.history.live": dict("real", "real"),
   "board.history.live.title": dict("Done for real", "Feito de verdade"),
+  "board.history.simulated": dict("simulated", "simulado"),
+  "board.history.simulated.title": dict(
+    "Not done: the automation was in simulation",
+    "Não foi feito: a automação estava em simulação",
+  ),
   "board.never": dict("never", "nunca"),
   "board.feedback.up": dict("Right call", "Acertou"),
   "board.feedback.down": dict("Wrong call", "Errou"),

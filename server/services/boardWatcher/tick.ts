@@ -3,6 +3,8 @@ import { localDay } from "./businessTime.js";
 import type { BoardWatcherConfig } from "./config.js";
 import {
   decideIssues,
+  handledMark,
+  liveFor,
   decideProgress,
   decidePullRequests,
   decideRetests,
@@ -48,7 +50,7 @@ export async function runTick(
     switch (decision.action) {
       case "enqueue-dev":
         await deps.tasks.enqueue(subject, "dev");
-        state.handled[`dev:${subject}`] = now.toISOString();
+        state.handled[`dev:${subject}`] = handledMark(now.toISOString(), liveFor("dev", config));
         break;
       case "weak-description":
         if (state.handled[`gate:${subject}`] === decision.ref) break;
@@ -58,7 +60,7 @@ export async function runTick(
       case "claim-test":
         await deps.board.transition(subject, config.testingStatusId);
         await deps.tasks.enqueue(subject, "test");
-        state.handled[`test:${subject}`] = decision.ref ?? "";
+        state.handled[`test:${subject}`] = handledMark(decision.ref ?? "", liveFor("test", config));
         if (!state.claimedTests.includes(subject)) state.claimedTests.push(subject);
         countTestClaim(state, config, now);
         break;
@@ -79,7 +81,7 @@ export async function runTick(
         if (await pauseAtApprovalCap(deps, state, config, now)) break;
         const result = await deps.reviewer.review(pr);
         if (result) await applyReview(pr, result, deps, state, config, now);
-        else state.handled[`review:${subject}`] = pr.lastPushAt;
+        else state.handled[`review:${subject}`] = reviewMark(pr, config);
         break;
       }
       case "skip":
@@ -139,7 +141,7 @@ export async function applyReview(
 
   const blocking = relevant.filter((f) => f.severity === "blocking").length;
   if (blocking > 0) {
-    state.handled[`review:${subject}`] = pr.lastPushAt;
+    state.handled[`review:${subject}`] = reviewMark(pr, config);
     // The user's approval of an earlier commit is still on the PR; only they take it back.
     await deps.notifier.notify(
       "digest",
@@ -152,7 +154,7 @@ export async function applyReview(
   }
   // Already approved: the new pushes only needed a look.
   if (pr.approvedCommit) {
-    state.handled[`review:${subject}`] = pr.lastPushAt;
+    state.handled[`review:${subject}`] = reviewMark(pr, config);
     return;
   }
 
@@ -160,7 +162,7 @@ export async function applyReview(
   const day = localDay(now, config.businessHours);
   if (state.approvals.day !== day) state.approvals = { day, count: 0 };
   if (state.approvals.count >= config.maxApprovesPerDay) {
-    state.handled[`review:${subject}`] = pr.lastPushAt;
+    state.handled[`review:${subject}`] = reviewMark(pr, config);
     await deps.notifier.notify(
       "digest",
       `Not approved: ${subject}`,
@@ -170,5 +172,9 @@ export async function applyReview(
   }
   await deps.codeHost.approve(pr);
   state.approvals.count += 1;
-  state.handled[`review:${subject}`] = pr.lastPushAt;
+  state.handled[`review:${subject}`] = reviewMark(pr, config);
+}
+
+function reviewMark(pr: PullRequest, config: BoardWatcherConfig): string {
+  return handledMark(pr.lastPushAt, liveFor("review", config));
 }

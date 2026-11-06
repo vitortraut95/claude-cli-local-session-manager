@@ -40,6 +40,33 @@ export type Decision = {
   failedBuild?: { url: string; name: string };
 };
 
+const SIM = "sim:";
+
+/** Whether the action behind a mark in `state.handled` is done for real right now. */
+export function liveFor(kind: "dev" | "test" | "review", config: BoardWatcherConfig): boolean {
+  const live = config.live ?? {};
+  if (kind === "dev") return Boolean(live.devQueue);
+  if (kind === "test") return Boolean(live.testClaim);
+  return Boolean(live.comments) || Boolean(live.approve);
+}
+
+/** The mark to keep in `state.handled`; one left in simulation carries `sim:`. */
+export function handledMark(value: string, live: boolean): string {
+  return live ? value : `${SIM}${value}`;
+}
+
+/**
+ * Whether a mark counts as handled (and, with `value`, for that same value). A simulated mark
+ * only holds while the automation is still simulated: turned on for real, the ticket or PR is
+ * picked up again.
+ */
+export function hasMark(stored: string | undefined, live: boolean, value?: string): boolean {
+  if (stored === undefined) return false;
+  const simulated = stored.startsWith(SIM);
+  if (live && simulated) return false;
+  return value === undefined || (simulated ? stored.slice(SIM.length) : stored) === value;
+}
+
 export function decideIssues(
   issues: BoardIssue[],
   state: WatcherState,
@@ -67,14 +94,15 @@ export function decideIssues(
     (i) =>
       i.assigneeId === config.me &&
       developing.has(i.statusId) &&
-      state.handled[`dev:${i.key}`] !== undefined,
+      hasMark(state.handled[`dev:${i.key}`], liveFor("dev", config)),
   ).length;
 
   for (const issue of issues) {
     const subject = issue.key;
     if (config.columns.todo.includes(issue.statusId)) {
       if (config.todo?.enabled === false) continue;
-      if (issue.assigneeId !== config.me || state.handled[`dev:${subject}`]) continue;
+      if (issue.assigneeId !== config.me) continue;
+      if (hasMark(state.handled[`dev:${subject}`], liveFor("dev", config))) continue;
       const verdict = gradeDescription(issue, config.descriptionMinScore);
       if (!verdict.passed) {
         decisions.push({
@@ -132,7 +160,7 @@ export function decideIssues(
       decisions.push({ subject, action: "skip", reason: "already tested since the last plan" });
       continue;
     }
-    if (state.handled[`test:${subject}`] === plan.plan.id) continue;
+    if (hasMark(state.handled[`test:${subject}`], liveFor("test", config), plan.plan.id)) continue;
     const problem = testabilityProblem(issue, plan.plan);
     if (problem) {
       decisions.push({ subject, action: "skip", reason: `left for a person: ${problem}` });
@@ -323,7 +351,9 @@ export function decidePullRequests(
     const mine = pr.reviewers.find((r) => r.id === config.me);
     // Bitbucket keeps an approval through new pushes; those are reviewed (`approvedCommit`).
     if (mine?.state === "approved" && !pr.approvedCommit) continue;
-    if (state.handled[`review:${subject}`] === pr.lastPushAt) continue;
+    if (hasMark(state.handled[`review:${subject}`], liveFor("review", config), pr.lastPushAt)) {
+      continue;
+    }
 
     const keys = ticketKeysOf(pr);
     const unapprovedDeploying =

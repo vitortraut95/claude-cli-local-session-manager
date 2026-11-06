@@ -466,5 +466,46 @@
         }
       }
     ]
+  },
+  {
+    "name": "a task queued in simulation is queued again once the To Do automation runs for real; one queued for real isn't",
+    "config": {
+      "live": {
+        "devQueue": true
+      },
+      "maxDevTasks": 2
+    },
+    "state": {
+      "handled": {
+        "dev:DEMO-1": "sim:2026-10-27T14:00:00.000Z",
+        "dev:DEMO-2": "2026-10-27T14:00:00.000Z"
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-1",
+            "summary": "Botão Contratar abre plano errado",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": "me"
+          },
+          {
+            "key": "DEMO-2",
+            "summary": "Botão Contratar abre plano errado",
+            "description": "**Problema**\n\n**Dado** que estou na página de planos (https://demo.example.com/planos)\n**Quando** clico em \"Contratar\" no plano Pro\n**Então** o carrinho deve abrir com o plano Pro selecionado, mas hoje abre com o plano Básico.\n\n![](print-do-erro.png)",
+            "assigneeId": "me"
+          }
+        ],
+        "expect": {
+          "effects": ["enqueue dev DEMO-1"],
+          "decisions": {
+            "DEMO-1": "enqueue-dev",
+            "DEMO-2": "none"
+          }
+        }
+      }
+    ]
   }
 ]
