@@ -18,7 +18,15 @@ import { sanitizedSpawnEnv } from "../../utils/spawnEnv.js";
 import { getWorkspaceRepos } from "../workspaceService.js";
 import { BOARD_WATCHER_CONFIG_FILE, type BoardWatcherConfig } from "./config.js";
 import { apiFetch } from "./http.js";
-import { saveSecrets, secretFromEnvironment, secretIsSet, type SecretName } from "./secrets.js";
+import { jiraApiBase } from "./jira.js";
+import {
+  saveSecrets,
+  secretIsSet,
+  secretShellFile,
+  secretSource,
+  SECRET_NAMES,
+  type SecretName,
+} from "./secrets.js";
 import { featuresOf, liveOf, writeSwitches } from "./settings.js";
 
 /**
@@ -65,8 +73,7 @@ async function patchRaw(mutate: (raw: RawConfig) => void): Promise<void> {
 }
 
 function secretState(name: SecretName): SecretState {
-  if (!secretIsSet(name)) return "missing";
-  return secretFromEnvironment(name) ? "environment" : "saved";
+  return secretIsSet(name) ? secretSource(name) : "missing";
 }
 
 /** The first value that isn't empty (a blank field falls back to what's already in use). */
@@ -76,6 +83,12 @@ function firstFilled(...values: (string | undefined)[]): string {
 
 const basicAuth = (email: string, token: string) =>
   `Basic ${Buffer.from(`${email}:${token}`).toString("base64")}`;
+
+/** What was typed, when it changes the value in use (an unchanged one stays out of the file). */
+function typedChange(given: string | undefined, name: SecretName): string | undefined {
+  const value = given?.trim();
+  return value && value !== process.env[name] ? value : undefined;
+}
 
 /** The token given, or the one already in use when the field was left empty. */
 function tokenOrCurrent(given: string | undefined, name: SecretName): string {
@@ -130,6 +143,12 @@ export async function getSetupStatus(): Promise<AutomationSetupStatus> {
       jenkinsUserId: process.env.JENKINS_USER ?? null,
       jenkinsToken: secretState("JENKINS_TOKEN"),
     },
+    secretFiles: Object.fromEntries(
+      SECRET_NAMES.flatMap((name) => {
+        const file = secretShellFile(name);
+        return file ? [[name, file]] : [];
+      }),
+    ),
     features: featuresOf(raw as Partial<BoardWatcherConfig>),
     live: liveOf(raw as Partial<BoardWatcherConfig>),
     enabled: raw.enabled === true,
@@ -146,17 +165,33 @@ export async function setupJira(input: {
   const email = firstFilled(input.email, process.env.JIRA_EMAIL);
   if (!email) throw new BadRequestError("SETUP_MISSING_EMAIL", "Fill in your Jira e-mail.");
   const token = tokenOrCurrent(input.token, "JIRA_API_TOKEN");
-  const response = await apiFetch("jira", `https://${site}/rest/api/3/myself`, {
-    headers: { Authorization: basicAuth(email, token), Accept: "application/json" },
-  }).catch(() => null);
+  const base = await jiraApiBase(site, email, token).catch(() => null);
+  const response =
+    base &&
+    (await apiFetch("jira", `${base}/rest/api/3/myself`, {
+      headers: { Authorization: basicAuth(email, token), Accept: "application/json" },
+    }).catch(() => null));
   if (!response) throw new BadRequestError("SETUP_UNREACHABLE", `Couldn't reach ${site}.`);
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === 401) {
     throw new BadRequestError("SETUP_BAD_CREDENTIALS", "Jira refused this e-mail and token.");
   }
+  if (response.status === 403) throw missingJiraScopes();
   if (!response.ok)
     throw new BadRequestError("SETUP_UNREACHABLE", `Jira answered ${response.status}.`);
   const me = (await response.json()) as { accountId: string; displayName: string };
-  await saveSecrets({ JIRA_EMAIL: email, JIRA_API_TOKEN: token });
+  // A token with scopes can read the account and still miss the issues.
+  const search = await apiFetch(
+    "jira",
+    `${base}/rest/api/3/search/jql?jql=order%20by%20created&maxResults=1&fields=summary`,
+    {
+      headers: { Authorization: basicAuth(email, token), Accept: "application/json" },
+    },
+  ).catch(() => null);
+  if (search?.status === 401 || search?.status === 403) throw missingJiraScopes();
+  await saveSecrets({
+    JIRA_EMAIL: typedChange(input.email, "JIRA_EMAIL"),
+    JIRA_API_TOKEN: typedChange(input.token, "JIRA_API_TOKEN"),
+  });
   await patchRaw((raw) => {
     raw.me = me.accountId;
     raw.jira = { scopeJql: "", ...raw.jira, site };
@@ -164,11 +199,17 @@ export async function setupJira(input: {
   return { displayName: me.displayName, accountId: me.accountId };
 }
 
-function jiraAuth(): string {
+const missingJiraScopes = () =>
+  new BadRequestError(
+    "SETUP_JIRA_SCOPES",
+    "This Jira token is missing scopes the automations need.",
+  );
+
+function jiraEnvCredentials(): { email: string; token: string } {
   const email = process.env.JIRA_EMAIL;
   const token = process.env.JIRA_API_TOKEN;
   if (!email || !token) throw new BadRequestError("SETUP_JIRA_FIRST", "Set up Jira first.");
-  return basicAuth(email, token);
+  return { email, token };
 }
 
 /** Which role a column name looks like, for the first guess (the user fixes the rest). */
@@ -200,11 +241,15 @@ export function boardIdOf(input: string): number {
 }
 
 async function boardConfiguration(site: string, boardId: number) {
-  const response = await apiFetch(
-    "jira",
-    `https://${site}/rest/agile/1.0/board/${boardId}/configuration`,
-    { headers: { Authorization: jiraAuth(), Accept: "application/json" } },
-  ).catch(() => null);
+  const { email, token } = jiraEnvCredentials();
+  const response = await jiraApiBase(site, email, token)
+    .then((base) =>
+      apiFetch("jira", `${base}/rest/agile/1.0/board/${boardId}/configuration`, {
+        headers: { Authorization: basicAuth(email, token), Accept: "application/json" },
+      }),
+    )
+    .catch(() => null);
+  if (response?.status === 401 || response?.status === 403) throw missingJiraScopes();
   if (!response?.ok) {
     throw new BadRequestError(
       "SETUP_BAD_BOARD",
@@ -324,7 +369,10 @@ export async function setupBitbucket(input: {
     );
   }
   const me = (await user.json()) as { display_name?: string };
-  await saveSecrets({ BITBUCKET_EMAIL: email, BITBUCKET_TOKEN: token });
+  await saveSecrets({
+    BITBUCKET_EMAIL: typedChange(input.email, "BITBUCKET_EMAIL"),
+    BITBUCKET_TOKEN: typedChange(input.token, "BITBUCKET_TOKEN"),
+  });
   await patchRaw((raw) => {
     raw.bitbucket = { repos: [], ...raw.bitbucket, workspace };
   });

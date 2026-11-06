@@ -12,8 +12,12 @@ export const apiErrors = {
     "Não deu pra falar com o serviço. Confira o endereço e a sua rede.",
   ),
   "apiError.setupBadCredentials": dict(
-    "This e-mail and token were refused. Check both (the token may have expired).",
-    "Esse e-mail e token foram recusados. Confira os dois (o token pode ter expirado).",
+    "This e-mail and token were refused. Check the e-mail; the token may have expired or been revoked: create a new one at id.atlassian.com → Security → API tokens and paste it above.",
+    "Esse e-mail e token foram recusados. Confira o e-mail; o token pode ter expirado ou sido revogado: crie um novo em id.atlassian.com → Segurança → API tokens e cole acima.",
+  ),
+  "apiError.setupJiraScopes": dict(
+    'This token is missing permissions the automations use. Scopes can\'t be edited: create a new token at id.atlassian.com → Security → API tokens. Simplest: "Create API token" (no scopes, covers everything). With scopes, pick the Jira app and: read:jira-user, read:jira-work, write:jira-work, read:project:jira, read:board-scope:jira-software, read:board-scope.admin:jira-software, read:sprint:jira-software. Then paste it above.',
+    'Falta permissão nesse token pra algo que as automações usam. Escopo não dá pra editar: crie um token novo em id.atlassian.com → Segurança → API tokens. O mais simples é "Criar API token" (sem escopos, cobre tudo). Com escopos, escolha o app Jira e marque: read:jira-user, read:jira-work, write:jira-work, read:project:jira, read:board-scope:jira-software, read:board-scope.admin:jira-software, read:sprint:jira-software. Depois cole o token novo acima.',
   ),
   "apiError.setupJiraFirst": dict("Set up Jira first.", "Configure o Jira primeiro."),
   "apiError.setupBadBoard": dict(

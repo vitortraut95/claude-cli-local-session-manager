@@ -271,8 +271,11 @@ export const BOARD_ROLES = [
 ] as const;
 export type BoardRole = (typeof BOARD_ROLES)[number];
 
-/** A token or URL the automations use: saved (by the panel), from the environment, or missing. */
-export type SecretState = "saved" | "environment" | "missing";
+/**
+ * Where a token or URL the automations use comes from: saved by the panel (wins), exported in a
+ * shell startup file (`~/.zshrc`…), an environment variable, or missing.
+ */
+export type SecretState = "saved" | "environment" | "shell" | "missing";
 
 /** What's configured so far, for the setup panel's steps. */
 export type AutomationSetupStatus = {
@@ -304,6 +307,8 @@ export type AutomationSetupStatus = {
     jenkinsUserId: string | null;
     jenkinsToken: SecretState;
   };
+  /** Variable name → shell file it was read from, for the tokens whose source is `shell`. */
+  secretFiles?: Record<string, string>;
   /** The automations' switches, as the Automation modal shows them. */
   features: AutomationFeatures;
   live: AutomationLive;

@@ -46,16 +46,48 @@ export function jiraCredentialsFromEnv(site: string): JiraCredentials {
   return { site, email, token };
 }
 
+const basicAuth = (email: string, token: string) =>
+  `Basic ${Buffer.from(`${email}:${token}`).toString("base64")}`;
+
+const apiBases = new Map<string, Promise<string>>();
+
+async function resolveApiBase(site: string, email: string, token: string): Promise<string> {
+  const direct = `https://${site}`;
+  const probe = await apiFetch("jira", `${direct}/rest/api/3/myself`, {
+    headers: { Authorization: basicAuth(email, token), Accept: "application/json" },
+  });
+  if (probe.status !== 401) return direct;
+  const tenant = await apiFetch("jira", `${direct}/_edge/tenant_info`);
+  const { cloudId } = tenant.ok ? ((await tenant.json()) as { cloudId?: string }) : {};
+  return cloudId ? `https://api.atlassian.com/ex/jira/${cloudId}` : direct;
+}
+
+/**
+ * Where the REST API answers for this token: a classic API token works on the site itself, one
+ * created with scopes only through the Atlassian API gateway (by the site's cloud id).
+ */
+export function jiraApiBase(site: string, email: string, token: string): Promise<string> {
+  const cacheKey = `${site}\n${email}\n${token}`;
+  let base = apiBases.get(cacheKey);
+  if (!base) {
+    base = resolveApiBase(site, email, token);
+    base.catch(() => apiBases.delete(cacheKey));
+    apiBases.set(cacheKey, base);
+  }
+  return base;
+}
+
 async function request(
   credentials: JiraCredentials,
   apiPath: string,
   body?: unknown,
 ): Promise<Response> {
-  const auth = Buffer.from(`${credentials.email}:${credentials.token}`).toString("base64");
-  const response = await apiFetch("jira", `https://${credentials.site}${apiPath}`, {
+  const { site, email, token } = credentials;
+  const base = await jiraApiBase(site, email, token);
+  const response = await apiFetch("jira", `${base}${apiPath}`, {
     method: body === undefined ? "GET" : "POST",
     headers: {
-      Authorization: `Basic ${auth}`,
+      Authorization: basicAuth(email, token),
       Accept: "application/json",
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
     },
