@@ -96,10 +96,14 @@ export type BuildDiagnosisView = {
   fix: string;
 };
 
+/** The kind of work a decision is about, for the Board's queue. */
+export type WatcherWork = "dev" | "test" | "retest" | "review" | "progress";
+
 export type WatcherDecision = {
   subject: string;
   action: WatcherDecisionAction;
   reason: string;
+  work?: WatcherWork;
   ref?: string;
   context?: DecisionContext;
   /** The failed build behind a "CI failed", with why once the log was read (null: couldn't). */

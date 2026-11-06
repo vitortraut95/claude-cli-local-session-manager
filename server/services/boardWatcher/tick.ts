@@ -1,3 +1,4 @@
+import type { WatcherWork } from "../../../shared/boardWatcher.js";
 import { localDay } from "./businessTime.js";
 import type { BoardWatcherConfig } from "./config.js";
 import {
@@ -33,11 +34,12 @@ export async function runTick(
   ]);
   const issueDecisions = decideIssues(issues, state, config, now);
   const claims = issueDecisions.filter((d) => d.action === "claim-test").length;
+  const as = (work: WatcherWork, list: Decision[]) => list.map((d) => ({ ...d, work }));
   const decisions = [
     ...issueDecisions,
-    ...decideRetests(issues, prs, state, config, now, claims),
-    ...decideProgress(issues, startedDevKeys, config, now),
-    ...decidePullRequests(prs, state, config, now, issues),
+    ...as("retest", decideRetests(issues, prs, state, config, now, claims)),
+    ...as("progress", decideProgress(issues, startedDevKeys, config, now)),
+    ...as("review", decidePullRequests(prs, state, config, now, issues)),
   ];
   const prsBySubject = new Map(prs.map((pr) => [prSubject(pr), pr]));
 
