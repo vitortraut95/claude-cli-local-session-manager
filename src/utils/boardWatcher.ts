@@ -113,7 +113,8 @@ export function subjectLinks(
     return bases?.bitbucket
       ? [{ kind: "pr", url: `${bases.bitbucket}${pr[1]}/pull-requests/${pr[2]}` }]
       : [];
-  if (subjectKind(subject) === "build") return [];
+  // Only a ticket key opens in Jira ("Infra: …" and the like have no page).
+  if (!/^[A-Z][A-Z0-9]+-\d+$/.test(subject)) return [];
   return bases?.jira ? [{ kind: "issue", url: `${bases.jira}${subject}` }] : [];
 }
 

@@ -488,6 +488,7 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
 
         <WatcherHistory
           refreshKey={historyRefreshKey}
+          linkBases={status?.linkBases}
           feedback={feedback}
           onFeedbackSaved={onFeedbackSaved}
         />

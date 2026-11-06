@@ -6,6 +6,7 @@ import * as boardWatcherApi from "../services/boardWatcherApi";
 import type {
   WatcherActionEntry,
   WatcherFeedback,
+  BoardWatcherStatus,
   WatcherHistoryGroup,
 } from "../services/boardWatcherApi";
 import { feedbackEntryKey } from "../../shared/boardWatcher";
@@ -17,6 +18,7 @@ import {
   type HistoryFilter,
 } from "../utils/boardWatcher";
 import { formatUpdatedAt } from "../utils/formatDate";
+import { SubjectIcon, SubjectLinks } from "./BoardSubject";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { MarkdownView } from "./MarkdownView";
@@ -38,6 +40,8 @@ type FeedbackProps = {
   feedback: Record<string, WatcherFeedback>;
   onFeedbackSaved: (saved: WatcherFeedback) => void;
 };
+
+type LinkBases = BoardWatcherStatus["linkBases"] | undefined;
 
 /** One recorded action inside a ticket's group: when, what, the 👍/👎 and its detail. */
 function HistoryEntry({
@@ -125,8 +129,13 @@ function HistoryEntry({
   );
 }
 
-/** A ticket's or PR's line: its latest action, how many there were; opens its timeline. */
-function HistoryGroup({ group, ...feedbackProps }: FeedbackProps & { group: WatcherHistoryGroup }) {
+/** A ticket's or PR's line: its latest action, how many there were, the buttons to open the PR or
+ *  ticket (as in the queue); opens its timeline. */
+function HistoryGroup({
+  group,
+  linkBases,
+  ...feedbackProps
+}: FeedbackProps & { group: WatcherHistoryGroup; linkBases: LinkBases }) {
   const { t } = useLanguage();
   const latest = group.entries[0];
   return (
@@ -134,6 +143,7 @@ function HistoryGroup({ group, ...feedbackProps }: FeedbackProps & { group: Watc
       <details className="group px-3 py-2">
         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 text-sm">
           <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-90" />
+          <SubjectIcon subject={group.subject} />
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {formatUpdatedAt(group.lastTs)}
           </span>
@@ -152,6 +162,7 @@ function HistoryGroup({ group, ...feedbackProps }: FeedbackProps & { group: Watc
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {t("board.history.count", { count: group.entries.length })}
           </span>
+          <SubjectLinks subject={group.subject} bases={linkBases} />
         </summary>
         <ul className="mt-2 flex flex-col divide-y divide-gray-100 border-l border-gray-200 pl-4 dark:divide-gray-800 dark:border-gray-800">
           {group.entries.map((entry, index) => (
@@ -168,12 +179,14 @@ function HistoryGroup({ group, ...feedbackProps }: FeedbackProps & { group: Watc
 }
 
 type WatcherHistoryProps = FeedbackProps & {
+  /** Where PRs and tickets open (from the status), for the buttons on each line. */
+  linkBases: LinkBases;
   /** Changes when there may be something new (a look or a session finished): page 1 is re-read. */
   refreshKey: string;
 };
 
 /** The Board's history, one line per ticket/PR, with search, filters and infinite scroll. */
-export function WatcherHistory({ refreshKey, ...feedbackProps }: WatcherHistoryProps) {
+export function WatcherHistory({ refreshKey, linkBases, ...feedbackProps }: WatcherHistoryProps) {
   const { t } = useLanguage();
   const [filter, setFilter] = useState<HistoryFilter>("all");
   const [search, setSearch] = useState("");
@@ -283,7 +296,12 @@ export function WatcherHistory({ refreshKey, ...feedbackProps }: WatcherHistoryP
       {groups !== null && groups.length > 0 && (
         <ul className="flex flex-col divide-y divide-gray-100 rounded-xl border border-gray-200 dark:divide-white/5 dark:border-white/10 dark:bg-white/[0.02]">
           {groups.map((group) => (
-            <HistoryGroup key={group.subject} group={group} {...feedbackProps} />
+            <HistoryGroup
+              key={group.subject}
+              group={group}
+              linkBases={linkBases}
+              {...feedbackProps}
+            />
           ))}
         </ul>
       )}
