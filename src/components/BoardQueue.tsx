@@ -28,37 +28,39 @@ const STATE_LABEL: Record<QueueState, TranslationKey> = {
 };
 
 const STATE_TONE: Record<QueueState, string> = {
-  running: "bg-violet-500/15 text-violet-200 ring-violet-400/40",
-  queued: "bg-cyan-500/10 text-cyan-200 ring-cyan-400/30",
-  next: "bg-fuchsia-500/10 text-fuchsia-200 ring-fuchsia-400/30",
-  waiting: "bg-white/5 text-gray-300 ring-white/15",
+  running:
+    "bg-violet-500/15 text-violet-800 ring-violet-500/40 dark:text-violet-200 dark:ring-violet-400/40",
+  queued: "bg-cyan-500/10 text-cyan-800 ring-cyan-500/30 dark:text-cyan-200 dark:ring-cyan-400/30",
+  next: "bg-fuchsia-500/10 text-fuchsia-800 ring-fuchsia-500/30 dark:text-fuchsia-200 dark:ring-fuchsia-400/30",
+  waiting:
+    "bg-gray-100 text-gray-700 ring-gray-200 dark:bg-white/5 dark:text-gray-300 dark:ring-white/15",
 };
 
 const WORK: Record<WatcherWork, { label: TranslationKey; icon: LucideIcon; tone: string }> = {
   review: {
     label: "board.queue.work.review",
     icon: GitPullRequest,
-    tone: "bg-sky-500/10 text-sky-200 ring-sky-400/30",
+    tone: "bg-sky-500/10 text-sky-800 ring-sky-500/30 dark:text-sky-200 dark:ring-sky-400/30",
   },
   dev: {
     label: "board.queue.work.dev",
     icon: Code2,
-    tone: "bg-emerald-500/10 text-emerald-200 ring-emerald-400/30",
+    tone: "bg-emerald-500/10 text-emerald-800 ring-emerald-500/30 dark:text-emerald-200 dark:ring-emerald-400/30",
   },
   test: {
     label: "board.queue.work.test",
     icon: FlaskConical,
-    tone: "bg-amber-500/10 text-amber-200 ring-amber-400/30",
+    tone: "bg-amber-500/10 text-amber-800 ring-amber-500/30 dark:text-amber-200 dark:ring-amber-400/30",
   },
   retest: {
     label: "board.queue.work.retest",
     icon: RotateCcw,
-    tone: "bg-orange-500/10 text-orange-200 ring-orange-400/30",
+    tone: "bg-orange-500/10 text-orange-800 ring-orange-500/30 dark:text-orange-200 dark:ring-orange-400/30",
   },
   progress: {
     label: "board.queue.work.progress",
     icon: ArrowRightCircle,
-    tone: "bg-white/5 text-gray-300 ring-white/15",
+    tone: "bg-gray-100 text-gray-700 ring-gray-200 dark:bg-white/5 dark:text-gray-300 dark:ring-white/15",
   },
 };
 
@@ -123,7 +125,7 @@ export function BoardQueue({
     void onStartNow(subject).finally(() => setStarting(null));
   };
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+    <section className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.03]">
       <div className="flex items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-xs font-semibold tracking-widest text-gray-400 uppercase">
           <ListOrdered className="h-4 w-4 text-violet-400" aria-hidden="true" />
@@ -142,7 +144,7 @@ export function BoardQueue({
             <button
               type="button"
               aria-label={t("board.queue.calls")}
-              className="rounded-full text-gray-500 hover:text-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
+              className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
             >
               <Info className="h-4 w-4" />
             </button>
@@ -156,7 +158,7 @@ export function BoardQueue({
           {order.length > 1 && (
             <p className="text-xs text-gray-500">{t("board.queue.reorderHint")}</p>
           )}
-          <ul className="flex max-h-[22rem] flex-col divide-y divide-white/5 overflow-y-auto pr-1">
+          <ul className="flex max-h-[22rem] flex-col divide-y divide-gray-100 dark:divide-white/5 overflow-y-auto pr-1">
             {items.map((item) => {
               const title = status.titles[item.subject];
               const movable = item.state !== "running" && order.length > 1;
@@ -198,7 +200,7 @@ export function BoardQueue({
                         if (event.key === "ArrowUp") moveBy(item.subject, -1, event);
                         if (event.key === "ArrowDown") moveBy(item.subject, 1, event);
                       }}
-                      className="-ml-1 mt-0.5 cursor-grab rounded p-0.5 text-gray-500 hover:bg-white/10 hover:text-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 active:cursor-grabbing"
+                      className="-ml-1 mt-0.5 cursor-grab rounded p-0.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-white/10 dark:hover:text-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 active:cursor-grabbing"
                     >
                       <GripVertical className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -209,11 +211,14 @@ export function BoardQueue({
                   <div className="min-w-0 flex-1">
                     <p className="flex min-w-0 items-center gap-2">
                       {item.work && <WorkBadge work={item.work} />}
-                      <span className="shrink-0 font-mono text-xs text-gray-200">
+                      <span className="shrink-0 font-mono text-xs text-gray-800 dark:text-gray-200">
                         {item.subject}
                       </span>
                       {title && (
-                        <span className="min-w-0 truncate text-sm text-gray-300" title={title}>
+                        <span
+                          className="min-w-0 truncate text-sm text-gray-700 dark:text-gray-300"
+                          title={title}
+                        >
                           {title}
                         </span>
                       )}
@@ -228,7 +233,7 @@ export function BoardQueue({
                         href={item.decision.build.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-fuchsia-300 underline-offset-2 hover:underline"
+                        className="text-xs text-fuchsia-700 dark:text-fuchsia-300 underline-offset-2 hover:underline"
                       >
                         {t("board.queue.build", { name: item.decision.build.name })}
                       </a>
@@ -251,7 +256,7 @@ export function BoardQueue({
                         type="button"
                         disabled={starting !== null}
                         onClick={() => start(item.subject)}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-violet-200 ring-1 ring-violet-400/40 ring-inset transition hover:bg-violet-500/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:text-violet-200 ring-1 ring-violet-400/40 ring-inset transition hover:bg-violet-500/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {starting === item.subject ? (
                           <Loader2

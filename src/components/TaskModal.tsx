@@ -30,7 +30,7 @@ const SECTION_CLASSNAME = "rounded-lg border border-gray-200 p-3 dark:border-gra
 const SECTION_TITLE_CLASSNAME =
   "mb-2 flex items-center gap-1.5 text-sm font-semibold text-gray-800 dark:text-gray-200";
 const LABEL_CLASSNAME = "flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400";
-const CHECKBOX_CLASSNAME = "mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100";
+const CHECKBOX_CLASSNAME = "mt-0.5 h-4 w-4 shrink-0 accent-violet-600 dark:accent-violet-400";
 
 const STEP_LABEL_KEYS: Record<tasksApi.AddRepoStep, TranslationKey> = {
   repo: "newTaskModal.step.repo",
@@ -161,6 +161,7 @@ export function TaskModal({
       icon={<Layers className="h-5 w-5" />}
       onClose={onClose}
       size="lg"
+      placement="side"
     >
       <section className={SECTION_CLASSNAME}>
         <h3 className={SECTION_TITLE_CLASSNAME}>
@@ -516,7 +517,7 @@ function AddRepoForm({
             type="checkbox"
             checked={useLocalBranch}
             onChange={(event) => setUseLocalBranch(event.target.checked)}
-            className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-gray-900 dark:accent-gray-100"
+            className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-violet-600 dark:accent-violet-400"
           />
           {t("newTaskModal.useLocalBaseBranchLabel")}
         </label>

@@ -12,83 +12,31 @@ import {
   Trash2,
   Info,
 } from "lucide-react";
-import { useState } from "react";
 import jenkinsIcon from "../assets/jenkins.svg";
 import { useLanguage } from "../hooks/useLanguage";
-import { useToast } from "../hooks/useToast";
 import type { PendingAction } from "../hooks/useSessions";
-import * as cleanupApi from "../services/cleanupApi";
-import * as sessionsApi from "../services/sessionsApi";
-import type { TerminalLayout } from "../services/preferencesApi";
-import type { Session, WorkStatus } from "../../shared/session";
+import { useSessionActions, type SessionHandlers } from "../hooks/useSessionActions";
+import type { Session } from "../../shared/session";
 import { AnchoredMenu } from "./AnchoredMenu";
 import { Button } from "./Button";
-import { ConfirmDialog } from "./ConfirmDialog";
-import { JenkinsLinksModal } from "./JenkinsLinksModal";
 import { LaunchLayoutButton } from "./LaunchLayoutButton";
 import { LinkifiedText } from "./LinkifiedText";
 import { MissingDirectoryNotice } from "./MissingDirectoryNotice";
-import { TaskModal } from "./TaskModal";
 import { TaskReposLine } from "./TaskReposLine";
-import { SessionTranscriptModal } from "./SessionTranscriptModal";
-import { NicknameModal } from "./NicknameModal";
-import { SessionBranchesModal } from "./SessionBranchesModal";
-import { OpenPrBaseChoiceModal } from "./OpenPrBaseChoiceModal";
 import { ToolbarIconButton } from "./ToolbarIconButton";
 import { Tooltip } from "./Tooltip";
 import { PreviewLinks } from "./PreviewLinks";
-import { TaskHistoryModal } from "./TaskHistoryModal";
 import { WorkStatusSelect } from "./WorkStatusSelect";
 import { formatWorktreePath } from "../utils/formatPath";
-import { DEFAULT_BRANCHES } from "../utils/branches";
-import { getTaskJenkinsGroups } from "../utils/jenkins";
-import { useTeamLinks } from "../hooks/useTeamLinks";
-import { resolveSessionBranches } from "../utils/sessionBranches";
-import { resolveApiErrorMessage } from "../utils/apiClient";
 
-const DONE_WORKTREE_KEPT_KEYS = {
-  "not-pushed": "sessionCard.doneWorktree.keptNotPushed",
-  "uncommitted-changes": "sessionCard.doneWorktree.keptDirty",
-  "active-session": "sessionCard.doneWorktree.keptActive",
-} as const;
-
-/** The one dialog a card can have open. `task.addRepo` opens it straight on the "add repo" form;
- *  `doneWorktree` is offered right after the card is marked done (the cleanup that removing its
- *  worktree means). */
-type CardModal =
-  | { kind: "preview" }
-  | { kind: "nickname" }
-  | { kind: "branches" }
-  | { kind: "task"; addRepo: boolean }
-  | { kind: "history" }
-  | { kind: "jenkins" }
-  | { kind: "openPrBase" }
-  | { kind: "deleteWorktree" }
-  | { kind: "doneWorktree"; finding: cleanupApi.CleanupFinding };
-
-type SessionCardProps = {
+type SessionCardProps = SessionHandlers & {
   session: Session;
   pendingAction?: PendingAction;
   selected: boolean;
   onToggleSelect: (id: string) => void;
-  /** `layout` = where the user picked to open it; omitted = the `terminalLayout` preference. */
-  onContinue: (session: Session, layout?: TerminalLayout) => void;
   onDeleteRequest: (session: Session) => void;
-  onSetNickname: (session: Session, nickname: string) => void;
-  onSetBranches: (session: Session, origin: string, destination: string) => void;
-  /** Resolves true once saved. */
-  onSetStatus: (session: Session, status: WorkStatus | null) => Promise<boolean>;
-  onOpenInVSCode: (session: Session) => void;
-  onOpenInCursor: (session: Session) => void;
-  onOpenMissingWorktreeRootInVSCode: (session: Session) => void;
-  onStartNewSessionAtMissingWorktreeRoot: (
-    session: Session,
-    layout?: TerminalLayout,
-  ) => Promise<void>;
-  onDeleteWorktree: (session: Session) => void;
-  onWorktreeSyncComplete: (session: Session) => void;
-  onFilterByTask: (taskKey: string) => void;
-  onTaskChanged: () => void;
+  /** Opens the session's detail panel (from its title). */
+  onOpenDetails?: (session: Session) => void;
 };
 
 export function SessionCard({
@@ -96,115 +44,31 @@ export function SessionCard({
   pendingAction,
   selected,
   onToggleSelect,
-  onContinue,
   onDeleteRequest,
-  onSetNickname,
-  onSetBranches,
-  onSetStatus,
-  onOpenInVSCode,
-  onOpenInCursor,
-  onOpenMissingWorktreeRootInVSCode,
-  onStartNewSessionAtMissingWorktreeRoot,
-  onDeleteWorktree,
-  onWorktreeSyncComplete,
-  onFilterByTask,
-  onTaskChanged,
+  onOpenDetails,
+  ...handlers
 }: SessionCardProps) {
   const { t } = useLanguage();
-  const isDeleting = pendingAction === "delete";
-  const isContinuing = pendingAction === "continue";
-  const isSettingNickname = pendingAction === "nickname";
-  const isSettingBranches = pendingAction === "branches";
-  const isOpeningVSCode = pendingAction === "vscode";
-  const isOpeningCursor = pendingAction === "cursor";
-  const isDeletingWorktree = pendingAction === "worktree-delete";
-  const isResumingAtMissingWorktreeRoot = pendingAction === "missing-root-resume";
+  const actions = useSessionActions(session, handlers, pendingAction);
+  const { onContinue, onOpenInVSCode, onOpenInCursor, onFilterByTask, onWorktreeSyncComplete } =
+    handlers;
+  const { onOpenMissingWorktreeRootInVSCode, onStartNewSessionAtMissingWorktreeRoot } = handlers;
+  const isDeleting = actions.busy.deleting;
+  const isContinuing = actions.busy.continuing;
+  const isSettingNickname = actions.busy.nickname;
+  const isSettingBranches = actions.busy.branches;
+  const isOpeningVSCode = actions.busy.vscode;
+  const isOpeningCursor = actions.busy.cursor;
+  const isDeletingWorktree = actions.busy.worktreeDelete;
+  const isResumingAtMissingWorktreeRoot = actions.busy.missingRootResume;
   const isBusy = isDeleting || isContinuing || isSettingNickname;
-  const [openModal, setOpenModal] = useState<CardModal | null>(null);
-  const closeModal = () => setOpenModal(null);
-  const doneWorktreeFinding = openModal?.kind === "doneWorktree" ? openModal.finding : null;
-  const [removingDoneWorktree, setRemovingDoneWorktree] = useState(false);
-  const [openingPrUrl, setOpeningPrUrl] = useState(false);
-  const { showToast } = useToast();
+  const setOpenModal = actions.open;
+  const openingPrUrl = actions.openingPrUrl;
+  const { originBranch, taskBranch, jenkinsGroups } = actions;
   const worktreePathParts =
     session.isWorktree && session.workingDirectory
       ? formatWorktreePath(session.workingDirectory)
       : null;
-  const { origin: originBranch, destination: taskBranch } = resolveSessionBranches(session);
-  // `gitBranch` is null when the folder isn't a git repo, where a job link would be meaningless.
-  const teamLinks = useTeamLinks();
-  const jenkinsGroups =
-    session.directoryMissing || session.gitBranch === null || session.isAppRepo
-      ? null
-      : getTaskJenkinsGroups(
-          teamLinks.jenkinsBaseUrl,
-          teamLinks.envPreviews,
-          session,
-          taskBranch ?? null,
-          originBranch,
-        );
-
-  /** Marking a worktree session done offers to remove its worktree when that's safe now (merged,
-   *  or every commit on origin); otherwise says why it stays. */
-  const handleStatusChange = async (status: WorkStatus | null) => {
-    const saved = await onSetStatus(session, status);
-    if (!saved || status !== "done" || !session.isWorktree || session.directoryMissing) return;
-    try {
-      const result = await cleanupApi.fetchWorktreeCleanupForSession(session.id);
-      if (result?.finding) {
-        const finding = result.finding;
-        // Never replaces a dialog the user opened meanwhile.
-        setOpenModal((current) => current ?? { kind: "doneWorktree", finding });
-      } else if (
-        result?.reason === "not-pushed" ||
-        result?.reason === "uncommitted-changes" ||
-        result?.reason === "active-session"
-      ) {
-        showToast(t(DONE_WORKTREE_KEPT_KEYS[result.reason]), "error");
-      }
-    } catch {
-      // Only an offer: the Cleanup window still lists it later.
-    }
-  };
-
-  const handleRemoveDoneWorktree = async () => {
-    if (!doneWorktreeFinding) return;
-    setRemovingDoneWorktree(true);
-    try {
-      await cleanupApi.executeCleanupFinding(doneWorktreeFinding);
-      showToast(t("sessionCard.doneWorktree.removed"), "success");
-      closeModal();
-      onWorktreeSyncComplete(session);
-    } catch (err) {
-      showToast(resolveApiErrorMessage(err, t, "cleanupModal.runError"), "error");
-    } finally {
-      setRemovingDoneWorktree(false);
-    }
-  };
-
-  // The URL needs a server-side git call, so it's fetched on click. A non-default base branch
-  // goes through OpenPrBaseChoiceModal, since the plain link diffs against the default branch.
-  const handleOpenPr = async () => {
-    if (!taskBranch) return;
-    if (
-      originBranch &&
-      originBranch !== taskBranch &&
-      originBranch !== session.defaultBranch &&
-      !DEFAULT_BRANCHES.has(originBranch)
-    ) {
-      setOpenModal({ kind: "openPrBase" });
-      return;
-    }
-    setOpeningPrUrl(true);
-    try {
-      const url = await sessionsApi.fetchPrUrl(session.id, taskBranch);
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      showToast(resolveApiErrorMessage(err, t, "sessionCard.openPr.error"), "error");
-    } finally {
-      setOpeningPrUrl(false);
-    }
-  };
 
   const nicknameButton = (
     <Button
@@ -233,7 +97,7 @@ export function SessionCard({
       <LaunchLayoutButton
         size="sm"
         fullWidth
-        label={t(teamLinks.gridLayout ? "sessionCard.resumeIn.button" : "sessionCard.resumeButton")}
+        label={t(actions.gridLayout ? "sessionCard.resumeIn.button" : "sessionCard.resumeButton")}
         icon={<Play className="h-4 w-4" />}
         busy={isContinuing}
         disabled={isBusy || continueDisabledReason !== null}
@@ -260,7 +124,7 @@ export function SessionCard({
     <div
       className={`relative flex flex-col gap-3 rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-900 ${
         selected
-          ? "border-gray-900 ring-2 ring-gray-900/20 dark:border-gray-100 dark:ring-gray-100/20"
+          ? "border-violet-500 ring-2 ring-violet-500/20 dark:border-violet-400 dark:ring-violet-400/20"
           : "border-gray-200 dark:border-gray-800"
       }`}
     >
@@ -288,8 +152,10 @@ export function SessionCard({
                 ? t("sessionCard.status.activeLabel")
                 : t("sessionCard.status.inactiveLabel")
             }
-            className={`h-3 w-3 rounded-full border-2 border-white shadow dark:border-gray-900 ${
-              session.isActive ? "bg-green-500 animate-pulse" : "bg-red-400"
+            className={`h-3 w-3 rounded-full border-2 shadow ${
+              session.isActive
+                ? "border-white bg-emerald-500 dark:border-gray-900 dark:bg-emerald-400"
+                : "border-gray-400 bg-white dark:border-gray-500 dark:bg-gray-900"
             }`}
           />
         </Tooltip>
@@ -298,7 +164,7 @@ export function SessionCard({
           taskKey={session.taskKey ?? null}
           testKey={session.testKey ?? null}
           saving={pendingAction === "status"}
-          onChange={(status) => void handleStatusChange(status)}
+          onChange={(status) => void actions.changeStatus(status)}
         />
         {session.hasHistory && (
           <Tooltip content={t("history.open")}>
@@ -320,7 +186,17 @@ export function SessionCard({
             className="line-clamp-2 text-base font-semibold text-gray-900 dark:text-gray-100"
             title={session.title}
           >
-            {session.title}
+            {onOpenDetails ? (
+              <button
+                type="button"
+                onClick={() => onOpenDetails(session)}
+                className="text-left hover:text-violet-700 dark:hover:text-violet-300"
+              >
+                {session.title}
+              </button>
+            ) : (
+              session.title
+            )}
           </h2>
           {session.nickname && (
             <span
@@ -465,7 +341,7 @@ export function SessionCard({
             ariaLabel={t("sessionCard.openPrAriaLabel")}
             color="lime"
             disabled={openingPrUrl}
-            onClick={() => void handleOpenPr()}
+            onClick={() => void actions.openPr()}
             icon={
               openingPrUrl ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -551,73 +427,7 @@ export function SessionCard({
         )}
       </div>
 
-      {openModal?.kind === "preview" && (
-        <SessionTranscriptModal session={session} onClose={closeModal} />
-      )}
-      {openModal?.kind === "task" && (
-        <TaskModal
-          session={session}
-          startAddingRepo={openModal.addRepo}
-          onClose={closeModal}
-          onChanged={onTaskChanged}
-          onSetNickname={(nickname) => onSetNickname(session, nickname)}
-          onSetBranches={(origin, destination) => onSetBranches(session, origin, destination)}
-        />
-      )}
-      {openModal?.kind === "branches" && (
-        <SessionBranchesModal
-          session={session}
-          onSave={(origin, destination) => {
-            closeModal();
-            onSetBranches(session, origin, destination);
-          }}
-          onCancel={closeModal}
-        />
-      )}
-      {openModal?.kind === "nickname" && (
-        <NicknameModal
-          currentNickname={session.nickname ?? ""}
-          onSave={(nickname) => {
-            closeModal();
-            onSetNickname(session, nickname);
-          }}
-          onCancel={closeModal}
-        />
-      )}
-      {openModal?.kind === "jenkins" && jenkinsGroups && (
-        <JenkinsLinksModal groups={jenkinsGroups} onClose={closeModal} />
-      )}
-      {openModal?.kind === "openPrBase" && (
-        <OpenPrBaseChoiceModal session={session} onClose={closeModal} />
-      )}
-      {openModal?.kind === "history" && <TaskHistoryModal session={session} onClose={closeModal} />}
-      <ConfirmDialog
-        open={doneWorktreeFinding !== null}
-        title={t("sessionCard.doneWorktree.title")}
-        message={t(
-          doneWorktreeFinding?.kind === "remove-merged-worktree"
-            ? "sessionCard.doneWorktree.mergedMessage"
-            : "sessionCard.doneWorktree.message",
-          { branch: doneWorktreeFinding?.branch ?? "?" },
-        )}
-        confirmLabel={t("sessionCard.doneWorktree.confirm")}
-        cancelLabel={t("sessionCard.doneWorktree.keep")}
-        isLoading={removingDoneWorktree}
-        onConfirm={() => void handleRemoveDoneWorktree()}
-        onCancel={closeModal}
-      />
-      <ConfirmDialog
-        open={openModal?.kind === "deleteWorktree"}
-        title={t("sessionCard.deleteWorktreeConfirm.title")}
-        message={t("sessionCard.deleteWorktreeConfirm.message")}
-        confirmLabel={t("sessionCard.deleteButton")}
-        cancelLabel={t("sessionCard.cancelButton")}
-        onConfirm={() => {
-          closeModal();
-          onDeleteWorktree(session);
-        }}
-        onCancel={closeModal}
-      />
+      {actions.dialogs}
     </div>
   );
 }

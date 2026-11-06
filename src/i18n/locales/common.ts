@@ -33,8 +33,8 @@ export const common = {
   "launchIn.terminal": dict("In a terminal", "Num terminal"),
   "toast.closeAriaLabel": dict("Close notification", "Fechar notificação"),
   "searchBar.placeholder": dict(
-    "Search by title, project, branch, or ID...",
-    "Buscar por título, projeto, branch ou ID...",
+    "Search by title, task, branch or prompt",
+    "Buscar por título, tarefa, branch ou prompt",
   ),
   "searchBar.clearLabel": dict("Clear search", "Limpar busca"),
   "projectFilter.ariaLabel": dict("Filter by project", "Filtrar por projeto"),

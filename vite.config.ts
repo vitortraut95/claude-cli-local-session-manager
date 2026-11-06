@@ -7,9 +7,15 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       output: {
-        // Third-party code in its own chunk, so neither it nor the app's own code (most of it the
-        // translation tables) crosses Vite's 500 kB chunk-size warning.
-        codeSplitting: { groups: [{ name: "vendor", test: /node_modules/ }] },
+        // Third-party code and the translation tables in their own chunks, so none of them crosses
+        // Vite's 500 kB chunk-size warning.
+        codeSplitting: {
+          groups: [
+            { name: "vendor", test: /node_modules/ },
+            // The translation tables (both languages, the Guide's included) on their own.
+            { name: "i18n", test: /src[\\/]i18n[\\/]/ },
+          ],
+        },
       },
     },
   },

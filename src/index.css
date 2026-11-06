@@ -4,6 +4,49 @@
    following the OS's prefers-color-scheme. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Design tokens. The gray scale is a cool, slightly violet-tinted neutral shared by both themes
+   (light uses the low end for surfaces, dark the high end), so every existing `gray-*` class picks
+   it up. Violet is the brand (the Board's eye): violet-600 is the primary action in both themes.
+   Status colors never reuse the brand: emerald = running/done, amber = waiting on you, red = only
+   errors. Text pairs are chosen for WCAG AA (gray-500 on white, gray-400 on gray-950). */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-gray-50: #f7f7fa;
+  --color-gray-100: #eeeef3;
+  --color-gray-200: #e0e0e8;
+  --color-gray-300: #c9c9d4;
+  --color-gray-400: #a3a3b2;
+  --color-gray-500: #73737f;
+  --color-gray-600: #5b5b68;
+  --color-gray-700: #32323e;
+  --color-gray-800: #24242e;
+  --color-gray-900: #111118;
+  --color-gray-950: #0a0a0f;
+
+  --color-violet-50: #f3f0ff;
+  --color-violet-100: #e9e3ff;
+  --color-violet-200: #d4cbff;
+  --color-violet-300: #c9beff;
+  --color-violet-400: #a898ff;
+  --color-violet-500: #8a73ff;
+  --color-violet-600: #6b4eff;
+  --color-violet-700: #5a3df0;
+  --color-violet-800: #4a2fd1;
+  --color-violet-900: #33227f;
+  --color-violet-950: #1c1450;
+
+  /* App shell surfaces (sidebar / panels) between the page and the cards. */
+  --color-shell: #ffffff;
+  --color-panel: #ffffff;
+}
+
+:root.dark {
+  --color-shell: #0e0e14;
+  --color-panel: #0e0e14;
+}
+
 :root {
   color-scheme: light;
 }
@@ -14,9 +57,14 @@
 
 body {
   margin: 0;
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
+  background: var(--color-gray-50);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  :root.dark & {
+    background: var(--color-gray-950);
+  }
 
   button {
     cursor: pointer;
@@ -192,4 +240,56 @@ body {
   .automation-focus::before {
     animation: automation-focus-fade 5s ease-out forwards;
   }
+}
+
+/* Keyboard focus is always visible, in the brand color (buttons, links, fields, tabs). */
+:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-violet-500);
+  outline-offset: 2px;
+}
+
+/* Side panels slide in from the right; still for reduced motion. */
+@keyframes panel-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.panel-in {
+  animation: panel-in 180ms ease-out;
+}
+
+/* Loading placeholders. */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.skeleton {
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-in,
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* The welcome tour's current place in the navigation. */
+.tour-highlight {
+  position: relative;
+  z-index: 1;
+  border-radius: 0.5rem;
+  box-shadow:
+    0 0 0 2px var(--color-violet-500),
+    0 0 0 6px rgb(107 78 255 / 0.25);
 }

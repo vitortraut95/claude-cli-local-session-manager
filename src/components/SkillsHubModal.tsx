@@ -33,6 +33,7 @@ export function SkillsHubModal({ onClose }: SkillsHubModalProps) {
         if (!preview) onClose();
       }}
       size="xxxl"
+      placement="side"
       icon={<Wand2 className="h-5 w-5 text-violet-500" />}
     >
       {!status && !failed && (

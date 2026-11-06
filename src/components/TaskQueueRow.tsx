@@ -344,7 +344,7 @@ export function TaskQueueRow({
                       type="checkbox"
                       checked={entry.useLocalBaseBranch}
                       onChange={(event) => onUpdate({ useLocalBaseBranch: event.target.checked })}
-                      className="h-3.5 w-3.5 accent-gray-900 dark:accent-gray-100"
+                      className="h-3.5 w-3.5 accent-violet-600 dark:accent-violet-400"
                     />
                     {t("taskQueueModal.baseLocalLong")}
                   </label>

@@ -58,7 +58,7 @@ export function ExtraReposField({
               name="newTaskExtraReposEnabled"
               checked={enabled === option}
               onChange={() => onEnabledChange(option)}
-              className="accent-gray-900 dark:accent-gray-100"
+              className="accent-violet-600 dark:accent-violet-400"
             />
             {t(option ? "newTaskModal.extraRepos.yes" : "newTaskModal.extraRepos.no")}
           </label>

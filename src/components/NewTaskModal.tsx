@@ -242,6 +242,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
       onSecondary={resetForm}
       secondaryLabel={t("newTaskModal.clear")}
       size="xxxl"
+      placement="side"
     >
       {/* The browser only saves autocomplete values on a real form submission (not a React
           `preventDefault()` one), so after a successful create the form is submitted into a hidden
@@ -309,7 +310,7 @@ export function NewTaskModal({ open, onClose, onTaskCreated }: NewTaskModalProps
               type="checkbox"
               checked={permissionModeAuto}
               onChange={(event) => setPermissionModeAuto(event.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-violet-600 dark:accent-violet-400"
             />
             {t("newTaskModal.permissionModeAutoLabel")}
           </label>

@@ -124,6 +124,7 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
         if (!editing && !automationSetupOpen) onClose();
       }}
       size="xl"
+      placement="side"
       icon={<Settings className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
     >
       <div className="flex items-start justify-between gap-4">
