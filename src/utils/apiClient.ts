@@ -32,6 +32,7 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   SETUP_MISSING_EMAIL: "apiError.setupMissingEmail",
   SETUP_UNREACHABLE: "apiError.setupUnreachable",
   SETUP_BAD_CREDENTIALS: "apiError.setupBadCredentials",
+  SETUP_JIRA_SCOPES: "apiError.setupJiraScopes",
   SETUP_JIRA_FIRST: "apiError.setupJiraFirst",
   SETUP_BAD_BOARD: "apiError.setupBadBoard",
   SETUP_NO_CODE_REVIEW: "apiError.setupNoCodeReview",

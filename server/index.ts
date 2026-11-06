@@ -13,8 +13,8 @@ import { API_PORT } from "./utils/apiPort.js";
 import { errorHandler } from "./utils/httpError.js";
 import { migrateTaskStore } from "./utils/taskStore.js";
 
-// The tokens saved by the automations setup panel, where the environment has none.
-loadSecretsIntoEnv();
+// The automations' tokens: saved by the setup panel, exported in the shell files or in the environment.
+void loadSecretsIntoEnv();
 
 const app = express();
 app.use(cors());

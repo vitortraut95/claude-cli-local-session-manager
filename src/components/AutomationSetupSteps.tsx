@@ -199,11 +199,16 @@ function TeamsHowTo() {
   );
 }
 
-/** A token field: empty keeps the saved one; one from the environment is said so. */
+/**
+ * A token field: says where the one in use comes from; empty keeps it, anything pasted replaces
+ * it (saved by the panel, which wins over the environment and the shell files).
+ */
 function SecretField({
   id,
   label,
   state,
+  variable,
+  file,
   value,
   onChange,
   help,
@@ -211,6 +216,10 @@ function SecretField({
   id: string;
   label: string;
   state: SecretState;
+  /** The environment variable it's read from (`JIRA_API_TOKEN`…). */
+  variable: string;
+  /** The shell file it was read from, when `state` is `shell`. */
+  file?: string;
   value: string;
   onChange: (value: string) => void;
   help?: ReactNode;
@@ -223,7 +232,12 @@ function SecretField({
       help={
         <>
           {state === "saved" && <p>{t("automationSetup.secret.saved")}</p>}
-          {state === "environment" && <p>{t("automationSetup.secret.environment")}</p>}
+          {state === "environment" && (
+            <p>{t("automationSetup.secret.environment", { variable })}</p>
+          )}
+          {state === "shell" && (
+            <p>{t("automationSetup.secret.shell", { variable, file: file ?? "~/.zshrc" })}</p>
+          )}
           {help}
         </>
       }
@@ -374,6 +388,8 @@ export function JiraStep({ status, onDone, onBack }: StepProps) {
         id="setup-jira-token"
         label={t("automationSetup.jira.token")}
         state={status.jira.token}
+        variable="JIRA_API_TOKEN"
+        file={status.secretFiles?.JIRA_API_TOKEN}
         value={token}
         onChange={setToken}
         help={<HowTo text={t("automationSetup.jira.tokenHelp")} href={ATLASSIAN_TOKENS_URL} />}
@@ -567,6 +583,8 @@ export function BitbucketStep({ status, onDone, onBack }: StepProps) {
         id="setup-bb-token"
         label={t("automationSetup.bitbucket.token")}
         state={status.bitbucket.token}
+        variable="BITBUCKET_TOKEN"
+        file={status.secretFiles?.BITBUCKET_TOKEN}
         value={token}
         onChange={setToken}
         help={<HowTo text={t("automationSetup.bitbucket.tokenHelp")} href={ATLASSIAN_TOKENS_URL} />}
@@ -771,6 +789,8 @@ export function ExtrasStep({ status, onDone, onBack, onSkip }: StepProps & { onS
         id="setup-teams"
         label={t("automationSetup.extras.teams")}
         state={status.extras.teams}
+        variable="TEAMS_WEBHOOK_URL"
+        file={status.secretFiles?.TEAMS_WEBHOOK_URL}
         value={teamsWebhook}
         onChange={setTeamsWebhook}
         help={<TeamsHowTo />}
@@ -781,7 +801,7 @@ export function ExtrasStep({ status, onDone, onBack, onSkip }: StepProps & { onS
           label={t("automationSetup.extras.jenkinsUser")}
           help={
             status.extras.jenkinsUser === "environment"
-              ? t("automationSetup.secret.environment")
+              ? t("automationSetup.secret.environment", { variable: "JENKINS_USER" })
               : t("automationSetup.extras.jenkinsUser.help")
           }
         >
@@ -798,6 +818,8 @@ export function ExtrasStep({ status, onDone, onBack, onSkip }: StepProps & { onS
           id="setup-jenkins-token"
           label={t("automationSetup.extras.jenkinsToken")}
           state={status.extras.jenkinsToken}
+          variable="JENKINS_TOKEN"
+          file={status.secretFiles?.JENKINS_TOKEN}
           value={jenkinsToken}
           onChange={setJenkinsToken}
         />

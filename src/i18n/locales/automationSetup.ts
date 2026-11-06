@@ -27,12 +27,16 @@ export const automationSetup = {
   "automationSetup.saveAndContinue": dict("Check and continue", "Conferir e continuar"),
   "automationSetup.close": dict("Close", "Fechar"),
   "automationSetup.secret.saved": dict(
-    "Saved. Leave empty to keep it.",
-    "Já salvo. Deixe vazio pra manter.",
+    "Saved in this panel. Leave empty to keep it, or paste a new one to replace it.",
+    "Salvo neste painel. Deixe vazio pra manter ou cole um novo pra trocar.",
   ),
   "automationSetup.secret.environment": dict(
-    "Comes from an environment variable on this machine, which wins over what's typed here.",
-    "Vem de uma variável de ambiente desta máquina, que vale mais do que o que for digitado aqui.",
+    "Read from the {variable} environment variable of the terminal that started the app. Paste a new one here to use it instead.",
+    "Lido da variável de ambiente {variable} do terminal que iniciou o app. Pra trocar, cole o novo aqui.",
+  ),
+  "automationSetup.secret.shell": dict(
+    "Read from {variable} in {file}. Paste a new one here to use it instead (or edit {file} and restart the app).",
+    "Lido do {variable} no {file}. Pra trocar, cole o novo aqui (ou edite o {file} e reinicie o app).",
   ),
   "automationSetup.howTo": dict("How to get it", "Como conseguir"),
 
