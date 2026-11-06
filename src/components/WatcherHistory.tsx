@@ -47,30 +47,38 @@ function HistoryEntry({
 }: FeedbackProps & { entry: WatcherActionEntry }) {
   const { t } = useLanguage();
   const saved = feedback[feedbackEntryKey(entry)];
+  const hasFiles = Boolean(entry.files && entry.files.length > 0);
+  const line = (
+    <>
+      <span className="text-xs text-gray-500 dark:text-gray-400">{formatUpdatedAt(entry.ts)}</span>
+      <WatcherBadge tone={entry.action.endsWith("failed") ? "red" : "neutral"}>
+        {t(ACTION_KIND_KEYS[entry.action])}
+      </WatcherBadge>
+      {entry.live && (
+        <span title={t("board.history.live.title")}>
+          <WatcherBadge tone="green">{t("board.history.live")}</WatcherBadge>
+        </span>
+      )}
+      {entry.subject !== entry.title && entry.subject.includes(": ") && (
+        <span className="min-w-0 break-words text-xs text-gray-600 dark:text-gray-400">
+          {entry.subject}
+        </span>
+      )}
+      {isRateable(entry) && (
+        <WatcherVoteButtons entry={entry} feedback={saved} onSaved={onFeedbackSaved} />
+      )}
+    </>
+  );
+  // Nothing to open (no detail, evidence or note yet): a plain line, no chevron.
+  if (!saved && !entry.detail && !hasFiles) {
+    return <li className="flex flex-wrap items-center gap-2 py-1.5 pl-5.5 text-sm">{line}</li>;
+  }
   return (
     <li>
       <details className="group/entry py-1.5">
         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 text-sm">
           <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform group-open/entry:rotate-90" />
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {formatUpdatedAt(entry.ts)}
-          </span>
-          <WatcherBadge tone={entry.action.endsWith("failed") ? "red" : "neutral"}>
-            {t(ACTION_KIND_KEYS[entry.action])}
-          </WatcherBadge>
-          {entry.live && (
-            <span title={t("board.history.live.title")}>
-              <WatcherBadge tone="green">{t("board.history.live")}</WatcherBadge>
-            </span>
-          )}
-          {entry.subject !== entry.title && entry.subject.includes(": ") && (
-            <span className="min-w-0 break-words text-xs text-gray-600 dark:text-gray-400">
-              {entry.subject}
-            </span>
-          )}
-          {isRateable(entry) && (
-            <WatcherVoteButtons entry={entry} feedback={saved} onSaved={onFeedbackSaved} />
-          )}
+          {line}
         </summary>
         <div className="mt-2 flex flex-col gap-3 pl-5">
           {saved && (
@@ -82,7 +90,7 @@ function HistoryEntry({
             />
           )}
           {entry.detail && <MarkdownView source={entry.detail} />}
-          {entry.files && entry.files.length > 0 && (
+          {hasFiles && entry.files && (
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
                 {t("board.history.evidence")}
