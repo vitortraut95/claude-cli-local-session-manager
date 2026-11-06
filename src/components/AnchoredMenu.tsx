@@ -34,19 +34,22 @@ export function AnchoredMenu({
       if (!menuRef.current?.contains(target) && !buttonRef.current?.contains(target)) close();
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key !== "Escape") return;
+      // Caught first (capture) so a modal under the menu doesn't close with it.
+      event.stopPropagation();
+      close();
     };
     const onScroll = (event: Event) => {
       // The menu's own scrolling doesn't move the button.
       if (!menuRef.current?.contains(event.target as Node)) close();
     };
     document.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", close);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", close);
     };

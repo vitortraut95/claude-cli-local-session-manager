@@ -17,6 +17,9 @@ export type AutomationFeatures = {
   instantNotices: boolean;
   /** The 09:00 / 18:00 digest goes to Teams. */
   digest: boolean;
+  /** A preview build that failed for infra reasons is looked at for a re-run (done for real only
+   *  with `live.rebuild`). */
+  rebuild: boolean;
 };
 
 /** Which writes are done for real; off = only recorded (simulation). All start off. */
@@ -203,6 +206,10 @@ export type BoardWatcherStatus = {
   calls: WatcherCalls | null;
   scoreboard: WatcherScoreboard;
   lastDecisions: WatcherDecision[];
+  /** The PR or ticket title per subject (`repo#id` or a key) the Board shows, when known. */
+  titles: Record<string, string>;
+  /** To link a subject: `{jira}KEY` and `{bitbucket}repo/pull-requests/id`. */
+  linkBases: { jira: string | null; bitbucket: string | null };
 };
 
 export type WatcherCalls = {
@@ -290,14 +297,17 @@ export type AutomationSetupStatus = {
     repos: string[];
     localRepos: Record<string, string>;
   };
-  extras: { teams: SecretState; jenkinsUser: SecretState; jenkinsToken: SecretState };
-  features: {
-    codeReview: boolean;
-    reviewSessions: boolean;
-    devQueue: boolean;
-    testQueue: boolean;
-    notices: boolean;
+  extras: {
+    teams: SecretState;
+    jenkinsUser: SecretState;
+    /** The Jenkins user id itself (not a secret), to show it. */
+    jenkinsUserId: string | null;
+    jenkinsToken: SecretState;
   };
+  /** The automations' switches, as the Automation modal shows them. */
+  features: AutomationFeatures;
+  live: AutomationLive;
+
   /** `boardWatcher.json` → `enabled`: the setup was finished. */
   enabled: boolean;
 };
@@ -318,4 +328,47 @@ export type BitbucketRepoOption = {
   localPath: string | null;
 };
 
-export type SetupFeaturesInput = AutomationSetupStatus["features"];
+/** The setup's last step: the automations' modes, as the Automation modal saves them. */
+export type SetupFinishInput = {
+  features: Partial<AutomationFeatures>;
+  live: Partial<AutomationLive>;
+};
+
+/** What the watcher is doing, for the Board's live panel (kept in memory, newest last). */
+export type WatcherActivityKind =
+  | "look"
+  | "issues"
+  | "prs"
+  | "decisions"
+  | "lookDone"
+  | "lookFailed"
+  | "review"
+  | "reviewDone"
+  | "reviewFailed"
+  | "reviewSkipped"
+  | "test"
+  | "testDone"
+  | "testFailed"
+  | "diagnose"
+  | "diagnosed"
+  | "rebuild"
+  | "blocked"
+  | "stopped"
+  | "switchOn"
+  | "switchOff";
+
+export type WatcherActivityEvent = {
+  seq: number;
+  at: string;
+  kind: WatcherActivityKind;
+  /** The PR or ticket it's about. */
+  subject?: string;
+  /** A count, an outcome or a reason, shown as it is. */
+  detail?: string;
+};
+
+export type WatcherActivity = {
+  events: WatcherActivityEvent[];
+  /** What's running right now and since when; null when idle. */
+  current: { kind: WatcherActivityKind; subject?: string; since: string } | null;
+};

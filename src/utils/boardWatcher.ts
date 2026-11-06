@@ -2,7 +2,6 @@ import type {
   AutomationLimits,
   WatcherActionEntry,
   WatcherActionKind,
-  WatcherDecision,
   WatcherDecisionAction,
 } from "../../shared/boardWatcher";
 import type { Language } from "../i18n/translations";
@@ -72,21 +71,57 @@ const SERVER_TEXT_PT: [RegExp, string][] = [
   [/IPv6 on/, "IPv6 ligado"],
   [/ and IPv6/, " e IPv6"],
   [/^(\d+) approvals today \(limit (\d+)\)$/, "$1 aprovações hoje (limite $2)"],
+  // Review and test outcomes, skips and rebuilds (the live feed).
+  [/^(\d+) finding\(s\), approve$/, "$1 achado(s), aprovaria"],
+  [/^(\d+) finding\(s\), comment-and-approve$/, "$1 achado(s), comentaria e aprovaria"],
+  [/^(\d+) finding\(s\), do-not-approve$/, "$1 achado(s), não aprovaria"],
+  [/^approved-with-notes$/, "aprovado com ressalvas"],
+  [/^approved$/, "aprovado"],
+  [/^failed$/, "reprovado"],
+  [/^blocked$/, "não conseguiu testar"],
+  [/^queued$/, "na fila de teste"],
+  [/^already queued$/, "já estava na fila de teste"],
+  [/^new push$/, "push novo"],
+  [/^MERGED$/, "mergeado"],
+  [/^DECLINED$/, "recusado"],
+  [/^SUPERSEDED$/, "substituído"],
+  [/^done$/, "feito"],
+  [/^look$/, "olhada"],
+  [/^review$/, "review"],
+  [/^test$/, "teste"],
+  [/VPN is down/, "VPN desligada"],
+  [/test plan found/, "plano de teste encontrado"],
+  [/no acceptance criteria/, "sem critérios de aceite"],
+  [/no link/, "sem link"],
 ];
+
+export type SubjectKind = "pr" | "task" | "build";
+
+/** A PR is `repo#id`, a rebuild `repo:hash`, anything else a ticket key. */
+export function subjectKind(subject: string): SubjectKind {
+  if (/^[^#\s]+#\d+$/.test(subject)) return "pr";
+  if (/^[^:\s]+:[0-9a-f]{6,}$/i.test(subject)) return "build";
+  return "task";
+}
+
+/** The PR or ticket page of a subject, from the status' link bases. */
+export function subjectLinks(
+  subject: string,
+  bases: { jira: string | null; bitbucket: string | null } | undefined,
+): { kind: "pr" | "issue"; url: string }[] {
+  const pr = /^([^#\s]+)#(\d+)$/.exec(subject);
+  if (pr)
+    return bases?.bitbucket
+      ? [{ kind: "pr", url: `${bases.bitbucket}${pr[1]}/pull-requests/${pr[2]}` }]
+      : [];
+  if (subjectKind(subject) === "build") return [];
+  return bases?.jira ? [{ kind: "issue", url: `${bases.jira}${subject}` }] : [];
+}
 
 /** A server reason or pause text in the UI language (English stays as the server wrote it). */
 export function translateServerText(text: string, language: Language): string {
   if (language !== "pt") return text;
   return SERVER_TEXT_PT.reduce((current, [pattern, pt]) => current.replace(pattern, pt), text);
-}
-
-export type DecisionColumn = "todo" | "waitTest" | "codeReview";
-
-/** Subjects with a `#` are PRs (`repo#id`); the rest are ticket keys. */
-export function decisionColumn(decision: WatcherDecision): DecisionColumn {
-  if (decision.subject.includes("#")) return "codeReview";
-  if (decision.action === "enqueue-dev" || decision.action === "weak-description") return "todo";
-  return "waitTest";
 }
 
 export const DECISION_ACTION_KEYS = {

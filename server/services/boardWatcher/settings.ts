@@ -12,6 +12,7 @@ import {
   DEFAULT_BUSINESS_HOURS,
   DEFAULT_LIMITS,
   loadBoardWatcherConfig,
+  type BoardWatcherConfig,
 } from "./config.js";
 
 /**
@@ -34,6 +35,56 @@ const LIMIT_RANGES: Record<keyof AutomationLimits, [number, number]> = {
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+type SwitchSource = Partial<BoardWatcherConfig> | null | undefined;
+
+/** Which automations are on (all on unless false, except the review sessions and the
+ *  unapproved-deploying PRs). */
+export function featuresOf(config: SwitchSource): AutomationFeatures {
+  return {
+    devQueue: config?.todo?.enabled !== false,
+    codeReview: config?.codeReview?.enabled !== false,
+    reviewSessions: Boolean(config?.review?.enabled),
+    reviewUnapprovedDeploying: config?.codeReview?.unapprovedDeploying === true,
+    testQueue: config?.test?.enabled !== false,
+    instantNotices: config?.notifications?.instant !== false,
+    digest: config?.notifications?.digest !== false,
+    rebuild: config?.rebuild?.enabled !== false,
+  };
+}
+
+/** Which writes are done for real (all off unless true). */
+export function liveOf(config: SwitchSource): AutomationLive {
+  return {
+    devQueue: config?.live?.devQueue === true,
+    testClaim: config?.live?.testClaim === true,
+    comments: config?.live?.comments === true,
+    approve: config?.live?.approve === true,
+    startProgress: config?.live?.startProgress === true,
+    rebuild: config?.live?.rebuild === true,
+  };
+}
+
+/** Writes switches into a raw `boardWatcher.json`; refuses unknown ones. */
+export function writeSwitches(
+  raw: Record<string, unknown>,
+  features: Partial<Record<string, unknown>> = {},
+  live: Partial<Record<string, unknown>> = {},
+): void {
+  for (const [feature, value] of Object.entries(features)) {
+    const target = FEATURE_KEYS[feature as keyof AutomationFeatures];
+    if (!target || typeof value !== "boolean") {
+      throw new BadRequestError("BAD_SETTING", `"${feature}" isn't an automation switch.`);
+    }
+    section(raw, target[0])[target[1]] = value;
+  }
+  for (const [action, value] of Object.entries(live)) {
+    if (!LIVE_KEYS.includes(action as keyof AutomationLive) || typeof value !== "boolean") {
+      throw new BadRequestError("BAD_SETTING", `"${action}" isn't a real-action switch.`);
+    }
+    section(raw, "live")[action] = value;
+  }
+}
+
 export async function getAutomationSettings(): Promise<AutomationSettings> {
   const config = await loadBoardWatcherConfig();
   const limits = Object.fromEntries(
@@ -47,23 +98,8 @@ export async function getAutomationSettings(): Promise<AutomationSettings> {
     configured: config !== null,
     enabled: Boolean(config?.enabled),
     mode: "simulate",
-    features: {
-      devQueue: config?.todo?.enabled !== false,
-      codeReview: config?.codeReview?.enabled !== false,
-      reviewSessions: Boolean(config?.review?.enabled),
-      reviewUnapprovedDeploying: config?.codeReview?.unapprovedDeploying === true,
-      testQueue: config?.test?.enabled !== false,
-      instantNotices: config?.notifications?.instant !== false,
-      digest: config?.notifications?.digest !== false,
-    },
-    live: {
-      devQueue: config?.live?.devQueue === true,
-      testClaim: config?.live?.testClaim === true,
-      comments: config?.live?.comments === true,
-      approve: config?.live?.approve === true,
-      startProgress: config?.live?.startProgress === true,
-      rebuild: config?.live?.rebuild === true,
-    },
+    features: featuresOf(config),
+    live: liveOf(config),
     limits,
     businessHours: {
       start: hours.start,
@@ -93,6 +129,7 @@ const FEATURE_KEYS: Record<keyof AutomationFeatures, [string, string]> = {
   testQueue: ["test", "enabled"],
   instantNotices: ["notifications", "instant"],
   digest: ["notifications", "digest"],
+  rebuild: ["rebuild", "enabled"],
 };
 
 export const LIVE_KEYS: (keyof AutomationLive)[] = [
@@ -119,19 +156,7 @@ export async function saveAutomationSettings(body: unknown): Promise<AutomationS
     if (typeof input.enabled !== "boolean") throw new BadRequestError("BAD_SETTING", "enabled");
     raw.enabled = input.enabled;
   }
-  for (const [feature, value] of Object.entries(input.features ?? {})) {
-    const target = FEATURE_KEYS[feature as keyof AutomationFeatures];
-    if (!target || typeof value !== "boolean") {
-      throw new BadRequestError("BAD_SETTING", `"${feature}" isn't an automation switch.`);
-    }
-    section(raw, target[0])[target[1]] = value;
-  }
-  for (const [action, value] of Object.entries(input.live ?? {})) {
-    if (!LIVE_KEYS.includes(action as keyof AutomationLive) || typeof value !== "boolean") {
-      throw new BadRequestError("BAD_SETTING", `"${action}" isn't a real-action switch.`);
-    }
-    section(raw, "live")[action] = value;
-  }
+  writeSwitches(raw, input.features, input.live);
   for (const [limit, value] of Object.entries(input.limits ?? {})) {
     const range = LIMIT_RANGES[limit as keyof AutomationLimits];
     if (!range || typeof value !== "number" || !Number.isFinite(value)) {

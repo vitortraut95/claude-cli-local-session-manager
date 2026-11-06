@@ -11,6 +11,17 @@ export type JenkinsLink =
   | { kind: "tags"; url: string };
 
 /**
+ * The configured base as an absolute URL with no trailing slash. It's often saved without the
+ * scheme ("jenkins.example.com"), which a link would otherwise resolve against this app's own
+ * address. Null when not configured.
+ */
+export function jenkinsBase(jenkinsBaseUrl: string | null | undefined): string | null {
+  const trimmed = jenkinsBaseUrl?.trim().replace(/\/+$/, "");
+  if (!trimmed) return null;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+/**
  * Jenkins' multibranch job URLs encode each "/" in the branch name as "%2F" (one path segment per
  * job level), and the browser's own URL-encoding then escapes that "%" to "%25" — so a branch
  * like "feature/PROJ-123" ends up as ".../job/feature%252FPROJ-123/" in the address bar.
@@ -29,8 +40,9 @@ export function getJenkinsLinks(
   branch: string | null,
   originBranch: string | null,
 ): JenkinsLink[] | null {
-  if (!jenkinsBaseUrl) return null;
-  const projectUrl = `${jenkinsBaseUrl.replace(/\/+$/, "")}/job/${encodeURIComponent(project)}/`;
+  const base = jenkinsBase(jenkinsBaseUrl);
+  if (!base) return null;
+  const projectUrl = `${base}/job/${encodeURIComponent(project)}/`;
   const links: JenkinsLink[] = [{ kind: "project", url: projectUrl }];
 
   if (branch) {
