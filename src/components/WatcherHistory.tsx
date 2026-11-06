@@ -26,6 +26,38 @@ import { WatcherBadge } from "./WatcherBadge";
 import { WatcherFeedbackNote, WatcherVoteButtons } from "./WatcherFeedbackControls";
 
 const PAGE_SIZE = 30;
+
+/** Actions that only happen for real with their automation on; otherwise they were simulated. */
+const SIMULABLE = new Set<WatcherActionEntry["action"]>([
+  "enqueue-dev",
+  "claim-test",
+  "start-progress",
+  "comment",
+  "approve",
+]);
+
+function LiveOrSimulated({
+  live,
+  action,
+}: {
+  live?: boolean;
+  action?: WatcherActionEntry["action"];
+}) {
+  const { t } = useLanguage();
+  if (live) {
+    return (
+      <span title={t("board.history.live.title")}>
+        <WatcherBadge tone="green">{t("board.history.live")}</WatcherBadge>
+      </span>
+    );
+  }
+  if (!action || !SIMULABLE.has(action)) return null;
+  return (
+    <span title={t("board.history.simulated.title")}>
+      <WatcherBadge tone="blue">{t("board.history.simulated")}</WatcherBadge>
+    </span>
+  );
+}
 const SEARCH_DEBOUNCE_MS = 300;
 
 const HISTORY_FILTER_KEYS: Record<HistoryFilter, TranslationKey> = {
@@ -58,11 +90,7 @@ function HistoryEntry({
       <WatcherBadge tone={entry.action.endsWith("failed") ? "red" : "neutral"}>
         {t(ACTION_KIND_KEYS[entry.action])}
       </WatcherBadge>
-      {entry.live && (
-        <span title={t("board.history.live.title")}>
-          <WatcherBadge tone="green">{t("board.history.live")}</WatcherBadge>
-        </span>
-      )}
+      <LiveOrSimulated live={entry.live} action={entry.action} />
       {entry.subject !== entry.title && entry.subject.includes(": ") && (
         <span className="min-w-0 break-words text-xs text-gray-600 dark:text-gray-400">
           {entry.subject}
@@ -158,7 +186,7 @@ function HistoryGroup({
               {t(ACTION_KIND_KEYS[latest.action])}
             </WatcherBadge>
           )}
-          {group.live && <WatcherBadge tone="green">{t("board.history.live")}</WatcherBadge>}
+          <LiveOrSimulated live={group.live} action={latest?.action} />
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {t("board.history.count", { count: group.entries.length })}
           </span>
