@@ -27,6 +27,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Screen readers pick the voice from the document's language.
+  useEffect(() => {
+    document.documentElement.lang = language === "pt" ? "pt-BR" : "en";
+  }, [language]);
+
   const setLanguage = useCallback((next: Language) => {
     setLanguageState(next);
     void preferencesApi.updatePreferences({ language: next });

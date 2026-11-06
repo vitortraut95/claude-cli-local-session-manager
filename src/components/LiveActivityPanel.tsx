@@ -223,7 +223,7 @@ export function LiveActivityPanel({
   };
 
   return (
-    <section className="flex h-full flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+    <section className="flex h-full flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.03]">
       <div className="flex items-center gap-2">
         <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
           {!stopped && (

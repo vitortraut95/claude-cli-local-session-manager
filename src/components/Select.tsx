@@ -259,7 +259,7 @@ export function Select({
             openList();
           }
         }}
-        className={`w-full truncate rounded-lg border border-gray-300 bg-white py-2 text-left ${icon ? "pl-9" : "pl-3"} pr-8 text-sm text-gray-700 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-gray-600 dark:focus:ring-gray-100/10 ${className}`}
+        className={`w-full truncate rounded-lg border border-gray-300 bg-white py-2 text-left ${icon ? "pl-9" : "pl-3"} pr-8 text-sm text-gray-700 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-violet-400 dark:focus:ring-violet-400/30 ${className}`}
       >
         {selected?.label ?? value}
         {/* Keeps the trigger's height when the label is empty. */}

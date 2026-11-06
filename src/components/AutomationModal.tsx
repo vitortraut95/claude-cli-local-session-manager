@@ -143,6 +143,7 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
         if (!setupOpen) onClose();
       }}
       size="xxl"
+      placement="side"
     >
       {loadError && <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>}
       {!loadError && !settings && <p className="text-sm text-gray-500 dark:text-gray-400">…</p>}
@@ -239,7 +240,7 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
                               type="checkbox"
                               checked={settings.businessHours.days.includes(day)}
                               onChange={() => toggleDay(day)}
-                              className="h-4 w-4 accent-gray-900 dark:accent-gray-100"
+                              className="h-4 w-4 accent-violet-600 dark:accent-violet-400"
                             />
                             {t(`automation.weekday.${day}` as TranslationKey)}
                           </label>

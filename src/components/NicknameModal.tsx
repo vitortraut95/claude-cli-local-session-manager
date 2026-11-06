@@ -10,9 +10,9 @@ type NicknameModalProps = {
 
 const TEXTAREA_CLASSNAME =
   "mt-4 w-full resize-y rounded-lg border border-gray-300 bg-white p-3 text-sm text-gray-900 " +
-  "placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-2 " +
-  "focus:ring-gray-900/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 " +
-  "dark:placeholder:text-gray-500 dark:focus:border-gray-600 dark:focus:ring-gray-100/10";
+  "placeholder:text-gray-400 focus:border-violet-500 focus:outline-none focus:ring-2 " +
+  "focus:ring-violet-500/25 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 " +
+  "dark:placeholder:text-gray-500 dark:focus:border-violet-400 dark:focus:ring-violet-400/30";
 
 /**
  * Mounted only while open, so `useState(currentNickname)` re-initializes on every open.

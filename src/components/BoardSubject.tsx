@@ -9,9 +9,9 @@ const ICONS: Record<SubjectKind, typeof GitPullRequest> = {
 };
 
 const TONES: Record<SubjectKind, string> = {
-  pr: "text-violet-300 bg-violet-500/10 ring-violet-400/20",
-  task: "text-cyan-300 bg-cyan-500/10 ring-cyan-400/20",
-  build: "text-fuchsia-300 bg-fuchsia-500/10 ring-fuchsia-400/20",
+  pr: "text-violet-700 dark:text-violet-300 bg-violet-500/10 ring-violet-400/20",
+  task: "text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 ring-cyan-400/20",
+  build: "text-fuchsia-700 dark:text-fuchsia-300 bg-fuchsia-500/10 ring-fuchsia-400/20",
 };
 
 /** What a Board line is about, at a glance: a PR, a ticket or a build. */
@@ -47,7 +47,7 @@ export function SubjectLinks({
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-violet-300 ring-1 ring-inset ring-violet-400/25 hover:bg-violet-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60"
+          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-violet-700 dark:text-violet-300 ring-1 ring-inset ring-violet-400/25 hover:bg-violet-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60"
         >
           {link.kind === "pr" ? t("board.link.pr") : t("board.link.issue")}
           <ExternalLink className="h-3 w-3" aria-hidden="true" />

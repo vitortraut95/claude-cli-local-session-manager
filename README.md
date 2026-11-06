@@ -40,6 +40,22 @@ opens the browser. Stop the app by closing that terminal.
 
 ## Features
 
+- **Layout** — a navigation sidebar (a bottom bar on phones) with the pages Sessions, Board and
+  Task queue, then Cleanup, Team skills and the Guide; plan usage, updates, Settings, theme and
+  language sit at its foot. New task (also the `N` key), New session, Refine tasks, Cleanup,
+  Settings and the session's dialogs open as side panels, so the list stays in view. `/` jumps to
+  the search, Esc closes panels and menus. Dark and light themes share the same tokens
+  (`src/index.css`): violet is the brand, green = running, amber = waiting on you, red = errors only
+- **Guide and welcome tour** — the Guide page lists every feature, what it does and how to get
+  there, with an "Open" button that goes straight to it; a short tour runs on the first visit
+  (replay it from the Guide)
+- **Sessions page** — the list is grouped by what needs you first: errors (missing folder, a failed
+  queue launch, a failed test or review from the Board) and sessions waiting for your answer, then
+  running, stopped, and the done ones folded at the end; quick filters for "needs you" and
+  "running", cards available as an alternative view. Clicking a session opens its panel beside the
+  list: task and status, resume / editor / PR, branches, folder, task repositories, local previews,
+  the first prompt, links, the whole conversation and the task's history. Delete is confirmed on
+  the row itself
 - **Session list** — title, project, branch, last-updated/active time, and a session-size meter
   (green → amber → red)
 - **Resume** any session in a new terminal (`claude --resume`), Warp preferred if installed
@@ -69,7 +85,7 @@ opens the browser. Stop the app by closing that terminal.
   session or task shows an "info" button next to its status tag: a summary (time in line and what
   held it, time per status, until done, heavy runs and their waits, root held/refused) plus the
   task's timeline and problems
-- **Resume open tasks** — one header button brings back the latest session of every task "in
+- **Resume open tasks** — a button at the top of Sessions brings back the latest session of every task "in
   progress" or "waiting user" with nothing running (up to the session limit), e.g. the next
   morning; with the grid layout it's "Open grid", which also brings Limux up (starting it if
   needed)
@@ -92,11 +108,11 @@ opens the browser. Stop the app by closing that terminal.
   prompt, a new terminal), one at a time while there's room: at most N live `claude` sessions
   (default 6, every session counts), at least 5 min since the last launch (a session's memory
   shows up minutes after it opens), enough free RAM, no memory pressure (PSI) and Claude plan
-  usage under a limit. Pause/resume and the limits live in the queue window; a launched task gets
+  usage under a limit. Pause/resume and the limits live on the queue page; a launched task gets
   the "in progress" status. Tickets joined by `+` (`PROJ-1 + PROJ-2`), or grouped later with
   "Together with", are done together: one branch with every key (`env/PROJ-1-PROJ-2`), one
   session, every link in the prompt. Kept in the local `tasks.json`
-- **Heavy commands** — optional (Task queue window → "Turn on"): a PreToolUse hook in
+- **Heavy commands** — optional (Task queue page → "Turn on"): a PreToolUse hook in
   `~/.claude/settings.json` blocks tests, typecheck, lint, builds, installs and `git commit`/`push`
   (their hooks) run directly and has Claude rerun them through `scripts/heavy-run`, which waits for a
   free slot across every session (default 1 at a time) and for that much free RAM, runs each one
@@ -132,7 +148,7 @@ opens the browser. Stop the app by closing that terminal.
   templates are per-machine settings (asked on first start / Settings), never part of this repo
 - Initial setup on first start (repo folders, Jenkins URL, team skills repo) and full settings
   export/import in Settings — share a `userPreferences.json` with your team to set everything up
-- Self-update button from the header (and silently on start): resets the checkout to
+- Self-update button at the foot of the navigation (and silently on start): resets the checkout to
   `origin/main`. With local changes (uncommitted/new files or unpushed commits) it never runs on
   its own — the button turns amber and asks before discarding them
 - pt/en language switcher

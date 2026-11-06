@@ -14,6 +14,21 @@ import {
   parseWorkStatusFilter,
   type WorkStatusFilter,
 } from "../utils/workStatus";
+import {
+  compareSessions,
+  sessionGroup,
+  type SessionGroup,
+  type TaskProblems,
+} from "../utils/sessionGroups";
+
+/** The list's quick view: everything, only what needs the user, or only what's running. */
+export type QuickFilter = "" | "attention" | "running";
+
+function parseQuickFilter(raw: string): QuickFilter {
+  return raw === "attention" || raw === "running" ? raw : "";
+}
+
+const NO_PROBLEMS: TaskProblems = new Map();
 
 export type PendingAction =
   | "delete"
@@ -40,8 +55,11 @@ function parsePage(raw: string): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
-export function useSessions() {
+/** `problems`: the queue's and the Board's failures per task key, which put a session in "needs
+ *  you" (the list is ordered by that group, then by the last update). */
+export function useSessions(problems: TaskProblems = NO_PROBLEMS) {
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [loadedAt, setLoadedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQueryRaw] = useUrlParam("q", "");
@@ -49,12 +67,16 @@ export function useSessions() {
   const [statusFilterRaw, setStatusFilterRaw] = useUrlParam("status", "");
   const [pageRaw, setPageRaw] = useUrlParam("page", "1");
   const [perPageRaw, setPerPageRaw] = useUrlParam("per_page", String(DEFAULT_PER_PAGE));
+  const [quickRaw, setQuickRaw] = useUrlParam("show", "");
+  const [showDoneRaw, setShowDoneRaw] = useUrlParam("done", "");
   const [pendingActions, setPendingActions] = useState<Record<string, PendingAction>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { showToast } = useToast();
   const { t } = useLanguage();
 
   const statusFilter = parseWorkStatusFilter(statusFilterRaw);
+  const quickFilter = parseQuickFilter(quickRaw);
+  const showDone = showDoneRaw === "1";
   const perPage = parsePerPage(perPageRaw);
   const page = parsePage(pageRaw);
 
@@ -83,6 +105,22 @@ export function useSessions() {
     [setStatusFilterRaw, setPageRaw],
   );
 
+  const setQuickFilter = useCallback(
+    (value: QuickFilter) => {
+      setQuickRaw(value);
+      setPageRaw("1");
+    },
+    [setQuickRaw, setPageRaw],
+  );
+
+  const setShowDone = useCallback(
+    (value: boolean) => {
+      setShowDoneRaw(value ? "1" : "");
+      setPageRaw("1");
+    },
+    [setShowDoneRaw, setPageRaw],
+  );
+
   const setPerPage = useCallback(
     (value: number) => {
       setPerPageRaw(String(value));
@@ -102,6 +140,7 @@ export function useSessions() {
     try {
       const data = await sessionsApi.fetchSessions();
       setSessions(data);
+      setLoadedAt(Date.now());
       setError(null);
     } catch (err) {
       setError(resolveApiErrorMessage(err, t, "useSessions.loadError"));
@@ -120,7 +159,7 @@ export function useSessions() {
 
   // After a fire-and-forget terminal launch, `claude` takes a few seconds to write its `.jsonl` /
   // pid file, so `refreshSoon` reloads a few times, staggered (re-calling cancels pending retries).
-  // Uses `loadSessions`, not `refresh`, so the list isn't blanked by <LoadingState /> each time.
+  // Uses `loadSessions`, not `refresh`, so the list isn't swapped for the loading placeholder each time.
   const refreshRetryTimeoutsRef = useRef<number[]>([]);
 
   useEffect(() => {
@@ -144,7 +183,7 @@ export function useSessions() {
   }, [loadSessions]);
 
   /**
-   * Scan progress for <LoadingState/>, polled only during the first (mount-time) load, which may
+   * Scan progress for the loading placeholder, polled only during the first (mount-time) load, which may
    * hit a cold cache. The first poll is delayed so fast loads never show progress.
    */
   const [scanProgress, setScanProgress] = useState<{ done: number; total: number } | null>(null);
@@ -234,22 +273,48 @@ export function useSessions() {
         ].some((field) => field.toLowerCase().includes(query)) ||
         !!promptMatchIds?.has(session.id);
       const matchesProject = !projectFilter || session.project === projectFilter;
+      const matchesQuick =
+        quickFilter === "" ||
+        (quickFilter === "running"
+          ? session.isActive
+          : sessionGroup(session, problems) === quickFilter);
       return (
-        matchesQuery && matchesProject && matchesWorkStatusFilter(session.status, statusFilter)
+        matchesQuery &&
+        matchesProject &&
+        matchesQuick &&
+        matchesWorkStatusFilter(session.status, statusFilter)
       );
     });
 
-    return [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [sessions, searchQuery, promptMatches, projectFilter, statusFilter]);
+    return [...filtered].sort((a, b) => compareSessions(a, b, problems));
+  }, [sessions, searchQuery, promptMatches, projectFilter, statusFilter, quickFilter, problems]);
 
-  const pageCount = Math.max(1, Math.ceil(filteredSessions.length / perPage));
+  // Done sessions stay folded at the end of the list unless asked for: by "show done", a search
+  // (looking for something specific) or the status filter itself.
+  const foldsDone =
+    !showDone && searchQuery.trim() === "" && statusFilter !== "done" && quickFilter === "";
+  const visibleSessions = useMemo(
+    () =>
+      foldsDone
+        ? filteredSessions.filter((session) => sessionGroup(session, problems) !== "done")
+        : filteredSessions,
+    [filteredSessions, foldsDone, problems],
+  );
+  const foldedDoneCount = filteredSessions.length - visibleSessions.length;
+  const groupCounts = useMemo(() => {
+    const counts: Record<SessionGroup, number> = { attention: 0, running: 0, stopped: 0, done: 0 };
+    for (const session of filteredSessions) counts[sessionGroup(session, problems)] += 1;
+    return counts;
+  }, [filteredSessions, problems]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleSessions.length / perPage));
   // Clamp for display without writing back to the URL — a stale `page` param renders the
   // nearest valid page.
   const currentPage = Math.min(page, pageCount);
 
   const paginatedSessions = useMemo(
-    () => filteredSessions.slice((currentPage - 1) * perPage, currentPage * perPage),
-    [filteredSessions, currentPage, perPage],
+    () => visibleSessions.slice((currentPage - 1) * perPage, currentPage * perPage),
+    [visibleSessions, currentPage, perPage],
   );
 
   const toggleSelect = useCallback((id: string) => {
@@ -605,6 +670,16 @@ export function useSessions() {
     allSessions: sessions,
     totalCount: sessions.length,
     filteredCount: filteredSessions.length,
+    /** Done sessions left out of the pages while they're folded (see `showDone`). */
+    foldedDoneCount,
+    /** Filtered sessions per group (all pages), for the list's section headers. */
+    groupCounts,
+    showDone,
+    setShowDone,
+    quickFilter,
+    setQuickFilter,
+    /** When the list was last read from the server (ms), for "updated N s ago". */
+    loadedAt,
     page: currentPage,
     pageCount,
     perPage,

@@ -1,5 +1,5 @@
 import { Loader2, X } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLanguage } from "../hooks/useLanguage";
 import type { TerminalLayout } from "../services/preferencesApi";
@@ -17,6 +17,17 @@ const SIZE_CLASSES: Record<ModalSize, string> = {
   xxxl: "max-w-[84rem]",
   // The whole window (minus the overlay's gutter), for dashboards like the Board.
   full: "h-[96dvh] max-w-none",
+};
+
+/** Widths as a side panel: never the whole window, the page stays visible on the left. */
+const SIDE_SIZE_CLASSES: Record<ModalSize, string> = {
+  sm: "max-w-sm",
+  md: "max-w-lg",
+  lg: "max-w-2xl",
+  xl: "max-w-3xl",
+  xxl: "max-w-4xl",
+  xxxl: "max-w-5xl",
+  full: "max-w-6xl",
 };
 
 type ModalProps = {
@@ -43,6 +54,9 @@ type ModalProps = {
   /** "night": always the dark theme inside, on a deep background with a violet glow (the
    *  Board), whatever the app's theme. */
   tone?: "default" | "night";
+  /** "side": a full-height panel on the right that keeps the page visible beside it (forms and
+   *  detail views); "center" (default): a dialog in the middle. */
+  placement?: "center" | "side";
 };
 
 /**
@@ -70,10 +84,12 @@ export function Modal({
   onSecondary,
   secondaryLabel,
   tone = "default",
+  placement = "center",
 }: ModalProps) {
   const { t } = useLanguage();
   const resolvedConfirmLabel = confirmLabel ?? t("modal.confirmDefault");
   const resolvedCancelLabel = cancelLabel ?? t("modal.cancelDefault");
+  const titleId = useId();
 
   // Escape and the X button can't close the modal while a request is in flight (isConfirmLoading).
   const handleClose = () => {
@@ -91,29 +107,37 @@ export function Modal({
 
   if (!open) return null;
 
+  const side = placement === "side";
+
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center px-4 ${
-        tone === "night" ? "dark bg-black/85" : "bg-gray-600/80"
-      }`}
+      className={`fixed inset-0 z-50 flex ${
+        side ? "justify-end" : "items-center justify-center px-4"
+      } ${tone === "night" ? "dark bg-black/85" : side ? "bg-gray-950/50" : "bg-gray-950/70"}`}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className={`flex max-h-[98dvh] w-full ${SIZE_CLASSES[size]} flex-col rounded-xl shadow-xl ${
+        aria-labelledby={titleId}
+        className={`flex w-full flex-col shadow-2xl ${
+          side
+            ? `panel-in h-dvh ${SIDE_SIZE_CLASSES[size]} border-l border-gray-200 dark:border-gray-800`
+            : `max-h-[98dvh] ${SIZE_CLASSES[size]} rounded-xl border border-gray-200 dark:border-gray-800`
+        } ${
           tone === "night"
             ? "border border-white/10 bg-gray-950 bg-[radial-gradient(ellipse_80%_40%_at_50%_-10%,rgb(139_92_246/0.22),transparent),radial-gradient(ellipse_50%_30%_at_100%_0%,rgb(217_70_239/0.10),transparent)] shadow-violet-950/40"
             : "bg-white dark:bg-gray-900"
         }`}
       >
         <div
-          className={`flex items-center justify-between gap-3 border-b px-8 py-4 ${
+          className={`flex items-center justify-between gap-3 border-b ${side ? "px-6" : "px-8"} py-4 ${
             tone === "night" ? "border-white/10" : "border-gray-100 dark:border-gray-800"
           }`}
         >
           <div className="flex items-start gap-3">
             {icon}
             <h2
+              id={titleId}
               className="line-clamp-1 text-base font-semibold text-gray-900 dark:text-gray-100"
               title={title}
             >
@@ -130,10 +154,14 @@ export function Modal({
           </Button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-8 py-4">{children}</div>
+        <div className={`min-h-0 flex-1 overflow-y-auto ${side ? "px-6" : "px-8"} py-4`}>
+          {children}
+        </div>
 
         {(onConfirm ?? onConfirmLaunch ?? onCancel) && (
-          <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-8 py-4 dark:border-gray-800">
+          <div
+            className={`flex items-center justify-between gap-2 border-t border-gray-100 ${side ? "px-6" : "px-8"} py-4 dark:border-gray-800`}
+          >
             <div>
               {onSecondary && (
                 <Button variant="ghost" onClick={onSecondary} disabled={isConfirmLoading}>
