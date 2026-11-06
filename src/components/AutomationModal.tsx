@@ -12,7 +12,7 @@ import type {
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { HHMM_PATTERN, LIMIT_BOUNDS } from "../utils/boardWatcher";
 import { Input } from "./Input";
-import { AutomationModesEditor } from "./AutomationModesEditor";
+import { AutomationModesEditor, type AutomationFocus } from "./AutomationModesEditor";
 import { AutomationSetupModal } from "./AutomationSetupModal";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
@@ -62,10 +62,12 @@ function applyInput(
 
 type AutomationModalProps = {
   onClose: () => void;
+  /** The automation whose card is highlighted when it opens (a mode chip on the Board). */
+  focus?: AutomationFocus;
 };
 
 /** The automation switches, limits and business hours. Every change is saved right away. */
-export function AutomationModal({ onClose }: AutomationModalProps) {
+export function AutomationModal({ onClose, focus }: AutomationModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [settings, setSettings] = useState<AutomationSettings | null>(null);
@@ -200,6 +202,7 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
                   <AutomationModesEditor
                     switches={{ features: settings.features, live: settings.live }}
                     onChange={(input) => void save(input)}
+                    focus={focus}
                   />
                 </section>
                 <div className="flex flex-col gap-6">
