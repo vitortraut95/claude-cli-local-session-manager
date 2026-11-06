@@ -40,10 +40,10 @@ export function createFakeDeps(world: FakeWorld, me: string, effects: string[]):
       },
       approve: (pr) => {
         effects.push(`approve ${prSubject(pr)}`);
-        const reviewer = world.prs
-          .find((p) => prSubject(p) === prSubject(pr))
-          ?.reviewers.find((r) => r.id === me);
+        const target = world.prs.find((p) => prSubject(p) === prSubject(pr));
+        const reviewer = target?.reviewers.find((r) => r.id === me);
         if (reviewer) reviewer.state = "approved";
+        else target?.reviewers.push({ id: me, state: "approved" });
         return Promise.resolve();
       },
     },

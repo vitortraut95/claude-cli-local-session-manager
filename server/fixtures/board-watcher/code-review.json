@@ -256,7 +256,7 @@
     ]
   },
   {
-    "name": "my own PRs and PRs I'm not reviewing are left alone",
+    "name": "my own PRs are left alone; someone else's is reviewed whoever is listed as reviewer",
     "ticks": [
       {
         "now": "2026-10-28T14:00:00-03:00",
@@ -288,10 +288,10 @@
           }
         ],
         "expect": {
-          "effects": [],
+          "effects": ["approve web#26"],
           "decisions": {
             "web#25": "none",
-            "web#26": "none"
+            "web#26": "review"
           }
         }
       }

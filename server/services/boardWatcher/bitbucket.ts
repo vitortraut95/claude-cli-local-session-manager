@@ -230,8 +230,9 @@ async function toPullRequest(
     updatedAt: raw.updated_on,
     lastPushAt: date ?? raw.created_on,
     draft: raw.draft ?? false,
+    // A participant who approved or asked for changes counts as a reviewer, listed or not.
     reviewers: (raw.participants ?? [])
-      .filter((p) => p.role === "REVIEWER" && p.user?.account_id)
+      .filter((p) => (p.role === "REVIEWER" || p.state) && p.user?.account_id)
       .map((p) => ({ id: p.user?.account_id ?? "", state: reviewerState(p.state) })),
     ci: ciState(statuses.map((s) => s.state)),
     failedBuild: failedBuildOf(statuses),

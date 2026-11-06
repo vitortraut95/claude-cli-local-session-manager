@@ -933,6 +933,14 @@
   },
   {
     "name": "failed test in Testing is retested once after the fix push",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"]
+      }
+    },
     "ticks": [
       {
         "now": "2026-10-28T14:00:00-03:00",

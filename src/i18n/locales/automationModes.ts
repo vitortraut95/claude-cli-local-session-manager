@@ -21,8 +21,8 @@ export const automationModes = {
     "Code review dos PRs de colegas",
   ),
   "automationModes.codeReview.description": dict(
-    "Reviews with Claude the PRs where you're a reviewer, once it's your turn.",
-    "Revisa com o Claude os PRs em que você é revisor, quando chega a sua vez.",
+    "Reviews with Claude everyone else's PRs once their ticket reaches Code Review, whoever is listed as a reviewer.",
+    "Revisa com o Claude os PRs das outras pessoas quando a tarefa chega em Code Review, independente de quem está como revisor.",
   ),
   "automationModes.codeReview.sessions": dict("Review with Claude", "Revisar com o Claude"),
   "automationModes.codeReview.sessions.help": dict(
