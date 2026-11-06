@@ -10,6 +10,7 @@ import {
   Play,
   RefreshCw,
   Send,
+  Settings,
   Workflow,
   Wrench,
 } from "lucide-react";
@@ -36,6 +37,7 @@ import { BoardQueue } from "./BoardQueue";
 import { Button } from "./Button";
 import { DailyPreviewPanel } from "./DailyPreviewPanel";
 import { HomologPanel } from "./HomologPanel";
+import { AutomationSetupModal } from "./AutomationSetupModal";
 import { Modal } from "./Modal";
 import { BetaBadge } from "./BetaBadge";
 import { LiveActivityPanel } from "./LiveActivityPanel";
@@ -69,7 +71,7 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
   const [busy, setBusy] = useState<"run" | "pause" | "digest" | null>(null);
   const [feedback, setFeedback] = useState<Record<string, WatcherFeedback>>({});
   const [liveCurrent, setLiveCurrent] = useState<WatcherActivity["current"]>(null);
-  const [tool, setTool] = useState<"daily" | "homolog" | null>(null);
+  const [tool, setTool] = useState<"daily" | "homolog" | "setup" | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -215,6 +217,18 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
       icon={<WatcherEye state={eyeState} className="h-5 w-8" />}
     >
       <div className="flex flex-col gap-5">
+        <div className="-mt-3 -mb-3 flex justify-end">
+          <Tooltip content={t("settings.boardAutomations.setup")}>
+            <button
+              type="button"
+              aria-label={t("settings.boardAutomations.setup")}
+              onClick={() => setTool("setup")}
+              className="rounded-full p-1 text-gray-500 hover:bg-white/5 hover:text-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          </Tooltip>
+        </div>
         {statusError && (
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm text-red-600 dark:text-red-400">{statusError}</p>
@@ -494,7 +508,8 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
         />
       </div>
 
-      {tool && (
+      {tool === "setup" && <AutomationSetupModal onClose={() => setTool(null)} />}
+      {(tool === "daily" || tool === "homolog") && (
         <Modal
           open
           title={tool === "daily" ? t("board.tools.daily") : t("board.tools.homolog")}
