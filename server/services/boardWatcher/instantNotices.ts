@@ -8,12 +8,13 @@ import { prSubject, type BoardIssue, type PullRequest, type ReviewFinding } from
 /**
  * Teams messages sent as things happen instead of waiting for the digest: 🔴 the user is needed
  * (a session waits for them, something failed, a pause) and 🟡 good to know (a test finished, a
- * review wouldn't approve). Each is a short card with the long part behind "Ver detalhes"; notices
+ * review didn't approve). Each is a short card with the long part behind "Ver detalhes"; notices
  * close together go out as one card (🔴 within 30 s, 🟡 within 3 min). Best-effort: without
  * `TEAMS_WEBHOOK_URL`, or when Teams fails, it only logs (the digest still has it all).
  */
 
-const SIMULATION = "(simulação: nada foi postado nem movido)";
+/** A test session doesn't post its report nor move the ticket: that stays with the user. */
+const NOT_POSTED = "(o relatório não foi postado nem a tarefa movida: isso fica com você)";
 const MAX_REPORT_CHARS = 2500;
 const MAX_SUMMARY_CHARS = 160;
 const APP_URL = "http://localhost:58230";
@@ -87,7 +88,7 @@ export function noticeTestDone(
   enqueue({
     level: "info",
     title: `${issue.key} · teste: ${verdict}`,
-    summary: `${short(issue.summary, 80)}. Depois ${next} ${SIMULATION}.`,
+    summary: `${short(issue.summary, 80)}. Depois ${next} ${NOT_POSTED}.`,
     details: [
       { heading: "Relatório que postaria", items: [shown] },
       { heading: "Evidências", items: [`${evidence.count} prints em ${evidence.dir}`] },
@@ -109,19 +110,13 @@ export function noticeReviewBlocked(
       const where = f.file ? `${f.file.split("/").at(-1)}${f.line ? `:${f.line}` : ""} — ` : "";
       return `[${f.severity === "blocking" ? "bloqueia" : "médio"}] ${where}${f.body}`;
     });
-  // An approval of an earlier commit stays on the PR: it's up to the user to take it back.
-  const staleApproval = pr.approvedCommit
-    ? " Problema no push feito depois do seu aprove, que continua no PR: veja se tira o aprove."
-    : "";
   enqueue({
-    level: pr.approvedCommit ? "urgent" : "info",
-    title: `${prSubject(pr)} · review: ${config.live?.approve ? "não aprovou" : "não aprovaria"}`,
-    summary: config.live?.comments
-      ? `${short(pr.title, 80)}. Comentou no PR; o aprove fica com você.${staleApproval}`
-      : `${short(pr.title, 80)} ${SIMULATION}.${staleApproval}`,
+    level: "info",
+    title: `${prSubject(pr)} · review: não aprovou`,
+    summary: `${short(pr.title, 80)}. Comentou no PR; o aprove fica com quem revisar depois.`,
     details: [
       { heading: "Resumo do review", items: [summary] },
-      { heading: config.live?.comments ? "Comentou" : "Comentaria", items: posted },
+      { heading: "Comentou", items: posted },
     ],
     links: link("Abrir o PR", prUrl(config, pr)),
   });
@@ -234,7 +229,6 @@ export function noticeNewsOnMyPr(
 
 const REBUILD_SUMMARY: Record<RebuildOutcome, string> = {
   done: "Rodei o build de novo; se falhar de novo, te aviso.",
-  would: 'Rodaria o build de novo (a chave "Rodar build de novo" está desligada).',
   again: "Já rodei de novo uma vez neste commit e falhou de novo: precisa de alguém.",
   refused: "Tentei rodar o build de novo, mas o Jenkins recusou.",
 };

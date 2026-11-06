@@ -8,7 +8,13 @@ import {
   testabilityProblem,
   testPlanStatus,
 } from "./testPlan.js";
-import { prSubject, type BoardIssue, type PullRequest, type WatcherState } from "./types.js";
+import {
+  byPriority,
+  prSubject,
+  type BoardIssue,
+  type PullRequest,
+  type WatcherState,
+} from "./types.js";
 
 /**
  * Pure decisions for one look at the board: what to queue, claim or review, and why the rest is
@@ -36,35 +42,17 @@ export type Decision = {
    *  description fingerprint. */
   ref?: string;
   context?: DecisionContext;
+  /** A wait the user can skip with "Start now" (`state.forced`). */
+  canStart?: boolean;
   /** The build that failed, for a "CI failed". */
   failedBuild?: { url: string; name: string };
 };
 
-const SIM = "sim:";
+const BY_HAND = "started by hand";
 
-/** Whether the action behind a mark in `state.handled` is done for real right now. */
-export function liveFor(kind: "dev" | "test" | "review", config: BoardWatcherConfig): boolean {
-  const live = config.live ?? {};
-  if (kind === "dev") return Boolean(live.devQueue);
-  if (kind === "test") return Boolean(live.testClaim);
-  return Boolean(live.comments) || Boolean(live.approve);
-}
-
-/** The mark to keep in `state.handled`; one left in simulation carries `sim:`. */
-export function handledMark(value: string, live: boolean): string {
-  return live ? value : `${SIM}${value}`;
-}
-
-/**
- * Whether a mark counts as handled (and, with `value`, for that same value). A simulated mark
- * only holds while the automation is still simulated: turned on for real, the ticket or PR is
- * picked up again.
- */
-export function hasMark(stored: string | undefined, live: boolean, value?: string): boolean {
-  if (stored === undefined) return false;
-  const simulated = stored.startsWith(SIM);
-  if (live && simulated) return false;
-  return value === undefined || (simulated ? stored.slice(SIM.length) : stored) === value;
+/** A wait the user can skip with "Start now". */
+function startable(subject: string, reason: string): Decision {
+  return { subject, action: "wait", reason, canStart: true };
 }
 
 export function decideIssues(
@@ -90,19 +78,21 @@ export function decideIssues(
   const waitingTests: BoardIssue[] = [];
   // My tasks it queued whose ticket is still being developed hold the dev slots.
   const developing = new Set([...config.columns.todo, ...(config.columns.inProgress ?? [])]);
+  const forced = new Set(state.forced);
   let devTasks = issues.filter(
     (i) =>
       i.assigneeId === config.me &&
       developing.has(i.statusId) &&
-      hasMark(state.handled[`dev:${i.key}`], liveFor("dev", config)),
+      state.handled[`dev:${i.key}`] !== undefined,
   ).length;
 
-  for (const issue of issues) {
+  // Board order (Jira rank), with the ones the user prioritized on the Board first.
+  for (const issue of byPriority(issues, (i) => i.key, state.priority)) {
     const subject = issue.key;
     if (config.columns.todo.includes(issue.statusId)) {
       if (config.todo?.enabled === false) continue;
       if (issue.assigneeId !== config.me) continue;
-      if (hasMark(state.handled[`dev:${subject}`], liveFor("dev", config))) continue;
+      if (state.handled[`dev:${subject}`] !== undefined) continue;
       const verdict = gradeDescription(issue, config.descriptionMinScore);
       if (!verdict.passed) {
         decisions.push({
@@ -111,20 +101,16 @@ export function decideIssues(
           reason: `description scored ${verdict.score}/5: ${verdict.missing.join(", ")}`,
           ref: fingerprint(issue.description),
         });
-      } else if (!businessTime) {
-        decisions.push({ subject, action: "wait", reason: "outside business hours" });
-      } else if (devTasks >= config.maxDevTasks) {
-        decisions.push({
-          subject,
-          action: "wait",
-          reason: `${devTasks} of my tasks already in development`,
-        });
+      } else if (!forced.has(subject) && !businessTime) {
+        decisions.push(startable(subject, "outside business hours"));
+      } else if (!forced.has(subject) && devTasks >= config.maxDevTasks) {
+        decisions.push(startable(subject, `${devTasks} of my tasks already in development`));
       } else {
         devTasks += 1;
         decisions.push({
           subject,
           action: "enqueue-dev",
-          reason: `description scored ${verdict.score}/5`,
+          reason: forced.has(subject) ? BY_HAND : `description scored ${verdict.score}/5`,
         });
       }
       continue;
@@ -143,9 +129,10 @@ export function decideIssues(
   const devDecisions = decisions.length;
   // Oldest in Wait Test first; the ones people pick up quickly stay with them (grace period).
   waitingTests.sort((a, b) => Date.parse(a.statusSince) - Date.parse(b.statusSince));
+  const testsInOrder = byPriority(waitingTests, (i) => i.key, state.priority);
   const today = localDay(now, config.businessHours);
   let claimedToday = state.testClaims.day === today ? state.testClaims.count : 0;
-  for (const issue of waitingTests) {
+  for (const issue of testsInOrder) {
     const subject = issue.key;
     if (issue.assigneeId === config.me) {
       decisions.push({ subject, action: "skip", reason: "the user developed it" });
@@ -160,36 +147,15 @@ export function decideIssues(
       decisions.push({ subject, action: "skip", reason: "already tested since the last plan" });
       continue;
     }
-    if (hasMark(state.handled[`test:${subject}`], liveFor("test", config), plan.plan.id)) continue;
+    if (state.handled[`test:${subject}`] === plan.plan.id) continue;
     const problem = testabilityProblem(issue, plan.plan);
     if (problem) {
       decisions.push({ subject, action: "skip", reason: `left for a person: ${problem}` });
       continue;
     }
-    if (!businessTime) {
-      decisions.push({ subject, action: "wait", reason: "outside business hours" });
-      continue;
-    }
-    const waited = businessMinutesBetween(
-      new Date(issue.statusSince),
-      now,
-      config.businessHours,
-      config.waitTestGraceMinutes,
-    );
-    if (waited < config.waitTestGraceMinutes) {
-      decisions.push({
-        subject,
-        action: "wait",
-        reason: `leaving it to people first (${waited} of ${config.waitTestGraceMinutes} business minutes)`,
-      });
-      continue;
-    }
-    if (claimed >= config.maxClaimedTests) {
-      decisions.push({ subject, action: "wait", reason: `${claimed} tests already claimed` });
-      continue;
-    }
-    if (claimedToday >= config.maxClaimsPerDay) {
-      decisions.push({ subject, action: "wait", reason: `${claimedToday} tests claimed today` });
+    const wait = forced.has(subject) ? null : testWait(issue, now, config, claimed, claimedToday);
+    if (wait) {
+      decisions.push(startable(subject, wait));
       continue;
     }
     claimed += 1;
@@ -197,7 +163,7 @@ export function decideIssues(
     decisions.push({
       subject,
       action: "claim-test",
-      reason: `test plan in comment ${plan.plan.id}`,
+      reason: forced.has(subject) ? BY_HAND : `test plan in comment ${plan.plan.id}`,
       ref: plan.plan.id,
     });
   }
@@ -205,6 +171,29 @@ export function decideIssues(
     ...d,
     work: index < devDecisions ? "dev" : "test",
   }));
+}
+
+/** Why a Wait Test ticket isn't claimed yet, or null when it can be. */
+function testWait(
+  issue: BoardIssue,
+  now: Date,
+  config: BoardWatcherConfig,
+  claimed: number,
+  claimedToday: number,
+): string | null {
+  if (!isBusinessTime(now, config.businessHours)) return "outside business hours";
+  const waited = businessMinutesBetween(
+    new Date(issue.statusSince),
+    now,
+    config.businessHours,
+    config.waitTestGraceMinutes,
+  );
+  if (waited < config.waitTestGraceMinutes) {
+    return `leaving it to people first (${waited} of ${config.waitTestGraceMinutes} business minutes)`;
+  }
+  if (claimed >= config.maxClaimedTests) return `${claimed} tests already claimed`;
+  if (claimedToday >= config.maxClaimsPerDay) return `${claimedToday} tests claimed today`;
+  return null;
 }
 
 /**
@@ -246,19 +235,20 @@ export function decideRetests(
       continue;
     }
     if (state.handled[`retest:${subject}`] === fixPush) continue;
-    if (!businessTime) {
-      decisions.push({ subject, action: "wait", reason: "outside business hours" });
+    const byHand = state.forced.includes(subject);
+    if (!byHand && !businessTime) {
+      decisions.push(startable(subject, "outside business hours"));
       continue;
     }
-    if (claimedToday >= config.maxClaimsPerDay) {
-      decisions.push({ subject, action: "wait", reason: `${claimedToday} tests claimed today` });
+    if (!byHand && claimedToday >= config.maxClaimsPerDay) {
+      decisions.push(startable(subject, `${claimedToday} tests claimed today`));
       continue;
     }
     claimedToday += 1;
     decisions.push({
       subject,
       action: "retest",
-      reason: `fix pushed after the failed test (${report.id})`,
+      reason: byHand ? BY_HAND : `fix pushed after the failed test (${report.id})`,
       ref: fixPush,
     });
   }
@@ -275,8 +265,12 @@ export function decideProgress(
   startedDevKeys: string[],
   config: BoardWatcherConfig,
   now: Date,
+  /** Started by hand: moved even with another task In Progress or outside business hours. */
+  forced: string[] = [],
 ): Decision[] {
   const inProgress = config.columns.inProgress;
+  // Part of the dev queue: off with it.
+  if (config.todo?.enabled === false) return [];
   if (!config.inProgressStatusId || !inProgress?.length) return [];
   const mine = issues.filter((i) => i.assigneeId === config.me);
   const current = mine.find((i) => inProgress.includes(i.statusId));
@@ -285,17 +279,16 @@ export function decideProgress(
     .map((key) => byKey.get(key))
     .find((i) => i && config.columns.todo.includes(i.statusId));
   if (!next) return [];
-  if (current) {
-    return [{ subject: next.key, action: "wait", reason: `${current.key} is In Progress` }];
-  }
-  if (!isBusinessTime(now, config.businessHours)) {
-    return [{ subject: next.key, action: "wait", reason: "outside business hours" }];
+  const byHand = forced.includes(next.key);
+  if (!byHand && current) return [startable(next.key, `${current.key} is In Progress`)];
+  if (!byHand && !isBusinessTime(now, config.businessHours)) {
+    return [startable(next.key, "outside business hours")];
   }
   return [
     {
       subject: next.key,
       action: "start-progress",
-      reason: "started, and none of yours is In Progress",
+      reason: byHand ? BY_HAND : "started, and none of yours is In Progress",
     },
   ];
 }
@@ -308,9 +301,11 @@ function ticketKeysOf(pr: PullRequest): string[] {
 }
 
 /**
- * With `columns.codeReview` set, a PR is only reviewed once one of its tickets is in that column:
- * people open PRs while still working. `issues` are the board's issues; the wait before approving
- * then counts from the later of the last push and the ticket reaching Code Review.
+ * Each PR of someone else gets one AI review, for the whole team: the first automation to review
+ * it posts a comment that marks it (`hasAiReview`, checked by the tick before queueing), and new
+ * pushes aren't reviewed again. With `columns.codeReview` set, a PR is only reviewed once one of
+ * its tickets is in that column (people open PRs while still working); it's reviewed right
+ * away then, ahead of the human review.
  */
 export function decidePullRequests(
   prs: PullRequest[],
@@ -322,17 +317,14 @@ export function decidePullRequests(
   const decisions: Decision[] = [];
   if (config.codeReview?.enabled === false) return decisions;
   const businessTime = isBusinessTime(now, config.businessHours);
-  const delayMinutes = config.approveDelayMinutes;
   const codeReviewColumn = config.columns.codeReview;
-  const inCodeReview = new Map(
-    issues.filter((i) => codeReviewColumn?.includes(i.statusId)).map((i) => [i.key, i.statusSince]),
+  const inCodeReview = new Set(
+    issues.filter((i) => codeReviewColumn?.includes(i.statusId)).map((i) => i.key),
   );
   // Opt-in: a ticket past Code Review whose PR nobody approved goes to review before it merges.
-  const deploying = new Map(
+  const deploying = new Set(
     config.codeReview?.unapprovedDeploying
-      ? issues
-          .filter((i) => config.columns.deploying?.includes(i.statusId))
-          .map((i) => [i.key, i.statusSince])
+      ? issues.filter((i) => config.columns.deploying?.includes(i.statusId)).map((i) => i.key)
       : [],
   );
   const beforeCodeReview = new Set(
@@ -344,34 +336,33 @@ export function decidePullRequests(
       )
       .map((i) => i.key),
   );
+  const queued = new Set(state.pendingReviews.map(prSubject));
 
   for (const pr of prs) {
     const subject = prSubject(pr);
     if (pr.authorId === config.me) continue;
-    const mine = pr.reviewers.find((r) => r.id === config.me);
-    // Bitbucket keeps an approval through new pushes; those are reviewed (`approvedCommit`).
-    if (mine?.state === "approved" && !pr.approvedCommit) continue;
-    if (hasMark(state.handled[`review:${subject}`], liveFor("review", config), pr.lastPushAt)) {
-      continue;
-    }
+    // Reviewed by AI already (here or, per its comment, by a teammate's automation): done.
+    if (state.handled[`ai-reviewed:${subject}`] !== undefined) continue;
+    if (pr.reviewers.some((r) => r.id === config.me && r.state === "approved")) continue;
+    // Queued, or its session failed on this push: a new push tries again.
+    if (queued.has(subject) || state.handled[`review:${subject}`] === pr.lastPushAt) continue;
 
     const keys = ticketKeysOf(pr);
     const unapprovedDeploying =
       !pr.reviewers.some((r) => r.state === "approved") && keys.some((key) => deploying.has(key));
-    const context: DecisionContext | undefined = pr.approvedCommit
-      ? { kind: "pushed-after-approval", keys, lastPushAt: pr.lastPushAt }
-      : unapprovedDeploying && !keys.some((key) => inCodeReview.has(key))
-        ? { kind: "unapproved-deploying", keys, lastPushAt: pr.lastPushAt }
-        : undefined;
-    const extra = context ? { context } : {};
+    const pastCodeReview = unapprovedDeploying && !keys.some((key) => inCodeReview.has(key));
+    const extra: Partial<Decision> = pastCodeReview
+      ? { context: { kind: "unapproved-deploying", keys, lastPushAt: pr.lastPushAt } }
+      : {};
     const skip = (reason: string, more: Partial<Decision> = {}) =>
       decisions.push({ subject, action: "skip", reason, ...extra, ...more });
-    const wait = (reason: string) => decisions.push({ subject, action: "wait", reason, ...extra });
-    const reachedCodeReview = keys
-      .map((key) => inCodeReview.get(key) ?? (unapprovedDeploying ? deploying.get(key) : undefined))
-      .filter((since): since is string => Boolean(since))
-      .sort()
-      .at(-1);
+    const byHand = state.forced.includes(subject);
+    // Started by hand: what it waits for is skipped (a skip, e.g. a draft, still holds).
+    const wait = (reason: string) =>
+      byHand
+        ? decisions.push({ subject, action: "review", reason: BY_HAND, ...extra })
+        : decisions.push({ subject, action: "wait", reason, canStart: true, ...extra });
+    const reachedCodeReview = keys.some((key) => inCodeReview.has(key)) || unapprovedDeploying;
     // No ticket in the title or branch = off the board: not the user's to review, not listed.
     if (codeReviewColumn && keys.length === 0) continue;
     if (codeReviewColumn && !reachedCodeReview) {
@@ -386,35 +377,15 @@ export function decidePullRequests(
       skip("CI failed", pr.failedBuild ? { failedBuild: pr.failedBuild } : {});
     else if (pr.reviewers.some((r) => r.id !== config.me && r.state === "changes_requested")) {
       skip("another reviewer requested changes");
-    } else if ((state.reviewRounds[subject] ?? 0) >= config.maxReviewRounds) {
-      skip(`${config.maxReviewRounds} review rounds already`);
     } else if (pr.ci === "running") wait("CI running");
     else if (!businessTime) wait("outside business hours");
     else {
-      const since =
-        reachedCodeReview && Date.parse(reachedCodeReview) > Date.parse(pr.lastPushAt)
-          ? reachedCodeReview
-          : pr.lastPushAt;
-      const elapsed = businessMinutesBetween(
-        new Date(since),
-        now,
-        config.businessHours,
-        delayMinutes,
-      );
-      if (elapsed < delayMinutes) {
-        wait(`giving people time to review (${elapsed} of ${delayMinutes} business minutes)`);
-      } else {
-        decisions.push({
-          subject,
-          action: "review",
-          ...extra,
-          reason: pr.approvedCommit
-            ? "pushed since the user's approval"
-            : unapprovedDeploying && !keys.some((key) => inCodeReview.has(key))
-              ? "past Code Review without any approval"
-              : "ready for review",
-        });
-      }
+      decisions.push({
+        subject,
+        action: "review",
+        ...extra,
+        reason: pastCodeReview ? "past Code Review without any approval" : "ready for review",
+      });
     }
   }
   return decisions;

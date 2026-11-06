@@ -1,8 +1,7 @@
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import type {
   AutomationFeatures,
   AutomationLimits,
-  AutomationLive,
   AutomationSettings,
   AutomationSettingsInput,
 } from "../../../shared/boardWatcher.js";
@@ -11,7 +10,9 @@ import {
   BOARD_WATCHER_CONFIG_FILE,
   DEFAULT_BUSINESS_HOURS,
   DEFAULT_LIMITS,
+  dropSimulation,
   loadBoardWatcherConfig,
+  saveRawConfig,
   type BoardWatcherConfig,
 } from "./config.js";
 
@@ -22,14 +23,12 @@ import {
  */
 
 const LIMIT_RANGES: Record<keyof AutomationLimits, [number, number]> = {
-  approveDelayMinutes: [0, 2880],
   waitTestGraceMinutes: [0, 1440],
   maxClaimedTests: [1, 10],
   maxClaimsPerDay: [1, 50],
   maxDevTasks: [1, 10],
   maxApprovesPerDay: [1, 100],
   maxCommentsPerPr: [0, 20],
-  maxReviewRounds: [1, 20],
   descriptionMinScore: [0, 5],
 };
 
@@ -37,13 +36,11 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 type SwitchSource = Partial<BoardWatcherConfig> | null | undefined;
 
-/** Which automations are on (all on unless false, except the review sessions and the
- *  unapproved-deploying PRs). */
+/** Which automations are on (all on unless false, except the unapproved-deploying PRs). */
 export function featuresOf(config: SwitchSource): AutomationFeatures {
   return {
     devQueue: config?.todo?.enabled !== false,
     codeReview: config?.codeReview?.enabled !== false,
-    reviewSessions: Boolean(config?.review?.enabled),
     reviewUnapprovedDeploying: config?.codeReview?.unapprovedDeploying === true,
     testQueue: config?.test?.enabled !== false,
     instantNotices: config?.notifications?.instant !== false,
@@ -52,23 +49,10 @@ export function featuresOf(config: SwitchSource): AutomationFeatures {
   };
 }
 
-/** Which writes are done for real (all off unless true). */
-export function liveOf(config: SwitchSource): AutomationLive {
-  return {
-    devQueue: config?.live?.devQueue === true,
-    testClaim: config?.live?.testClaim === true,
-    comments: config?.live?.comments === true,
-    approve: config?.live?.approve === true,
-    startProgress: config?.live?.startProgress === true,
-    rebuild: config?.live?.rebuild === true,
-  };
-}
-
 /** Writes switches into a raw `boardWatcher.json`; refuses unknown ones. */
 export function writeSwitches(
   raw: Record<string, unknown>,
   features: Partial<Record<string, unknown>> = {},
-  live: Partial<Record<string, unknown>> = {},
 ): void {
   for (const [feature, value] of Object.entries(features)) {
     const target = FEATURE_KEYS[feature as keyof AutomationFeatures];
@@ -76,12 +60,6 @@ export function writeSwitches(
       throw new BadRequestError("BAD_SETTING", `"${feature}" isn't an automation switch.`);
     }
     section(raw, target[0])[target[1]] = value;
-  }
-  for (const [action, value] of Object.entries(live)) {
-    if (!LIVE_KEYS.includes(action as keyof AutomationLive) || typeof value !== "boolean") {
-      throw new BadRequestError("BAD_SETTING", `"${action}" isn't a real-action switch.`);
-    }
-    section(raw, "live")[action] = value;
   }
 }
 
@@ -97,9 +75,7 @@ export async function getAutomationSettings(): Promise<AutomationSettings> {
   return {
     configured: config !== null,
     enabled: Boolean(config?.enabled),
-    mode: "simulate",
     features: featuresOf(config),
-    live: liveOf(config),
     limits,
     businessHours: {
       start: hours.start,
@@ -124,22 +100,12 @@ function section(raw: Record<string, unknown>, key: string): Record<string, unkn
 const FEATURE_KEYS: Record<keyof AutomationFeatures, [string, string]> = {
   devQueue: ["todo", "enabled"],
   codeReview: ["codeReview", "enabled"],
-  reviewSessions: ["review", "enabled"],
   reviewUnapprovedDeploying: ["codeReview", "unapprovedDeploying"],
   testQueue: ["test", "enabled"],
   instantNotices: ["notifications", "instant"],
   digest: ["notifications", "digest"],
   rebuild: ["rebuild", "enabled"],
 };
-
-export const LIVE_KEYS: (keyof AutomationLive)[] = [
-  "devQueue",
-  "startProgress",
-  "rebuild",
-  "testClaim",
-  "comments",
-  "approve",
-];
 
 export async function saveAutomationSettings(body: unknown): Promise<AutomationSettings> {
   const text = await readFile(BOARD_WATCHER_CONFIG_FILE, "utf8").catch(() => null);
@@ -150,13 +116,14 @@ export async function saveAutomationSettings(body: unknown): Promise<AutomationS
     );
   }
   const raw = JSON.parse(text) as Record<string, unknown>;
+  dropSimulation(raw);
   const input = (isRecord(body) ? body : {}) as AutomationSettingsInput;
 
   if (input.enabled !== undefined) {
     if (typeof input.enabled !== "boolean") throw new BadRequestError("BAD_SETTING", "enabled");
     raw.enabled = input.enabled;
   }
-  writeSwitches(raw, input.features, input.live);
+  writeSwitches(raw, input.features);
   for (const [limit, value] of Object.entries(input.limits ?? {})) {
     const range = LIMIT_RANGES[limit as keyof AutomationLimits];
     if (!range || typeof value !== "number" || !Number.isFinite(value)) {
@@ -169,7 +136,6 @@ export async function saveAutomationSettings(body: unknown): Promise<AutomationS
       );
     }
     raw[limit] = value;
-    if (limit === "approveDelayMinutes") delete raw.approveDelayHours;
   }
   if (input.businessHours) {
     const hours = section(raw, "businessHours");
@@ -192,8 +158,6 @@ export async function saveAutomationSettings(body: unknown): Promise<AutomationS
     }
   }
 
-  const tmp = `${BOARD_WATCHER_CONFIG_FILE}.tmp`;
-  await writeFile(tmp, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
-  await rename(tmp, BOARD_WATCHER_CONFIG_FILE);
+  await saveRawConfig(raw);
   return getAutomationSettings();
 }

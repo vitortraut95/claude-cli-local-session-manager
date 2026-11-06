@@ -28,8 +28,9 @@ import type {
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { isBoardDemo } from "../utils/boardDemo";
 import { queueItems } from "../utils/boardQueue";
+import { translateServerText } from "../utils/boardWatcher";
 import { formatUpdatedAt } from "../utils/formatDate";
-import { modeOf, MODE_AUTOMATIONS, type AutomationMode } from "../../shared/automationModes";
+import { AUTOMATIONS } from "../../shared/boardWatcher";
 import type { AutomationFocus } from "./AutomationModesEditor";
 import { AnchoredMenu } from "./AnchoredMenu";
 import { AttentionPanel } from "./AttentionPanel";
@@ -128,6 +129,39 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
   // The history changes when a look or a session finishes, so it's re-read then.
   const historyRefreshKey = `${status?.lastTickAt ?? ""}|${String(status?.reviewing ?? false)}`;
 
+  const startItemNow = async (subject: string) => {
+    try {
+      const result = await boardWatcherApi.startBoardWatcherItemNow(subject);
+      setStatus(result);
+      const still = result.lastDecisions.find(
+        (d) => d.subject === subject && (d.action === "wait" || d.action === "skip"),
+      );
+      if (still) {
+        showToast(
+          t("board.queue.startNow.stillWaiting", {
+            subject,
+            reason: translateServerText(still.reason, language),
+          }),
+          "error",
+        );
+      } else {
+        showToast(t("board.queue.startNow.started", { subject }), "success");
+      }
+    } catch (err) {
+      showToast(resolveApiErrorMessage(err, t, "board.actionError"), "error");
+    }
+  };
+
+  // Shown in the new order right away; saved in the background.
+  const reorderQueue = async (subjects: string[]) => {
+    setStatus((current) => (current ? { ...current, priority: subjects } : current));
+    try {
+      setStatus(await boardWatcherApi.prioritizeBoardWatcherItems(subjects));
+    } catch (err) {
+      showToast(resolveApiErrorMessage(err, t, "board.actionError"), "error");
+    }
+  };
+
   const runCommand = async (
     kind: "run" | "pause" | "digest",
     command: () => Promise<void | BoardWatcherStatus>,
@@ -184,11 +218,8 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                 : "—",
             });
 
-  const modes = settings
-    ? MODE_AUTOMATIONS.map((automation) => ({
-        automation,
-        mode: modeOf(automation, { features: settings.features, live: settings.live }),
-      }))
+  const automationChips = settings
+    ? AUTOMATIONS.map((automation) => ({ automation, on: settings.features[automation] }))
     : [];
   const noticesOn = settings ? settings.features.instantNotices || settings.features.digest : false;
   const queue = status ? queueItems(status, liveCurrent) : [];
@@ -294,26 +325,26 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                   </p>
                   {settings && (
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {modes.map(({ automation, mode }) => (
+                      {automationChips.map(({ automation, on }) => (
                         <button
                           key={automation}
                           type="button"
                           onClick={() => onOpenAutomation(automation)}
                           title={t("board.mode.chip.hint")}
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition before:h-1.5 before:w-1.5 before:rounded-full before:content-[''] hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${MODE_CHIP[mode]}`}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition before:h-1.5 before:w-1.5 before:rounded-full before:content-[''] hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${on ? CHIP_ON : CHIP_OFF}`}
                         >
                           {t(`board.mode.chip.${automation}` as TranslationKey)}:{" "}
-                          {t(MODE_LABEL[mode])}
+                          {t(on ? "automationModes.on" : "automationModes.off")}
                         </button>
                       ))}
                       <button
                         type="button"
                         onClick={() => onOpenAutomation("notices")}
                         title={t("board.mode.chip.hint")}
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition before:h-1.5 before:w-1.5 before:rounded-full before:content-[''] hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${noticesOn ? MODE_CHIP.live : MODE_CHIP.off}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition before:h-1.5 before:w-1.5 before:rounded-full before:content-[''] hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${noticesOn ? CHIP_ON : CHIP_OFF}`}
                       >
                         {t("board.mode.chip.notices")}:{" "}
-                        {noticesOn ? t("board.mode.chip.on") : t("automationModes.mode.off")}
+                        {t(noticesOn ? "automationModes.on" : "automationModes.off")}
                       </button>
                     </div>
                   )}
@@ -467,7 +498,12 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
           <div className="grid gap-5 xl:grid-cols-5">
             <div className="flex min-w-0 flex-col gap-5 xl:col-span-3">
               <AttentionPanel status={status} refreshKey={historyRefreshKey} />
-              <BoardQueue status={status} items={queue} />
+              <BoardQueue
+                status={status}
+                items={queue}
+                onStartNow={startItemNow}
+                onReorder={(subjects) => void reorderQueue(subjects)}
+              />
             </div>
             <div className="min-w-0 xl:col-span-2">
               <LiveActivityPanel
@@ -510,18 +546,9 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
   );
 }
 
-const MODE_CHIP: Record<AutomationMode, string> = {
-  off: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10 before:bg-gray-500",
-  simulate:
-    "bg-violet-500/10 text-violet-200 ring-1 ring-inset ring-violet-400/30 before:bg-violet-400",
-  live: "bg-emerald-500/10 text-emerald-200 ring-1 ring-inset ring-emerald-400/30 before:bg-emerald-400",
-};
-
-const MODE_LABEL: Record<AutomationMode, TranslationKey> = {
-  off: "automationModes.mode.off",
-  simulate: "automationModes.mode.simulate",
-  live: "automationModes.mode.live",
-};
+const CHIP_ON =
+  "bg-emerald-500/10 text-emerald-200 ring-1 ring-inset ring-emerald-400/30 before:bg-emerald-400";
+const CHIP_OFF = "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10 before:bg-gray-500";
 
 /** "100%", or "—" with no verdict yet. */
 function percent(score: { up: number; down: number } | undefined): string {

@@ -1,6 +1,6 @@
 [
   {
-    "name": "clean PR 2 business hours after the push is approved once",
+    "name": "clean PR in Code Review is approved once and marked as reviewed by AI",
     "ticks": [
       {
         "now": "2026-10-28T14:00:00-03:00",
@@ -13,7 +13,7 @@
           }
         ],
         "expect": {
-          "effects": ["approve web#12"],
+          "effects": ["approve web#12", "ai-review web#12 approved"],
           "decisions": {
             "web#12": "review"
           }
@@ -31,7 +31,7 @@
     ]
   },
   {
-    "name": "fresh PR waits for people to review first",
+    "name": "a fresh PR is reviewed right away, ahead of the human review",
     "ticks": [
       {
         "now": "2026-10-28T14:00:00-03:00",
@@ -44,22 +44,16 @@
           }
         ],
         "expect": {
-          "effects": [],
+          "effects": ["approve web#13", "ai-review web#13 approved"],
           "decisions": {
-            "web#13": "wait"
+            "web#13": "review"
           }
-        }
-      },
-      {
-        "now": "2026-10-28T15:30:00-03:00",
-        "expect": {
-          "effects": ["approve web#13"]
         }
       }
     ]
   },
   {
-    "name": "PR pushed Friday evening: waits over the weekend, approved Monday",
+    "name": "PR pushed Friday evening: waits over the weekend, reviewed when Monday starts",
     "ticks": [
       {
         "now": "2026-10-31T10:00:00-03:00",
@@ -81,16 +75,10 @@
       {
         "now": "2026-11-02T09:30:00-03:00",
         "expect": {
-          "effects": [],
+          "effects": ["approve web#15", "ai-review web#15 approved"],
           "decisions": {
-            "web#15": "wait"
+            "web#15": "review"
           }
-        }
-      },
-      {
-        "now": "2026-11-02T10:00:00-03:00",
-        "expect": {
-          "effects": ["approve web#15"]
         }
       }
     ]
@@ -123,7 +111,11 @@
           }
         },
         "expect": {
-          "effects": ["comment web#14 blocking", "notify digest: Not approved: web#14"]
+          "effects": [
+            "comment web#14 blocking",
+            "notify digest: Not approved: web#14",
+            "ai-review web#14 blocked"
+          ]
         }
       },
       {
@@ -185,7 +177,8 @@
             "comment web#16 major",
             "comment web#16 major",
             "comment web#16 major",
-            "approve web#16"
+            "approve web#16",
+            "ai-review web#16 approved"
           ]
         }
       }
@@ -288,7 +281,7 @@
           }
         ],
         "expect": {
-          "effects": ["approve web#26"],
+          "effects": ["approve web#26", "ai-review web#26 approved"],
           "decisions": {
             "web#25": "none",
             "web#26": "review"
@@ -298,7 +291,7 @@
     ]
   },
   {
-    "name": "new push resets my approval and is reviewed again",
+    "name": "a new push after the AI review isn't reviewed again",
     "ticks": [
       {
         "now": "2026-10-28T14:00:00-03:00",
@@ -311,7 +304,7 @@
           }
         ],
         "expect": {
-          "effects": ["approve web#30"]
+          "effects": ["approve web#30", "ai-review web#30 approved"]
         }
       },
       {
@@ -331,18 +324,16 @@
           }
         ],
         "expect": {
-          "effects": ["approve web#30"]
+          "effects": [],
+          "decisions": {
+            "web#30": "none"
+          }
         }
       }
     ]
   },
   {
-    "name": "review round limit: skipped",
-    "state": {
-      "reviewRounds": {
-        "web#31": 3
-      }
-    },
+    "name": "a PR with a teammate's AI review comment isn't reviewed again",
     "ticks": [
       {
         "now": "2026-10-28T14:00:00-03:00",
@@ -354,10 +345,20 @@
             "lastPushAt": "2026-10-28T09:00:00-03:00"
           }
         ],
+        "aiReviewed": ["web#31"],
         "expect": {
           "effects": [],
           "decisions": {
             "web#31": "skip"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#31": "none"
           }
         }
       }
@@ -428,14 +429,15 @@
           "effects": [
             "comment web#41 major",
             "notify digest: Product questions: web#41",
-            "approve web#41"
+            "approve web#41",
+            "ai-review web#41 approved"
           ]
         }
       }
     ]
   },
   {
-    "name": "PR waits until its ticket is in Code Review",
+    "name": "PR waits until its ticket is in Code Review, then is reviewed right away",
     "config": {
       "columns": {
         "todo": ["todo"],
@@ -483,16 +485,10 @@
           }
         ],
         "expect": {
-          "effects": [],
+          "effects": ["approve web#50", "ai-review web#50 approved"],
           "decisions": {
-            "web#50": "wait"
+            "web#50": "review"
           }
-        }
-      },
-      {
-        "now": "2026-10-28T16:10:00-03:00",
-        "expect": {
-          "effects": ["approve web#50"]
         }
       }
     ]
@@ -540,97 +536,10 @@
           }
         ],
         "expect": {
-          "effects": ["approve web#51"],
+          "effects": ["approve web#51", "ai-review web#51 approved"],
           "decisions": {
             "web#52": "none"
           }
-        }
-      }
-    ]
-  },
-  {
-    "name": "a PR pushed after the user's approval is reviewed again, without approving twice",
-    "ticks": [
-      {
-        "now": "2026-10-28T14:00:00-03:00",
-        "prs": [
-          {
-            "id": "60",
-            "repo": "web",
-            "title": "PR 60",
-            "lastPushAt": "2026-10-28T09:00:00-03:00",
-            "reviewers": [
-              {
-                "id": "me",
-                "state": "approved"
-              }
-            ],
-            "approvedCommit": "aaa111"
-          },
-          {
-            "id": "61",
-            "repo": "web",
-            "title": "PR 61",
-            "lastPushAt": "2026-10-28T09:00:00-03:00",
-            "reviewers": [
-              {
-                "id": "me",
-                "state": "approved"
-              }
-            ]
-          }
-        ],
-        "expect": {
-          "effects": [],
-          "decisions": {
-            "web#60": "review",
-            "web#61": "none"
-          }
-        }
-      },
-      {
-        "now": "2026-10-28T14:10:00-03:00",
-        "expect": {
-          "effects": [],
-          "decisions": {
-            "web#60": "none"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "name": "a blocking finding pushed after the user's approval is commented and reported",
-    "ticks": [
-      {
-        "now": "2026-10-28T14:00:00-03:00",
-        "prs": [
-          {
-            "id": "62",
-            "repo": "web",
-            "title": "PR 62",
-            "lastPushAt": "2026-10-28T09:00:00-03:00",
-            "reviewers": [
-              {
-                "id": "me",
-                "state": "approved"
-              }
-            ],
-            "approvedCommit": "aaa111"
-          }
-        ],
-        "reviews": {
-          "web#62": {
-            "findings": [
-              {
-                "severity": "blocking",
-                "body": "Quebra o checkout"
-              }
-            ]
-          }
-        },
-        "expect": {
-          "effects": ["comment web#62 blocking", "notify digest: Not approved: web#62"]
         }
       }
     ]
@@ -742,7 +651,7 @@
           }
         ],
         "expect": {
-          "effects": ["approve web#80"],
+          "effects": ["approve web#80", "ai-review web#80 approved"],
           "decisions": {
             "web#80": "review",
             "web#81": "none"
@@ -811,6 +720,100 @@
           "decisions": {
             "web#80": "none",
             "web#81": "none"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "started by hand: a PR whose ticket isn't in Code Review yet is reviewed now",
+    "config": {
+      "columns": {
+        "todo": ["todo"],
+        "waitTest": ["wait-test"],
+        "testing": ["testing"],
+        "codeReview": ["code-review"],
+        "inProgress": ["in-progress"]
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-80",
+            "statusId": "in-progress",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "assigneeId": "ana"
+          }
+        ],
+        "prs": [
+          {
+            "id": "50",
+            "repo": "web",
+            "title": "DEMO-80: carrossel novo",
+            "sourceBranch": "env/DEMO-80",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#50", "ai-review web#50 approved"],
+          "decisions": {
+            "web#50": "review"
+          }
+        }
+      }
+    ],
+    "state": {
+      "forced": ["web#50"]
+    }
+  },
+  {
+    "name": "started by hand: a draft is still skipped",
+    "state": {
+      "forced": ["web#20"]
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "20",
+            "repo": "web",
+            "title": "PR 20",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "draft": true
+          }
+        ],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "web#20": "skip"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "started by hand: a PR is reviewed outside business hours",
+    "state": {
+      "forced": ["web#21"]
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T20:00:00-03:00",
+        "prs": [
+          {
+            "id": "21",
+            "repo": "web",
+            "title": "PR 21",
+            "lastPushAt": "2026-10-28T09:00:00-03:00"
+          }
+        ],
+        "expect": {
+          "effects": ["approve web#21", "ai-review web#21 approved"],
+          "decisions": {
+            "web#21": "review"
           }
         }
       }

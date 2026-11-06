@@ -3,8 +3,6 @@ import { localDay } from "./businessTime.js";
 import type { BoardWatcherConfig } from "./config.js";
 import {
   decideIssues,
-  handledMark,
-  liveFor,
   decideProgress,
   decidePullRequests,
   decideRetests,
@@ -12,6 +10,7 @@ import {
 } from "./decide.js";
 import {
   prSubject,
+  type AiReviewOutcome,
   type PullRequest,
   type ReviewResult,
   type WatcherDeps,
@@ -40,7 +39,7 @@ export async function runTick(
   const decisions = [
     ...issueDecisions,
     ...as("retest", decideRetests(issues, prs, state, config, now, claims)),
-    ...as("progress", decideProgress(issues, startedDevKeys, config, now)),
+    ...as("progress", decideProgress(issues, startedDevKeys, config, now, state.forced)),
     ...as("review", decidePullRequests(prs, state, config, now, issues)),
   ];
   const prsBySubject = new Map(prs.map((pr) => [prSubject(pr), pr]));
@@ -50,7 +49,7 @@ export async function runTick(
     switch (decision.action) {
       case "enqueue-dev":
         await deps.tasks.enqueue(subject, "dev");
-        state.handled[`dev:${subject}`] = handledMark(now.toISOString(), liveFor("dev", config));
+        state.handled[`dev:${subject}`] = now.toISOString();
         break;
       case "weak-description":
         if (state.handled[`gate:${subject}`] === decision.ref) break;
@@ -60,7 +59,7 @@ export async function runTick(
       case "claim-test":
         await deps.board.transition(subject, config.testingStatusId);
         await deps.tasks.enqueue(subject, "test");
-        state.handled[`test:${subject}`] = handledMark(decision.ref ?? "", liveFor("test", config));
+        state.handled[`test:${subject}`] = decision.ref ?? "";
         if (!state.claimedTests.includes(subject)) state.claimedTests.push(subject);
         countTestClaim(state, config, now);
         break;
@@ -77,11 +76,18 @@ export async function runTick(
       case "review": {
         const pr = prsBySubject.get(subject);
         if (!pr) break;
+        // A teammate's automation got there first: that was the PR's one AI review.
+        if (await deps.codeHost.hasAiReview(pr)) {
+          state.handled[`ai-reviewed:${subject}`] = pr.sourceHash ?? pr.lastPushAt;
+          decision.action = "skip";
+          decision.reason = "already reviewed by AI";
+          break;
+        }
         // Checked before reviewing so a review isn't spent on a PR that can't be approved today.
         if (await pauseAtApprovalCap(deps, state, config, now)) break;
         const result = await deps.reviewer.review(pr);
         if (result) await applyReview(pr, result, deps, state, config, now);
-        else state.handled[`review:${subject}`] = reviewMark(pr, config);
+        else state.handled[`review:${subject}`] = pr.lastPushAt;
         break;
       }
       case "skip":
@@ -114,8 +120,9 @@ async function pauseAtApprovalCap(
   return true;
 }
 
-/** Posts the relevant findings and approves when nothing blocks it. Also used for a review
- *  that ran outside the tick (`boardWatcherService`). */
+/** Posts the relevant findings, approves when nothing blocks it and marks the PR as reviewed by
+ *  AI, so no automation reviews it again. Also used for a review that ran outside the tick
+ *  (`boardWatcherService`). */
 export async function applyReview(
   pr: PullRequest,
   result: ReviewResult,
@@ -134,47 +141,46 @@ export async function applyReview(
       productQuestions.map((f) => f.body).join("\n"),
     );
   }
-  for (const finding of relevant.slice(0, config.maxCommentsPerPr)) {
+  const posted = relevant.slice(0, config.maxCommentsPerPr);
+  for (const finding of posted) {
     await deps.codeHost.comment(pr, finding);
   }
-  state.reviewRounds[subject] = (state.reviewRounds[subject] ?? 0) + 1;
+  const outcome = await approveUnlessBlocked(pr, relevant, deps, state, config, now);
+  await deps.codeHost.markAiReviewed(pr, { outcome, summary: result.summary, posted });
+  state.handled[`review:${subject}`] = pr.lastPushAt;
+  state.handled[`ai-reviewed:${subject}`] = pr.sourceHash ?? pr.lastPushAt;
+}
 
+async function approveUnlessBlocked(
+  pr: PullRequest,
+  relevant: ReviewResult["findings"],
+  deps: WatcherDeps,
+  state: WatcherState,
+  config: BoardWatcherConfig,
+  now: Date,
+): Promise<AiReviewOutcome> {
+  const subject = prSubject(pr);
   const blocking = relevant.filter((f) => f.severity === "blocking").length;
   if (blocking > 0) {
-    state.handled[`review:${subject}`] = reviewMark(pr, config);
-    // The user's approval of an earlier commit is still on the PR; only they take it back.
     await deps.notifier.notify(
       "digest",
       `Not approved: ${subject}`,
-      pr.approvedCommit
-        ? `${blocking} blocking finding(s) pushed after your approval on "${pr.title}"; your approval is still on the PR.`
-        : `${blocking} blocking finding(s) on "${pr.title}".`,
+      `${blocking} blocking finding(s) on "${pr.title}".`,
     );
-    return;
+    return { kind: "blocked", blocking };
   }
-  // Already approved: the new pushes only needed a look.
-  if (pr.approvedCommit) {
-    state.handled[`review:${subject}`] = reviewMark(pr, config);
-    return;
-  }
-
   // Reviews queued before the cap was reached still finish; they just don't approve past it.
   const day = localDay(now, config.businessHours);
   if (state.approvals.day !== day) state.approvals = { day, count: 0 };
   if (state.approvals.count >= config.maxApprovesPerDay) {
-    state.handled[`review:${subject}`] = reviewMark(pr, config);
     await deps.notifier.notify(
       "digest",
       `Not approved: ${subject}`,
       `Daily approval cap (${config.maxApprovesPerDay}) reached.`,
     );
-    return;
+    return { kind: "approval-cap", cap: config.maxApprovesPerDay };
   }
   await deps.codeHost.approve(pr);
   state.approvals.count += 1;
-  state.handled[`review:${subject}`] = reviewMark(pr, config);
-}
-
-function reviewMark(pr: PullRequest, config: BoardWatcherConfig): string {
-  return handledMark(pr.lastPushAt, liveFor("review", config));
+  return { kind: "approved" };
 }

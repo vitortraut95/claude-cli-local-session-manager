@@ -10,9 +10,8 @@ import { prSubject, type PullRequest, type ReviewFinding, type ReviewResult } fr
 /**
  * A real PR review: a detached worktree of the PR's commit in the local clone, then a
  * non-interactive `claude -p` limited to reading (Read/Grep/Glob and read-only git), given the
- * ticket with its comments and the other open PRs touching the same ticket or files. After a new
- * push, it reviews what changed since the last round without repeating it. Returns structured
- * findings; posting them is up to the caller. The worktree is always removed.
+ * ticket with its comments and the other open PRs touching the same ticket or files. It's the
+ * PR's one AI review: a full one, never a follow-up round. Returns structured findings; posting them is up to the caller. The worktree is always removed.
  */
 
 const execFileAsync = promisify(execFile);
@@ -48,9 +47,6 @@ export type ReviewContext = {
   maxBudgetUsd?: number;
   /** The user's notes on earlier reviews (`feedback.ts`), added to the prompt. */
   lessons?: string[];
-  /** The last review of this PR: its commit and what it raised. With it, the review focuses on
-   *  what changed since and doesn't raise the same points again. */
-  previous?: { hash: string; findings: string[] };
 };
 
 const OUTPUT_SCHEMA = {
@@ -123,26 +119,11 @@ async function changedFiles(cwd: string, base: string, head: string): Promise<st
   return out.split("\n").filter(Boolean);
 }
 
-/** The follow-up round's instructions, when the earlier commit is still in the history (a
- *  force push loses it: then it's a full review again). */
-function previousRoundText(previous: { hash: string; findings: string[] } | null): string {
-  if (!previous) return "";
-  const raised = previous.findings.length
-    ? previous.findings.map((f) => `- ${f}`).join("\n")
-    : "- nothing";
-  return `
-
-You already reviewed this PR at commit ${previous.hash}. This is a new push: focus on what changed since, with \`git diff ${previous.hash}..HEAD\`, reading the rest only to understand it. Don't raise again what was already raised (below), fixed or not; only flag something new, or a regression the new push introduced.
-Already raised:
-${raised}`;
-}
-
 function buildPrompt(
   pr: PullRequest,
   base: string,
   ticket: string,
   related: { pr: PullRequest; files: string[] }[],
-  previous: { hash: string; findings: string[] } | null,
 ): string {
   const relatedText = related.length
     ? related
@@ -169,7 +150,7 @@ Severity: blocking = a real bug, security issue or regression that should stop t
 Topic: code = about the code; product = a question for PO/design/content (prices to confirm, copy, Figma parity). Product findings never block and are not posted.
 A PR may bundle more than one ticket (the team sometimes does one along with another): never flag scope, extra commits or tickets missing from the title, but review all of its code the same way.
 
-Write each finding's body in Portuguese (pt-BR), short, in a suggestion tone, exactly as it would be posted as an inline comment to a colleague. summary/ticketMatch/confidence in pt-BR too. verdict: approve, comment-and-approve or do-not-approve (only with a blocking code finding).${previousRoundText(previous)}`;
+Write each finding's body in Portuguese (pt-BR), short, in a suggestion tone, exactly as it would be posted as an inline comment to a colleague. summary/ticketMatch/confidence in pt-BR too. verdict: approve, comment-and-approve or do-not-approve (only with a blocking code finding).`;
 }
 
 export async function runClaudeReview(
@@ -219,22 +200,9 @@ export async function runClaudeReview(
       ({ pr: other, files: shared }) => shared.length > 0 || (key && ticketKeyOf(other) === key),
     );
 
-    const previous =
-      context.previous &&
-      (await runGit(["cat-file", "-e", `${context.previous.hash}^{commit}`], worktree).then(
-        () => true,
-        () => false,
-      ))
-        ? context.previous
-        : null;
     const prompt =
-      buildPrompt(
-        pr,
-        base,
-        await ticketContext(context.jiraSite, key),
-        relatedWithFiles,
-        previous,
-      ) + lessonsSection(context.lessons ?? []);
+      buildPrompt(pr, base, await ticketContext(context.jiraSite, key), relatedWithFiles) +
+      lessonsSection(context.lessons ?? []);
     const size = await diffSize(worktree, base);
     const small =
       context.smallModel !== null &&

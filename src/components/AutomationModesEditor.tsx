@@ -1,53 +1,47 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { TranslationKey } from "../i18n/translations";
-import type { AutomationFeatures, AutomationLive } from "../services/boardWatcherApi";
-import {
-  modeOf,
-  switchesForMode,
-  type AutomationMode,
-  type ModeAutomation,
-  type Switches,
-  type SwitchesInput,
-} from "../../shared/automationModes";
-
-const MODES: AutomationMode[] = ["off", "simulate", "live"];
-
-const MODE_LABELS: Record<AutomationMode, TranslationKey> = {
-  off: "automationModes.mode.off",
-  simulate: "automationModes.mode.simulate",
-  live: "automationModes.mode.live",
-};
-
-const MODE_ON_CLASSES: Record<AutomationMode, string> = {
-  off: "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100",
-  simulate: "bg-violet-600 text-white shadow-sm dark:bg-violet-500",
-  live: "bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-gray-950",
-};
+import type { AutomationFeatures } from "../services/boardWatcherApi";
+import type { Automation } from "../../shared/boardWatcher";
 
 /** A card of the editor: one automation, or the Teams notices. */
-export type AutomationFocus = ModeAutomation | "notices";
+export type AutomationFocus = Automation | "notices";
 
 type ModesEditorProps = {
-  switches: Switches;
-  onChange: (input: SwitchesInput) => void;
+  features: AutomationFeatures;
+  onChange: (input: Partial<AutomationFeatures>) => void;
   /** Why an automation can't be turned on yet (the setup panel: a column or token missing). */
-  unavailable?: Partial<Record<ModeAutomation | "notices", string>>;
+  unavailable?: Partial<Record<Automation | "notices", string>>;
   disabled?: boolean;
   /** The card to scroll to and outline for a moment. */
   focus?: AutomationFocus;
 };
 
-function ModeSelector({
+type OnOffOption = { on: boolean; label: TranslationKey; selectedClass: string };
+
+const ON_OFF_OPTIONS: OnOffOption[] = [
+  {
+    on: false,
+    label: "automationModes.off",
+    selectedClass: "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100",
+  },
+  {
+    on: true,
+    label: "automationModes.on",
+    selectedClass: "bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-gray-950",
+  },
+];
+
+function OnOffSelector({
   label,
-  mode,
+  on,
   disabled,
   onChange,
 }: {
   label: string;
-  mode: AutomationMode;
+  on: boolean;
   disabled: boolean;
-  onChange: (mode: AutomationMode) => void;
+  onChange: (on: boolean) => void;
 }) {
   const { t } = useLanguage();
   return (
@@ -56,23 +50,23 @@ function ModeSelector({
       aria-label={label}
       className="inline-flex shrink-0 rounded-lg bg-gray-100 p-0.5 dark:bg-gray-800"
     >
-      {MODES.map((option) => {
-        const on = option === mode;
+      {ON_OFF_OPTIONS.map((option) => {
+        const selected = option.on === on;
         return (
           <button
-            key={option}
+            key={option.label}
             type="button"
             role="radio"
-            aria-checked={on}
+            aria-checked={selected}
             disabled={disabled}
-            onClick={() => onChange(option)}
+            onClick={() => onChange(option.on)}
             className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 disabled:cursor-not-allowed disabled:opacity-50 ${
-              on
-                ? MODE_ON_CLASSES[option]
+              selected
+                ? option.selectedClass
                 : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
             }`}
           >
-            {t(MODE_LABELS[option])}
+            {t(option.label)}
           </button>
         );
       })}
@@ -163,37 +157,35 @@ function Note({ children }: { children: ReactNode }) {
 }
 
 /**
- * The automations, one card each with a single mode (off, simulation, for real); the real actions
- * that belong to an automation are options inside its card. Used by the Automation modal (saved
- * on each change) and by the setup panel's last step (kept as a draft).
+ * The automations, one card each, on or off; an automation that is on acts for real, so its card
+ * only adds the options that go with it. Used by the Automation modal (saved on each change) and by
+ * the setup panel's last step (kept as a draft).
  */
 export function AutomationModesEditor({
-  switches,
+  features,
   onChange,
   unavailable = {},
   disabled = false,
   focus,
 }: ModesEditorProps) {
   const { t } = useLanguage();
-  const { features, live } = switches;
-  const setFeature = (key: keyof AutomationFeatures, value: boolean) =>
-    onChange({ features: { [key]: value }, live: {} });
-  const setLive = (key: keyof AutomationLive, value: boolean) =>
-    onChange({ features: {}, live: { [key]: value } });
+  const setFeature = (key: keyof AutomationFeatures, value: boolean) => onChange({ [key]: value });
 
-  const selector = (automation: ModeAutomation, title: string) => (
-    <ModeSelector
+  const isOn = (automation: Automation) => !unavailable[automation] && features[automation];
+
+  const toggle = (automation: Automation, title: string) => (
+    <OnOffSelector
       label={title}
-      mode={unavailable[automation] ? "off" : modeOf(automation, switches)}
+      on={isOn(automation)}
       disabled={disabled || Boolean(unavailable[automation])}
-      onChange={(mode) => onChange(switchesForMode(automation, mode))}
+      onChange={(on) => setFeature(automation, on)}
     />
   );
 
-  const review = unavailable.codeReview ? "off" : modeOf("codeReview", switches);
-  const devQueue = unavailable.devQueue ? "off" : modeOf("devQueue", switches);
-  const testQueue = unavailable.testQueue ? "off" : modeOf("testQueue", switches);
-  const rebuild = unavailable.rebuild ? "off" : modeOf("rebuild", switches);
+  const review = isOn("codeReview");
+  const devQueue = isOn("devQueue");
+  const testQueue = isOn("testQueue");
+  const rebuild = isOn("rebuild");
   const reviewTitle = t("automationModes.codeReview.title");
   const devTitle = t("automationModes.devQueue.title");
   const testTitle = t("automationModes.testQueue.title");
@@ -204,93 +196,52 @@ export function AutomationModesEditor({
       <Card
         title={reviewTitle}
         description={t("automationModes.codeReview.description")}
-        control={selector("codeReview", reviewTitle)}
+        control={toggle("codeReview", reviewTitle)}
         unavailable={unavailable.codeReview}
         focused={focus === "codeReview"}
       >
-        {review === "simulate" && (
+        {review && (
           <>
-            <Note>{t("automationModes.simulate.note")}</Note>
+            <Note>{t("automationModes.codeReview.note")}</Note>
             <Option
-              checked={features.reviewSessions}
+              checked={features.reviewUnapprovedDeploying}
               disabled={disabled}
-              label={t("automationModes.codeReview.sessions")}
-              help={t("automationModes.codeReview.sessions.help")}
-              onChange={(value) => setFeature("reviewSessions", value)}
+              label={t("automationModes.codeReview.unapproved")}
+              help={t("automationModes.codeReview.unapproved.help")}
+              onChange={(value) => setFeature("reviewUnapprovedDeploying", value)}
             />
           </>
-        )}
-        {review === "live" && (
-          <>
-            <Option
-              checked={live.comments}
-              disabled={disabled}
-              label={t("automationModes.codeReview.comments")}
-              help={t("automationModes.codeReview.comments.help")}
-              onChange={(value) => setLive("comments", value)}
-            />
-            <Option
-              checked={live.approve}
-              disabled={disabled}
-              label={t("automationModes.codeReview.approve")}
-              help={t("automationModes.codeReview.approve.help")}
-              onChange={(value) => setLive("approve", value)}
-            />
-          </>
-        )}
-        {review !== "off" && (
-          <Option
-            checked={features.reviewUnapprovedDeploying}
-            disabled={disabled}
-            label={t("automationModes.codeReview.unapproved")}
-            help={t("automationModes.codeReview.unapproved.help")}
-            onChange={(value) => setFeature("reviewUnapprovedDeploying", value)}
-          />
         )}
       </Card>
 
       <Card
         title={devTitle}
         description={t("automationModes.devQueue.description")}
-        control={selector("devQueue", devTitle)}
+        control={toggle("devQueue", devTitle)}
         unavailable={unavailable.devQueue}
         focused={focus === "devQueue"}
       >
-        {devQueue === "simulate" && <Note>{t("automationModes.simulate.note")}</Note>}
-        {devQueue === "live" && (
-          <>
-            <Note>{t("automationModes.devQueue.live.note")}</Note>
-            <Option
-              checked={live.startProgress}
-              disabled={disabled}
-              label={t("automationModes.devQueue.startProgress")}
-              help={t("automationModes.devQueue.startProgress.help")}
-              onChange={(value) => setLive("startProgress", value)}
-            />
-          </>
-        )}
+        {devQueue && <Note>{t("automationModes.devQueue.note")}</Note>}
       </Card>
 
       <Card
         title={testTitle}
         description={t("automationModes.testQueue.description")}
-        control={selector("testQueue", testTitle)}
+        control={toggle("testQueue", testTitle)}
         unavailable={unavailable.testQueue}
         focused={focus === "testQueue"}
       >
-        {testQueue === "simulate" && <Note>{t("automationModes.simulate.note")}</Note>}
-        {testQueue === "live" && <Note>{t("automationModes.testQueue.live.note")}</Note>}
+        {testQueue && <Note>{t("automationModes.testQueue.note")}</Note>}
       </Card>
 
       <Card
         title={rebuildTitle}
         description={t("automationModes.rebuild.description")}
-        control={selector("rebuild", rebuildTitle)}
+        control={toggle("rebuild", rebuildTitle)}
         unavailable={unavailable.rebuild}
         focused={focus === "rebuild"}
       >
-        {rebuild === "simulate" && <Note>{t("automationModes.simulate.note")}</Note>}
-        {rebuild === "live" && <Note>{t("automationModes.rebuild.live.note")}</Note>}
+        {rebuild && <Note>{t("automationModes.rebuild.note")}</Note>}
       </Card>
 
       <Card

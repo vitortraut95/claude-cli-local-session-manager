@@ -1,5 +1,5 @@
 import type { BoardWatcherConfig } from "./config.js";
-import type { ActionEntry } from "./simulation.js";
+import type { ActionEntry } from "./boardDeps.js";
 import { buildNoticeCard, reasonPtBr, type CardSection } from "./teamsCards.js";
 
 const MAX_DETAIL_ITEMS = 5;
@@ -32,16 +32,6 @@ export function buildActionsDigest(
   const line = (entry: ActionEntry, link: (subject: string) => string) =>
     `${link(entry.subject)} ${entry.title}`.trim();
   const of = (action: ActionEntry["action"]) => entries.filter((e) => e.action === action);
-  // Wording per kind of write: "aprovou" once approvals are real, "aprovaria" while simulated.
-  const live = config.live ?? {};
-  const sim = {
-    devQueue: !live.devQueue && !of("enqueue-dev").some((e) => e.live),
-    testClaim: !live.testClaim && !of("claim-test").some((e) => e.live),
-    comments: !live.comments && !of("comment").some((e) => e.live),
-    approve: !live.approve && !of("approve").some((e) => e.live),
-    startProgress: !live.startProgress && !of("start-progress").some((e) => e.live),
-  };
-  const simulated = Object.values(sim).every(Boolean);
   const weak = of("notify").filter((e) => e.subject.startsWith("Weak description: "));
   const notApproved = of("notify").filter((e) => e.subject.startsWith("Not approved: "));
   const urgent = of("notify").filter((e) => e.detail?.startsWith("urgent: "));
@@ -61,8 +51,8 @@ export function buildActionsDigest(
     [count("claim-test") + count("queued-test"), "testes pegos"],
     [count("retest"), "retestes"],
     [count("reviewed"), "revisados"],
-    [count("approve"), sim.approve ? "aprovaria" : "aprovados"],
-    [notApproved.length, sim.approve ? "não aprovaria" : "não aprovados"],
+    [count("approve"), "aprovados"],
+    [notApproved.length, "não aprovados"],
     [count("review-failed") + count("test-failed"), "falhas"],
   ]
     .filter(([n]) => Number(n) > 0)
@@ -70,8 +60,7 @@ export function buildActionsDigest(
     .join(" · ");
   const attention = [
     ...notApproved.map(
-      (e) =>
-        `${prLink(e.subject.replace("Not approved: ", ""))} ${sim.approve ? "não aprovaria" : "não aprovado"}`,
+      (e) => `${prLink(e.subject.replace("Not approved: ", ""))} ${"não aprovado"}`,
     ),
     ...[...of("review-failed"), ...of("test-failed")].map(
       (e) =>
@@ -86,11 +75,11 @@ export function buildActionsDigest(
   }
   const sections: CardSection[] = [
     {
-      heading: sim.devQueue ? "Entraria na fila para desenvolver" : "Entrou na fila de dev",
+      heading: "Entrou na fila de dev",
       items: of("enqueue-dev").map((e) => line(e, issueLink)),
     },
     {
-      heading: sim.startProgress ? "Moveria para In Progress" : "Moveu para In Progress",
+      heading: "Moveu para In Progress",
       items: of("start-progress").map((e) => line(e, issueLink)),
     },
     {
@@ -102,7 +91,7 @@ export function buildActionsDigest(
       }),
     },
     {
-      heading: sim.testClaim ? "Pegaria para testar" : "Moveu para Testing",
+      heading: "Moveu para Testing",
       items: of("claim-test").map((e) => line(e, issueLink)),
     },
     {
@@ -114,7 +103,7 @@ export function buildActionsDigest(
       items: of("queued-test").map((e) => `${line(e, issueLink)} — ${short(e.detail, 200)}`),
     },
     {
-      heading: simulated ? "Testou (sem postar)" : "Testou",
+      heading: "Testou",
       items: of("tested").map(
         (e) => `${line(e, issueLink)} — ${short(e.detail?.split("\n")[0], 300)}`,
       ),
@@ -130,19 +119,19 @@ export function buildActionsDigest(
         .map((e) => line(e, prLink)),
     },
     {
-      heading: sim.comments ? "Revisou (sem postar)" : "Revisou",
+      heading: "Revisou",
       items: of("reviewed").map((e) => `${line(e, prLink)} — ${short(e.detail, 300)}`),
     },
     {
-      heading: sim.comments ? "Comentaria" : "Comentou",
+      heading: "Comentou",
       items: of("comment").map((e) => `${prLink(e.subject)}: ${shortPath(e.detail)}`),
     },
     {
-      heading: sim.approve ? "Aprovaria" : "Aprovou",
+      heading: "Aprovou",
       items: of("approve").map((e) => line(e, prLink)),
     },
     {
-      heading: sim.approve ? "Não aprovaria" : "Não aprovou",
+      heading: "Não aprovou",
       items: notApproved.map((e) => prLink(e.subject.replace("Not approved: ", ""))),
     },
     {
@@ -156,7 +145,7 @@ export function buildActionsDigest(
   ];
   return buildNoticeCard({
     level: "digest",
-    title: `Resumo${simulated ? " (simulação)" : ""}`,
+    title: "Resumo",
     summary: headline ? `Desde ${sinceText}: ${headline}.` : `Nada desde ${sinceText}.`,
     highlights: { heading: "Precisa de atenção", items: shownAttention },
     details: sections.map((section) => {

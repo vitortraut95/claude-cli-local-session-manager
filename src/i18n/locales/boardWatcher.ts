@@ -4,14 +4,6 @@ export const boardWatcher = {
   "header.board": dict("Board", "Board"),
 
   "automation.title": dict("Automation", "Automação"),
-  "automation.simulation": dict(
-    "Everything in simulation: nothing is posted, approved or moved in Jira/Bitbucket.",
-    "Tudo em simulação: nada é postado, aprovado nem movido no Jira/Bitbucket.",
-  ),
-  "automation.liveOn": dict(
-    'Something is "On": that automation acts in your name; the ones in Simulation are only recorded.',
-    'Há automação "Ligado": ela age no seu nome; as que estão em Simulação só são registradas.',
-  ),
   "automation.setupUnfinished": dict(
     "The setup wasn't finished: nothing runs until its last step (Turn on).",
     "A configuração não foi concluída: nada roda até a última etapa dela (Ativar).",
@@ -29,10 +21,6 @@ export const boardWatcher = {
     "Não foi possível salvar as configurações da automação.",
   ),
   "automation.limits": dict("Limits", "Limites"),
-  "automation.limit.approveDelayMinutes": dict(
-    "Minutes to wait before approving",
-    "Minutos de espera antes de aprovar",
-  ),
   "automation.limit.waitTestGraceMinutes": dict(
     "Wait Test grace minutes",
     "Minutos de carência em Wait Test",
@@ -48,14 +36,9 @@ export const boardWatcher = {
   ),
   "automation.limit.maxApprovesPerDay": dict("Approvals per day", "Aprovações por dia"),
   "automation.limit.maxCommentsPerPr": dict("Comments per PR", "Comentários por PR"),
-  "automation.limit.maxReviewRounds": dict("Review rounds per PR", "Rodadas de review por PR"),
   "automation.limit.descriptionMinScore": dict(
     "Minimum description score (0-5)",
     "Nota mínima da descrição (0 a 5)",
-  ),
-  "automation.limit.approveDelayMinutes.description": dict(
-    "Business minutes since a PR's last push before it's reviewed and approved, so colleagues get to review first.",
-    "Minutos úteis desde o último push de um PR antes de ele revisar e aprovar, para os colegas revisarem primeiro.",
   ),
   "automation.limit.waitTestGraceMinutes.description": dict(
     "Business minutes a task sits in Wait Test before it's picked up, so whoever is free takes it first.",
@@ -80,10 +63,6 @@ export const boardWatcher = {
   "automation.limit.maxCommentsPerPr.description": dict(
     "Most comments per PR in each review. Only bugs, security and regressions; style details are never posted.",
     "Máximo de comentários por PR em cada review. Só entram bugs, segurança e regressões; detalhes de estilo nunca são postados.",
-  ),
-  "automation.limit.maxReviewRounds.description": dict(
-    "How many times it reviews the same PR (once per new push). After that, it's left to a person.",
-    "Quantas vezes ele revisa o mesmo PR (uma por push novo). Depois disso, fica para uma pessoa.",
   ),
   "automation.limit.descriptionMinScore.description": dict(
     "Score one of your tasks' description needs to go to the development queue on its own. One point each: detailed text, steps or acceptance criteria, expected result, page or URL, screenshot or Figma; minus one for a visual change with no Figma.",
@@ -117,6 +96,24 @@ export const boardWatcher = {
   "board.queue.work.retest": dict("Retest", "Re-teste"),
   "board.queue.work.progress": dict("Move to In Progress", "Mover pra In Progress"),
   "board.queue.build": dict("Failed build: {name}", "Build que falhou: {name}"),
+  "board.queue.startNow": dict("Start now", "Começar agora"),
+  "board.queue.startNow.tooltip": dict(
+    "Skips what it's waiting for (business hours, grace period, limits, Code Review, CI) and starts it now. Drafts, conflicts and failed CI still hold it.",
+    "Pula o que ela está esperando (horário, carência, limites, Code Review, CI) e começa agora. Draft, conflito e CI falhando continuam segurando.",
+  ),
+  "board.queue.startNow.started": dict("{subject} started.", "{subject} iniciada."),
+  "board.queue.startNow.stillWaiting": dict(
+    "{subject} still on hold: {reason}",
+    "{subject} continua esperando: {reason}",
+  ),
+  "board.queue.dragHandle": dict(
+    "Drag to change the priority (or use the arrow keys)",
+    "Arraste pra mudar a prioridade (ou use as setas do teclado)",
+  ),
+  "board.queue.reorderHint": dict(
+    "Drag to set the priority: the first ones get the next session, dev slot or test claim.",
+    "Arraste pra definir a prioridade: as primeiras pegam a próxima sessão, vaga de dev ou teste.",
+  ),
   "board.live.nextUp": dict("Next: {list}", "Em seguida: {list}"),
   "board.demo": dict("Demo · made-up data", "Demonstração · dados fictícios"),
   "board.mode.chip.codeReview": dict("Code review", "Code review"),
@@ -124,7 +121,6 @@ export const boardWatcher = {
   "board.mode.chip.testQueue": dict("Tests", "Testes"),
   "board.mode.chip.rebuild": dict("Rebuild", "Rebuild"),
   "board.mode.chip.notices": dict("Teams notices", "Avisos no Teams"),
-  "board.mode.chip.on": dict("On", "Ligado"),
   "board.mode.chip.hint": dict(
     "Open the Automation settings to change",
     "Abrir as configurações de Automação pra mudar",
@@ -366,13 +362,6 @@ export const boardWatcher = {
   "board.action.run.closed": dict(
     "The eye is closed: it opens {when}",
     "O olho está fechado: abre {when}",
-  ),
-  "board.history.live": dict("real", "real"),
-  "board.history.live.title": dict("Done for real", "Feito de verdade"),
-  "board.history.simulated": dict("simulated", "simulado"),
-  "board.history.simulated.title": dict(
-    "Not done: the automation was in simulation",
-    "Não foi feito: a automação estava em simulação",
   ),
   "board.never": dict("never", "nunca"),
   "board.feedback.up": dict("Right call", "Acertou"),

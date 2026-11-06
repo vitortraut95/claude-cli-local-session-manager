@@ -9,7 +9,7 @@ import {
   type WatcherHistoryPage,
 } from "../../../shared/boardWatcher.js";
 import { REPO_ROOT } from "../../utils/repoRoot.js";
-import { ACTIONS_FILE } from "./simulation.js";
+import { ACTIONS_FILE } from "./boardDeps.js";
 
 /**
  * The Board panel's history: the actions log grouped per ticket/PR and served a page at a time
@@ -73,13 +73,11 @@ export async function historyPage(options: {
       subject,
       title: "",
       lastTs: entry.ts,
-      live: false,
       entries: [],
     };
     group.entries.unshift(entry);
     if (entry.ts > group.lastTs) group.lastTs = entry.ts;
     if (entry.title) group.title = entry.title;
-    group.live ||= Boolean(entry.live);
     bySubject.set(subject, group);
   }
   const needle = query.trim().toLowerCase();

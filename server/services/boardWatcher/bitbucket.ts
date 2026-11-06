@@ -1,5 +1,5 @@
 import { apiFetch } from "./http.js";
-import type { PullRequest, ReviewFinding, ReviewerState } from "./types.js";
+import type { AiReview, PullRequest, ReviewFinding, ReviewerState } from "./types.js";
 
 /**
  * Bitbucket Cloud client for the board watcher (REST 2.0, basic auth with an Atlassian API
@@ -140,6 +140,81 @@ export async function approvePullRequest(
   await request(credentials, `${pullRequestUrl(credentials, pr)}/approve`, {});
 }
 
+/** What opens the comment marking a PR as reviewed by AI. Whoever's automation finds it in a PR
+ *  doesn't review that PR: each PR gets one AI review, whichever teammate's automation ran it.
+ *  Don't change it without keeping the old text recognized, or PRs get reviewed twice. */
+export const AI_REVIEW_MARKER = "🤖 **Review por IA**";
+
+/** The marker line first (what `hasAiReviewComment` looks for), then the review itself: its
+ *  overview and the findings commented on the code, so the person reviewing next has it all in
+ *  one place. */
+export function aiReviewComment(pr: PullRequest, { outcome, summary, posted }: AiReview): string {
+  const result =
+    outcome.kind === "approved"
+      ? "aprovado"
+      : outcome.kind === "blocked"
+        ? `não aprovado (${outcome.blocking} ${outcome.blocking === 1 ? "bloqueante" : "bloqueantes"})`
+        : `não aprovado (limite de ${outcome.cap} aprovações por dia)`;
+  const commit = pr.sourceHash ? ` · commit \`${pr.sourceHash.slice(0, 7)}\`` : "";
+  const findings = posted.length
+    ? [
+        "**Apontamentos** (comentados no código):",
+        ...posted.map((f) => {
+          const where = f.file ? ` \`${f.file}${f.line ? `:${f.line}` : ""}\`` : "";
+          const body = f.body.replace(/\s+/g, " ").trim();
+          return `- **${SEVERITY_PT[f.severity]}**${where}: ${body.length > 300 ? `${body.slice(0, 300)}…` : body}`;
+        }),
+      ].join("\n")
+    : "**Apontamentos:** nenhum.";
+  return [
+    `${AI_REVIEW_MARKER}${commit} · ${result}`,
+    ...(summary?.trim() ? [`**Resumo:** ${summary.trim()}`] : []),
+    findings,
+    "_Este foi o único review por IA deste PR: novos pushes não passam pela IA de novo. Ainda falta o review de uma pessoa._",
+  ].join("\n\n");
+}
+
+const SEVERITY_PT: Record<ReviewFinding["severity"], string> = {
+  blocking: "bloqueia",
+  major: "importante",
+  minor: "detalhe",
+};
+
+/** PRs known to carry the AI review comment; once there, it stays. */
+const aiReviewed = new Set<string>();
+
+/** Whether anyone already posted the AI review comment on the PR. */
+export async function hasAiReviewComment(
+  credentials: BitbucketCredentials,
+  pr: PullRequest,
+): Promise<boolean> {
+  const key = `${pr.repo}#${pr.id}`;
+  if (aiReviewed.has(key)) return true;
+  const query = encodeURIComponent(`content.raw ~ "Review por IA"`);
+  const { values = [] } = await get<{
+    values?: { deleted?: boolean; content?: { raw?: string } }[];
+  }>(
+    credentials,
+    `${pullRequestUrl(credentials, pr)}/comments?q=${query}&pagelen=50` +
+      "&fields=values.deleted,values.content.raw",
+  );
+  const found = values.some((c) => !c.deleted && c.content?.raw?.includes(AI_REVIEW_MARKER));
+  if (found) aiReviewed.add(key);
+  return found;
+}
+
+/** Posts the AI review comment (a general one, not inline). */
+export async function postAiReviewComment(
+  credentials: BitbucketCredentials,
+  pr: PullRequest,
+  review: AiReview,
+): Promise<void> {
+  await request(credentials, `${pullRequestUrl(credentials, pr)}/comments`, {
+    content: { raw: aiReviewComment(pr, review) },
+  });
+  aiReviewed.add(`${pr.repo}#${pr.id}`);
+}
+
 function reviewerState(state: string | null | undefined): ReviewerState {
   if (state === "approved") return "approved";
   if (state === "changes_requested") return "changes_requested";
@@ -161,7 +236,10 @@ function ciState(states: string[]): PullRequest["ci"] {
  */
 const MAX_CACHED = 2000;
 const commitDates = new Map<string, string>();
-const finishedStatuses = new Map<string, { state: string; name?: string; url?: string; updated_on?: string }[]>();
+const finishedStatuses = new Map<
+  string,
+  { state: string; name?: string; url?: string; updated_on?: string }[]
+>();
 
 function remember<V>(cache: Map<string, V>, key: string, value: V): V {
   const oldest = cache.keys().next().value;
@@ -242,57 +320,6 @@ async function toPullRequest(
     destinationHash: raw.destination?.commit?.hash,
     sourceHash: hash,
   };
-}
-
-type RawActivity = {
-  approval?: { date: string; user?: { account_id?: string } };
-  update?: { date: string; source?: { commit?: { hash?: string } } };
-};
-
-/** Per PR and head: the commit the user approved when it's an earlier one. Re-read after the TTL
- *  so an approval of the new head clears it. */
-const STALE_APPROVAL_TTL_MS = 60 * 60_000;
-const staleApprovals = new Map<string, { at: number; commit: string | null }>();
-
-/** Sets `approvedCommit` on the PRs `me` approved before their latest push: the head at the
- *  time of the approval is the last update (push) before it. */
-export async function markStaleApprovals(
-  credentials: BitbucketCredentials,
-  prs: PullRequest[],
-  me: string,
-): Promise<void> {
-  const approved = prs.filter((pr) =>
-    pr.reviewers.some((r) => r.id === me && r.state === "approved"),
-  );
-  await Promise.all(
-    approved.map(async (pr) => {
-      const key = `${pr.repo}#${pr.id}@${pr.sourceHash ?? ""}`;
-      const cached = staleApprovals.get(key);
-      if (cached && Date.now() - cached.at < STALE_APPROVAL_TTL_MS) {
-        if (cached.commit) pr.approvedCommit = cached.commit;
-        return;
-      }
-      const page = await get<{ values?: RawActivity[] }>(
-        credentials,
-        `${pullRequestUrl(credentials, pr)}/activity?pagelen=50`,
-      );
-      const activity = page.values ?? [];
-      const approvedAt = activity
-        .map((a) => a.approval)
-        .filter((a) => a?.user?.account_id === me)
-        .map((a) => Date.parse(a?.date ?? ""))
-        .sort((a, b) => b - a)[0];
-      if (!approvedAt) return;
-      const hash = activity
-        .map((a) => a.update)
-        .filter((u) => u && Date.parse(u.date) <= approvedAt)
-        .sort((a, b) => Date.parse(b?.date ?? "") - Date.parse(a?.date ?? ""))[0]?.source
-        ?.commit?.hash;
-      const commit = hash && !sameCommit(hash, pr.sourceHash) ? hash : null;
-      remember(staleApprovals, key, { at: Date.now(), commit });
-      if (commit) pr.approvedCommit = commit;
-    }),
-  );
 }
 
 export type PullRequestNews = {

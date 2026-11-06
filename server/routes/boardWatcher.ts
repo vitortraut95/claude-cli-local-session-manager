@@ -6,7 +6,7 @@ import {
   saveAutomationSettings,
 } from "../services/boardWatcher/settings.js";
 import { listFeedback, saveFeedback } from "../services/boardWatcher/feedback.js";
-import { readActions } from "../services/boardWatcher/simulation.js";
+import { readActions } from "../services/boardWatcher/boardDeps.js";
 import { historyPage } from "../services/boardWatcher/history.js";
 import { HISTORY_FILTERS } from "../../shared/boardWatcher.js";
 import { BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
@@ -25,7 +25,9 @@ import {
   getBoardWatcherStatus,
   pauseBoardWatcher,
   resumeBoardWatcher,
+  prioritizeBoardWatcherItems,
   runBoardWatcherNow,
+  startBoardWatcherItemNow,
   homologCandidates,
   pointToHomolog,
   previewDaily,
@@ -93,7 +95,7 @@ boardWatcherRouter.post("/setup/extras", async (req, res) => {
 
 boardWatcherRouter.post("/setup/finish", async (req, res) => {
   const b = body(req.body);
-  await finishSetup({ features: body(b.features), live: body(b.live) });
+  await finishSetup({ features: body(b.features) });
   // Turned on with the beta already on: the first look runs now.
   if (await automationsOn()) await runBoardWatcherNow();
   res.json(await getSetupStatus());
@@ -118,6 +120,24 @@ boardWatcherRouter.get("/status", async (_req, res) => {
 /** A look at the board now, instead of waiting for the next one. */
 boardWatcherRouter.post("/run", async (_req, res) => {
   res.json(await runBoardWatcherNow());
+});
+
+/** "Start now": a ticket or PR on hold skips what it waits for, and a look runs now. */
+boardWatcherRouter.post("/start-now", async (req, res) => {
+  const subject = (req.body as { subject?: unknown } | undefined)?.subject;
+  if (typeof subject !== "string" || !subject.trim()) {
+    throw new BadRequestError("BAD_SUBJECT", "subject must be a ticket key or repo#id.");
+  }
+  res.json(await startBoardWatcherItemNow(subject.trim()));
+});
+
+/** The Board's queue in the order the user dragged it to. */
+boardWatcherRouter.post("/priority", async (req, res) => {
+  const subjects = (req.body as { subjects?: unknown } | undefined)?.subjects;
+  if (!Array.isArray(subjects) || subjects.some((s) => typeof s !== "string")) {
+    throw new BadRequestError("BAD_PRIORITY", "subjects must be a list of strings.");
+  }
+  res.json(await prioritizeBoardWatcherItems(subjects as string[]));
 });
 
 /** Clears a pause (e.g. the daily approval cap). */

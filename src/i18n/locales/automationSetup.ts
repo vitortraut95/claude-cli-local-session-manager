@@ -7,8 +7,8 @@ export const automationSetup = {
     "Configurar as automações do Board",
   ),
   "automationSetup.intro": dict(
-    "Each step is checked against the real service before it's saved. Tokens stay on this machine (boardWatcher.secrets.json, ignored by git). Nothing runs for real at the end: it starts in simulation.",
-    "Cada etapa é conferida no serviço de verdade antes de salvar. Os tokens ficam só nesta máquina (boardWatcher.secrets.json, ignorado pelo git). No fim nada roda de verdade: começa em simulação.",
+    "Each step is checked against the real service before it's saved. Tokens stay on this machine (boardWatcher.secrets.json, ignored by git). At the end, every automation starts off: you pick what to turn on.",
+    "Cada etapa é conferida no serviço de verdade antes de salvar. Os tokens ficam só nesta máquina (boardWatcher.secrets.json, ignorado pelo git). No fim, todas as automações começam desligadas: você escolhe o que ligar.",
   ),
   "automationSetup.progress": dict(
     "{done} of {total} steps done",
@@ -104,7 +104,6 @@ export const automationSetup = {
   ),
   "automationSetup.bitbucket.ok": dict("Connected as {name}.", "Conectado como {name}."),
 
-
   "automationSetup.extras.description": dict(
     "Optional. Without them it works the same, only the notices stay in the app and failed builds aren't diagnosed.",
     "Opcional. Sem eles funciona igual, só que os avisos ficam no app e os builds que falham não são diagnosticados.",
@@ -190,8 +189,8 @@ export const automationSetup = {
   ),
 
   "automationSetup.finish.description": dict(
-    "Pick a mode for each automation. Simulation only shows in the Board what it would do; On does it in your name. These are the same cards as in the Board's Automation settings, where they can be changed any time.",
-    "Escolha um modo pra cada automação. Simulação só mostra no Board o que faria; Ligado faz no seu nome. São os mesmos cards das configurações de Automação do Board, onde dá pra mudar a qualquer hora.",
+    "Turn on the automations you want. An automation that is on acts for real, in your name. These are the same cards as in the Board's Automation settings, where they can be changed any time.",
+    "Ligue as automações que quiser. Uma automação ligada age de verdade, no seu nome. São os mesmos cards das configurações de Automação do Board, onde dá pra mudar a qualquer hora.",
   ),
   "automationSetup.needs.todo": dict(
     "map the To Do column in step 3.",
@@ -209,11 +208,11 @@ export const automationSetup = {
     "fill in the Teams workflow URL in step 6.",
     "preencha a URL do workflow do Teams na etapa 6.",
   ),
-  "automationSetup.finish.turnOn": dict("Turn on in simulation", "Ligar em simulação"),
+  "automationSetup.finish.turnOn": dict("Turn on", "Ativar"),
   "automationSetup.finish.save": dict("Save", "Salvar"),
   "automationSetup.finish.done": dict(
-    "On, in simulation. Open the Board in the header to see what it would do.",
-    "Ligado, em simulação. Abra o Board no header pra ver o que ele faria.",
+    "Turned on. The automations that are on act for real; open the Board in the header to follow them.",
+    "Ativado. As automações ligadas agem de verdade; abra o Board no header pra acompanhar.",
   ),
   "automationSetup.finish.betaOff": dict(
     "The board automations beta is off in Settings: turn it on there to run.",

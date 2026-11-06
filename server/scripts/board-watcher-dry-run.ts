@@ -130,7 +130,7 @@ async function main(): Promise<void> {
   const ignored = replayed.filter((r) => !r.decision).length;
   const card = buildDigestCard({
     title: "Board watcher · resumo",
-    subtitle: `SIMULAÇÃO só leitura do sprint ativo (${sprint.name}): nada foi feito no Jira. ${ignored} tarefas de outras pessoas ou sem responsável ficaram de fora, como combinado. Code review ainda não entra (Bitbucket não conectado).`,
+    subtitle: `Dry run só leitura do sprint ativo (${sprint.name}): nada foi feito no Jira. ${ignored} tarefas de outras pessoas ou sem responsável ficaram de fora, como combinado. Code review ainda não entra (Bitbucket não conectado).`,
     sections,
     link: config.jira.boardUrl ? { title: "Abrir o board", url: config.jira.boardUrl } : undefined,
   });
