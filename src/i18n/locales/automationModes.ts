@@ -34,8 +34,8 @@ export const automationModes = {
     "Comentar os achados no PR",
   ),
   "automationModes.codeReview.comments.help": dict(
-    "In your name; the minor ones never.",
-    "No seu nome; os menores nunca.",
+    "Posted in your name. Style details and small suggestions are never posted.",
+    "Postados no seu nome. Detalhes de estilo e sugestões pequenas nunca são postados.",
   ),
   "automationModes.codeReview.approve": dict(
     "Approve when nothing blocks",
