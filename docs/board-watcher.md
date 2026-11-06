@@ -6,7 +6,9 @@ the loop; a session only starts when there's work.
 
 **Status:** runs in the server in simulation mode: reads the real Jira board and Bitbucket PRs,
 runs real review sessions, and records what it would do (`boardWatcher-actions.jsonl`) instead of
-acting; digests go to Teams at 09:00 and 18:00.
+acting; digests go to Teams at 09:00 and 18:00. What was decided in simulation is remembered with
+a `sim:` mark in `state.handled`, which only holds while that automation is still simulated:
+turning it on for real picks the same ticket or PR up again.
 
 ## Rules per column
 
