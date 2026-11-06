@@ -117,11 +117,17 @@ body {
 
 /* The Board's running step: a light sweeps across it. */
 @keyframes watcher-shimmer {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(100%); }
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
 }
 
-.watcher-shimmer { animation: watcher-shimmer 2.2s ease-in-out infinite; }
+.watcher-shimmer {
+  animation: watcher-shimmer 2.2s ease-in-out infinite;
+}
 
 /* A faint dot grid behind the Board's hero, in the eye's violet. */
 .watcher-dots {
@@ -133,5 +139,57 @@ body {
   .watcher-shimmer {
     animation: none;
     opacity: 0;
+  }
+}
+
+/* An automation's card opened from its chip on the Board: a light runs around its border a few
+   times, then fades. */
+@property --automation-focus-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.automation-focus {
+  position: relative;
+}
+.automation-focus::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  padding: 2px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--automation-focus-angle),
+    #8b5cf6,
+    #d946ef,
+    #22d3ee,
+    #8b5cf6
+  );
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation:
+    automation-focus-spin 2s linear infinite,
+    automation-focus-fade 5s ease-out forwards;
+}
+@keyframes automation-focus-spin {
+  to {
+    --automation-focus-angle: 360deg;
+  }
+}
+@keyframes automation-focus-fade {
+  0%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .automation-focus::before {
+    animation: automation-focus-fade 5s ease-out forwards;
   }
 }

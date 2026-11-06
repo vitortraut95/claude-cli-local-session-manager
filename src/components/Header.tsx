@@ -20,6 +20,7 @@ import { useUpdate } from "../hooks/useUpdate";
 import { useUsageLimits } from "../hooks/useUsageLimits";
 import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
 import { AutomationModal } from "./AutomationModal";
+import type { AutomationFocus } from "./AutomationModesEditor";
 import { BetaBadge } from "./BetaBadge";
 import { BoardWatcherModal } from "./BoardWatcherModal";
 import { Button } from "./Button";
@@ -76,6 +77,7 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
   const [showSkillsModal, setShowSkillsModal] = useState(false);
   const [showTaskQueueModal, setShowTaskQueueModal] = useState(false);
   const [showAutomationModal, setShowAutomationModal] = useState(false);
+  const [automationFocus, setAutomationFocus] = useState<AutomationFocus | undefined>();
   const [showBoardModal, setShowBoardModal] = useState(false);
   const [automationsOn, setAutomationsOn] = useState(false);
   // The one "bring my open tasks back" button: "Open grid" with the Limux grid layout (brings
@@ -310,6 +312,7 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
       {/* Automation is opened from the Board and goes back to it when closed. */}
       {automationsOn && showAutomationModal && (
         <AutomationModal
+          focus={automationFocus}
           onClose={() => {
             setShowAutomationModal(false);
             setShowBoardModal(true);
@@ -319,7 +322,8 @@ export function Header({ onSessionCreated, onSessionsChanged }: HeaderProps) {
       {automationsOn && showBoardModal && (
         <BoardWatcherModal
           onClose={() => setShowBoardModal(false)}
-          onOpenAutomation={() => {
+          onOpenAutomation={(focus) => {
+            setAutomationFocus(focus);
             setShowBoardModal(false);
             setShowAutomationModal(true);
           }}

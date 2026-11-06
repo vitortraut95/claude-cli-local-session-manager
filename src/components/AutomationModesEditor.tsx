@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { TranslationKey } from "../i18n/translations";
 import type { AutomationFeatures, AutomationLive } from "../services/boardWatcherApi";
@@ -25,12 +25,17 @@ const MODE_ON_CLASSES: Record<AutomationMode, string> = {
   live: "bg-amber-500 text-white shadow-sm dark:bg-amber-500 dark:text-gray-950",
 };
 
+/** A card of the editor: one automation, or the Teams notices. */
+export type AutomationFocus = ModeAutomation | "notices";
+
 type ModesEditorProps = {
   switches: Switches;
   onChange: (input: SwitchesInput) => void;
   /** Why an automation can't be turned on yet (the setup panel: a column or token missing). */
   unavailable?: Partial<Record<ModeAutomation | "notices", string>>;
   disabled?: boolean;
+  /** The card to scroll to and outline for a moment. */
+  focus?: AutomationFocus;
 };
 
 function ModeSelector({
@@ -112,17 +117,26 @@ function Card({
   description,
   control,
   unavailable,
+  focused = false,
   children,
 }: {
   title: string;
   description: string;
   control: ReactNode;
   unavailable?: string;
+  focused?: boolean;
   children?: ReactNode;
 }) {
   const { t } = useLanguage();
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (focused) ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [focused]);
   return (
-    <section className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+    <section
+      ref={ref}
+      className={`rounded-lg border border-gray-200 p-4 dark:border-gray-800 ${focused ? "automation-focus" : ""}`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h4>
@@ -158,6 +172,7 @@ export function AutomationModesEditor({
   onChange,
   unavailable = {},
   disabled = false,
+  focus,
 }: ModesEditorProps) {
   const { t } = useLanguage();
   const { features, live } = switches;
@@ -191,6 +206,7 @@ export function AutomationModesEditor({
         description={t("automationModes.codeReview.description")}
         control={selector("codeReview", reviewTitle)}
         unavailable={unavailable.codeReview}
+        focused={focus === "codeReview"}
       >
         {review === "simulate" && (
           <>
@@ -238,6 +254,7 @@ export function AutomationModesEditor({
         description={t("automationModes.devQueue.description")}
         control={selector("devQueue", devTitle)}
         unavailable={unavailable.devQueue}
+        focused={focus === "devQueue"}
       >
         {devQueue === "simulate" && <Note>{t("automationModes.simulate.note")}</Note>}
         {devQueue === "live" && (
@@ -259,6 +276,7 @@ export function AutomationModesEditor({
         description={t("automationModes.testQueue.description")}
         control={selector("testQueue", testTitle)}
         unavailable={unavailable.testQueue}
+        focused={focus === "testQueue"}
       >
         {testQueue === "simulate" && <Note>{t("automationModes.simulate.note")}</Note>}
         {testQueue === "live" && <Note>{t("automationModes.testQueue.live.note")}</Note>}
@@ -269,6 +287,7 @@ export function AutomationModesEditor({
         description={t("automationModes.rebuild.description")}
         control={selector("rebuild", rebuildTitle)}
         unavailable={unavailable.rebuild}
+        focused={focus === "rebuild"}
       >
         {rebuild === "simulate" && <Note>{t("automationModes.simulate.note")}</Note>}
         {rebuild === "live" && <Note>{t("automationModes.rebuild.live.note")}</Note>}
@@ -279,6 +298,7 @@ export function AutomationModesEditor({
         description={t("automationModes.notices.description")}
         control={null}
         unavailable={unavailable.notices}
+        focused={focus === "notices"}
       >
         <Option
           checked={!unavailable.notices && features.instantNotices}

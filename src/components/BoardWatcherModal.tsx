@@ -29,6 +29,7 @@ import { isBoardDemo } from "../utils/boardDemo";
 import { queueItems } from "../utils/boardQueue";
 import { formatUpdatedAt } from "../utils/formatDate";
 import { modeOf, MODE_AUTOMATIONS, type AutomationMode } from "../../shared/automationModes";
+import type { AutomationFocus } from "./AutomationModesEditor";
 import { AnchoredMenu } from "./AnchoredMenu";
 import { AttentionPanel } from "./AttentionPanel";
 import { BoardQueue } from "./BoardQueue";
@@ -47,8 +48,8 @@ const POLL_MS = 15_000;
 
 type BoardWatcherModalProps = {
   onClose: () => void;
-  /** Opens the Automation settings (in place of this modal). */
-  onOpenAutomation: () => void;
+  /** Opens the Automation settings (in place of this modal), highlighting one automation's card. */
+  onOpenAutomation: (focus?: AutomationFocus) => void;
 };
 
 /** "18/20 (90%)", or "—" with no verdict yet. */
@@ -222,7 +223,7 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onOpenAutomation}
+                onClick={() => onOpenAutomation()}
                 icon={<Workflow className="h-3.5 w-3.5" />}
               >
                 {t("board.action.automation")}
@@ -292,7 +293,7 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                         <button
                           key={automation}
                           type="button"
-                          onClick={onOpenAutomation}
+                          onClick={() => onOpenAutomation(automation)}
                           title={t("board.mode.chip.hint")}
                           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition before:h-1.5 before:w-1.5 before:rounded-full before:content-[''] hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${MODE_CHIP[mode]}`}
                         >
@@ -302,7 +303,7 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                       ))}
                       <button
                         type="button"
-                        onClick={onOpenAutomation}
+                        onClick={() => onOpenAutomation("notices")}
                         title={t("board.mode.chip.hint")}
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition before:h-1.5 before:w-1.5 before:rounded-full before:content-[''] hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${noticesOn ? MODE_CHIP.live : MODE_CHIP.off}`}
                       >
