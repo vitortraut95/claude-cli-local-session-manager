@@ -22,7 +22,7 @@ const MODE_LABELS: Record<AutomationMode, TranslationKey> = {
 const MODE_ON_CLASSES: Record<AutomationMode, string> = {
   off: "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100",
   simulate: "bg-violet-600 text-white shadow-sm dark:bg-violet-500",
-  live: "bg-amber-500 text-white shadow-sm dark:bg-amber-500 dark:text-gray-950",
+  live: "bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-gray-950",
 };
 
 /** A card of the editor: one automation, or the Teams notices. */
