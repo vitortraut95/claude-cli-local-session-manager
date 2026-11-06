@@ -13,6 +13,8 @@ type UpdateButtonProps = {
   updating: boolean;
   /** `force` = the user confirmed discarding local changes. */
   onUpdate: (force: boolean) => void;
+  /** "sidebar": a full-width row in the navigation's footer, labeled with the update's state. */
+  variant?: "button" | "sidebar";
 };
 
 function describeStatus(
@@ -35,7 +37,13 @@ function describeStatus(
 }
 
 /** Amber with local changes: no auto-update then, and a click first confirms discarding them. */
-export function UpdateButton({ status, checking, updating, onUpdate }: UpdateButtonProps) {
+export function UpdateButton({
+  status,
+  checking,
+  updating,
+  onUpdate,
+  variant = "button",
+}: UpdateButtonProps) {
   const { t } = useLanguage();
   const [confirming, setConfirming] = useState(false);
   const isBusy = checking || updating;
@@ -44,40 +52,74 @@ export function UpdateButton({ status, checking, updating, onUpdate }: UpdateBut
   const changedFiles = status?.changedFiles ?? [];
   const changedFileCount = status?.changedFileCount ?? changedFiles.length;
 
+  const sidebarButton = (
+    <Tooltip content={describeStatus(status, checking, updating, t)}>
+      <button
+        type="button"
+        onClick={() => (status?.hasLocalChanges ? setConfirming(true) : onUpdate(false))}
+        disabled={disabled}
+        className={`flex min-h-10 w-full items-center gap-2.5 rounded-lg border px-2.5 text-left text-sm font-medium transition-colors disabled:cursor-default ${
+          status?.hasLocalChanges
+            ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300"
+            : updateAvailable
+              ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
+              : "border-transparent text-gray-500 dark:text-gray-400"
+        }`}
+      >
+        {isBusy ? (
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+        ) : (
+          <RefreshCw className="h-4 w-4 shrink-0" />
+        )}
+        <span className="min-w-0 flex-1 truncate">
+          {isBusy
+            ? describeStatus(status, checking, updating, t)
+            : updateAvailable
+              ? t("updateButton.sidebar.available")
+              : t("updateButton.sidebar.upToDate")}
+        </span>
+      </button>
+    </Tooltip>
+  );
+
   return (
     <>
-      <Tooltip content={describeStatus(status, checking, updating, t)}>
-        <span className="relative inline-flex">
-          <Button
-            variant="unstyled"
-            onClick={() => (status?.hasLocalChanges ? setConfirming(true) : onUpdate(false))}
-            disabled={disabled}
-            className={`border ${
-              status?.hasLocalChanges
-                ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/50 dark:text-amber-400 dark:hover:bg-amber-950"
-                : updateAvailable
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-950"
-                  : "border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-600"
-            }`}
-            icon={
-              isBusy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )
-            }
-          >
-            {t("updateButton.label")}
-          </Button>
-          {updateAvailable && !isBusy && (
-            <span
-              className={`absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-900 ${
-                status?.hasLocalChanges ? "bg-amber-500" : "bg-emerald-500"
+      {variant === "sidebar" ? (
+        sidebarButton
+      ) : (
+        <Tooltip content={describeStatus(status, checking, updating, t)}>
+          <span className="relative inline-flex">
+            <Button
+              variant="unstyled"
+              onClick={() => (status?.hasLocalChanges ? setConfirming(true) : onUpdate(false))}
+              disabled={disabled}
+              className={`border ${
+                status?.hasLocalChanges
+                  ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/50 dark:text-amber-400 dark:hover:bg-amber-950"
+                  : updateAvailable
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                    : "border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-600"
               }`}
-            />
-          )}
-        </span>
-      </Tooltip>
+              icon={
+                isBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )
+              }
+            >
+              {t("updateButton.label")}
+            </Button>
+            {updateAvailable && !isBusy && (
+              <span
+                className={`absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-900 ${
+                  status?.hasLocalChanges ? "bg-amber-500" : "bg-emerald-500"
+                }`}
+              />
+            )}
+          </span>
+        </Tooltip>
+      )}
       {status && (
         <ConfirmDialog
           open={confirming}

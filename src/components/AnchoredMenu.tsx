@@ -9,6 +9,12 @@ type AnchoredMenuProps = {
   disabled?: boolean;
   /** The menu's content; `close` hides it (e.g. after a pick). */
   children: (close: () => void) => ReactNode;
+  /** Edge of the button the menu lines up with; "right" for buttons near the window's right. */
+  align?: "left" | "right";
+  /** Leaves out the chevron (an icon-only trigger such as "⋯"). */
+  hideChevron?: boolean;
+  /** Accessible name when the label is an icon only. */
+  ariaLabel?: string;
 };
 
 /**
@@ -21,8 +27,16 @@ export function AnchoredMenu({
   buttonClassName,
   disabled = false,
   children,
+  align = "left",
+  hideChevron = false,
+  ariaLabel,
 }: AnchoredMenuProps) {
-  const [menuAt, setMenuAt] = useState<{ top: number; left: number } | null>(null);
+  const [menuAt, setMenuAt] = useState<{
+    top?: number;
+    bottom?: number;
+    left?: number;
+    right?: number;
+  } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +75,17 @@ export function AnchoredMenu({
       return;
     }
     const rect = buttonRef.current?.getBoundingClientRect();
-    if (rect) setMenuAt({ top: rect.bottom + 4, left: rect.left });
+    if (!rect) return;
+    // Opens upward when the menu (up to max-h-80) wouldn't fit below the button.
+    const vertical =
+      rect.bottom + 330 > window.innerHeight && rect.top > 330
+        ? { bottom: window.innerHeight - rect.top + 4 }
+        : { top: rect.bottom + 4 };
+    setMenuAt(
+      align === "right"
+        ? { ...vertical, right: Math.max(8, window.innerWidth - rect.right) }
+        : { ...vertical, left: rect.left },
+    );
   };
 
   return (
@@ -72,18 +96,19 @@ export function AnchoredMenu({
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={menuAt !== null}
+        aria-label={ariaLabel}
         disabled={disabled}
         className={`flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-60 ${buttonClassName}`}
       >
         {label}
-        <ChevronDown className="h-3 w-3 text-gray-400" />
+        {!hideChevron && <ChevronDown className="h-3 w-3 text-gray-400" />}
       </button>
       {menuAt &&
         createPortal(
           <div
             ref={menuRef}
             role="menu"
-            style={{ top: menuAt.top, left: menuAt.left }}
+            style={menuAt}
             className="fixed z-50 flex max-h-80 min-w-56 flex-col gap-1.5 overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-900"
           >
             {children(() => setMenuAt(null))}

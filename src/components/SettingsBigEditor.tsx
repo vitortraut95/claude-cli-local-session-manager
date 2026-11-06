@@ -31,7 +31,7 @@ type SettingsBigEditorProps = {
 };
 
 const TEXTAREA_CLASS =
-  "w-full rounded-lg border border-gray-300 bg-white p-3 font-mono text-xs text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100";
+  "w-full rounded-lg border border-gray-300 bg-white p-3 font-mono text-xs text-gray-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100";
 
 /** The envPreviews editor's JSON draft, parsed — null when it isn't valid JSON of the right shape. */
 function parseEnvPreviews(raw: string): EnvPreviews | null {

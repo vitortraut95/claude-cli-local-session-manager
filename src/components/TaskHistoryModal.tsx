@@ -200,6 +200,25 @@ type TaskHistoryModalProps = {
 /** The card's "info": where this task's time went, from `history.jsonl`. */
 export function TaskHistoryModal({ session, onClose }: TaskHistoryModalProps) {
   const { t } = useLanguage();
+  return (
+    <Modal
+      open
+      title={t("history.title", { name: session.taskKey ?? session.title })}
+      icon={<History className="h-5 w-5" />}
+      onClose={onClose}
+      onCancel={onClose}
+      cancelLabel={t("history.close")}
+      size="lg"
+      placement="side"
+    >
+      <TaskHistoryView session={session} />
+    </Modal>
+  );
+}
+
+/** The history itself (summary, errors, timeline), also shown in the session's detail panel. */
+export function TaskHistoryView({ session }: { session: Session }) {
+  const { t } = useLanguage();
   const [data, setData] = useState<{ events: HistoryEvent[]; summary: HistorySummary } | null>(
     null,
   );
@@ -221,15 +240,7 @@ export function TaskHistoryModal({ session, onClose }: TaskHistoryModalProps) {
   }, [session.id, t]);
 
   return (
-    <Modal
-      open
-      title={t("history.title", { name: session.taskKey ?? session.title })}
-      icon={<History className="h-5 w-5" />}
-      onClose={onClose}
-      onCancel={onClose}
-      cancelLabel={t("history.close")}
-      size="lg"
-    >
+    <>
       {error ? (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       ) : !data ? (
@@ -280,6 +291,6 @@ export function TaskHistoryModal({ session, onClose }: TaskHistoryModalProps) {
           <p className="text-xs text-gray-500 dark:text-gray-400">{t("history.footnote")}</p>
         </div>
       )}
-    </Modal>
+    </>
   );
 }

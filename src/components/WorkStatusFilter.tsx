@@ -21,7 +21,7 @@ export function WorkStatusFilter({ value, onChange }: WorkStatusFilterProps) {
       onChange={(event) => onChange(parseWorkStatusFilter(event.target.value))}
       aria-label={t("workStatusFilter.ariaLabel")}
       icon={<CircleDot className="h-4 w-4" />}
-      className="sm:w-56"
+      className="sm:w-48"
     >
       <option value="">{t("workStatusFilter.all")}</option>
       <option value="open">{t("workStatusFilter.open")}</option>

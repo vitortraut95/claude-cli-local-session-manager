@@ -19,9 +19,9 @@ type RefinementModalProps = {
 
 const FIELD_CLASSNAME =
   "w-full rounded-lg border border-gray-300 bg-white p-3 text-sm text-gray-900 placeholder:text-gray-400 " +
-  "focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 disabled:cursor-not-allowed " +
+  "focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 disabled:cursor-not-allowed " +
   "disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 " +
-  "dark:placeholder:text-gray-500 dark:focus:border-gray-600 dark:focus:ring-gray-100/10";
+  "dark:placeholder:text-gray-500 dark:focus:border-violet-400 dark:focus:ring-violet-400/30";
 
 const KEY_PATTERN = /\b[A-Za-z][A-Za-z0-9]+-\d+\b/g;
 
@@ -105,6 +105,7 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
       isConfirmLoading={launching}
       isConfirmDisabled={!canSubmit}
       size="lg"
+      placement="side"
     >
       <div className="flex flex-col gap-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">{t("refinementModal.intro")}</p>
@@ -170,7 +171,7 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
               checked={directToPo}
               onChange={(event) => setDirectToPo(event.target.checked)}
               disabled={!skillReady}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900 dark:accent-gray-100"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-violet-600 dark:accent-violet-400"
             />
             {t("refinementModal.directToPoLabel")}
           </label>
