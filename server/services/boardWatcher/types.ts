@@ -31,7 +31,8 @@ export type PullRequest = {
   /** Any activity (push, comment, approval) bumps it. */
   updatedAt?: string;
   /** The build that failed on the PR's head, when `ci` is "failed". */
-  failedBuild?: { url: string; name: string };
+  /** `at`: when the build finished failing (Bitbucket's status update). */
+  failedBuild?: { url: string; name: string; at?: string };
   /** The PR's latest commit; a new push means a new review round. */
   lastPushAt: string;
   draft: boolean;

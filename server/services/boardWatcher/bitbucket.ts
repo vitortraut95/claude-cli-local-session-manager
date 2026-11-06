@@ -161,7 +161,7 @@ function ciState(states: string[]): PullRequest["ci"] {
  */
 const MAX_CACHED = 2000;
 const commitDates = new Map<string, string>();
-const finishedStatuses = new Map<string, { state: string; name?: string; url?: string }[]>();
+const finishedStatuses = new Map<string, { state: string; name?: string; url?: string; updated_on?: string }[]>();
 
 function remember<V>(cache: Map<string, V>, key: string, value: V): V {
   const oldest = cache.keys().next().value;
@@ -186,14 +186,14 @@ async function commitStatuses(
   credentials: BitbucketCredentials,
   base: string,
   hash: string,
-): Promise<{ state: string; name?: string; url?: string }[]> {
+): Promise<{ state: string; name?: string; url?: string; updated_on?: string }[]> {
   const cached = finishedStatuses.get(hash);
   if (cached) return cached;
   const { values = [] } = await get<{
-    values?: { state: string; name?: string; url?: string }[];
+    values?: { state: string; name?: string; url?: string; updated_on?: string }[];
   }>(
     credentials,
-    `${base}/commit/${hash}/statuses?pagelen=50&fields=values.state,values.name,values.url`,
+    `${base}/commit/${hash}/statuses?pagelen=50&fields=values.state,values.name,values.url,values.updated_on`,
   );
   if (values.length > 0 && !values.some((s) => s.state === "INPROGRESS")) {
     remember(finishedStatuses, hash, values);
@@ -202,7 +202,7 @@ async function commitStatuses(
 }
 
 function failedBuildOf(
-  statuses: { state: string; name?: string; url?: string }[],
+  statuses: { state: string; name?: string; url?: string; updated_on?: string }[],
 ): PullRequest["failedBuild"] {
   const failed = statuses.find((s) => (s.state === "FAILED" || s.state === "STOPPED") && s.url);
   return failed?.url ? { url: failed.url, name: failed.name ?? "" } : undefined;
