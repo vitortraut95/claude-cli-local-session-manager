@@ -15,11 +15,9 @@ import { readActivity } from "../services/boardWatcher/activity.js";
 import {
   finishSetup,
   getSetupStatus,
-  listBitbucketRepos,
   readBoardColumns,
   saveBoardColumns,
   saveExtras,
-  saveRepos,
   setupBitbucket,
   setupJira,
 } from "../services/boardWatcher/setup.js";
@@ -81,24 +79,6 @@ boardWatcherRouter.post("/setup/bitbucket", async (req, res) => {
       token: text(b.token),
     }),
   );
-});
-
-boardWatcherRouter.get("/setup/repos", async (_req, res) => {
-  res.json(await listBitbucketRepos());
-});
-
-boardWatcherRouter.post("/setup/repos", async (req, res) => {
-  const b = body(req.body);
-  const repos = Array.isArray(b.repos)
-    ? b.repos.filter((r): r is string => typeof r === "string")
-    : [];
-  const localRepos = Object.fromEntries(
-    Object.entries(body(b.localRepos)).filter(
-      (e): e is [string, string] => typeof e[1] === "string",
-    ),
-  );
-  await saveRepos({ repos, localRepos });
-  res.json(await getSetupStatus());
 });
 
 boardWatcherRouter.post("/setup/extras", async (req, res) => {

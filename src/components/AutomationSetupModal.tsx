@@ -13,7 +13,6 @@ import {
   ExtrasStep,
   FinishStep,
   JiraStep,
-  ReposStep,
 } from "./AutomationSetupSteps";
 import { BetaBadge } from "./BetaBadge";
 import { Modal } from "./Modal";
@@ -23,7 +22,6 @@ const STEP_LABELS: Record<SetupStepKey, TranslationKey> = {
   jira: "automationSetup.step.jira",
   board: "automationSetup.step.board",
   bitbucket: "automationSetup.step.bitbucket",
-  repos: "automationSetup.step.repos",
   extras: "automationSetup.step.extras",
   finish: "automationSetup.step.finish",
 };
@@ -219,7 +217,6 @@ export function AutomationSetupModal({ onClose }: { onClose: () => void }) {
                   {step === "jira" && <JiraStep {...stepProps("jira")} />}
                   {step === "board" && <BoardStep {...stepProps("board")} />}
                   {step === "bitbucket" && <BitbucketStep {...stepProps("bitbucket")} />}
-                  {step === "repos" && <ReposStep {...stepProps("repos")} />}
                   {step === "extras" && (
                     <ExtrasStep {...stepProps("extras")} onSkip={() => skip("extras")} />
                   )}

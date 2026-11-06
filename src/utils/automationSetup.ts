@@ -5,7 +5,6 @@ export const SETUP_STEPS = [
   "jira",
   "board",
   "bitbucket",
-  "repos",
   "extras",
   "finish",
 ] as const;
@@ -19,8 +18,6 @@ export function setupStepsDone(status: AutomationSetupStatus): Record<SetupStepK
     jira: Boolean(jira.site && jira.me && jira.token !== "missing"),
     board: Boolean(board.columns?.codeReview?.length),
     bitbucket: Boolean(bitbucket.workspace && bitbucket.token !== "missing"),
-    repos:
-      bitbucket.repos.length > 0 && bitbucket.repos.every((repo) => bitbucket.localRepos[repo]),
     extras:
       extras.teams !== "missing" ||
       (extras.jenkinsUser !== "missing" && extras.jenkinsToken !== "missing"),

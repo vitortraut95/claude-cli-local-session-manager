@@ -1,3 +1,4 @@
+import { localRepoPaths, sprintRepos } from "./sprintRepos.js";
 import { appendFile, readFile } from "node:fs/promises";
 import path from "node:path";
 import type { WatcherActionEntry } from "../../../shared/boardWatcher.js";
@@ -135,7 +136,8 @@ export function createBoardDeps(
     },
     codeHost: {
       listPullRequests: async () => {
-        const prs = await listOpenPullRequests(bitbucketCredentials, bitbucket.repos);
+        const repos = await sprintRepos(config);
+        const prs = await listOpenPullRequests(bitbucketCredentials, repos);
         for (const pr of prs) titles.set(prSubject(pr), pr.title);
         const others = prs.filter((pr) => pr.authorId !== config.me);
         await markStaleApprovals(bitbucketCredentials, others, config.me).catch((err: unknown) =>
@@ -147,7 +149,7 @@ export function createBoardDeps(
             !pr.reviewers.some((r) => r.id === config.me && r.state === "approved") ||
             pr.approvedCommit,
         );
-        await markConflicts(candidates, bitbucket.localRepos ?? {}).catch((err: unknown) =>
+        await markConflicts(candidates, await localRepoPaths(config, repos)).catch((err: unknown) =>
           console.warn("[board-watcher] Couldn't check PR conflicts:", err),
         );
         return prs;
@@ -204,7 +206,8 @@ export function createBoardDeps(
         if (kind === "dev") {
           let detail: string | undefined;
           if (live.devQueue) {
-            const repos = mentionedRepos(issue, bitbucket.localRepos ?? {});
+            const clones = await localRepoPaths(config, await sprintRepos(config));
+            const repos = mentionedRepos(issue, clones);
             const added = await addDevEntryIfAbsent({
               key,
               link: issueUrl(config, key),

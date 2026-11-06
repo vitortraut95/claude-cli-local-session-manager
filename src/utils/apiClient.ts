@@ -38,7 +38,6 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   SETUP_NO_CODE_REVIEW: "apiError.setupNoCodeReview",
   SETUP_BAD_WORKSPACE: "apiError.setupBadWorkspace",
   SETUP_BITBUCKET_FIRST: "apiError.setupBitbucketFirst",
-  SETUP_NO_REPOS: "apiError.setupNoRepos",
   SETUP_BAD_WEBHOOK: "apiError.setupBadWebhook",
   AUTOMATIONS_OFF: "apiError.automationsOff",
   SESSION_NOT_FOUND: "apiError.sessionNotFound",

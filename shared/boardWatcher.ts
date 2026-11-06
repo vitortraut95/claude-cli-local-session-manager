@@ -301,8 +301,6 @@ export type AutomationSetupStatus = {
     workspace: string | null;
     email: string | null;
     token: SecretState;
-    repos: string[];
-    localRepos: Record<string, string>;
   };
   extras: {
     teams: SecretState;
@@ -329,12 +327,6 @@ export type BoardColumnsAnswer = {
   columns: BoardColumn[];
   /** Column names per role, guessed from their names (or the saved mapping). */
   suggested: Partial<Record<BoardRole, string[]>>;
-};
-
-export type BitbucketRepoOption = {
-  slug: string;
-  /** A local clone found in the workspace folders (or the saved one). */
-  localPath: string | null;
 };
 
 /** The setup's last step: the automations' modes, as the Automation modal saves them. */
