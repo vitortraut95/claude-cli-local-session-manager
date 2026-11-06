@@ -1,5 +1,5 @@
 import { localRepoPaths, sprintRepos } from "./boardWatcher/sprintRepos.js";
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { appendFile, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   BoardWatcherStatus,
@@ -40,13 +40,14 @@ import {
   type RebuildOutcome,
 } from "./boardWatcher/buildDiagnosis.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
-import { handledMark, type Decision } from "./boardWatcher/decide.js";
+import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
 import { getLessons, getScoreboard } from "./boardWatcher/feedback.js";
 import {
   bitbucketCredentialsFromEnv,
   branchBuild,
   findPullRequestsForKey,
+  hasAiReviewComment,
   listOpenPullRequests,
   pullRequestHead,
   pullRequestNews,
@@ -66,7 +67,7 @@ import {
   readActions,
   recordAction,
   type ActionEntry,
-} from "./boardWatcher/simulation.js";
+} from "./boardWatcher/boardDeps.js";
 import { draftPoQuestions } from "./boardWatcher/poQuestions.js";
 import { postTeamsCard, reasonPtBr } from "./boardWatcher/teamsCards.js";
 import {
@@ -87,7 +88,6 @@ import {
   prUrl,
 } from "./boardWatcher/instantNotices.js";
 import { ARCHIVE_FILE, rotateActions } from "./boardWatcher/history.js";
-import { LIVE_KEYS } from "./boardWatcher/settings.js";
 import { networkProblem, remindOnDesktop } from "./boardWatcher/network.js";
 import { isTestReport, testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
@@ -103,6 +103,7 @@ import {
 import { onPreferencesSaved } from "./preferencesService.js";
 import { noteActivity, startActivity } from "./boardWatcher/activity.js";
 import {
+  byPriority,
   emptyWatcherState,
   prSubject,
   type BoardIssue,
@@ -113,15 +114,16 @@ import {
 /**
  * Runs the board watcher inside the server: a look at the board every 10 minutes in business
  * hours (60 outside), the digest to Teams at the start and end of the day, and an alert when a
- * look fails. Off unless `boardWatcher.json` has `"enabled": true`. Each write (queue a task, move
- * a card, comment, approve) is only recorded unless its switch in `live` is on
- * (`boardWatcher/simulation.ts`). With `review.enabled`, PRs due for review get a real review
- * session (`claudeReviewer.ts`), one at a time after the look, whose findings go through the
- * same rules. State between looks lives in the gitignored
+ * look fails. Off unless `boardWatcher.json` has `"enabled": true`; each automation on does its
+ * writes (queue a task, move a card, comment, approve) for real (`boardWatcher/boardDeps.ts`).
+ * PRs due for review get a review session (`claudeReviewer.ts`), one at a time after the look,
+ * whose findings go through the same rules. State between looks lives in the gitignored
  * `boardWatcher-state.json`; every read-modify-write of it goes through `serial`.
  */
 
 const STATE_FILE = path.join(REPO_ROOT, "boardWatcher-state.json");
+/** The actions only simulated back when there was a simulation mode, out of the history. */
+const SIMULATED_FILE = path.join(REPO_ROOT, "boardWatcher-actions-simulated.jsonl");
 const BUSINESS_INTERVAL_MS = 10 * 60_000;
 const OFF_HOURS_INTERVAL_MS = 60 * 60_000;
 /** Local times the digest goes out, on business days. */
@@ -146,6 +148,8 @@ type PersistedState = WatcherState & {
   lastError: { message: string; at: string; alertedAt: string | null } | null;
   /** Marks in `handled` from before simulated ones carried `sim:` were checked once. */
   simMarksMigrated?: boolean;
+  /** What the simulation mode left behind was cleared once (`dropSimulation`). */
+  simulationDropped?: boolean;
 };
 
 let timer: NodeJS.Timeout | null = null;
@@ -196,12 +200,60 @@ async function loadState(): Promise<PersistedState> {
   const state: PersistedState = raw
     ? { ...base, ...(JSON.parse(raw) as Partial<PersistedState>) }
     : base;
-  if (!state.simMarksMigrated) {
-    await markSimulatedHandled(state);
-    state.simMarksMigrated = true;
+  if (!state.simulationDropped) {
+    if (!state.simMarksMigrated) await markSimulatedHandled(state);
+    await dropSimulation(state);
     await saveState(state);
   }
   return state;
+}
+
+const SIM = "sim:";
+/** Old actions that only had `live` set when done for real (the rest was simulated). */
+const LIVE_FLAGGED: ActionEntry["action"][] = [
+  "enqueue-dev",
+  "claim-test",
+  "start-progress",
+  "comment",
+  "approve",
+];
+type LegacyEntry = ActionEntry & { live?: boolean };
+
+/**
+ * There's no simulation mode anymore: simulated marks are dropped (so the automation, once on,
+ * picks those tickets and PRs up), a PR reviewed for real counts as its one AI review, and the
+ * actions that were only simulated move out of the history into SIMULATED_FILE.
+ */
+async function dropSimulation(state: PersistedState): Promise<void> {
+  for (const [key, value] of Object.entries(state.handled)) {
+    if (value.startsWith(SIM)) delete state.handled[key];
+    else if (key.startsWith("review:")) state.handled[`ai-reviewed:${key.slice(7)}`] = value;
+  }
+  const legacy = state as PersistedState & { reviewRounds?: unknown; reviewedCommits?: unknown };
+  delete legacy.reviewRounds;
+  delete legacy.reviewedCommits;
+  delete state.simMarksMigrated;
+  for (const file of [ARCHIVE_FILE, ACTIONS_FILE]) {
+    const raw = await readFile(file, "utf8").catch(() => null);
+    if (raw === null) continue;
+    const kept: string[] = [];
+    const simulated: string[] = [];
+    for (const line of raw.split("\n").filter(Boolean)) {
+      const entry = JSON.parse(line) as LegacyEntry;
+      if (LIVE_FLAGGED.includes(entry.action) && !entry.live) {
+        simulated.push(line);
+        continue;
+      }
+      delete entry.live;
+      kept.push(JSON.stringify(entry));
+    }
+    if (simulated.length > 0) {
+      await appendFile(SIMULATED_FILE, `${simulated.join("\n")}\n`, "utf8");
+    }
+    await writeFile(`${file}.tmp`, kept.length ? `${kept.join("\n")}\n` : "", "utf8");
+    await rename(`${file}.tmp`, file);
+  }
+  state.simulationDropped = true;
 }
 
 /** The action kinds behind each mark that, logged with `live`, mean it was done for real. */
@@ -220,7 +272,7 @@ async function markSimulatedHandled(state: PersistedState): Promise<void> {
   const live = new Set<string>();
   for (const line of logs.join("\n").split("\n").filter(Boolean)) {
     const entry = JSON.parse(line) as ActionEntry;
-    if (!entry.live) continue;
+    if (!(entry as LegacyEntry).live) continue;
     for (const [kind, actions] of Object.entries(MARK_ACTIONS)) {
       if (actions.includes(entry.action)) live.add(`${kind}:${entry.subject}`);
     }
@@ -228,7 +280,7 @@ async function markSimulatedHandled(state: PersistedState): Promise<void> {
   for (const [key, value] of Object.entries(state.handled)) {
     const kind = key.split(":")[0] ?? "";
     if (!MARK_ACTIONS[kind] || value.startsWith("sim:") || live.has(key)) continue;
-    state.handled[key] = handledMark(value, false);
+    state.handled[key] = `${SIM}${value}`;
   }
 }
 
@@ -348,16 +400,15 @@ async function lookLocked(): Promise<void> {
   let endLook: (() => void) | null = null;
   try {
     if (!config?.enabled || !(await automationsOn())) return;
-    // Eye closed: nothing at all until business hours start again.
-    if (!isBusinessTime(now, config.businessHours)) return;
+    // Eye closed: nothing at all until business hours start again, unless the user started
+    // something by hand.
+    if (!isBusinessTime(now, config.businessHours) && state.forced.length === 0) return;
     endLook = startActivity("look");
-    const onReview = config.review?.enabled
-      ? (pr: WatcherState["pendingReviews"][number]) => {
-          if (!state.pendingReviews.some((p) => prSubject(p) === prSubject(pr))) {
-            state.pendingReviews.push(pr);
-          }
-        }
-      : undefined;
+    const onReview = (pr: WatcherState["pendingReviews"][number]) => {
+      if (!state.pendingReviews.some((p) => prSubject(p) === prSubject(pr))) {
+        state.pendingReviews.push(pr);
+      }
+    };
     const onTest =
       config.test?.enabled !== false
         ? (issue: WatcherState["pendingTests"][number]["issue"], retest: boolean) => {
@@ -403,6 +454,12 @@ async function lookLocked(): Promise<void> {
       },
     };
     lastDecisions = await runTick(deps, state, config, now);
+    // Started by hand: done with this look, except a session still to run (`drainJobs`).
+    state.forced = state.forced.filter(
+      (subject) =>
+        state.pendingReviews.some((p) => prSubject(p) === subject) ||
+        state.pendingTests.some((t) => t.issue.key === subject),
+    );
     lastTitles = new Map([
       ...issues.map((i) => [i.key, i.summary] as const),
       ...prs.map((p) => [prSubject(p), p.title] as const),
@@ -422,7 +479,6 @@ async function lookLocked(): Promise<void> {
     looks.push({ at: Date.now(), ms: Date.now() - started, calls, retries });
     while (looks.length > 0 && Date.now() - (looks[0]?.at ?? 0) > HOUR_MS) looks.shift();
     recordEvent("boardWatcher.tick", {
-      mode: config.mode,
       decisions: lastDecisions.length,
       durationMs: Date.now() - started,
     });
@@ -481,7 +537,7 @@ async function watchPreviewBuilds(
       void (url ? diagnoseOnce(url, issue.key) : Promise.resolve(null)).then(async (diagnosis) => {
         const rebuild =
           url && diagnosis && diagnosis.kind !== "code" && config.rebuild?.enabled !== false
-            ? await rebuildOnce(config, `rebuild:${repo}:${build.hash}`, url)
+            ? await rebuildOnce(`rebuild:${repo}:${build.hash}`, url)
             : null;
         noticePreviewFailed(
           config,
@@ -504,7 +560,6 @@ async function watchPreviewBuilds(
           ]
             .filter(Boolean)
             .join(" · "),
-          ...(rebuild === "done" ? { live: true } : {}),
         });
         recordEvent("boardWatcher.buildFailed", {
           key: issue.key,
@@ -519,21 +574,15 @@ async function watchPreviewBuilds(
 
 const REBUILD_PT: Record<RebuildOutcome, string> = {
   done: "rodou o build de novo",
-  would: "rodaria o build de novo (chave desligada)",
   again: "já tinha rodado de novo neste commit e falhou de novo",
   refused: "o Jenkins recusou rodar de novo",
 };
 
-/** A non-code failure's build runs again once per commit (with the switch on); a second failure
- *  on the same commit is left to the user. */
-async function rebuildOnce(
-  config: BoardWatcherConfig,
-  key: string,
-  url: string,
-): Promise<RebuildOutcome> {
+/** A non-code failure's build runs again once per commit; a second failure on the same commit
+ *  is left to the user. */
+async function rebuildOnce(key: string, url: string): Promise<RebuildOutcome> {
   const already = (await loadState()).handled[key];
   if (already) return "again";
-  if (!config.live?.rebuild) return "would";
   const ok = await rebuildJob(url).catch(() => false);
   noteActivity("rebuild", key.replace(/^rebuild:/, ""), ok ? "done" : "failed");
   await serial(async () => {
@@ -763,6 +812,40 @@ function schedule(config: BoardWatcherConfig | null): void {
   timer = setTimeout(() => void look(), delay);
 }
 
+/** A session started by hand is no longer let through outside business hours once it runs. */
+async function unforce(subject: string): Promise<void> {
+  await serial(async () => {
+    const state = await loadState();
+    if (!state.forced.includes(subject)) return;
+    state.forced = state.forced.filter((s) => s !== subject);
+    await saveState(state);
+  });
+}
+
+/** "Start now" on the Board: what the ticket or PR waits for is skipped, and a look runs now.
+ *  A skip (draft, conflicts, no test plan…) still holds. */
+export async function startBoardWatcherItemNow(subject: string): Promise<BoardWatcherStatus> {
+  await serial(async () => {
+    const state = await loadState();
+    if (!state.forced.includes(subject)) state.forced.push(subject);
+    await saveState(state);
+  });
+  recordEvent("boardWatcher.startNow", { subject });
+  await look();
+  return getBoardWatcherStatus();
+}
+
+/** The Board's queue in the order the user dragged it to. */
+export async function prioritizeBoardWatcherItems(subjects: string[]): Promise<BoardWatcherStatus> {
+  await serial(async () => {
+    const state = await loadState();
+    state.priority = [...new Set(subjects)];
+    await saveState(state);
+  });
+  void drainJobs();
+  return getBoardWatcherStatus();
+}
+
 /** A hold is told once in the live feed, not on every look while it lasts. */
 let lastBlockedNoted: string | null = null;
 function noteBlocked(reason: string): void {
@@ -772,8 +855,8 @@ function noteBlocked(reason: string): void {
 }
 
 /** Runs the pending review and test sessions one at a time (reviews first: they're quick). A
- *  review's result goes through `applyReview`, so it's posted or only recorded per `live`; a
- *  test's verdict and report are recorded with what would be done with them. */
+ *  review's result goes through `applyReview`; a test's verdict and report are recorded with what
+ *  would be done with them. */
 async function drainJobs(): Promise<void> {
   if (reviewing) return;
   reviewing = true;
@@ -782,16 +865,26 @@ async function drainJobs(): Promise<void> {
       const config = await loadBoardWatcherConfig().catch(() => null);
       const state = await loadState();
       if (!config?.enabled || !config.bitbucket || !(await automationsOn())) return;
-      // Eye closed: no review or test session starts (queued ones wait for the morning).
-      if (!isBusinessTime(new Date(), config.businessHours)) return;
+      // Eye closed: no session starts (queued ones wait for the morning), except the ones the
+      // user started by hand. In the order the user dragged them to on the Board.
+      const open = isBusinessTime(new Date(), config.businessHours);
+      const allowed = (subject: string) => open || state.forced.includes(subject);
+      const reviews =
+        config.codeReview?.enabled !== false
+          ? byPriority(state.pendingReviews, prSubject, state.priority).filter((p) =>
+              allowed(prSubject(p)),
+            )
+          : [];
+      const tests =
+        config.test?.enabled !== false
+          ? byPriority(state.pendingTests, (t) => t.issue.key, state.priority).filter((t) =>
+              allowed(t.issue.key),
+            )
+          : [];
+      if (reviews.length === 0 && tests.length === 0) return;
       const signal = automationSignal();
-      // A review ends in a comment or an approval, which only happen in business hours: the
-      // session waits for them (queued reviews start with the next look then).
-      const pr =
-        config.review?.enabled && isBusinessTime(new Date(), config.businessHours)
-          ? state.pendingReviews[0]
-          : undefined;
-      const test = config.test?.enabled !== false ? state.pendingTests[0] : undefined;
+      const pr = reviews[0];
+      const test = tests[0];
       // A headless test or a review is a Claude session of its own: same plan limit as the queue.
       const headlessTest = test && config.test?.runner === "headless";
       if (pr || headlessTest) {
@@ -817,7 +910,7 @@ async function drainJobs(): Promise<void> {
         // the first one whose previews are ready goes, the others wait their turn.
         const waits: string[] = [];
         let ready: typeof test | undefined;
-        for (const candidate of state.pendingTests) {
+        for (const candidate of tests) {
           const wait = await previewWait(candidate.issue, config);
           if (!wait) {
             ready = candidate;
@@ -830,6 +923,7 @@ async function drainJobs(): Promise<void> {
           noteBlocked(jobsBlockedBy);
           return;
         }
+        await unforce(ready.issue.key);
         await runTestJob(ready, config, signal);
         if (signal.aborted) return;
         continue;
@@ -841,23 +935,30 @@ async function drainJobs(): Promise<void> {
         const repoPath = (await localRepoPaths(config, [pr.repo]))[pr.repo];
         if (!repoPath) throw new Error(`No local clone of ${pr.repo} in the workspace folders.`);
         const credentials = bitbucketCredentialsFromEnv(config.bitbucket.workspace);
-        // Merged, closed or pushed to while it waited: no session for it. A new push is queued
-        // again by the next look, with the new commit.
+        // Merged, closed, pushed to or reviewed by a teammate's automation while it waited: no
+        // session for it. A new push is queued again by the next look, with the new commit.
         const head = await pullRequestHead(credentials, pr);
-        if (head.state !== "OPEN" || !sameCommit(pr.sourceHash, head.hash)) {
+        const reviewedElsewhere = await hasAiReviewComment(credentials, pr);
+        if (reviewedElsewhere || head.state !== "OPEN" || !sameCommit(pr.sourceHash, head.hash)) {
+          const reason = reviewedElsewhere
+            ? "already reviewed by AI"
+            : head.state !== "OPEN"
+              ? head.state
+              : "new push";
           await serial(async () => {
             const state = await loadState();
             state.pendingReviews = state.pendingReviews.filter((p) => prSubject(p) !== subject);
+            if (reviewedElsewhere) {
+              state.handled[`ai-reviewed:${subject}`] = pr.sourceHash ?? pr.lastPushAt;
+            }
             await saveState(state);
           });
-          noteActivity("reviewSkipped", subject, head.state !== "OPEN" ? head.state : "new push");
-          recordEvent("boardWatcher.reviewSkipped", {
-            subject,
-            reason: head.state !== "OPEN" ? head.state : "new push",
-          });
+          noteActivity("reviewSkipped", subject, reason);
+          recordEvent("boardWatcher.reviewSkipped", { subject, reason });
           continue;
         }
         const openPrs = await listOpenPullRequests(credentials, [pr.repo]);
+        await unforce(subject);
         const endReview = startActivity("review", subject);
         const output = await runClaudeReview(pr, {
           repoPath,
@@ -869,12 +970,6 @@ async function drainJobs(): Promise<void> {
           smallPr: config.review?.smallPr,
           maxBudgetUsd: config.review?.maxBudgetUsd,
           lessons: await getLessons("review"),
-          previous: pr.approvedCommit
-            ? {
-                hash: pr.approvedCommit,
-                findings: state.reviewedCommits?.[subject]?.findings ?? [],
-              }
-            : state.reviewedCommits?.[subject],
         }).finally(endReview);
         await serial(async () => {
           const state = await loadState();
@@ -897,16 +992,6 @@ async function drainJobs(): Promise<void> {
             state,
             config,
           );
-          if (pr.sourceHash) {
-            const raised = output.findings
-              .filter((f) => f.severity !== "minor" && f.topic !== "product")
-              .map((f) => `${f.file ? `${f.file}${f.line ? `:${f.line}` : ""}: ` : ""}${f.body}`);
-            const earlier = state.reviewedCommits[subject]?.findings ?? [];
-            state.reviewedCommits[subject] = {
-              hash: pr.sourceHash,
-              findings: [...earlier, ...raised].slice(-20),
-            };
-          }
           await saveState(state);
         });
         if (output.findings.some((f) => f.severity === "blocking" && f.topic !== "product")) {
@@ -1253,21 +1338,22 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
   const today = config ? localDay(new Date(), config.businessHours) : "";
   return {
     enabled: Boolean(config?.enabled),
-    mode: config?.mode ?? null,
     businessTime: config ? isBusinessTime(new Date(), config.businessHours) : true,
     nextBusinessStart:
       config && !isBusinessTime(new Date(), config.businessHours)
         ? (nextBusinessStart(new Date(), config.businessHours)?.toISOString() ?? null)
         : null,
-    live: config?.live ? LIVE_KEYS.filter((k) => config.live?.[k]) : [],
     running,
     lastTickAt: state.lastTickAt,
     lastDigestAt: state.lastDigestAt,
     lastError: state.lastError,
     pausedReason: state.pausedReason,
     reviewing,
-    pendingReviews: state.pendingReviews.map(prSubject),
-    pendingTests: state.pendingTests.map((t) => t.issue.key),
+    pendingReviews: byPriority(state.pendingReviews, prSubject, state.priority).map(prSubject),
+    pendingTests: byPriority(state.pendingTests, (t) => t.issue.key, state.priority).map(
+      (t) => t.issue.key,
+    ),
+    priority: state.priority,
     nextLookAt: config?.enabled ? nextLookAt : null,
     approvalsToday: state.approvals.day === today ? state.approvals.count : 0,
     today: await todaysSessions(config),
@@ -1332,7 +1418,6 @@ export async function pointToHomolog(repo: string, branch: string): Promise<{ bu
     subject,
     title: `${repo} ${branch}`,
     detail: buildUrl,
-    live: true,
   });
   recordEvent("boardWatcher.homolog", { repo, branch });
   void followHomologBuild(config, repo, branch, buildUrl);

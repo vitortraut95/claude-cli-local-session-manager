@@ -87,9 +87,9 @@ function jenkinsAuth(): string | null {
   return user && token ? `Basic ${Buffer.from(`${user}:${token}`).toString("base64")}` : null;
 }
 
-/** What happened to a failed build: run again, would be (switch off), already run again on this
+/** What happened to a failed build: run again, already run again on this
  *  commit, or Jenkins said no. */
-export type RebuildOutcome = "done" | "would" | "again" | "refused";
+export type RebuildOutcome = "done" | "again" | "refused";
 
 /** Starts a new build of the job a failed build belongs to (same branch, its latest commit);
  *  false without the token or when Jenkins refuses. */

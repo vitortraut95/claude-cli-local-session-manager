@@ -8,14 +8,12 @@ import type { Language } from "../i18n/translations";
 
 /** Same bounds the server accepts (`LIMIT_RANGES` in `server/services/boardWatcher/settings.ts`). */
 export const LIMIT_BOUNDS: Record<keyof AutomationLimits, [number, number]> = {
-  approveDelayMinutes: [0, 2880],
   waitTestGraceMinutes: [0, 1440],
   maxClaimedTests: [1, 10],
   maxClaimsPerDay: [1, 50],
   maxDevTasks: [1, 10],
   maxApprovesPerDay: [1, 100],
   maxCommentsPerPr: [0, 20],
-  maxReviewRounds: [1, 20],
   descriptionMinScore: [0, 5],
 };
 
@@ -51,15 +49,11 @@ const SERVER_TEXT_PT: [RegExp, string][] = [
   [/has conflicts/, "tem conflitos"],
   [/CI failed/, "CI falhou"],
   [/another reviewer requested changes/, "outro revisor pediu mudanças"],
-  [/(\d+) review rounds already/, "já são $1 rodadas de review"],
+  [/already reviewed by AI/, "já teve o review por IA"],
   [/CI running/, "CI rodando"],
-  [
-    /giving people time to review \((\d+) of (\d+) business minutes\)/,
-    "dando tempo pro time revisar ($1 de $2 minutos úteis)",
-  ],
   [/ready for review/, "pronta pra review"],
+  [/^started by hand$/, "iniciada à mão"],
   [/past Code Review without any approval/, "em Validation/Wait Deploy sem nenhuma aprovação"],
-  [/pushed since the user's approval/, "push novo depois do seu aprove"],
   [/left for a person:/, "deixada pra uma pessoa:"],
   [/^Paused from the app$/, "pausado pelo app"],
   [/^plan usage at (\d+)% \(limit (\d+)%\)$/, "uso do plano em $1% (limite $2%)"],
@@ -71,9 +65,9 @@ const SERVER_TEXT_PT: [RegExp, string][] = [
   [/ and IPv6/, " e IPv6"],
   [/^(\d+) approvals today \(limit (\d+)\)$/, "$1 aprovações hoje (limite $2)"],
   // Review and test outcomes, skips and rebuilds (the live feed).
-  [/^(\d+) finding\(s\), approve$/, "$1 achado(s), aprovaria"],
-  [/^(\d+) finding\(s\), comment-and-approve$/, "$1 achado(s), comentaria e aprovaria"],
-  [/^(\d+) finding\(s\), do-not-approve$/, "$1 achado(s), não aprovaria"],
+  [/^(\d+) finding\(s\), approve$/, "$1 achado(s), aprovou"],
+  [/^(\d+) finding\(s\), comment-and-approve$/, "$1 achado(s), comentou e aprovou"],
+  [/^(\d+) finding\(s\), do-not-approve$/, "$1 achado(s), não aprovou"],
   [/^approved-with-notes$/, "aprovado com ressalvas"],
   [/^approved$/, "aprovado"],
   [/^failed$/, "reprovado"],

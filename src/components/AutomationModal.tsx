@@ -19,26 +19,22 @@ import { Modal } from "./Modal";
 import { SettingRow } from "./SettingRow";
 
 const LIMIT_LABELS: Record<keyof AutomationLimits, TranslationKey> = {
-  approveDelayMinutes: "automation.limit.approveDelayMinutes",
   waitTestGraceMinutes: "automation.limit.waitTestGraceMinutes",
   maxClaimedTests: "automation.limit.maxClaimedTests",
   maxClaimsPerDay: "automation.limit.maxClaimsPerDay",
   maxDevTasks: "automation.limit.maxDevTasks",
   maxApprovesPerDay: "automation.limit.maxApprovesPerDay",
   maxCommentsPerPr: "automation.limit.maxCommentsPerPr",
-  maxReviewRounds: "automation.limit.maxReviewRounds",
   descriptionMinScore: "automation.limit.descriptionMinScore",
 };
 
 const LIMIT_DESCRIPTIONS: Record<keyof AutomationLimits, TranslationKey> = {
-  approveDelayMinutes: "automation.limit.approveDelayMinutes.description",
   waitTestGraceMinutes: "automation.limit.waitTestGraceMinutes.description",
   maxClaimedTests: "automation.limit.maxClaimedTests.description",
   maxClaimsPerDay: "automation.limit.maxClaimsPerDay.description",
   maxDevTasks: "automation.limit.maxDevTasks.description",
   maxApprovesPerDay: "automation.limit.maxApprovesPerDay.description",
   maxCommentsPerPr: "automation.limit.maxCommentsPerPr.description",
-  maxReviewRounds: "automation.limit.maxReviewRounds.description",
   descriptionMinScore: "automation.limit.descriptionMinScore.description",
 };
 
@@ -54,7 +50,6 @@ function applyInput(
     ...current,
     enabled: input.enabled ?? current.enabled,
     features: { ...current.features, ...input.features },
-    live: { ...current.live, ...input.live },
     limits: { ...current.limits, ...input.limits },
     businessHours: { ...current.businessHours, ...input.businessHours },
   };
@@ -62,7 +57,7 @@ function applyInput(
 
 type AutomationModalProps = {
   onClose: () => void;
-  /** The automation whose card is highlighted when it opens (a mode chip on the Board). */
+  /** The automation whose card is highlighted when it opens (an automation chip on the Board). */
   focus?: AutomationFocus;
 };
 
@@ -140,8 +135,6 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
     void save({ businessHours: { days } });
   };
 
-  const anyLive = settings ? Object.values(settings.live).some(Boolean) : false;
-
   return (
     <Modal
       open
@@ -155,10 +148,6 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
       {!loadError && !settings && <p className="text-sm text-gray-500 dark:text-gray-400">…</p>}
       {settings && (
         <div className="flex flex-col gap-6">
-          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
-            {t(anyLive ? "automation.liveOn" : "automation.simulation")}
-          </p>
-
           {!settings.configured ? (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
               <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -200,8 +189,8 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
                     </p>
                   </div>
                   <AutomationModesEditor
-                    switches={{ features: settings.features, live: settings.live }}
-                    onChange={(input) => void save(input)}
+                    features={settings.features}
+                    onChange={(features) => void save({ features })}
                     focus={focus}
                   />
                 </section>

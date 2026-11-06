@@ -23,8 +23,9 @@ const WILL_DO = new Set<WatcherDecision["action"]>([
   "start-progress",
 ]);
 
-/** Everything in line, once each, most urgent first: what's running, what waits for a session,
- *  what the last look will do and what's on hold (with why). */
+/** Everything in line, once each: what's running first, then the rest in the order the user
+ *  dragged it to (`status.priority`), then what waits for a session, what the last look will do
+ *  and what's on hold (with why). */
 export function queueItems(
   status: BoardWatcherStatus,
   current: WatcherActivity["current"],
@@ -66,5 +67,12 @@ export function queueItems(
       });
     }
   }
-  return items;
+  const rank = new Map(status.priority.map((subject, index) => [subject, index]));
+  const running = items.filter((item) => item.state === "running");
+  const rest = items
+    .filter((item) => item.state !== "running")
+    .map((item, index) => ({ item, index, rank: rank.get(item.subject) ?? Infinity }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map(({ item }) => item);
+  return [...running, ...rest];
 }

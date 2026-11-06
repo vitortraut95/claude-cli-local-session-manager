@@ -3,11 +3,15 @@ import {
   Code2,
   FlaskConical,
   GitPullRequest,
+  GripVertical,
   Info,
   ListOrdered,
+  Loader2,
+  Rocket,
   RotateCcw,
   type LucideIcon,
 } from "lucide-react";
+import { useState, type KeyboardEvent } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { TranslationKey } from "../i18n/translations";
 import type { BoardWatcherStatus, WatcherWork } from "../services/boardWatcherApi";
@@ -72,9 +76,52 @@ function WorkBadge({ work }: { work: WatcherWork }) {
   );
 }
 
-export function BoardQueue({ status, items }: { status: BoardWatcherStatus; items: QueueItem[] }) {
+/** `items` with `subject` moved to where `target` is. */
+function moved(items: string[], subject: string, target: string): string[] {
+  const from = items.indexOf(subject);
+  const to = items.indexOf(target);
+  if (from < 0 || to < 0 || from === to) return items;
+  const next = items.filter((s) => s !== subject);
+  next.splice(to, 0, subject);
+  return next;
+}
+
+export function BoardQueue({
+  status,
+  items,
+  onStartNow,
+  onReorder,
+}: {
+  status: BoardWatcherStatus;
+  items: QueueItem[];
+  /** "Start now" on an item on hold; resolves once the look it triggers is done. */
+  onStartNow: (subject: string) => Promise<void>;
+  /** The queue's new order, top first (what's running isn't part of it). */
+  onReorder: (subjects: string[]) => void;
+}) {
   const { t, language } = useLanguage();
   const calls = status.calls;
+  const [starting, setStarting] = useState<string | null>(null);
+  // Only the row whose handle is held is draggable, so its text can still be selected.
+  const [armed, setArmed] = useState<string | null>(null);
+  const [dragged, setDragged] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const order = items.filter((item) => item.state !== "running").map((item) => item.subject);
+  const endDrag = () => {
+    setArmed(null);
+    setDragged(null);
+    setOver(null);
+  };
+  const moveBy = (subject: string, step: number, event: KeyboardEvent) => {
+    const target = order[order.indexOf(subject) + step];
+    if (!target) return;
+    event.preventDefault();
+    onReorder(moved(order, subject, target));
+  };
+  const start = (subject: string) => {
+    setStarting(subject);
+    void onStartNow(subject).finally(() => setStarting(null));
+  };
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex items-center justify-between gap-2">
@@ -105,54 +152,125 @@ export function BoardQueue({ status, items }: { status: BoardWatcherStatus; item
       {items.length === 0 ? (
         <p className="text-sm text-gray-500">{t("board.queue.empty")}</p>
       ) : (
-        <ul className="flex max-h-[22rem] flex-col divide-y divide-white/5 overflow-y-auto pr-1">
-          {items.map((item) => {
-            const title = status.titles[item.subject];
-            return (
-              <li key={item.subject} className="flex items-start gap-3 py-2">
-                <SubjectIcon subject={item.subject} />
-                <div className="min-w-0 flex-1">
-                  <p className="flex min-w-0 items-center gap-2">
-                    {item.work && <WorkBadge work={item.work} />}
-                    <span className="shrink-0 font-mono text-xs text-gray-200">{item.subject}</span>
-                    {title && (
-                      <span className="min-w-0 truncate text-sm text-gray-300" title={title}>
-                        {title}
-                      </span>
-                    )}
-                  </p>
-                  {item.reason && (
-                    <p className="text-xs text-gray-500">
-                      {translateServerText(item.reason, language)}
-                    </p>
-                  )}
-                  {item.decision?.build && (
-                    <a
-                      href={item.decision.build.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-fuchsia-300 underline-offset-2 hover:underline"
-                    >
-                      {t("board.queue.build", { name: item.decision.build.name })}
-                    </a>
-                  )}
-                </div>
-                <span
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${STATE_TONE[item.state]}`}
+        <>
+          {order.length > 1 && (
+            <p className="text-xs text-gray-500">{t("board.queue.reorderHint")}</p>
+          )}
+          <ul className="flex max-h-[22rem] flex-col divide-y divide-white/5 overflow-y-auto pr-1">
+            {items.map((item) => {
+              const title = status.titles[item.subject];
+              const movable = item.state !== "running" && order.length > 1;
+              return (
+                <li
+                  key={item.subject}
+                  draggable={armed === item.subject}
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    setDragged(item.subject);
+                  }}
+                  onDragOver={(event) => {
+                    if (!dragged || !movable) return;
+                    event.preventDefault();
+                    if (over !== item.subject) setOver(item.subject);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (dragged && movable) onReorder(moved(order, dragged, item.subject));
+                    endDrag();
+                  }}
+                  onDragEnd={endDrag}
+                  className={`flex items-start gap-3 py-2 ${dragged === item.subject ? "opacity-50" : ""} ${
+                    over === item.subject && dragged !== item.subject
+                      ? "shadow-[inset_0_2px_0_0] shadow-violet-400/70"
+                      : ""
+                  }`}
                 >
-                  {item.state === "running" && (
-                    <span
-                      className="h-1.5 w-1.5 rounded-full bg-violet-300 motion-safe:animate-pulse"
-                      aria-hidden="true"
-                    />
+                  {movable ? (
+                    <button
+                      type="button"
+                      aria-label={t("board.queue.dragHandle")}
+                      title={t("board.queue.dragHandle")}
+                      onPointerDown={() => setArmed(item.subject)}
+                      onPointerUp={() => {
+                        if (!dragged) setArmed(null);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "ArrowUp") moveBy(item.subject, -1, event);
+                        if (event.key === "ArrowDown") moveBy(item.subject, 1, event);
+                      }}
+                      className="-ml-1 mt-0.5 cursor-grab rounded p-0.5 text-gray-500 hover:bg-white/10 hover:text-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 active:cursor-grabbing"
+                    >
+                      <GripVertical className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  ) : (
+                    <span className="-ml-1 w-5 shrink-0" aria-hidden="true" />
                   )}
-                  {t(STATE_LABEL[item.state])}
-                </span>
-                <SubjectLinks subject={item.subject} bases={status.linkBases} />
-              </li>
-            );
-          })}
-        </ul>
+                  <SubjectIcon subject={item.subject} />
+                  <div className="min-w-0 flex-1">
+                    <p className="flex min-w-0 items-center gap-2">
+                      {item.work && <WorkBadge work={item.work} />}
+                      <span className="shrink-0 font-mono text-xs text-gray-200">
+                        {item.subject}
+                      </span>
+                      {title && (
+                        <span className="min-w-0 truncate text-sm text-gray-300" title={title}>
+                          {title}
+                        </span>
+                      )}
+                    </p>
+                    {item.reason && (
+                      <p className="text-xs text-gray-500">
+                        {translateServerText(item.reason, language)}
+                      </p>
+                    )}
+                    {item.decision?.build && (
+                      <a
+                        href={item.decision.build.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-fuchsia-300 underline-offset-2 hover:underline"
+                      >
+                        {t("board.queue.build", { name: item.decision.build.name })}
+                      </a>
+                    )}
+                  </div>
+                  <span
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${STATE_TONE[item.state]}`}
+                  >
+                    {item.state === "running" && (
+                      <span
+                        className="h-1.5 w-1.5 rounded-full bg-violet-300 motion-safe:animate-pulse"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {t(STATE_LABEL[item.state])}
+                  </span>
+                  {item.decision?.canStart && (
+                    <Tooltip content={t("board.queue.startNow.tooltip")}>
+                      <button
+                        type="button"
+                        disabled={starting !== null}
+                        onClick={() => start(item.subject)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-violet-200 ring-1 ring-violet-400/40 ring-inset transition hover:bg-violet-500/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {starting === item.subject ? (
+                          <Loader2
+                            className="h-3 w-3 motion-safe:animate-spin"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Rocket className="h-3 w-3" aria-hidden="true" />
+                        )}
+                        {t("board.queue.startNow")}
+                      </button>
+                    </Tooltip>
+                  )}
+                  <SubjectLinks subject={item.subject} bases={status.linkBases} />
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </section>
   );

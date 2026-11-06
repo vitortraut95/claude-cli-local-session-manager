@@ -1,17 +1,11 @@
-import {
-  CheckCircle2,
-  ChevronDown,
-  ExternalLink,
-  Info,
-  Loader2,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle2, ChevronDown, ExternalLink, Info, Loader2, XCircle } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { TranslationKey } from "../i18n/translations";
 import * as boardWatcherApi from "../services/boardWatcherApi";
 import * as preferencesApi from "../services/preferencesApi";
 import type {
+  AutomationFeatures,
   AutomationSetupStatus,
   BoardColumnsAnswer,
   BoardRole,
@@ -21,13 +15,7 @@ import { resolveApiErrorMessage } from "../utils/apiClient";
 import { jenkinsBase } from "../utils/jenkins";
 import { Button } from "./Button";
 import { Input } from "./Input";
-import {
-  applySwitches,
-  MODE_AUTOMATIONS,
-  switchesForMode,
-  type ModeAutomation,
-  type Switches,
-} from "../../shared/automationModes";
+import { AUTOMATIONS, type Automation } from "../../shared/boardWatcher";
 import { AutomationModesEditor } from "./AutomationModesEditor";
 
 type StepProps = {
@@ -723,7 +711,7 @@ export function FinishStep({
 }: StepProps & { allDone: Record<string, boolean>; onClose: () => void }) {
   const { t } = useLanguage();
   // What an automation needs from the steps before; without it, it stays off.
-  const unavailable: Partial<Record<ModeAutomation | "notices", string>> = {
+  const unavailable: Partial<Record<Automation | "notices", string>> = {
     ...(status.board.columns?.todo?.length ? {} : { devQueue: t("automationSetup.needs.todo") }),
     ...(status.board.columns?.waitTest?.length && status.board.columns.testing?.length
       ? {}
@@ -733,22 +721,20 @@ export function FinishStep({
       : { rebuild: t("automationSetup.needs.jenkins") }),
     ...(status.extras.teams !== "missing" ? {} : { notices: t("automationSetup.needs.teams") }),
   };
-  // A first setup starts with only the code review, in simulation; later visits show what's saved.
-  const [draft, setDraft] = useState<Switches>(() => {
-    const saved = { features: status.features, live: status.live };
-    if (status.enabled) return saved;
-    let first = saved;
-    for (const automation of MODE_AUTOMATIONS) {
-      first = applySwitches(
-        first,
-        switchesForMode(automation, automation === "codeReview" ? "simulate" : "off"),
-      );
-    }
+  // A first setup starts with every automation off; later visits show what's saved.
+  const [draft, setDraft] = useState<AutomationFeatures>(() => {
+    if (status.enabled) return status.features;
     const notices = status.extras.teams !== "missing";
-    return applySwitches(first, {
-      features: { instantNotices: notices, digest: notices, reviewUnapprovedDeploying: false },
-      live: {},
-    });
+    return {
+      ...status.features,
+      codeReview: false,
+      devQueue: false,
+      testQueue: false,
+      rebuild: false,
+      instantNotices: notices,
+      digest: notices,
+      reviewUnapprovedDeploying: false,
+    };
   });
   const [finished, setFinished] = useState(false);
   const [betaOn, setBetaOn] = useState(true);
@@ -758,19 +744,15 @@ export function FinishStep({
   const submit = () =>
     void run(async () => {
       // What isn't available is saved off, whatever the draft says.
-      let chosen = draft;
-      for (const automation of MODE_AUTOMATIONS) {
-        if (unavailable[automation]) {
-          chosen = applySwitches(chosen, switchesForMode(automation, "off"));
-        }
+      const chosen: AutomationFeatures = { ...draft };
+      for (const automation of AUTOMATIONS) {
+        if (unavailable[automation]) chosen[automation] = false;
       }
       if (unavailable.notices) {
-        chosen = applySwitches(chosen, {
-          features: { instantNotices: false, digest: false },
-          live: {},
-        });
+        chosen.instantNotices = false;
+        chosen.digest = false;
       }
-      await boardWatcherApi.finishSetup(chosen);
+      await boardWatcherApi.finishSetup({ features: chosen });
       const watcher = await boardWatcherApi.fetchBoardWatcherStatus().catch(() => null);
       setBetaOn(watcher !== null);
       setFinished(true);
@@ -781,10 +763,10 @@ export function FinishStep({
     <div className="flex flex-col gap-3">
       <Description>{t("automationSetup.finish.description")}</Description>
       <AutomationModesEditor
-        switches={draft}
+        features={draft}
         unavailable={unavailable}
         disabled={finished}
-        onChange={(input) => setDraft((current) => applySwitches(current, input))}
+        onChange={(input) => setDraft((current) => ({ ...current, ...input }))}
       />
       <Feedback
         error={error}

@@ -19,6 +19,8 @@ export type FakeWorld = {
   reviews: Record<string, ReviewResult>;
   /** Dev tasks whose session started, first started first. */
   startedDevKeys?: string[];
+  /** PRs that already carry the AI review comment (by anyone). */
+  aiReviewed?: string[];
 };
 
 export function createFakeDeps(world: FakeWorld, me: string, effects: string[]): WatcherDeps {
@@ -44,6 +46,12 @@ export function createFakeDeps(world: FakeWorld, me: string, effects: string[]):
         const reviewer = target?.reviewers.find((r) => r.id === me);
         if (reviewer) reviewer.state = "approved";
         else target?.reviewers.push({ id: me, state: "approved" });
+        return Promise.resolve();
+      },
+      hasAiReview: (pr) => Promise.resolve((world.aiReviewed ?? []).includes(prSubject(pr))),
+      markAiReviewed: (pr, { outcome }) => {
+        effects.push(`ai-review ${prSubject(pr)} ${outcome.kind}`);
+        world.aiReviewed = [...(world.aiReviewed ?? []), prSubject(pr)];
         return Promise.resolve();
       },
     },

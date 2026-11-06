@@ -4,11 +4,12 @@ Watches a Jira board around the clock and feeds the existing task queue (`taskQu
 `taskSchedulerService`). Looking at the board is plain REST polling, with no Claude session in
 the loop; a session only starts when there's work.
 
-**Status:** runs in the server in simulation mode: reads the real Jira board and Bitbucket PRs,
-runs real review sessions, and records what it would do (`boardWatcher-actions.jsonl`) instead of
-acting; digests go to Teams at 09:00 and 18:00. What was decided in simulation is remembered with
-a `sim:` mark in `state.handled`, which only holds while that automation is still simulated:
-turning it on for real picks the same ticket or PR up again.
+**Status:** runs in the server. Each automation (code review, To Do queue, Wait Test queue,
+rebuild) is either off or on, and on means it acts for real on Jira, Bitbucket, Jenkins and the
+task queue; everything it does is also logged (`boardWatcher-actions.jsonl`) and digests go to
+Teams at the start and end of the day. There used to be a simulation mode: on the first run
+without it, an automation that was only simulated is turned off, its `sim:` marks are dropped
+and its simulated actions move out of the history into `boardWatcher-actions-simulated.jsonl`.
 
 ## Rules per column
 
@@ -21,7 +22,7 @@ claimed) is remembered, so the sprint change doesn't repeat anything.
 | To Do, assigned to me | description passes the gate                                  | queued as `dev`                            |
 | To Do, assigned to me | weak description                                             | not queued; reported once, with the reason |
 | To Do, anyone else's  | —                                                            | nothing                                    |
-| Code Review (others') | see "Playing nice"                                           | review + automatic approval                |
+| Code Review (others') | see "Playing nice"                                           | one AI review + approval if nothing blocks |
 | Wait Test             | test plan in the comments, not tested since, I'm not the dev | moved to Testing and queued as `test`      |
 | Testing               | —                                                            | nothing (someone is testing it)            |
 
@@ -60,21 +61,26 @@ The watcher is a safety net, not a competitor: it only takes tickets nobody pick
 | --------------------- | ---------------------------------------- | ----------------------------------------- |
 | Polling               | 10 min in business hours, 60 min outside | reading is cheap; little changes at night |
 | Visible actions       | weekdays 09:00–18:00 (machine timezone)  | nobody gets notified at 3 a.m.            |
-| Wait before approving | 2 business hours since the last push     | gives people time to review first         |
 | Comments per PR       | 3, blocking/major only                   | no nitpicks on a colleague's PR           |
-| Review rounds         | one per new push, at most 3 per PR       | no back-and-forth loop with the author    |
+| AI reviews per PR     | one, for the whole team                  | then a person reviews; no AI loop         |
 | Approvals per day     | 8, then the watcher pauses and alerts    | that many in a day means something's off  |
 | Tests claimed at once | 2, and 4 a day                           | doesn't hog the column                    |
 
 ## Playing nice
 
-- PRs: only once their ticket (from the PR title or branch; any one, for a PR bundling several) is
-  in the Code Review column (`columns.codeReview`), since people open PRs while still working; the
-  wait before approving counts from the later of the last push and the ticket reaching Code Review.
+- PRs: each gets one AI review and one human review. The AI review runs as soon as the PR's ticket
+  (from the PR title or branch; any one, for a PR bundling several) is in the Code Review column
+  (`columns.codeReview`), since people open PRs while still working, so the person reviewing next
+  already sees its findings. New pushes aren't reviewed by AI again.
+- One AI review for the whole team: it ends with a general comment starting with
+  `🤖 **Review por IA**` (commit, approved or not). Before reviewing (and again right before the
+  session starts), the watcher looks for that comment on the PR, posted by anyone: a teammate's
+  automation that got there first means the PR is done. Locally, `ai-reviewed:repo#id` in
+  `state.handled` says the same.
 - PRs: everyone else's, whoever is listed as a reviewer (or default reviewer), never the user's
-  own, and not already approved by them (a new push resets the approval). No approval on a draft, red CI,
-  conflicts or another reviewer's "changes requested"; never "request changes" or decline. Any
-  size is approved when nothing blocking is found.
+  own, and not already approved by them. No review on a draft, red CI, conflicts or another
+  reviewer's "changes requested"; never "request changes" or decline. Any size is approved when
+  nothing blocking is found.
 - Jira: never assigns itself, never touches anyone else's ticket. The only status change is Wait
   Test → Testing when it claims a test, which is what tells others it's being tested.
 
@@ -83,7 +89,7 @@ The watcher is a safety net, not a competitor: it only takes tickets nobody pick
 Runs as a background Claude session in a local worktree of the PR's source branch (so it can
 search the whole repo for other uses of what changed), read-only: no edits, commits or pushes. It
 gets the diff against the merge-base, the ticket with its comments, and the other open PRs that
-touch the same files or tickets (a simulation flagged a "bug" that a sibling PR already handled).
+touch the same files or tickets (a review once flagged a "bug" that a sibling PR already handled).
 Each finding comes back with severity, file, line and `topic`: questions for PO/design/content
 (copy, prices, Figma parity) are `product` and are never posted; they stay in the actions log.
 A PR bundling more than one ticket is normal for the team: scope is never flagged, but all of its
@@ -118,8 +124,8 @@ the change renders many from a template. Screenshots are copied to `boardWatcher
 
 Everything the watcher reads or writes goes through providers (`types.ts`): board, code host,
 reviewer, notifier and the task queue. `fake.ts` serves them from a scenario and records every
-write as a one-line effect (`approve web#12`, `transition DEMO-10 -> testing`) instead of leaving
-the machine.
+write as a one-line effect (`approve web#12`, `ai-review web#12 approved`,
+`transition DEMO-10 -> testing`) instead of leaving the machine.
 
 ```bash
 yarn board-watcher:eval              # every scenario
@@ -145,16 +151,13 @@ The board's ids live in the gitignored `boardWatcher.json` at the repo root:
 }
 ```
 
-Any limit above can be overridden there too (`approveDelayMinutes`, `maxApprovesPerDay`, …,
+Any limit above can be overridden there too (`maxCommentsPerPr`, `maxApprovesPerDay`, …,
 `businessHours`). The column ids come from `GET /rest/agile/1.0/board/<id>/configuration`.
 
 ## Next
 
 1. Review quality: a sandbox git repo with fake PRs (planted bugs and clean ones) to measure what
    a Claude review catches and what it would approve that it shouldn't.
-2. Real providers in dry-run: read Jira/Bitbucket for real, send every write to an action log.
-   Jira transitions go by transition id, so the provider looks up the one leading to
-   `testingStatusId`.
-3. Notifications: Teams webhook (`TEAMS_WEBHOOK_URL`, Adaptive Card 1.2) for `urgent`, a digest at
+2. Notifications: Teams webhook (`TEAMS_WEBHOOK_URL`, Adaptive Card 1.2) for `urgent`, a digest at
    the start and end of the day, and a "Board" panel in the app with the full log.
-4. Wire into the server (timer, persisted state, pause/resume) and the task queue.
+3. Wire into the server (timer, persisted state, pause/resume) and the task queue.

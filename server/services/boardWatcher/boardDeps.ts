@@ -6,11 +6,13 @@ import { REPO_ROOT } from "../../utils/repoRoot.js";
 import { getUserPreferences } from "../preferencesService.js";
 import { addDevEntryIfAbsent, getTaskQueue as getQueue } from "../taskQueueService.js";
 import {
+  aiReviewComment,
   approvePullRequest,
   bitbucketCredentialsFromEnv,
   commentOnPullRequest,
+  hasAiReviewComment,
   listOpenPullRequests,
-  markStaleApprovals,
+  postAiReviewComment,
 } from "./bitbucket.js";
 import type { BoardWatcherConfig } from "./config.js";
 import { markConflicts } from "./conflicts.js";
@@ -19,11 +21,10 @@ import { jiraCredentialsFromEnv, searchIssues, transitionIssue } from "./jira.js
 import { prSubject, type BoardIssue, type PullRequest, type WatcherDeps } from "./types.js";
 
 /**
- * The watcher's providers against the real board and PRs. Every write is appended to the
- * gitignored `boardWatcher-actions.jsonl` (one JSON object per line, which the digest and the
- * app's history are built from); only the ones whose switch in `config.live` is on are also done
- * for real (`live: true` in the entry) and announced in Teams. The rest is simulation: nothing
- * reaches Jira, Bitbucket or the task queue.
+ * The watcher's providers against the real board and PRs. Every write is done for real (the
+ * automation behind it is on, or it wouldn't have been decided), announced in Teams and appended
+ * to the gitignored `boardWatcher-actions.jsonl` (one JSON object per line, which the digest and
+ * the app's history are built from).
  */
 
 export const ACTIONS_FILE = path.join(REPO_ROOT, "boardWatcher-actions.jsonl");
@@ -82,10 +83,9 @@ export function createBoardDeps(
   onWeakDescription?: (issue: BoardIssue, missing: string) => void,
 ): WatcherDeps {
   if (!config.jira || !config.bitbucket) {
-    throw new Error('boardWatcher.json needs "jira" and "bitbucket" for simulation mode.');
+    throw new Error('boardWatcher.json needs "jira" and "bitbucket".');
   }
   const { jira, bitbucket } = config;
-  const live = config.live ?? {};
   const jiraCredentials = jiraCredentialsFromEnv(jira.site);
   const bitbucketCredentials = bitbucketCredentialsFromEnv(bitbucket.workspace);
   const titles = new Map<string, string>();
@@ -120,18 +120,14 @@ export function createBoardDeps(
       // A claim is a transition followed by an enqueue, which records it; a move to In
       // Progress is recorded here.
       transition: async (key, statusId) => {
-        const toProgress = statusId === config.inProgressStatusId;
-        const real = toProgress ? live.startProgress : live.testClaim;
-        if (real) await transitionIssue(jiraCredentials, key, statusId);
-        if (!toProgress) return;
-        await record({ action: "start-progress", subject: key, ...(real ? { live: true } : {}) });
-        if (real) {
-          noticeLiveAction(
-            `${key} · movida para In Progress`,
-            issuesByKey.get(key)?.summary ?? "",
-            issueUrl(config, key),
-          );
-        }
+        await transitionIssue(jiraCredentials, key, statusId);
+        if (statusId !== config.inProgressStatusId) return;
+        await record({ action: "start-progress", subject: key });
+        noticeLiveAction(
+          `${key} · movida para In Progress`,
+          issuesByKey.get(key)?.summary ?? "",
+          issueUrl(config, key),
+        );
       },
     },
     codeHost: {
@@ -139,15 +135,11 @@ export function createBoardDeps(
         const repos = await sprintRepos(config);
         const prs = await listOpenPullRequests(bitbucketCredentials, repos);
         for (const pr of prs) titles.set(prSubject(pr), pr.title);
-        const others = prs.filter((pr) => pr.authorId !== config.me);
-        await markStaleApprovals(bitbucketCredentials, others, config.me).catch((err: unknown) =>
-          console.warn("[board-watcher] Couldn't check approvals against new pushes:", err),
-        );
         // Only the PRs the user may review: a conflicted one isn't worth a review session.
-        const candidates = others.filter(
+        const candidates = prs.filter(
           (pr) =>
-            !pr.reviewers.some((r) => r.id === config.me && r.state === "approved") ||
-            pr.approvedCommit,
+            pr.authorId !== config.me &&
+            !pr.reviewers.some((r) => r.id === config.me && r.state === "approved"),
         );
         await markConflicts(candidates, await localRepoPaths(config, repos)).catch((err: unknown) =>
           console.warn("[board-watcher] Couldn't check PR conflicts:", err),
@@ -155,28 +147,25 @@ export function createBoardDeps(
         return prs;
       },
       comment: async (pr, finding) => {
-        if (live.comments) await commentOnPullRequest(bitbucketCredentials, pr, finding);
+        await commentOnPullRequest(bitbucketCredentials, pr, finding);
         const detail = `${finding.file ? `${finding.file}${finding.line ? `:${finding.line}` : ""} — ` : ""}${finding.body}`;
+        await record({ action: "comment", subject: prSubject(pr), title: pr.title, detail });
+        noticeLiveAction(`${prSubject(pr)} · comentou`, detail, prUrl(config, pr));
+      },
+      approve: async (pr) => {
+        await approvePullRequest(bitbucketCredentials, pr);
+        await record({ action: "approve", subject: prSubject(pr), title: pr.title });
+        noticeLiveAction(`${prSubject(pr)} · aprovou`, pr.title, prUrl(config, pr));
+      },
+      hasAiReview: (pr) => hasAiReviewComment(bitbucketCredentials, pr),
+      markAiReviewed: async (pr, review) => {
+        await postAiReviewComment(bitbucketCredentials, pr, review);
         await record({
           action: "comment",
           subject: prSubject(pr),
           title: pr.title,
-          detail,
-          ...(live.comments ? { live: true } : {}),
+          detail: aiReviewComment(pr, review).split("\n")[0],
         });
-        if (live.comments)
-          noticeLiveAction(`${prSubject(pr)} · comentou`, detail, prUrl(config, pr));
-      },
-      approve: async (pr) => {
-        if (live.approve) await approvePullRequest(bitbucketCredentials, pr);
-        await record({
-          action: "approve",
-          subject: prSubject(pr),
-          title: pr.title,
-          ...(live.approve ? { live: true } : {}),
-        });
-        if (live.approve)
-          noticeLiveAction(`${prSubject(pr)} · aprovou`, pr.title, prUrl(config, pr));
       },
     },
     reviewer: {
@@ -204,36 +193,26 @@ export function createBoardDeps(
       enqueue: async (key, kind) => {
         const issue = issuesByKey.get(key);
         if (kind === "dev") {
-          let detail: string | undefined;
-          if (live.devQueue) {
-            const clones = await localRepoPaths(config, await sprintRepos(config));
-            const repos = mentionedRepos(issue, clones);
-            const added = await addDevEntryIfAbsent({
-              key,
-              link: issueUrl(config, key),
-              repos,
-              branchPrefix: await devBranchPrefix(issue),
-            });
-            detail = !added
-              ? "já estava na fila"
-              : repos.length
-                ? undefined
-                : "sem repo identificado: escolha o repo na fila";
-          }
-          await record({
-            action: "enqueue-dev",
-            subject: key,
-            ...(detail ? { detail } : {}),
-            ...(live.devQueue ? { live: true } : {}),
+          const clones = await localRepoPaths(config, await sprintRepos(config));
+          const repos = mentionedRepos(issue, clones);
+          const added = await addDevEntryIfAbsent({
+            key,
+            link: issueUrl(config, key),
+            repos,
+            branchPrefix: await devBranchPrefix(issue),
           });
-          if (live.devQueue) {
-            noticeLiveAction(
-              `${key} · entrou na fila de dev`,
-              detail ?? issue?.summary ?? "",
-              issueUrl(config, key),
-              detail?.startsWith("sem repo") ? "urgent" : "info",
-            );
-          }
+          const detail = !added
+            ? "já estava na fila"
+            : repos.length
+              ? undefined
+              : "sem repo identificado: escolha o repo na fila";
+          await record({ action: "enqueue-dev", subject: key, ...(detail ? { detail } : {}) });
+          noticeLiveAction(
+            `${key} · entrou na fila de dev`,
+            detail ?? issue?.summary ?? "",
+            issueUrl(config, key),
+            detail?.startsWith("sem repo") ? "urgent" : "info",
+          );
           return;
         }
         if (kind === "retest") {
@@ -242,18 +221,12 @@ export function createBoardDeps(
           if (issue) onTest?.(issue, true);
           return;
         }
-        await record({
-          action: "claim-test",
-          subject: key,
-          ...(live.testClaim ? { live: true } : {}),
-        });
-        if (live.testClaim) {
-          noticeLiveAction(
-            `${key} · movida para Testing`,
-            issue?.summary ?? "",
-            issueUrl(config, key),
-          );
-        }
+        await record({ action: "claim-test", subject: key });
+        noticeLiveAction(
+          `${key} · movida para Testing`,
+          issue?.summary ?? "",
+          issueUrl(config, key),
+        );
         if (issue) onTest?.(issue, false);
       },
     },

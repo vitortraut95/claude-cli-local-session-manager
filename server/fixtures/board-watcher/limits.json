@@ -28,7 +28,13 @@
           }
         ],
         "expect": {
-          "effects": ["approve web#1", "approve web#2", "notify urgent: Daily approval cap reached"]
+          "effects": [
+            "approve web#1",
+            "ai-review web#1 approved",
+            "approve web#2",
+            "ai-review web#2 approved",
+            "notify urgent: Daily approval cap reached"
+          ]
         }
       },
       {
@@ -62,7 +68,7 @@
           }
         ],
         "expect": {
-          "effects": ["approve web#4"]
+          "effects": ["approve web#4", "ai-review web#4 approved"]
         }
       }
     ]

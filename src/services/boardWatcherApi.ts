@@ -31,7 +31,6 @@ export type {
   WatcherScoreboard,
   AutomationFeatures,
   AutomationLimits,
-  AutomationLive,
   AutomationSettings,
   AutomationSettingsInput,
   BoardWatcherStatus,
@@ -53,6 +52,24 @@ const client = axios.create({
 export async function fetchBoardWatcherStatus(): Promise<BoardWatcherStatus> {
   if (isBoardDemo()) return demoStatus();
   const { data } = await withServerErrorMessage(() => client.get<BoardWatcherStatus>("/status"));
+  return data;
+}
+
+/** "Start now": a ticket or PR on hold skips what it waits for, and a look runs right away. */
+export async function startBoardWatcherItemNow(subject: string): Promise<BoardWatcherStatus> {
+  if (isBoardDemo()) return demoStatus();
+  const { data } = await withServerErrorMessage(() =>
+    client.post<BoardWatcherStatus>("/start-now", { subject }),
+  );
+  return data;
+}
+
+/** The Board's queue in the order the user dragged it to. */
+export async function prioritizeBoardWatcherItems(subjects: string[]): Promise<BoardWatcherStatus> {
+  if (isBoardDemo()) return demoStatus();
+  const { data } = await withServerErrorMessage(() =>
+    client.post<BoardWatcherStatus>("/priority", { subjects }),
+  );
   return data;
 }
 

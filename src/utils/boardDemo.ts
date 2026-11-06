@@ -28,8 +28,6 @@ const inMinutes = (minutes: number) => new Date(Date.now() + minutes * 60_000).t
 export function demoStatus(): BoardWatcherStatus {
   return {
     enabled: true,
-    mode: "simulate",
-    live: ["comments", "approve", "devQueue"],
     businessTime: true,
     nextBusinessStart: null,
     running: false,
@@ -41,6 +39,7 @@ export function demoStatus(): BoardWatcherStatus {
     pausedReason: null,
     pendingReviews: ["acme-web#233", "acme-checkout#87"],
     pendingTests: ["DEMO-412"],
+    priority: [],
     approvalsToday: 6,
     testClaimsToday: 2,
     today: { reviews: 9, tests: 2, durationMs: 47 * 60_000, costUsd: 11.4 },
@@ -109,15 +108,14 @@ export function demoActions(): WatcherActionEntry[] {
     subject: string,
     title: string,
     detail?: string,
-    live?: boolean,
-  ): WatcherActionEntry => ({ ts: ago(minutes), action, subject, title, detail, live });
+  ): WatcherActionEntry => ({ ts: ago(minutes), action, subject, title, detail });
   return [
-    entry(240, "approve", "acme-web#221", "Remove plan P from the landing page", undefined, true),
+    entry(240, "approve", "acme-web#221", "Remove plan P from the landing page"),
     entry(190, "reviewed", "acme-cart#126", "Compact add-ons layout", "2 findings"),
     entry(150, "build-failed", "DEMO-407", "Preview build of DEMO-407", "infra: agent offline"),
-    entry(95, "tested", "DEMO-402", "Checkout coupon for MX", "reprovaria, comentaria o relatório"),
+    entry(95, "tested", "DEMO-402", "Checkout coupon for MX", "reprovado, relatório comentado"),
     entry(60, "review-failed", "acme-blog#17", "Blog sitemap", "Session timed out"),
-    entry(25, "comment", "acme-cart#131", "Coupon field validation", "1 comment", true),
+    entry(25, "comment", "acme-cart#131", "Coupon field validation", "1 comment"),
   ];
 }
 

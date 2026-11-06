@@ -12,7 +12,7 @@ import {
 } from "../../../shared/boardWatcher.js";
 import { BadRequestError } from "../../utils/httpError.js";
 import { sanitizedSpawnEnv } from "../../utils/spawnEnv.js";
-import { BOARD_WATCHER_CONFIG_FILE, type BoardWatcherConfig } from "./config.js";
+import { BOARD_WATCHER_CONFIG_FILE, dropSimulation, type BoardWatcherConfig } from "./config.js";
 import { apiFetch } from "./http.js";
 import { jiraApiBase } from "./jira.js";
 import {
@@ -23,13 +23,13 @@ import {
   SECRET_NAMES,
   type SecretName,
 } from "./secrets.js";
-import { featuresOf, liveOf, writeSwitches } from "./settings.js";
+import { featuresOf, writeSwitches } from "./settings.js";
 
 /**
  * The automations setup panel: each step checks what it's given against the real service (Jira,
  * Bitbucket, the local clones) before saving it to `boardWatcher.json` (ids) or
- * `boardWatcher.secrets.json` (tokens). Nothing runs until the last step turns it on, in
- * simulation, with every real write off.
+ * `boardWatcher.secrets.json` (tokens). Nothing runs until the last step turns it on, with the
+ * automations the user picked (each one on acts for real).
  */
 
 const execFileAsync = promisify(execFile);
@@ -44,17 +44,17 @@ type RawConfig = Record<string, unknown> & {
   bitbucket?: { workspace?: string; localRepos?: Record<string, string> };
   todo?: { enabled?: boolean };
   codeReview?: { enabled?: boolean };
-  review?: { enabled?: boolean };
   test?: { enabled?: boolean };
   notifications?: { instant?: boolean; digest?: boolean };
-  live?: Record<string, boolean>;
 };
 
 async function readRaw(): Promise<RawConfig> {
   const text = await readFile(BOARD_WATCHER_CONFIG_FILE, "utf8").catch(() => null);
   if (text === null) return {};
   try {
-    return JSON.parse(text) as RawConfig;
+    const raw = JSON.parse(text) as RawConfig;
+    dropSimulation(raw);
+    return raw;
   } catch {
     throw new BadRequestError("BAD_SETTING", "boardWatcher.json isn't valid JSON.");
   }
@@ -144,7 +144,6 @@ export async function getSetupStatus(): Promise<AutomationSetupStatus> {
       }),
     ),
     features: featuresOf(raw as Partial<BoardWatcherConfig>),
-    live: liveOf(raw as Partial<BoardWatcherConfig>),
     enabled: raw.enabled === true,
   };
 }
@@ -390,8 +389,7 @@ export async function saveExtras(input: {
   });
 }
 
-/** Last step: turns the watcher on with the automations' modes chosen (simulation unless one
- *  is set to run for real). */
+/** Last step: turns the watcher on with the automations chosen. */
 export async function finishSetup(input: SetupFinishInput): Promise<void> {
   const raw = await readRaw();
   if (!raw.me || !raw.jira?.site)
@@ -401,7 +399,6 @@ export async function finishSetup(input: SetupFinishInput): Promise<void> {
   }
   await patchRaw((next) => {
     next.enabled = true;
-    next.mode = "simulate";
-    writeSwitches(next, input.features, input.live);
+    writeSwitches(next, input.features);
   });
 }
