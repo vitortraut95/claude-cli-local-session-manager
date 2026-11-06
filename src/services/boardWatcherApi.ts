@@ -45,6 +45,7 @@ export type {
   WatcherHistoryGroup,
   WatcherHistoryPage,
   WatcherDecisionAction,
+  WatcherWork,
 } from "../../shared/boardWatcher";
 
 const client = axios.create({

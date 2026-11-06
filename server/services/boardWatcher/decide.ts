@@ -1,5 +1,5 @@
 import { businessMinutesBetween, isBusinessTime, localDay } from "./businessTime.js";
-import type { DecisionContext } from "../../../shared/boardWatcher.js";
+import type { DecisionContext, WatcherWork } from "../../../shared/boardWatcher.js";
 import type { BoardWatcherConfig } from "./config.js";
 import { gradeDescription } from "./descriptionGate.js";
 import {
@@ -31,6 +31,7 @@ export type Decision = {
   subject: string;
   action: DecisionAction;
   reason: string;
+  work?: WatcherWork;
   /** What the action is about, kept in `state.handled`: the test plan comment id, the
    *  description fingerprint. */
   ref?: string;
@@ -110,6 +111,8 @@ export function decideIssues(
     }
   }
 
+  // Everything so far is about developing the user's To Do tasks; the rest, about testing.
+  const devDecisions = decisions.length;
   // Oldest in Wait Test first; the ones people pick up quickly stay with them (grace period).
   waitingTests.sort((a, b) => Date.parse(a.statusSince) - Date.parse(b.statusSince));
   const today = localDay(now, config.businessHours);
@@ -170,7 +173,10 @@ export function decideIssues(
       ref: plan.plan.id,
     });
   }
-  return decisions;
+  return decisions.map((d, index) => ({
+    ...d,
+    work: index < devDecisions ? "dev" : "test",
+  }));
 }
 
 /**

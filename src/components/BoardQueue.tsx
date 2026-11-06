@@ -1,7 +1,16 @@
-import { Info, ListOrdered } from "lucide-react";
+import {
+  ArrowRightCircle,
+  Code2,
+  FlaskConical,
+  GitPullRequest,
+  Info,
+  ListOrdered,
+  RotateCcw,
+  type LucideIcon,
+} from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { TranslationKey } from "../i18n/translations";
-import type { BoardWatcherStatus } from "../services/boardWatcherApi";
+import type { BoardWatcherStatus, WatcherWork } from "../services/boardWatcherApi";
 import type { QueueItem, QueueState } from "../utils/boardQueue";
 import { translateServerText } from "../utils/boardWatcher";
 import { SubjectIcon, SubjectLinks } from "./BoardSubject";
@@ -20,6 +29,48 @@ const STATE_TONE: Record<QueueState, string> = {
   next: "bg-fuchsia-500/10 text-fuchsia-200 ring-fuchsia-400/30",
   waiting: "bg-white/5 text-gray-300 ring-white/15",
 };
+
+const WORK: Record<WatcherWork, { label: TranslationKey; icon: LucideIcon; tone: string }> = {
+  review: {
+    label: "board.queue.work.review",
+    icon: GitPullRequest,
+    tone: "bg-sky-500/10 text-sky-200 ring-sky-400/30",
+  },
+  dev: {
+    label: "board.queue.work.dev",
+    icon: Code2,
+    tone: "bg-emerald-500/10 text-emerald-200 ring-emerald-400/30",
+  },
+  test: {
+    label: "board.queue.work.test",
+    icon: FlaskConical,
+    tone: "bg-amber-500/10 text-amber-200 ring-amber-400/30",
+  },
+  retest: {
+    label: "board.queue.work.retest",
+    icon: RotateCcw,
+    tone: "bg-orange-500/10 text-orange-200 ring-orange-400/30",
+  },
+  progress: {
+    label: "board.queue.work.progress",
+    icon: ArrowRightCircle,
+    tone: "bg-white/5 text-gray-300 ring-white/15",
+  },
+};
+
+/** What the item is: a code review, an implementation, a test… */
+function WorkBadge({ work }: { work: WatcherWork }) {
+  const { t } = useLanguage();
+  const { label, icon: Icon, tone } = WORK[work];
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ${tone}`}
+    >
+      <Icon className="h-3 w-3" aria-hidden="true" />
+      {t(label)}
+    </span>
+  );
+}
 
 export function BoardQueue({ status, items }: { status: BoardWatcherStatus; items: QueueItem[] }) {
   const { t, language } = useLanguage();
@@ -61,7 +112,8 @@ export function BoardQueue({ status, items }: { status: BoardWatcherStatus; item
               <li key={item.subject} className="flex items-start gap-3 py-2">
                 <SubjectIcon subject={item.subject} />
                 <div className="min-w-0 flex-1">
-                  <p className="flex min-w-0 items-baseline gap-2">
+                  <p className="flex min-w-0 items-center gap-2">
+                    {item.work && <WorkBadge work={item.work} />}
                     <span className="shrink-0 font-mono text-xs text-gray-200">{item.subject}</span>
                     {title && (
                       <span className="min-w-0 truncate text-sm text-gray-300" title={title}>
