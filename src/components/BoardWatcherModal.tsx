@@ -323,7 +323,7 @@ export function BoardWatcherModal({ onClose, onOpenAutomation }: BoardWatcherMod
                     <Button
                       variant="unstyled"
                       size="sm"
-                      className="rounded-lg bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-600 text-white shadow-sm hover:brightness-110 focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:outline-none disabled:opacity-60"
+                      className="rounded-lg bg-violet-600 text-white shadow-sm ring-1 ring-violet-400/30 ring-inset hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:outline-none disabled:opacity-60"
                       onClick={() => void runCommand("run", boardWatcherApi.runBoardWatcherNow)}
                       disabled={busy !== null || !status.businessTime}
                       icon={
