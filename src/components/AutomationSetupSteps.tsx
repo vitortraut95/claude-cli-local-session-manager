@@ -1,20 +1,36 @@
-import { CheckCircle2, ExternalLink, Info, Loader2, Search, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ExternalLink,
+  Info,
+  Loader2,
+  Search,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { TranslationKey } from "../i18n/translations";
 import * as boardWatcherApi from "../services/boardWatcherApi";
+import * as preferencesApi from "../services/preferencesApi";
 import type {
   AutomationSetupStatus,
   BitbucketRepoOption,
   BoardColumnsAnswer,
   BoardRole,
   SecretState,
-  SetupFeaturesInput,
 } from "../services/boardWatcherApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import { jenkinsBase } from "../utils/jenkins";
 import { Button } from "./Button";
 import { Input } from "./Input";
-import { Toggle } from "./SettingsControls";
+import {
+  applySwitches,
+  MODE_AUTOMATIONS,
+  switchesForMode,
+  type ModeAutomation,
+  type Switches,
+} from "../../shared/automationModes";
+import { AutomationModesEditor } from "./AutomationModesEditor";
 
 type StepProps = {
   status: AutomationSetupStatus;
@@ -100,6 +116,86 @@ function HowTo({ text, href }: { text: string; href?: string }) {
         )}
       </span>
     </span>
+  );
+}
+
+const TEAMS_STEPS: TranslationKey[] = [
+  "automationSetup.extras.teamsHelp.step1",
+  "automationSetup.extras.teamsHelp.step2",
+  "automationSetup.extras.teamsHelp.step3",
+  "automationSetup.extras.teamsHelp.step4",
+  "automationSetup.extras.teamsHelp.step5",
+];
+
+const JENKINS_STEPS: TranslationKey[] = [
+  "automationSetup.extras.jenkinsHelp.step1",
+  "automationSetup.extras.jenkinsHelp.step2",
+  "automationSetup.extras.jenkinsHelp.step3",
+  "automationSetup.extras.jenkinsHelp.step4",
+  "automationSetup.extras.jenkinsHelp.step5",
+];
+
+/** A numbered how-to, folded until asked for. */
+function StepsHowTo({
+  title,
+  intro,
+  steps,
+  after,
+  link,
+  warning,
+}: {
+  title: string;
+  intro: string;
+  steps: string[];
+  after?: string;
+  link?: { href: string; label: string } | null;
+  warning?: string;
+}) {
+  return (
+    <details className="group mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-gray-800 dark:bg-gray-800/50">
+      <summary className="flex cursor-pointer list-none items-center gap-1 font-medium text-violet-600 dark:text-violet-400 [&::-webkit-details-marker]:hidden">
+        <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        {title}
+        <ChevronDown
+          className="h-3.5 w-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+          aria-hidden="true"
+        />
+      </summary>
+      <div className="mt-2 flex flex-col gap-2 text-gray-600 dark:text-gray-400">
+        <p>{intro}</p>
+        <ol className="list-decimal space-y-1 pl-4">
+          {steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        {link && (
+          <a
+            href={link.href}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 self-start font-medium text-violet-600 underline-offset-2 hover:underline dark:text-violet-400"
+          >
+            {link.label}
+            <ExternalLink className="h-3 w-3" aria-hidden="true" />
+          </a>
+        )}
+        {after && <p>{after}</p>}
+        {warning && <p className="text-amber-700 dark:text-amber-400">{warning}</p>}
+      </div>
+    </details>
+  );
+}
+
+function TeamsHowTo() {
+  const { t } = useLanguage();
+  return (
+    <StepsHowTo
+      title={t("automationSetup.extras.teamsHelp.title")}
+      intro={t("automationSetup.extras.teamsHelp.intro")}
+      steps={TEAMS_STEPS.map((key) => t(key))}
+      after={t("automationSetup.extras.teamsHelp.lost")}
+      warning={t("automationSetup.extras.teamsHelp.secret")}
+    />
   );
 }
 
@@ -631,16 +727,32 @@ export function ReposStep({ status, onDone, onBack }: StepProps) {
 export function ExtrasStep({ status, onDone, onBack, onSkip }: StepProps & { onSkip: () => void }) {
   const { t } = useLanguage();
   const [teamsWebhook, setTeamsWebhook] = useState("");
-  const [jenkinsUser, setJenkinsUser] = useState("");
+  const savedJenkinsUser = status.extras.jenkinsUserId ?? "";
+  const [jenkinsUser, setJenkinsUser] = useState(savedJenkinsUser);
+  const [jenkinsBaseUrl, setJenkinsBaseUrl] = useState<string | null>(null);
+  const jenkinsUserChanged = jenkinsUser.trim() !== savedJenkinsUser;
+
+  useEffect(() => {
+    let cancelled = false;
+    void preferencesApi
+      .fetchPreferences()
+      .then((prefs) => {
+        if (!cancelled) setJenkinsBaseUrl(jenkinsBase(prefs.jenkinsBaseUrl));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [jenkinsToken, setJenkinsToken] = useState("");
   const { busy, error, run } = useStepAction();
-  const nothingTyped = !teamsWebhook.trim() && !jenkinsUser.trim() && !jenkinsToken.trim();
+  const nothingTyped = !teamsWebhook.trim() && !jenkinsUserChanged && !jenkinsToken.trim();
 
   const submit = () =>
     void run(async () => {
       await boardWatcherApi.saveSetupExtras({
         ...(teamsWebhook.trim() ? { teamsWebhook } : {}),
-        ...(jenkinsUser.trim() ? { jenkinsUser } : {}),
+        ...(jenkinsUserChanged ? { jenkinsUser } : {}),
         ...(jenkinsToken.trim() ? { jenkinsToken } : {}),
       });
       await onDone();
@@ -661,16 +773,27 @@ export function ExtrasStep({ status, onDone, onBack, onSkip }: StepProps & { onS
         state={status.extras.teams}
         value={teamsWebhook}
         onChange={setTeamsWebhook}
-        help={<HowTo text={t("automationSetup.extras.teamsHelp")} />}
+        help={<TeamsHowTo />}
       />
       <div className="grid gap-3 sm:grid-cols-2">
-        <SecretField
+        <Field
           id="setup-jenkins-user"
           label={t("automationSetup.extras.jenkinsUser")}
-          state={status.extras.jenkinsUser}
-          value={jenkinsUser}
-          onChange={setJenkinsUser}
-        />
+          help={
+            status.extras.jenkinsUser === "environment"
+              ? t("automationSetup.secret.environment")
+              : t("automationSetup.extras.jenkinsUser.help")
+          }
+        >
+          <Input
+            id="setup-jenkins-user"
+            value={jenkinsUser}
+            autoComplete="username"
+            spellCheck={false}
+            placeholder="seu.id"
+            onChange={(event) => setJenkinsUser(event.target.value)}
+          />
+        </Field>
         <SecretField
           id="setup-jenkins-token"
           label={t("automationSetup.extras.jenkinsToken")}
@@ -680,7 +803,17 @@ export function ExtrasStep({ status, onDone, onBack, onSkip }: StepProps & { onS
         />
       </div>
       <div className="text-xs text-gray-500 dark:text-gray-400">
-        <HowTo text={t("automationSetup.extras.jenkinsHelp")} />
+        <StepsHowTo
+          title={t("automationSetup.extras.jenkinsHelp.title")}
+          intro={t("automationSetup.extras.jenkinsHelp.intro")}
+          steps={JENKINS_STEPS.map((key) => t(key))}
+          link={
+            jenkinsBaseUrl
+              ? { href: jenkinsBaseUrl, label: t("automationSetup.extras.jenkinsHelp.open") }
+              : null
+          }
+          warning={t("automationSetup.extras.jenkinsHelp.secret")}
+        />
       </div>
       <Feedback error={error} />
       <Actions
@@ -695,38 +828,6 @@ export function ExtrasStep({ status, onDone, onBack, onSkip }: StepProps & { onS
   );
 }
 
-const FEATURES: {
-  key: keyof SetupFeaturesInput;
-  label: TranslationKey;
-  help: TranslationKey;
-}[] = [
-  {
-    key: "codeReview",
-    label: "automationSetup.feature.codeReview",
-    help: "automationSetup.feature.codeReview.help",
-  },
-  {
-    key: "reviewSessions",
-    label: "automationSetup.feature.reviewSessions",
-    help: "automationSetup.feature.reviewSessions.help",
-  },
-  {
-    key: "devQueue",
-    label: "automationSetup.feature.devQueue",
-    help: "automationSetup.feature.devQueue.help",
-  },
-  {
-    key: "testQueue",
-    label: "automationSetup.feature.testQueue",
-    help: "automationSetup.feature.testQueue.help",
-  },
-  {
-    key: "notices",
-    label: "automationSetup.feature.notices",
-    help: "automationSetup.feature.notices.help",
-  },
-];
-
 export function FinishStep({
   status,
   onDone,
@@ -735,42 +836,57 @@ export function FinishStep({
   onClose,
 }: StepProps & { allDone: Record<string, boolean>; onClose: () => void }) {
   const { t } = useLanguage();
-  // A first setup turns on only the code review; later visits show what's saved.
-  const [features, setFeatures] = useState<SetupFeaturesInput>(
-    status.enabled
-      ? status.features
-      : {
-          codeReview: true,
-          reviewSessions: false,
-          devQueue: false,
-          testQueue: false,
-          notices: status.extras.teams !== "missing",
-        },
-  );
+  // What an automation needs from the steps before; without it, it stays off.
+  const unavailable: Partial<Record<ModeAutomation | "notices", string>> = {
+    ...(status.board.columns?.todo?.length ? {} : { devQueue: t("automationSetup.needs.todo") }),
+    ...(status.board.columns?.waitTest?.length && status.board.columns.testing?.length
+      ? {}
+      : { testQueue: t("automationSetup.needs.testColumns") }),
+    ...(status.extras.jenkinsUser !== "missing" && status.extras.jenkinsToken !== "missing"
+      ? {}
+      : { rebuild: t("automationSetup.needs.jenkins") }),
+    ...(status.extras.teams !== "missing" ? {} : { notices: t("automationSetup.needs.teams") }),
+  };
+  // A first setup starts with only the code review, in simulation; later visits show what's saved.
+  const [draft, setDraft] = useState<Switches>(() => {
+    const saved = { features: status.features, live: status.live };
+    if (status.enabled) return saved;
+    let first = saved;
+    for (const automation of MODE_AUTOMATIONS) {
+      first = applySwitches(
+        first,
+        switchesForMode(automation, automation === "codeReview" ? "simulate" : "off"),
+      );
+    }
+    const notices = status.extras.teams !== "missing";
+    return applySwitches(first, {
+      features: { instantNotices: notices, digest: notices, reviewUnapprovedDeploying: false },
+      live: {},
+    });
+  });
   const [finished, setFinished] = useState(false);
   const [betaOn, setBetaOn] = useState(true);
   const { busy, error, run } = useStepAction();
-
-  // What a feature needs from the steps before; without it, it can't be turned on.
-  const available: Record<keyof SetupFeaturesInput, boolean> = {
-    codeReview: true,
-    reviewSessions: Boolean(status.claude.installed),
-    devQueue: Boolean(status.board.columns?.todo?.length),
-    testQueue: Boolean(
-      status.board.columns?.waitTest?.length && status.board.columns.testing?.length,
-    ),
-    notices: status.extras.teams !== "missing",
-  };
   const requiredDone = ["claude", "jira", "board", "bitbucket", "repos"].every((s) => allDone[s]);
 
   const submit = () =>
     void run(async () => {
-      const chosen = Object.fromEntries(
-        FEATURES.map(({ key }) => [key, features[key] && available[key]]),
-      ) as SetupFeaturesInput;
+      // What isn't available is saved off, whatever the draft says.
+      let chosen = draft;
+      for (const automation of MODE_AUTOMATIONS) {
+        if (unavailable[automation]) {
+          chosen = applySwitches(chosen, switchesForMode(automation, "off"));
+        }
+      }
+      if (unavailable.notices) {
+        chosen = applySwitches(chosen, {
+          features: { instantNotices: false, digest: false },
+          live: {},
+        });
+      }
       await boardWatcherApi.finishSetup(chosen);
-      const status = await boardWatcherApi.fetchBoardWatcherStatus().catch(() => null);
-      setBetaOn(status !== null);
+      const watcher = await boardWatcherApi.fetchBoardWatcherStatus().catch(() => null);
+      setBetaOn(watcher !== null);
       setFinished(true);
       await onDone();
     });
@@ -778,33 +894,12 @@ export function FinishStep({
   return (
     <div className="flex flex-col gap-3">
       <Description>{t("automationSetup.finish.description")}</Description>
-      <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
-        {FEATURES.map(({ key, label, help }) => (
-          <li key={key} className="flex items-center gap-3 px-3 py-2.5">
-            <div className="min-w-0 flex-1">
-              <p
-                className={`text-sm font-medium ${
-                  available[key]
-                    ? "text-gray-900 dark:text-gray-100"
-                    : "text-gray-400 dark:text-gray-500"
-                }`}
-              >
-                {t(label)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t(help)}</p>
-            </div>
-            {available[key] ? (
-              <Toggle
-                checked={features[key]}
-                busy={false}
-                onChange={(checked) => setFeatures((current) => ({ ...current, [key]: checked }))}
-              />
-            ) : (
-              <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
-            )}
-          </li>
-        ))}
-      </ul>
+      <AutomationModesEditor
+        switches={draft}
+        unavailable={unavailable}
+        disabled={finished}
+        onChange={(input) => setDraft((current) => applySwitches(current, input))}
+      />
       <Feedback
         error={error}
         ok={

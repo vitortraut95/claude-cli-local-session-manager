@@ -6,7 +6,7 @@ import type { TerminalLayout } from "../services/preferencesApi";
 import { Button } from "./Button";
 import { LaunchLayoutButton } from "./LaunchLayoutButton";
 
-type ModalSize = "sm" | "md" | "lg" | "xl" | "xxl" | "xxxl";
+type ModalSize = "sm" | "md" | "lg" | "xl" | "xxl" | "xxxl" | "full";
 
 const SIZE_CLASSES: Record<ModalSize, string> = {
   sm: "max-w-sm",
@@ -15,6 +15,8 @@ const SIZE_CLASSES: Record<ModalSize, string> = {
   xl: "max-w-4xl",
   xxl: "max-w-6xl",
   xxxl: "max-w-[84rem]",
+  // The whole window (minus the overlay's gutter), for dashboards like the Board.
+  full: "h-[96dvh] max-w-none",
 };
 
 type ModalProps = {
@@ -38,6 +40,9 @@ type ModalProps = {
    *  Cancel/Confirm so it can't be mistaken for either of them. */
   onSecondary?: () => void;
   secondaryLabel?: string;
+  /** "night": always the dark theme inside, on a deep background with a violet glow (the
+   *  Board), whatever the app's theme. */
+  tone?: "default" | "night";
 };
 
 /**
@@ -64,6 +69,7 @@ export function Modal({
   icon,
   onSecondary,
   secondaryLabel,
+  tone = "default",
 }: ModalProps) {
   const { t } = useLanguage();
   const resolvedConfirmLabel = confirmLabel ?? t("modal.confirmDefault");
@@ -86,13 +92,25 @@ export function Modal({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600/80 px-4">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center px-4 ${
+        tone === "night" ? "dark bg-black/85" : "bg-gray-600/80"
+      }`}
+    >
       <div
         role="dialog"
         aria-modal="true"
-        className={`flex max-h-[98dvh] w-full ${SIZE_CLASSES[size]} flex-col rounded-xl bg-white shadow-xl dark:bg-gray-900`}
+        className={`flex max-h-[98dvh] w-full ${SIZE_CLASSES[size]} flex-col rounded-xl shadow-xl ${
+          tone === "night"
+            ? "border border-white/10 bg-gray-950 bg-[radial-gradient(ellipse_80%_40%_at_50%_-10%,rgb(139_92_246/0.22),transparent),radial-gradient(ellipse_50%_30%_at_100%_0%,rgb(217_70_239/0.10),transparent)] shadow-violet-950/40"
+            : "bg-white dark:bg-gray-900"
+        }`}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-8 py-4 dark:border-gray-800">
+        <div
+          className={`flex items-center justify-between gap-3 border-b px-8 py-4 ${
+            tone === "night" ? "border-white/10" : "border-gray-100 dark:border-gray-800"
+          }`}
+        >
           <div className="flex items-start gap-3">
             {icon}
             <h2
@@ -112,7 +130,7 @@ export function Modal({
           </Button>
         </div>
 
-        <div className="overflow-y-auto px-8 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-8 py-4">{children}</div>
 
         {(onConfirm ?? onConfirmLaunch ?? onCancel) && (
           <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-8 py-4 dark:border-gray-800">

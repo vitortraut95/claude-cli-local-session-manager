@@ -5,100 +5,18 @@ import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
 import * as boardWatcherApi from "../services/boardWatcherApi";
 import type {
-  AutomationFeatures,
   AutomationLimits,
-  AutomationLive,
   AutomationSettings,
   AutomationSettingsInput,
 } from "../services/boardWatcherApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { HHMM_PATTERN, LIMIT_BOUNDS } from "../utils/boardWatcher";
 import { Input } from "./Input";
+import { AutomationModesEditor, type AutomationFocus } from "./AutomationModesEditor";
 import { AutomationSetupModal } from "./AutomationSetupModal";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { SettingRow } from "./SettingRow";
-
-type FeatureRow = {
-  key: keyof AutomationFeatures;
-  label: TranslationKey;
-  description: TranslationKey;
-};
-
-const FEATURE_ROWS: FeatureRow[] = [
-  {
-    key: "devQueue",
-    label: "automation.feature.devQueue",
-    description: "automation.feature.devQueue.description",
-  },
-  {
-    key: "codeReview",
-    label: "automation.feature.codeReview",
-    description: "automation.feature.codeReview.description",
-  },
-  {
-    key: "reviewSessions",
-    label: "automation.feature.reviewSessions",
-    description: "automation.feature.reviewSessions.description",
-  },
-  {
-    key: "reviewUnapprovedDeploying",
-    label: "automation.feature.reviewUnapprovedDeploying",
-    description: "automation.feature.reviewUnapprovedDeploying.description",
-  },
-  {
-    key: "testQueue",
-    label: "automation.feature.testQueue",
-    description: "automation.feature.testQueue.description",
-  },
-  {
-    key: "instantNotices",
-    label: "automation.feature.instantNotices",
-    description: "automation.feature.instantNotices.description",
-  },
-  {
-    key: "digest",
-    label: "automation.feature.digest",
-    description: "automation.feature.digest.description",
-  },
-];
-
-const LIVE_ROWS: {
-  key: keyof AutomationLive;
-  label: TranslationKey;
-  description: TranslationKey;
-}[] = [
-  {
-    key: "devQueue",
-    label: "automation.live.devQueue",
-    description: "automation.live.devQueue.description",
-  },
-  {
-    key: "startProgress",
-    label: "automation.live.startProgress",
-    description: "automation.live.startProgress.description",
-  },
-  {
-    key: "testClaim",
-    label: "automation.live.testClaim",
-    description: "automation.live.testClaim.description",
-  },
-  {
-    key: "comments",
-    label: "automation.live.comments",
-    description: "automation.live.comments.description",
-  },
-  {
-    key: "approve",
-    label: "automation.live.approve",
-    description: "automation.live.approve.description",
-  },
-  {
-    key: "rebuild",
-    label: "automation.live.rebuild",
-    description: "automation.live.rebuild.description",
-  },
-];
 
 const LIMIT_LABELS: Record<keyof AutomationLimits, TranslationKey> = {
   approveDelayMinutes: "automation.limit.approveDelayMinutes",
@@ -142,41 +60,14 @@ function applyInput(
   };
 }
 
-type SwitchProps = {
-  checked: boolean;
-  disabled?: boolean;
-  label: string;
-  onChange: (checked: boolean) => void;
-};
-
-function Switch({ checked, disabled = false, label, onChange }: SwitchProps) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/30 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-gray-100/30 ${
-        checked ? "bg-gray-900 dark:bg-gray-100" : "bg-gray-300 dark:bg-gray-700"
-      }`}
-    >
-      <span
-        className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform dark:bg-gray-900 ${
-          checked ? "translate-x-[1.125rem]" : "translate-x-0.5"
-        }`}
-      />
-    </button>
-  );
-}
-
 type AutomationModalProps = {
   onClose: () => void;
+  /** The automation whose card is highlighted when it opens (a mode chip on the Board). */
+  focus?: AutomationFocus;
 };
 
 /** The automation switches, limits and business hours. Every change is saved right away. */
-export function AutomationModal({ onClose }: AutomationModalProps) {
+export function AutomationModal({ onClose, focus }: AutomationModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [settings, setSettings] = useState<AutomationSettings | null>(null);
@@ -249,8 +140,6 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
     void save({ businessHours: { days } });
   };
 
-  const features = settings?.features;
-  const codeReviewOn = features?.codeReview ?? false;
   const anyLive = settings ? Object.values(settings.live).some(Boolean) : false;
 
   return (
@@ -285,89 +174,38 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {t("automation.enabled")}
+              {!settings.enabled && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {t("automation.setupUnfinished")}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {t("automation.enabled.description")}
-                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => setSetupOpen(true)}
+                    icon={<Settings className="h-3.5 w-3.5" />}
+                  >
+                    {t("settings.boardAutomations.setup")}
+                  </Button>
                 </div>
-                <Switch
-                  checked={settings.enabled}
-                  label={t("automation.enabled")}
-                  onChange={(enabled) => void save({ enabled })}
-                />
-              </div>
+              )}
 
               <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-                <div className="flex flex-col gap-6">
-                  <section className="flex flex-col gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+                <section className="flex flex-col gap-3">
+                  <div>
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {t("automation.features")}
+                      {t("automationModes.title")}
                     </h3>
-                    {FEATURE_ROWS.map((row) => {
-                      const nested =
-                        row.key === "reviewSessions" || row.key === "reviewUnapprovedDeploying";
-                      const disabled = nested && !codeReviewOn;
-                      return (
-                        <div
-                          key={row.key}
-                          className={
-                            nested ? "ml-6 border-l border-gray-200 pl-4 dark:border-gray-800" : ""
-                          }
-                        >
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="min-w-0">
-                              <p className="text-sm text-gray-900 dark:text-gray-100">
-                                {t(row.label)}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {t(row.description)}
-                              </p>
-                              {disabled && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  {t("automation.feature.reviewSessions.needsReview")}
-                                </p>
-                              )}
-                            </div>
-                            <Switch
-                              checked={features?.[row.key] ?? false}
-                              disabled={disabled}
-                              label={t(row.label)}
-                              onChange={(value) => void save({ features: { [row.key]: value } })}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </section>
-                  <section className="flex flex-col gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {t("automation.live")}
-                      </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {t("automation.live.description")}
-                      </p>
-                    </div>
-                    {LIVE_ROWS.map((row) => (
-                      <div key={row.key} className="flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="text-sm text-gray-900 dark:text-gray-100">{t(row.label)}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {t(row.description)}
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.live[row.key]}
-                          label={t(row.label)}
-                          onChange={(value) => void save({ live: { [row.key]: value } })}
-                        />
-                      </div>
-                    ))}
-                  </section>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {t("automationModes.intro")}
+                    </p>
+                  </div>
+                  <AutomationModesEditor
+                    switches={{ features: settings.features, live: settings.live }}
+                    onChange={(input) => void save(input)}
+                    focus={focus}
+                  />
+                </section>
+                <div className="flex flex-col gap-6">
                   <section className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                       {t("automation.hours")}
@@ -425,37 +263,37 @@ export function AutomationModal({ onClose }: AutomationModalProps) {
                       })}
                     </p>
                   </section>
+                  <section className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {t("automation.limits")}
+                    </h3>
+                    {(Object.keys(LIMIT_BOUNDS) as (keyof AutomationLimits)[]).map((field) => (
+                      <SettingRow
+                        key={field}
+                        label={t(LIMIT_LABELS[field])}
+                        description={t(LIMIT_DESCRIPTIONS[field])}
+                        controlWidth="w-24"
+                        control={
+                          <Input
+                            type="number"
+                            min={LIMIT_BOUNDS[field][0]}
+                            max={LIMIT_BOUNDS[field][1]}
+                            value={drafts[field] ?? String(settings.limits[field])}
+                            aria-label={t(LIMIT_LABELS[field])}
+                            onChange={(event) =>
+                              setDrafts((current) => ({ ...current, [field]: event.target.value }))
+                            }
+                            onBlur={() => commitLimit(field)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") commitLimit(field);
+                            }}
+                            className="py-1"
+                          />
+                        }
+                      />
+                    ))}
+                  </section>
                 </div>
-                <section className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {t("automation.limits")}
-                  </h3>
-                  {(Object.keys(LIMIT_BOUNDS) as (keyof AutomationLimits)[]).map((field) => (
-                    <SettingRow
-                      key={field}
-                      label={t(LIMIT_LABELS[field])}
-                      description={t(LIMIT_DESCRIPTIONS[field])}
-                      controlWidth="w-24"
-                      control={
-                        <Input
-                          type="number"
-                          min={LIMIT_BOUNDS[field][0]}
-                          max={LIMIT_BOUNDS[field][1]}
-                          value={drafts[field] ?? String(settings.limits[field])}
-                          aria-label={t(LIMIT_LABELS[field])}
-                          onChange={(event) =>
-                            setDrafts((current) => ({ ...current, [field]: event.target.value }))
-                          }
-                          onBlur={() => commitLimit(field)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") commitLimit(field);
-                          }}
-                          className="py-1"
-                        />
-                      }
-                    />
-                  ))}
-                </section>
               </div>
             </>
           )}

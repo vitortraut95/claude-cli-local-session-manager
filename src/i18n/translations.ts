@@ -14,6 +14,7 @@ import { history } from "./locales/history";
 import { preview } from "./locales/preview";
 import { boardWatcher } from "./locales/boardWatcher";
 import { automationSetup } from "./locales/automationSetup";
+import { automationModes } from "./locales/automationModes";
 
 export type { Language };
 
@@ -49,6 +50,7 @@ export const translations = {
   ...preview,
   ...boardWatcher,
   ...automationSetup,
+  ...automationModes,
 } satisfies Record<string, Dict>;
 
 export type TranslationKey = keyof typeof translations;

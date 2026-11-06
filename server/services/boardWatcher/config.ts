@@ -85,6 +85,8 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
   /** `unapprovedDeploying`: also review the PRs nobody approved whose ticket is in `deploying`. */
   codeReview?: { enabled?: boolean; unapprovedDeploying?: boolean };
   notifications?: { instant?: boolean; digest?: boolean };
+  /** Off = a preview build failed for infra reasons isn't run again (nor recorded as would be). */
+  rebuild?: { enabled?: boolean };
   /** "Point to homolog": the repos it's offered for and, per repo, the homolog pages to open
    *  once it's deployed. */
   homolog?: { repos: string[]; urls?: Record<string, string[]> };

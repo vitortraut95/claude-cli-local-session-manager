@@ -95,6 +95,7 @@ import {
   stopAutomations,
 } from "./boardWatcher/beta.js";
 import { onPreferencesSaved } from "./preferencesService.js";
+import { noteActivity, startActivity } from "./boardWatcher/activity.js";
 import {
   emptyWatcherState,
   prSubject,
@@ -119,7 +120,16 @@ const STATE_FILE = path.join(REPO_ROOT, "boardWatcher-state.json");
 const BUSINESS_INTERVAL_MS = 10 * 60_000;
 const OFF_HOURS_INTERVAL_MS = 60 * 60_000;
 /** Local times the digest goes out, on business days. */
-const DIGEST_TIMES = ["09:00", "18:00"];
+/** When the digest goes out: at the start of business hours and DIGEST_BEFORE_END_MIN before
+ *  they end (nothing is sent once they're over). */
+const DIGEST_BEFORE_END_MIN = 10;
+
+function digestTimes(config: BoardWatcherConfig): string[] {
+  const { start, end } = config.businessHours;
+  const evening = Math.max(toMinutes(start), toMinutes(end) - DIGEST_BEFORE_END_MIN);
+  const hhmm = `${String(Math.floor(evening / 60)).padStart(2, "0")}:${String(evening % 60).padStart(2, "0")}`;
+  return [start, hhmm];
+}
 /** The same failure is alerted at most this often. */
 const ERROR_ALERT_EVERY_MS = 2 * 60 * 60_000;
 
@@ -135,6 +145,8 @@ let timer: NodeJS.Timeout | null = null;
 let nextLookAt: string | null = null;
 let running = false;
 let lastDecisions: Decision[] = [];
+/** Titles of the last look's tickets and PRs, for the Board. */
+let lastTitles = new Map<string, string>();
 /** Per look: when, how long and the API calls since the previous one (for the last hour's sum). */
 const looks: { at: number; ms: number; calls: WatcherCalls["lastLook"]; retries: number }[] = [];
 const HOUR_MS = 60 * 60_000;
@@ -185,7 +197,7 @@ function dueDigestSlot(now: Date, config: BoardWatcherConfig): Date | null {
   if (!days.includes(local.getDay())) return null;
   const offsetMs = local.getTime() - now.getTime();
   let due: Date | null = null;
-  for (const time of DIGEST_TIMES) {
+  for (const time of digestTimes(config)) {
     const [h, m] = time.split(":").map(Number);
     const slotLocal = new Date(local);
     slotLocal.setHours(h ?? 0, m ?? 0, 0, 0);
@@ -285,8 +297,12 @@ async function lookLocked(): Promise<void> {
   lastConfig = config;
   const state = await loadState();
   const signal = automationSignal();
+  let endLook: (() => void) | null = null;
   try {
     if (!config?.enabled || !(await automationsOn())) return;
+    // Eye closed: nothing at all until business hours start again.
+    if (!isBusinessTime(now, config.businessHours)) return;
+    endLook = startActivity("look");
     const onReview = config.review?.enabled
       ? (pr: WatcherState["pendingReviews"][number]) => {
           if (!state.pendingReviews.some((p) => prSubject(p) === prSubject(pr))) {
@@ -322,12 +338,32 @@ async function lookLocked(): Promise<void> {
     let issues: BoardIssue[] = [];
     let prs: PullRequest[] = [];
     const { board, codeHost } = deps;
-    deps.board = { ...board, listIssues: async () => (issues = await board.listIssues()) };
+    deps.board = {
+      ...board,
+      listIssues: async () => {
+        issues = await board.listIssues();
+        noteActivity("issues", undefined, String(issues.length));
+        return issues;
+      },
+    };
     deps.codeHost = {
       ...codeHost,
-      listPullRequests: async () => (prs = await codeHost.listPullRequests()),
+      listPullRequests: async () => {
+        prs = await codeHost.listPullRequests();
+        noteActivity("prs", undefined, String(prs.length));
+        return prs;
+      },
     };
     lastDecisions = await runTick(deps, state, config, now);
+    lastTitles = new Map([
+      ...issues.map((i) => [i.key, i.summary] as const),
+      ...prs.map((p) => [prSubject(p), p.title] as const),
+    ]);
+    noteActivity(
+      "decisions",
+      undefined,
+      String(lastDecisions.filter((d) => d.action !== "wait" && d.action !== "skip").length),
+    );
     diagnoseDecisionBuilds(lastDecisions);
     await warnUnwatchedPullRequests(config, issues, state);
     await noticeNewsOnMyPullRequests(config, prs, state, now);
@@ -348,13 +384,21 @@ async function lookLocked(): Promise<void> {
   } catch (err) {
     if (signal.aborted) {
       recordEvent("boardWatcher.stopped", { during: "look" });
+      noteActivity("stopped", undefined, "look");
       return;
     }
     const message = err instanceof Error ? err.message : String(err);
     console.warn("[board-watcher] Look failed:", message);
+    noteActivity("lookFailed", undefined, message);
     recordEvent("boardWatcher.error", { message });
     alertError(state, message, now);
   } finally {
+    if (endLook) {
+      endLook();
+      if (state.lastTickAt === now.toISOString()) {
+        noteActivity("lookDone", undefined, String(Math.round((Date.now() - started) / 1000)));
+      }
+    }
     if (config?.enabled) await saveState(state);
     running = false;
     schedule(config);
@@ -389,7 +433,7 @@ async function watchPreviewBuilds(
       state.handled[key] = new Date().toISOString();
       void (url ? diagnoseOnce(url, issue.key) : Promise.resolve(null)).then(async (diagnosis) => {
         const rebuild =
-          url && diagnosis && diagnosis.kind !== "code"
+          url && diagnosis && diagnosis.kind !== "code" && config.rebuild?.enabled !== false
             ? await rebuildOnce(config, `rebuild:${repo}:${build.hash}`, url)
             : null;
         noticePreviewFailed(
@@ -444,6 +488,7 @@ async function rebuildOnce(
   if (already) return "again";
   if (!config.live?.rebuild) return "would";
   const ok = await rebuildJob(url).catch(() => false);
+  noteActivity("rebuild", key.replace(/^rebuild:/, ""), ok ? "done" : "failed");
   await serial(async () => {
     const state = await loadState();
     state.handled[key] = new Date().toISOString();
@@ -460,9 +505,12 @@ const diagnosing = new Set<string>();
 function diagnoseOnce(url: string, subject: string): Promise<BuildDiagnosis | null> {
   if (diagnoses.has(url)) return Promise.resolve(diagnoses.get(url) ?? null);
   diagnosing.add(url);
+  const endDiagnose = startActivity("diagnose", subject);
   return diagnoseBuild(url)
     .catch(() => null)
     .then((diagnosis) => {
+      endDiagnose();
+      noteActivity("diagnosed", subject, diagnosis?.kind ?? "unknown");
       if (diagnoses.size > 200) diagnoses.clear();
       diagnoses.set(url, diagnosis);
       diagnosing.delete(url);
@@ -682,13 +730,25 @@ function schedule(config: BoardWatcherConfig | null): void {
   if (timer) clearTimeout(timer);
   const now = new Date();
   const businessTime = config ? isBusinessTime(now, config.businessHours) : false;
-  // Off hours, the first look of the day is right when business hours start.
-  const start = config && !businessTime ? nextBusinessStart(now, config.businessHours) : null;
-  const delay = businessTime
-    ? BUSINESS_INTERVAL_MS
-    : Math.min(OFF_HOURS_INTERVAL_MS, start ? start.getTime() - now.getTime() : Infinity);
+  let delay: number;
+  if (businessTime) {
+    // Every few minutes, so one look lands in the digest's slot before business hours end.
+    delay = BUSINESS_INTERVAL_MS;
+  } else {
+    // Eye closed: nothing until business hours start again.
+    const start = config ? nextBusinessStart(now, config.businessHours) : null;
+    delay = start ? Math.max(60_000, start.getTime() - now.getTime()) : OFF_HOURS_INTERVAL_MS;
+  }
   nextLookAt = new Date(Date.now() + delay).toISOString();
   timer = setTimeout(() => void look(), delay);
+}
+
+/** A hold is told once in the live feed, not on every look while it lasts. */
+let lastBlockedNoted: string | null = null;
+function noteBlocked(reason: string): void {
+  if (reason === lastBlockedNoted) return;
+  lastBlockedNoted = reason;
+  noteActivity("blocked", undefined, reason);
 }
 
 /** Runs the pending review and test sessions one at a time (reviews first: they're quick). A
@@ -702,6 +762,8 @@ async function drainJobs(): Promise<void> {
       const config = await loadBoardWatcherConfig().catch(() => null);
       const state = await loadState();
       if (!config?.enabled || !config.bitbucket || !(await automationsOn())) return;
+      // Eye closed: no review or test session starts (queued ones wait for the morning).
+      if (!isBusinessTime(new Date(), config.businessHours)) return;
       const signal = automationSignal();
       // A review ends in a comment or an approval, which only happen in business hours: the
       // session waits for them (queued reviews start with the next look then).
@@ -717,6 +779,7 @@ async function drainJobs(): Promise<void> {
         const usage = await getMaxUsagePercent(true);
         if (usage !== null && usage >= maxUsagePercent) {
           jobsBlockedBy = `plan usage at ${usage}% (limit ${maxUsagePercent}%)`;
+          noteBlocked(jobsBlockedBy);
           return;
         }
       }
@@ -726,6 +789,7 @@ async function drainJobs(): Promise<void> {
         const network = await networkProblem(config.test?.requires);
         if (network) {
           jobsBlockedBy = `tests waiting: ${network}`;
+          noteBlocked(jobsBlockedBy);
           noticeNetworkBlocked(network);
           return;
         }
@@ -743,6 +807,7 @@ async function drainJobs(): Promise<void> {
         }
         if (!ready) {
           jobsBlockedBy = `tests waiting: ${waits.join("; ")}`;
+          noteBlocked(jobsBlockedBy);
           return;
         }
         await runTestJob(ready, config, signal);
@@ -765,6 +830,7 @@ async function drainJobs(): Promise<void> {
             state.pendingReviews = state.pendingReviews.filter((p) => prSubject(p) !== subject);
             await saveState(state);
           });
+          noteActivity("reviewSkipped", subject, head.state !== "OPEN" ? head.state : "new push");
           recordEvent("boardWatcher.reviewSkipped", {
             subject,
             reason: head.state !== "OPEN" ? head.state : "new push",
@@ -772,6 +838,7 @@ async function drainJobs(): Promise<void> {
           continue;
         }
         const openPrs = await listOpenPullRequests(credentials, [pr.repo]);
+        const endReview = startActivity("review", subject);
         const output = await runClaudeReview(pr, {
           repoPath,
           signal,
@@ -788,7 +855,7 @@ async function drainJobs(): Promise<void> {
                 findings: state.reviewedCommits?.[subject]?.findings ?? [],
               }
             : state.reviewedCommits?.[subject],
-        });
+        }).finally(endReview);
         await serial(async () => {
           const state = await loadState();
           state.pendingReviews = state.pendingReviews.filter((p) => prSubject(p) !== subject);
@@ -826,14 +893,17 @@ async function drainJobs(): Promise<void> {
           noticeReviewBlocked(config, pr, output.summary, output.findings);
         }
         outcome = `${output.findings.length} finding(s), ${output.verdict}`;
+        noteActivity("reviewDone", subject, outcome);
       } catch (err) {
         // Switched off: the PR stays queued for when it's back on, with no failure told.
         if (signal.aborted) {
           recordEvent("boardWatcher.stopped", { during: "review", subject });
+          noteActivity("stopped", subject, "review");
           return;
         }
         outcome = err instanceof Error ? err.message : String(err);
         console.warn(`[board-watcher] Review of ${subject} failed:`, outcome);
+        noteActivity("reviewFailed", subject, outcome);
         await serial(async () => {
           const state = await loadState();
           state.pendingReviews = state.pendingReviews.filter((p) => prSubject(p) !== subject);
@@ -941,9 +1011,11 @@ async function runTestJob(
   const { issue, planId } = job;
   const started = Date.now();
   let outcome = "";
+  const endTest = startActivity("test", issue.key);
   try {
     if ((config.test?.runner ?? "queue") === "queue") {
       outcome = await queueTestJob(job, config);
+      noteActivity("testDone", issue.key, outcome);
       return;
     }
     const plan = issue.comments.find((c) => c.id === planId);
@@ -979,14 +1051,17 @@ async function runTestJob(
       dir: output.evidenceDir,
     });
     outcome = output.verdict;
+    noteActivity("testDone", issue.key, output.verdict);
   } catch (err) {
     // Switched off: the test stays queued for when it's back on, with no failure told.
     if (signal.aborted) {
       recordEvent("boardWatcher.stopped", { during: "test", key: issue.key });
+      noteActivity("stopped", issue.key, "test");
       return;
     }
     outcome = err instanceof Error ? err.message : String(err);
     console.warn(`[board-watcher] Test of ${issue.key} failed:`, outcome);
+    noteActivity("testFailed", issue.key, outcome);
     await recordAction({
       action: "test-failed",
       subject: issue.key,
@@ -995,6 +1070,7 @@ async function runTestJob(
     });
     noticeJobFailed("test", issue.key, issue.summary, outcome, issueUrl(config, issue.key));
   } finally {
+    endTest();
     if (!signal.aborted) await finishTestJob(issue.key, outcome, started);
   }
 }
@@ -1028,6 +1104,7 @@ async function noticeStoreChange(change: StoreChange): Promise<void> {
   const config = await loadBoardWatcherConfig().catch(() => null);
   if (!config?.enabled || config.notifications?.instant === false) return;
   if (!(await automationsOn())) return;
+  if (!isBusinessTime(new Date(), config.businessHours)) return;
   if (change.kind === "queue-error") {
     noticeQueueError(change.key, change.error);
     return;
@@ -1050,11 +1127,13 @@ async function noticeStoreChange(change: StoreChange): Promise<void> {
 function onAutomationsSwitch(on: boolean): void {
   if (on) {
     rearmAutomations();
+    noteActivity("switchOn");
     recordEvent("boardWatcher.switch", { on });
     void look();
     return;
   }
   stopAutomations();
+  noteActivity("switchOff");
   if (timer) clearTimeout(timer);
   timer = null;
   nextLookAt = null;
@@ -1096,11 +1175,13 @@ export function startBoardWatcher(): void {
 async function remindNetworkAtStart(): Promise<void> {
   const config = await loadBoardWatcherConfig().catch(() => null);
   if (!config?.enabled || config.test?.enabled === false || !(await automationsOn())) return;
+  if (!isBusinessTime(new Date(), config.businessHours)) return;
   const problem = await networkProblem(config.test?.requires);
   if (problem) remindOnDesktop(problem);
 }
 
 /** A look right now, instead of waiting for the next one. */
+/** "Look now" (the Board); nothing outside business hours, like every other look. */
 export async function runBoardWatcherNow(): Promise<BoardWatcherStatus> {
   await look();
   return getBoardWatcherStatus();
@@ -1175,6 +1256,15 @@ export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
     calls: callStats(),
     testClaimsToday: state.testClaims.day === today ? state.testClaims.count : 0,
     lastDecisions: lastDecisions.map((d) => decisionView(d, config)),
+    titles: Object.fromEntries([
+      ...lastTitles,
+      ...state.pendingReviews.map((p) => [prSubject(p), p.title] as const),
+      ...state.pendingTests.map((t) => [t.issue.key, t.issue.summary] as const),
+    ]),
+    linkBases: {
+      jira: config?.jira ? `https://${config.jira.site}/browse/` : null,
+      bitbucket: config?.bitbucket ? `https://bitbucket.org/${config.bitbucket.workspace}/` : null,
+    },
   };
 }
 

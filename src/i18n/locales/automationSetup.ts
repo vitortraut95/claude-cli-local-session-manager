@@ -122,54 +122,104 @@ export const automationSetup = {
     "Opcional. Sem eles funciona igual, só que os avisos ficam no app e os builds que falham não são diagnosticados.",
   ),
   "automationSetup.extras.teams": dict("Teams workflow URL", "URL do workflow do Teams"),
-  "automationSetup.extras.teamsHelp": dict(
-    'In the Teams channel (or chat) for the notices: ⋯ → Workflows → "Post to a channel when a webhook request is received" → finish and copy the URL it shows.',
-    'No canal (ou chat) do Teams dos avisos: ⋯ → Workflows → "Post to a channel when a webhook request is received" → conclua e copie a URL que ele mostra.',
+  "automationSetup.extras.teamsHelp.title": dict(
+    "How to create the Teams workflow",
+    "Como criar o workflow do Teams",
+  ),
+  "automationSetup.extras.teamsHelp.intro": dict(
+    "The notices are personal (your PRs, your tests): a channel only you use, or a chat with yourself, works best.",
+    "Os avisos são pessoais (seus PRs, seus testes): o melhor é um canal só seu ou um chat com você mesmo.",
+  ),
+  "automationSetup.extras.teamsHelp.step1": dict(
+    "In Teams, open the channel where the notices should arrive.",
+    "No Teams, abra o canal onde os avisos devem chegar.",
+  ),
+  "automationSetup.extras.teamsHelp.step2": dict(
+    "Click ⋯ (More options) next to the channel's name and pick Workflows. In a chat, the ⋯ is at the top of the chat.",
+    "Clique em ⋯ (Mais opções) ao lado do nome do canal e escolha Workflows. Num chat, o ⋯ fica no topo da conversa.",
+  ),
+  "automationSetup.extras.teamsHelp.step3": dict(
+    'Pick the template "Post to a channel when a webhook request is received" (in a chat: "Post to a chat when a webhook request is received"). Search for "webhook" if it\'s not on the list.',
+    'Escolha o modelo "Post to a channel when a webhook request is received" (num chat: "Post to a chat when a webhook request is received"). Busque por "webhook" se ele não estiver na lista.',
+  ),
+  "automationSetup.extras.teamsHelp.step4": dict(
+    "Give it a name (e.g. Board automations), check the team and channel it shows, then Next → Add workflow.",
+    "Dê um nome (por exemplo, Automações do Board), confira a equipe e o canal que ele mostra e clique em Próximo → Adicionar fluxo de trabalho.",
+  ),
+  "automationSetup.extras.teamsHelp.step5": dict(
+    "At the end it shows a URL: copy it and paste it above.",
+    "No fim ele mostra uma URL: copie e cole no campo acima.",
+  ),
+  "automationSetup.extras.teamsHelp.lost": dict(
+    "Lost the URL? Teams → Workflows app → open the workflow → Edit → the first step (When a Teams webhook request is received) → HTTP URL.",
+    "Perdeu a URL? Teams → app Workflows → abra o fluxo → Editar → primeiro passo (When a Teams webhook request is received) → HTTP URL.",
+  ),
+  "automationSetup.extras.teamsHelp.secret": dict(
+    "Treat it like a password: anyone with it can post in that channel.",
+    "Trate como senha: quem tiver a URL consegue postar nesse canal.",
   ),
   "automationSetup.extras.jenkinsUser": dict("Jenkins user", "Usuário do Jenkins"),
   "automationSetup.extras.jenkinsToken": dict("Jenkins API token", "API token do Jenkins"),
-  "automationSetup.extras.jenkinsHelp": dict(
-    "In Jenkins: your name (top right) → Security (or Configure) → API Token → Add new token. Used to read why a build failed.",
-    "No Jenkins: seu nome (canto superior direito) → Security (ou Configure) → API Token → Add new token. Usado pra ler por que um build falhou.",
+  "automationSetup.extras.jenkinsUser.help": dict(
+    "Your Jenkins user id, as in your profile's address (…/user/<id>/), not the display name.",
+    "O seu ID de usuário no Jenkins, como na URL do seu perfil (…/user/<id>/), não o nome que aparece na tela.",
+  ),
+  "automationSetup.extras.jenkinsHelp.title": dict(
+    "How to get the Jenkins user and token",
+    "Como conseguir o usuário e o token do Jenkins",
+  ),
+  "automationSetup.extras.jenkinsHelp.intro": dict(
+    'Used to read why a build failed (the diagnosis), to run a build again and for "Point to homolog".',
+    'Usados pra ler por que um build falhou (o diagnóstico), rodar build de novo e o "Apontar pra homolog".',
+  ),
+  "automationSetup.extras.jenkinsHelp.step1": dict(
+    "Open the team's Jenkins and log in.",
+    "Abra o Jenkins do time e faça login.",
+  ),
+  "automationSetup.extras.jenkinsHelp.step2": dict(
+    "Click your name at the top right. The address becomes …/user/<id>/: that <id> is the Jenkins user (often your login, not the name shown).",
+    "Clique no seu nome no canto superior direito. A URL vira …/user/<id>/: esse <id> é o Usuário do Jenkins (muitas vezes o seu login, não o nome que aparece).",
+  ),
+  "automationSetup.extras.jenkinsHelp.step3": dict(
+    "Open Security (Configure on older versions).",
+    "Abra Security (Configure, nas versões mais antigas).",
+  ),
+  "automationSetup.extras.jenkinsHelp.step4": dict(
+    "Under API Token, click Add new token, give it a name (e.g. Board automations) and Generate.",
+    "Em API Token, clique em Add new token, dê um nome (por exemplo, Automações do Board) e clique em Generate.",
+  ),
+  "automationSetup.extras.jenkinsHelp.step5": dict(
+    "Copy the token right away (it's shown only once) and paste it in Jenkins API token.",
+    "Copie o token na hora (ele só aparece uma vez) e cole em API token do Jenkins.",
+  ),
+  "automationSetup.extras.jenkinsHelp.open": dict(
+    "Open the team's Jenkins",
+    "Abrir o Jenkins do time",
+  ),
+  "automationSetup.extras.jenkinsHelp.secret": dict(
+    "The token acts as you in Jenkins: don't share it.",
+    "O token age como você no Jenkins: não compartilhe.",
   ),
 
   "automationSetup.finish.description": dict(
-    "Pick what to turn on. It starts in simulation: it only shows in the Board what it would do. Commenting, approving and every other real action are turned on one by one later, in the Board's Automation settings.",
-    "Escolha o que ligar. Começa em simulação: só mostra no Board o que faria. Comentar, aprovar e as outras ações de verdade são ligadas uma a uma depois, nas configurações de Automação do Board.",
+    "Pick a mode for each automation. Simulation only shows in the Board what it would do; On does it in your name. These are the same cards as in the Board's Automation settings, where they can be changed any time.",
+    "Escolha um modo pra cada automação. Simulação só mostra no Board o que faria; Ligado faz no seu nome. São os mesmos cards das configurações de Automação do Board, onde dá pra mudar a qualquer hora.",
   ),
-  "automationSetup.feature.codeReview": dict(
-    "Code review of the team's PRs",
-    "Code review dos PRs do time",
+  "automationSetup.needs.todo": dict(
+    "map the To Do column in step 3.",
+    "marque a coluna To Do na etapa 3.",
   ),
-  "automationSetup.feature.codeReview.help": dict(
-    "Lists the PRs due for your review and, in simulation, what it would comment and approve.",
-    "Lista os PRs que estão na sua vez de revisar e, em simulação, o que comentaria e aprovaria.",
+  "automationSetup.needs.testColumns": dict(
+    "map the Waiting for test and Testing columns in step 3.",
+    "marque as colunas Aguardando teste e Em teste na etapa 3.",
   ),
-  "automationSetup.feature.reviewSessions": dict("Review with Claude", "Review com o Claude"),
-  "automationSetup.feature.reviewSessions.help": dict(
-    "Each due PR gets a real Claude review (uses your plan). Off, PRs are only listed.",
-    "Cada PR na sua vez ganha um review de verdade do Claude (usa o seu plano). Desligado, os PRs só são listados.",
+  "automationSetup.needs.jenkins": dict(
+    "fill in the Jenkins user and token in step 6.",
+    "preencha o usuário e o token do Jenkins na etapa 6.",
   ),
-  "automationSetup.feature.devQueue": dict(
-    "Queue my To Do tasks",
-    "Colocar minhas tarefas de To Do na fila",
-  ),
-  "automationSetup.feature.devQueue.help": dict(
-    "Needs the To Do column. Puts your tasks in the app's queue, one at a time.",
-    "Precisa da coluna To Do. Coloca as suas tarefas na fila do app, uma de cada vez.",
-  ),
-  "automationSetup.feature.testQueue": dict(
-    "Pick up tests from Wait Test",
-    "Pegar testes em Wait Test",
-  ),
-  "automationSetup.feature.testQueue.help": dict(
-    "Needs the Waiting for test and Testing columns. Advanced: also see boardWatcher.json (test skill, network).",
-    "Precisa das colunas Aguardando teste e Em teste. Avançado: veja também o boardWatcher.json (skill de teste, rede).",
-  ),
-  "automationSetup.feature.notices": dict("Notices on Teams", "Avisos no Teams"),
-  "automationSetup.feature.notices.help": dict(
-    "Needs the Teams workflow URL. Build failures, news on your PRs and a digest.",
-    "Precisa da URL do workflow do Teams. Builds que falharam, novidades nos seus PRs e um resumo.",
+  "automationSetup.needs.teams": dict(
+    "fill in the Teams workflow URL in step 6.",
+    "preencha a URL do workflow do Teams na etapa 6.",
   ),
   "automationSetup.finish.turnOn": dict("Turn on in simulation", "Ligar em simulação"),
   "automationSetup.finish.save": dict("Save", "Salvar"),
