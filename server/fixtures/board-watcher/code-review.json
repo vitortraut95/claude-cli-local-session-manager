@@ -498,7 +498,7 @@
     ]
   },
   {
-    "name": "bundled PR counts when one of its tickets is in Code Review; PR with no ticket waits",
+    "name": "bundled PR counts when one of its tickets is in Code Review; PR with no ticket isn't listed",
     "config": {
       "columns": {
         "todo": ["todo"],
@@ -542,7 +542,7 @@
         "expect": {
           "effects": ["approve web#51"],
           "decisions": {
-            "web#52": "wait"
+            "web#52": "none"
           }
         }
       }

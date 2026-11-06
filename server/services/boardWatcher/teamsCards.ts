@@ -29,7 +29,6 @@ const REASONS_PT: [RegExp, string][] = [
   [/outside business hours/, "fora do horário comercial"],
   [/(\d+) tests already claimed/, "já há $1 testes em andamento"],
   [/test plan in comment \S+/, "tem plano de teste"],
-  [/no ticket in the PR title or branch/, "sem LED no título ou na branch do PR"],
   [/ticket (.+) isn't in Code Review yet/, "$1 ainda não está em Code Review"],
   [/past Code Review without any approval/, "em Validation/Wait Deploy sem nenhuma aprovação"],
 ];
