@@ -6,8 +6,6 @@ import type {
   WorkspaceDirSuggestion,
 } from "../../shared/preferences";
 export type {
-  EnvPreviewTemplate,
-  EnvPreviews,
   Language,
   OrchestratorPreferences,
   SkillsHubPreferences,

@@ -3,7 +3,7 @@ import type { Session } from "../../shared/session";
 type SessionBranches = { origin: string | null; destination: string | null };
 
 /**
- * The session's base (origin) and task (destination) branches, for the card line, Jenkins and
+ * The session's base (origin) and task (destination) branches, for the card line and
  * "Open PR". Per side, first non-null wins:
  * 1. `savedOriginBranch`/`savedDestinationBranch` (`tasks.json`).
  * 2. `baseBranch`/`gitBranch`. `gitBranch` is the last branch seen in the transcript, not live
