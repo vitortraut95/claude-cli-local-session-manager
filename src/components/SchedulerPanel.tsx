@@ -1,5 +1,5 @@
 import { ChevronRight, FlaskConical, Pause, Play, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
@@ -143,6 +143,23 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
     }
   };
 
+  // Always open on ultrawide screens, where the panel is a column of its own (same as `3xl`).
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const wide = window.matchMedia("(min-width: 118rem)");
+    const sync = () => {
+      if (wide.matches && detailsRef.current) detailsRef.current.open = true;
+    };
+    sync();
+    const details = detailsRef.current;
+    wide.addEventListener("change", sync);
+    details?.addEventListener("toggle", sync);
+    return () => {
+      wide.removeEventListener("change", sync);
+      details?.removeEventListener("toggle", sync);
+    };
+  }, []);
+
   const enabled = settings?.enabled ?? status?.enabled ?? true;
   const blockedBy = status?.blockedBy ?? null;
 
@@ -212,9 +229,9 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
         </div>
       )}
 
-      <details className="group border-t border-gray-100 pt-3 dark:border-gray-800">
-        <summary className="flex cursor-pointer list-none items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-          <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+      <details ref={detailsRef} className="group border-t border-gray-100 pt-3 dark:border-gray-800">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-sm font-medium text-gray-700 3xl:pointer-events-none dark:text-gray-300">
+          <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90 3xl:hidden" />
           {t("scheduler.settings.title")}
         </summary>
         <div className="mt-3 flex flex-col gap-4">

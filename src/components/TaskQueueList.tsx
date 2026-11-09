@@ -18,6 +18,8 @@ type TaskQueueListProps = {
   saving: boolean;
   onStartNow: (key: string) => void;
   onRetry: (key: string) => void;
+  /** Drops the launched entries, saved right away (other unsaved edits stay unsaved). */
+  onRemoveLaunched: () => void;
 };
 
 /** The queue in launch order, with the counts of what still needs setup or already launched. */
@@ -32,6 +34,7 @@ export function TaskQueueList({
   saving,
   onStartNow,
   onRetry,
+  onRemoveLaunched,
 }: TaskQueueListProps) {
   const { t } = useLanguage();
 
@@ -116,7 +119,7 @@ export function TaskQueueList({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setEntries((current) => current.filter((e) => !e.launchedAt))}
+              onClick={onRemoveLaunched}
             >
               {t("taskQueueModal.removeLaunched", { count: launchedCount })}
             </Button>

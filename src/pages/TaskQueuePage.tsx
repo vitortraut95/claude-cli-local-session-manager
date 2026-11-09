@@ -231,6 +231,21 @@ export function TaskQueuePage({ active, onChanged }: TaskQueuePageProps) {
     }
   };
 
+  const handleRemoveLaunched = async () => {
+    setEntries((current) => current.filter((entry) => !entry.launchedAt));
+    try {
+      const saved = (await tasksApi.fetchTaskQueue()).map(toDraft);
+      const stored = await tasksApi.saveTaskQueue(
+        toStored(saved.filter((entry) => !entry.launchedAt)),
+      );
+      setSavedSnapshot(editSnapshot(stored.map(toDraft)));
+      onChanged();
+    } catch (err) {
+      const message = resolveApiErrorMessage(err, t, "newTaskModal.unexpectedFailure");
+      showToast(t("taskQueueModal.saveError", { message }), "error");
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -302,13 +317,18 @@ export function TaskQueuePage({ active, onChanged }: TaskQueuePageProps) {
         </div>
       )}
 
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-7">
-        <SchedulerPanel
-          status={status}
-          onRefresh={refreshStatus}
-          onRunNow={() => void handleRunNow()}
-          running={runningNow}
-        />
+      {/* Ultrawide: the scheduler and its settings in a column on the left, the queue beside it. */}
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-7 3xl:grid 3xl:max-w-none 3xl:grid-cols-[30rem_minmax(0,1fr)] 3xl:items-start">
+        <aside className="3xl:sticky 3xl:top-6 3xl:max-h-[calc(100dvh-3rem)] 3xl:overflow-y-auto">
+          <SchedulerPanel
+            status={status}
+            onRefresh={refreshStatus}
+            onRunNow={() => void handleRunNow()}
+            running={runningNow}
+          />
+        </aside>
+
+        <div className="flex min-w-0 flex-col gap-6">
 
         <section className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
           <TaskQueueForm
@@ -329,10 +349,12 @@ export function TaskQueuePage({ active, onChanged }: TaskQueuePageProps) {
           branchTypes={branchTypes}
           saving={saving}
           onStartNow={(key) => void handleStartNow(key)}
+          onRemoveLaunched={() => void handleRemoveLaunched()}
           onRetry={(key) => {
             retriedRef.current.add(key);
           }}
         />
+        </div>
       </div>
     </div>
   );
