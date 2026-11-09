@@ -168,7 +168,7 @@ export function SkillsCatalogPicker({
             ? t("skillsHub.manage.catalogsInferred")
             : t("skillsHub.manage.catalogsNone")}
       </p>
-      <ul className="grid grid-cols-1 gap-2 2xl:grid-cols-2">
+      <ul className="flex flex-col gap-2">
         {status.catalogs.map((catalog) => {
           const whole = isWhole(catalog.name);
           const pickedCount = catalog.skills.filter((k) => isPicked(catalog.name, k.name)).length;
