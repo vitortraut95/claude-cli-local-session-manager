@@ -19,7 +19,7 @@ export function PageHeader({ title, subtitle, actions, children }: PageHeaderPro
             {title}
           </h1>
           {subtitle && (
-            <p className="mt-1 max-w-3xl text-sm text-gray-600 dark:text-gray-400">{subtitle}</p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{subtitle}</p>
           )}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
