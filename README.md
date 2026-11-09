@@ -143,10 +143,8 @@ opens the browser. Stop the app by closing that terminal.
 - Local nicknames, bulk delete, active-session protection (won't let two terminals fight over
   the same session)
 - Claude usage-limits badge
-- One-click "Open in VS Code", Jenkins links (project, branch and ticket variants, PRs, tags,
-  optional per-project `env/*` preview links), and "Open PR" buttons — the Jenkins URL and preview
-  templates are per-machine settings (asked on first start / Settings), never part of this repo
-- Initial setup on first start (repo folders, Jenkins URL, team skills repo) and full settings
+- One-click "Open in VS Code" and "Open PR" buttons
+- Initial setup on first start (repo folders, team skills repo) and full settings
   export/import in Settings — share a `userPreferences.json` with your team to set everything up
 - Self-update button at the foot of the navigation (and silently on start): resets the checkout to
   `origin/main`. With local changes (uncommitted/new files or unpushed commits) it never runs on

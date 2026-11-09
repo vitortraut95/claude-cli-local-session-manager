@@ -217,7 +217,7 @@ export function TaskHistoryModal({ session, onClose }: TaskHistoryModalProps) {
 }
 
 /** The history itself (summary, errors, timeline), also shown in the session's detail panel. */
-export function TaskHistoryView({ session }: { session: Session }) {
+function TaskHistoryView({ session }: { session: Session }) {
   const { t } = useLanguage();
   const [data, setData] = useState<{ events: HistoryEvent[]; summary: HistorySummary } | null>(
     null,
