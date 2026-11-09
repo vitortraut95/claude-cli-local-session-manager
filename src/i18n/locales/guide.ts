@@ -9,8 +9,8 @@ export const guide = {
   ),
   "guide.search": dict("Search the guide", "Buscar no guia"),
   "guide.search.placeholder": dict(
-    "e.g. worktree, PR, queue, Jenkins",
-    "ex.: worktree, PR, fila, Jenkins",
+    "e.g. worktree, PR, queue, branch",
+    "ex.: worktree, PR, fila, branch",
   ),
   "guide.search.none": dict(
     "Nothing in the guide matches “{query}”.",
@@ -31,8 +31,8 @@ export const guide = {
   // Sessions
   "guide.sessions.list.title": dict("Grouped list", "Lista agrupada"),
   "guide.sessions.list.what": dict(
-    "Every Claude CLI session on this machine, what needs you first: errors, a missing folder, a failed launch, test or review, and sessions waiting for your answer. Then what's running, what's stopped, and the done ones folded at the end.",
-    "Todas as sessões do Claude CLI desta máquina, com o que precisa de você primeiro: erros, pasta que sumiu, falha ao abrir pela fila, teste ou review que falhou e sessões esperando sua resposta. Depois o que está rodando, o que está parado e as concluídas recolhidas no fim.",
+    "Every Claude CLI session on this machine, what's running first. Then what needs you: a failed launch, test or review, and sessions waiting for your answer. Then what's stopped, and the done ones (and those whose folder is gone) folded at the end.",
+    "Todas as sessões do Claude CLI desta máquina, com o que está rodando primeiro. Depois o que precisa de você: falha ao abrir pela fila, teste ou review que falhou e sessões esperando sua resposta. Depois o que está parado e as concluídas (e as de pasta apagada) recolhidas no fim.",
   ),
   "guide.sessions.list.where": dict("Navigation › Sessions", "Navegação › Sessões"),
   "guide.sessions.search.title": dict("Search and filters", "Busca e filtros"),
@@ -44,14 +44,14 @@ export const guide = {
     "Sessions › filter bar (press / to jump to the search)",
     "Sessões › barra de filtros (aperte / para ir à busca)",
   ),
-  "guide.sessions.views.title": dict("List or cards", "Lista ou cards"),
+  "guide.sessions.views.title": dict("List or cards, by group or by date", "Lista ou cards, por grupo ou por data"),
   "guide.sessions.views.what": dict(
-    "The list is the default; the cards show the same actions in a grid.",
-    "A lista é o padrão; os cards mostram as mesmas ações em grade.",
+    "The list is the default; the cards show the same actions in a grid. The order is by group by default, or by date (newest first, nothing folded).",
+    "A lista é o padrão; os cards mostram as mesmas ações em grade. A ordem é por grupo por padrão, ou por data (mais recentes primeiro, nada recolhido).",
   ),
   "guide.sessions.views.where": dict(
-    "Sessions › List / Cards buttons, right of the filters",
-    "Sessões › botões Lista / Cards, à direita dos filtros",
+    "Sessions › Group / Date and List / Cards buttons, right of the filters",
+    "Sessões › botões Grupo / Data e Lista / Cards, à direita dos filtros",
   ),
   "guide.sessions.detail.title": dict("Session panel", "Painel da sessão"),
   "guide.sessions.detail.what": dict(
@@ -94,8 +94,8 @@ export const guide = {
   ),
   "guide.sessions.nickname.title": dict("Nickname and branches", "Apelido e branches"),
   "guide.sessions.nickname.what": dict(
-    "A local nickname to tell sessions apart, and the base and task branches used for the PR and Jenkins links.",
-    "Um apelido local para diferenciar as sessões, e as branches base e da tarefa usadas nos links de PR e Jenkins.",
+    "A local nickname to tell sessions apart, and the base and task branches used for the PR link.",
+    "Um apelido local para diferenciar as sessões, e as branches base e da tarefa usadas no link do PR.",
   ),
   "guide.sessions.nickname.where": dict(
     "Row menu ⋯ › Edit nickname / Edit branches, or the pencils in the panel",
@@ -125,19 +125,19 @@ export const guide = {
     "Todos os prompts da sessão com as respostas do Claude e as ferramentas que ele usou.",
   ),
   "guide.sessions.conversation.where": dict(
-    "Panel › Conversation tab, or row menu ⋯ › Whole conversation",
-    "Painel › aba Conversa, ou menu ⋯ › Conversa inteira",
+    "Panel › first prompt › Open the whole conversation, or menu ⋯ › Whole conversation",
+    "Painel › primeiro prompt › Abrir a conversa inteira, ou menu ⋯ › Conversa inteira",
   ),
   "guide.sessions.history.title": dict("Task history", "Histórico da tarefa"),
   "guide.sessions.history.what": dict(
     "Where the task's time went: in the queue, in each status, heavy runs and their waits, errors and the full timeline.",
     "Para onde foi o tempo da tarefa: na fila, em cada situação, comandos pesados e suas esperas, erros e a linha do tempo completa.",
   ),
-  "guide.sessions.history.where": dict("Panel › History tab", "Painel › aba Histórico"),
-  "guide.sessions.links.title": dict("PR, Jenkins and env/*", "PR, Jenkins e env/*"),
+  "guide.sessions.history.where": dict("Menu ⋯ › History", "Menu ⋯ › Histórico"),
+  "guide.sessions.links.title": dict("Open the PR", "Abrir o PR"),
   "guide.sessions.links.what": dict(
-    "Opens the PR (asking which base to compare when it isn't the default), the Jenkins jobs of each repo and the env/* preview links.",
-    "Abre o PR (perguntando a base de comparação quando não é a padrão), os jobs do Jenkins de cada repositório e os links de preview env/*.",
+    "Opens the PR (asking which base to compare when it isn't the default).",
+    "Abre o PR (perguntando a base de comparação quando não é a padrão).",
   ),
   "guide.sessions.links.where": dict(
     "Panel › Open PR and Links; row menu ⋯",
@@ -154,12 +154,12 @@ export const guide = {
   ),
   "guide.sessions.missing.title": dict("Missing folder", "Pasta que sumiu"),
   "guide.sessions.missing.what": dict(
-    "When a session's folder is gone (a removed worktree), it goes to “Needs you” with a way to open the repo root in VS Code or start a new session there.",
-    "Quando a pasta de uma sessão some (um worktree removido), ela vai para “Precisa de você” com a opção de abrir a raiz do repositório no VS Code ou começar uma sessão nova lá.",
+    "When a session's folder is gone (a removed worktree), it goes to “Done” with a way to open the repo root in VS Code or start a new session there.",
+    "Quando a pasta de uma sessão some (um worktree removido), ela vai para “Concluídas” com a opção de abrir a raiz do repositório no VS Code ou começar uma sessão nova lá.",
   ),
   "guide.sessions.missing.where": dict(
-    "Sessions › Needs you › the session's panel",
-    "Sessões › Precisa de você › painel da sessão",
+    "Sessions › Done › the session's panel",
+    "Sessões › Concluídas › painel da sessão",
   ),
   "guide.sessions.delete.title": dict("Delete and remove worktrees", "Excluir e remover worktrees"),
   "guide.sessions.delete.what": dict(
@@ -196,8 +196,8 @@ export const guide = {
     "Roda a skill de refinamento do time numa sprint ou nos tickets que você colar, com opção de mandar o resultado direto ao PO.",
   ),
   "guide.start.refine.where": dict(
-    "Arrow next to New task › Refine tasks",
-    "Seta ao lado de Nova tarefa › Refinar tarefas",
+    "Navigation › Refine tasks (also in the arrow next to New task)",
+    "Navegação › Refinar tarefas (também na seta ao lado de Nova tarefa)",
   ),
 
   // Queue
@@ -294,8 +294,8 @@ export const guide = {
   ),
   "guide.tools.settings.title": dict("Settings", "Configurações"),
   "guide.tools.settings.what": dict(
-    "Repository folders, skills, remote control, Board automations, terminal or Limux grid, Jenkins, env/* links, worktree setup, prompts, branch types, worktree and auto mode defaults, Cleanup and theme. Export, import or open the file.",
-    "Pastas de repositórios, skills, controle remoto, automações do Board, terminal ou grade do Limux, Jenkins, links env/*, preparo do worktree, prompts, tipos de branch, padrões de worktree e modo auto, Limpeza e tema. Exporte, importe ou abra o arquivo.",
+    "Repository folders, skills, remote control, Board automations, terminal or Limux grid, worktree setup, prompts, branch types, worktree and auto mode defaults, Cleanup and theme. Export, import or open the file.",
+    "Pastas de repositórios, skills, controle remoto, automações do Board, terminal ou grade do Limux, preparo do worktree, prompts, tipos de branch, padrões de worktree e modo auto, Limpeza e tema. Exporte, importe ou abra o arquivo.",
   ),
   "guide.tools.settings.where": dict(
     "Navigation › Settings (on the phone, More › Settings)",

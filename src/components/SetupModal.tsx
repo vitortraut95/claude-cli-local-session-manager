@@ -19,13 +19,12 @@ type SetupModalProps = {
   onSkip: () => void;
 };
 
-/** Shown on every load while `workspaceDirs`, `jenkinsBaseUrl` or `skillsHub.repoUrl` was never
- *  saved (null). Empty Jenkins/hub fields save "" (not used). */
+/** Shown on every load while `workspaceDirs` or `skillsHub.repoUrl` was never saved (null). An
+ *  empty hub field saves "" (not used). */
 export function SetupModal({ prefs, onSaved, onSkip }: SetupModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [dirs, setDirs] = useState<string[]>(prefs.workspaceDirs ?? []);
-  const [jenkinsBaseUrl, setJenkinsBaseUrl] = useState(prefs.jenkinsBaseUrl ?? "");
   const [hubRepoUrl, setHubRepoUrl] = useState(prefs.skillsHub?.repoUrl ?? "");
   const [saving, setSaving] = useState(false);
 
@@ -49,17 +48,13 @@ export function SetupModal({ prefs, onSaved, onSkip }: SetupModalProps) {
     const imported = await preferencesApi.fetchPreferences().catch(() => null);
     if (!imported) return;
     if (imported.workspaceDirs) setDirs(imported.workspaceDirs);
-    setJenkinsBaseUrl(imported.jenkinsBaseUrl ?? "");
     setHubRepoUrl(imported.skillsHub?.repoUrl ?? "");
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await preferencesApi.updatePreferences({
-        workspaceDirs: dirs,
-        jenkinsBaseUrl: jenkinsBaseUrl.trim(),
-      });
+      await preferencesApi.updatePreferences({ workspaceDirs: dirs });
       await skillsHubApi.setSkillsHubRepoUrl(hubRepoUrl.trim());
       preferencesApi.notifyPreferencesChanged();
       skillsHubApi.notifySkillsHubChanged();
@@ -100,24 +95,6 @@ export function SetupModal({ prefs, onSaved, onSkip }: SetupModalProps) {
       <div className="mt-2">
         <WorkspaceDirsEditor value={dirs} onChange={setDirs} preselectRecommended />
       </div>
-
-      <label className="mt-5 block">
-        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {t("setup.jenkins.label")}
-        </span>
-        <div className="mt-1">
-          <Input
-            type="url"
-            value={jenkinsBaseUrl}
-            onChange={(event) => setJenkinsBaseUrl(event.target.value)}
-            placeholder="https://jenkins.example.com"
-            className="font-mono"
-          />
-        </div>
-        <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
-          {t("setup.jenkins.hint")}
-        </span>
-      </label>
 
       <label className="mt-4 block">
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">

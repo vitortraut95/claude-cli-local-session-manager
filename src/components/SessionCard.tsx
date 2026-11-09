@@ -12,7 +12,6 @@ import {
   Trash2,
   Info,
 } from "lucide-react";
-import jenkinsIcon from "../assets/jenkins.svg";
 import { useLanguage } from "../hooks/useLanguage";
 import type { PendingAction } from "../hooks/useSessions";
 import { useSessionActions, type SessionHandlers } from "../hooks/useSessionActions";
@@ -64,7 +63,7 @@ export function SessionCard({
   const isBusy = isDeleting || isContinuing || isSettingNickname;
   const setOpenModal = actions.open;
   const openingPrUrl = actions.openingPrUrl;
-  const { originBranch, taskBranch, jenkinsGroups } = actions;
+  const { originBranch, taskBranch } = actions;
   const worktreePathParts =
     session.isWorktree && session.workingDirectory
       ? formatWorktreePath(session.workingDirectory)
@@ -323,16 +322,6 @@ export function SessionCard({
             color="violet"
             onClick={() => setOpenModal({ kind: "task", addRepo: false })}
             icon={<Layers className="h-4 w-4" />}
-          />
-        )}
-        {jenkinsGroups && (
-          <ToolbarIconButton
-            tooltip={t("sessionCard.openJenkinsTooltip")}
-            ariaLabel={t("sessionCard.openJenkinsAriaLabel")}
-            color="neutral"
-            onClick={() => setOpenModal({ kind: "jenkins" })}
-            // Multi-color logo: the button color only drives the hover background.
-            icon={<img src={jenkinsIcon} alt="" className="h-6 w-6" />}
           />
         )}
         {taskBranch && !session.directoryMissing && !session.isAppRepo && (

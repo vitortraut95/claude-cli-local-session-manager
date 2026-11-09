@@ -198,39 +198,6 @@ export function SettingsList({
           }
         />
       )}
-      {prefs.jenkinsBaseUrl !== undefined && (
-        <PreferenceRow
-          title={t("settings.jenkinsBaseUrl.title")}
-          description={t("settings.jenkinsBaseUrl.description")}
-          keyName="jenkinsBaseUrl"
-          preview={
-            prefs.jenkinsBaseUrl === null ? (
-              <span className="text-amber-600 dark:text-amber-400">
-                {t("settings.preview.notSet")}
-              </span>
-            ) : (
-              prefs.jenkinsBaseUrl || t("settings.preview.notUsed")
-            )
-          }
-          control={<EditButton onClick={() => onEdit("jenkinsBaseUrl")} />}
-        />
-      )}
-      {prefs.envPreviews !== undefined && (
-        <PreferenceRow
-          title={t("settings.envPreviews.title")}
-          description={t("settings.envPreviews.description")}
-          keyName="envPreviews"
-          preview={
-            Object.keys(prefs.envPreviews).length > 0
-              ? t("settings.envPreviews.preview", {
-                  count: Object.keys(prefs.envPreviews).length,
-                  projects: Object.keys(prefs.envPreviews).join(", "),
-                })
-              : t("settings.preview.emptyList")
-          }
-          control={<EditButton onClick={() => onEdit("envPreviews")} />}
-        />
-      )}
       {prefs.worktreeSetup !== undefined && (
         <PreferenceRow
           title={t("settings.worktreeSetup.title")}

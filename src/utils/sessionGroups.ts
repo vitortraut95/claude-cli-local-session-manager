@@ -2,16 +2,18 @@ import type { WatcherActionEntry } from "../../shared/boardWatcher";
 import type { Session } from "../../shared/session";
 import type { QueueEntry } from "../../shared/tasks";
 
-/** Where a session sits in the list, in this order: what needs you first, done last. */
+/** Where a session sits in the list, in this order: what's running first, done last. */
 export type SessionGroup = "attention" | "running" | "stopped" | "done";
 
-export const SESSION_GROUPS: readonly SessionGroup[] = ["attention", "running", "stopped", "done"];
+export const SESSION_GROUPS: readonly SessionGroup[] = ["running", "attention", "stopped", "done"];
 
-const GROUP_RANK: Record<SessionGroup, number> = { attention: 0, running: 1, stopped: 2, done: 3 };
+const GROUP_RANK: Record<SessionGroup, number> = { running: 0, attention: 1, stopped: 2, done: 3 };
+
+/** "groups": by group, then by the last update; "date": by the last update only. */
+export type SessionSort = "groups" | "date";
 
 /** Why a session needs you. */
 export type AttentionReason =
-  | { kind: "missingDirectory" }
   | { kind: "waitingUser" }
   | { kind: "launchError"; message: string }
   | { kind: "testFailed"; message: string }
@@ -65,7 +67,8 @@ export function sessionKey(session: Session): string {
 
 /** What needs the user on this session, worst first; null = nothing. */
 export function attentionReason(session: Session, problems: TaskProblems): AttentionReason | null {
-  if (session.directoryMissing) return { kind: "missingDirectory" };
+  // A missing folder is a removed worktree: the work there is over, nothing to do.
+  if (session.directoryMissing) return null;
   const key = sessionKey(session);
   const problem = key ? problems.get(key) : undefined;
   // A done task's old failure no longer needs anyone.
@@ -77,11 +80,17 @@ export function attentionReason(session: Session, problems: TaskProblems): Atten
 export function sessionGroup(session: Session, problems: TaskProblems): SessionGroup {
   if (attentionReason(session, problems)) return "attention";
   if (session.isActive) return "running";
-  if (session.status === "done") return "done";
+  if (session.status === "done" || session.directoryMissing) return "done";
   return "stopped";
 }
 
-export function compareSessions(a: Session, b: Session, problems: TaskProblems): number {
+export function compareSessions(
+  a: Session,
+  b: Session,
+  problems: TaskProblems,
+  sort: SessionSort = "groups",
+): number {
+  if (sort === "date") return b.updatedAt.localeCompare(a.updatedAt);
   const byGroup = GROUP_RANK[sessionGroup(a, problems)] - GROUP_RANK[sessionGroup(b, problems)];
   return byGroup !== 0 ? byGroup : b.updatedAt.localeCompare(a.updatedAt);
 }

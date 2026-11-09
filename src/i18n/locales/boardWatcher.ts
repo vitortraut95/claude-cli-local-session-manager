@@ -121,11 +121,19 @@ export const boardWatcher = {
   "board.mode.chip.testQueue": dict("Tests", "Testes"),
   "board.mode.chip.rebuild": dict("Rebuild", "Rebuild"),
   "board.mode.chip.notices": dict("Teams notices", "Avisos no Teams"),
+  "board.mode.chips.label": dict(
+    "Automations: click one to turn it on or off and set it up",
+    "Automações: clique numa para ligar, desligar e configurar",
+  ),
   "board.mode.chip.hint": dict(
     "Open the Automation settings to change",
     "Abrir as configurações de Automação pra mudar",
   ),
   "board.nextLookIn": dict("next look {when}", "próxima olhada {when}"),
+  "board.resumeForNextLook": dict(
+    "Nothing reads the board or runs: resume to look again",
+    "Nada lê o board nem roda: retome para voltar a olhar",
+  ),
   "board.offHours.info": dict(
     "What happens outside business hours",
     "O que acontece fora do horário",

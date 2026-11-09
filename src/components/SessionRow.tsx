@@ -16,7 +16,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import jenkinsIcon from "../assets/jenkins.svg";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSessionActions, type SessionHandlers } from "../hooks/useSessionActions";
 import type { PendingAction } from "../hooks/useSessions";
@@ -358,13 +357,6 @@ export function SessionMenuItems({
           label={t("sessions.menu.pr")}
           disabled={actions.openingPrUrl}
           onClick={pick(() => void actions.openPr())}
-        />
-      )}
-      {actions.jenkinsGroups && (
-        <MenuItem
-          icon={<img src={jenkinsIcon} alt="" className="h-4 w-4" />}
-          label={t("sessions.menu.jenkins")}
-          onClick={pick(() => actions.open({ kind: "jenkins" }))}
         />
       )}
       <div className="my-1 border-t border-gray-100 dark:border-gray-800" />

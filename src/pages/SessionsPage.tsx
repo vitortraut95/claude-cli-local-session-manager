@@ -13,6 +13,8 @@ import {
   SquareTerminal,
   Trash2,
   X,
+  Clock,
+  Layers,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnchoredMenu } from "../components/AnchoredMenu";
@@ -96,6 +98,8 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
     groupCounts,
     showDone,
     setShowDone,
+    sort,
+    setSort,
     quickFilter,
     setQuickFilter,
     loadedAt,
@@ -387,6 +391,34 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
             </Tooltip>
           ))}
         </div>
+        <div
+          role="group"
+          aria-label={t("sessions.sort.label")}
+          className="inline-flex rounded-lg border border-gray-300 p-0.5 dark:border-gray-700"
+        >
+          {(
+            [
+              ["groups", Layers, t("sessions.sort.groups")],
+              ["date", Clock, t("sessions.sort.date")],
+            ] as const
+          ).map(([mode, Icon, label]) => (
+            <Tooltip key={mode} content={label}>
+              <button
+                type="button"
+                aria-pressed={sort === mode}
+                aria-label={label}
+                onClick={() => setSort(mode)}
+                className={`flex h-8 w-9 items-center justify-center rounded-md ${
+                  sort === mode
+                    ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+                    : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+              </button>
+            </Tooltip>
+          ))}
+        </div>
         <Tooltip content={t("sessionsPage.refresh")}>
           <button
             type="button"
@@ -409,7 +441,27 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
     </PageHeader>
   );
 
+  const renderRows = (rows: Session[]) => (
+    <ul className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+      {rows.map((session) => (
+        <SessionRow
+          key={session.id}
+          session={session}
+          pendingAction={pendingActions[session.id]}
+          handlers={handlers}
+          reason={attentionReason(session, problems)}
+          selected={selectedIds.has(session.id)}
+          onToggleSelect={toggleSelect}
+          current={session.id === selectedId}
+          onOpenDetails={(s) => setSelectedId(s.id === selectedId ? "" : s.id)}
+          onDelete={deleteSession}
+        />
+      ))}
+    </ul>
+  );
+
   const renderGroups = () => {
+    if (sort === "date") return renderRows(sessions);
     const byGroup = new Map<SessionGroup, Session[]>();
     for (const session of sessions) {
       const group = sessionGroup(session, problems);
@@ -433,22 +485,7 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
             </span>
           )}
         </div>
-        <ul className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          {byGroup.get(group)!.map((session) => (
-            <SessionRow
-              key={session.id}
-              session={session}
-              pendingAction={pendingActions[session.id]}
-              handlers={handlers}
-              reason={attentionReason(session, problems)}
-              selected={selectedIds.has(session.id)}
-              onToggleSelect={toggleSelect}
-              current={session.id === selectedId}
-              onOpenDetails={(s) => setSelectedId(s.id === selectedId ? "" : s.id)}
-              onDelete={deleteSession}
-            />
-          ))}
-        </ul>
+        {renderRows(byGroup.get(group)!)}
       </section>
     ));
   };
@@ -492,7 +529,7 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
           (viewMode === "list" ? (
             renderGroups()
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3 min-[1900px]:grid-cols-4">
               {sessions.map((session) => (
                 <SessionCard
                   key={session.id}
@@ -614,7 +651,7 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
               onClick={closePanel}
               className="fixed inset-0 z-30 bg-gray-950/40 xl:hidden"
             />
-            <div className="panel-in fixed inset-y-0 right-0 z-40 w-full max-w-md border-l border-gray-200 shadow-2xl xl:sticky xl:top-0 xl:z-auto xl:h-dvh xl:w-[27rem] xl:max-w-none xl:shrink-0 xl:shadow-none dark:border-gray-800">
+            <div className="panel-in fixed inset-y-0 right-0 z-40 w-full max-w-lg border-l border-gray-200 shadow-2xl xl:sticky xl:top-0 xl:z-auto xl:h-dvh xl:w-[32rem] xl:max-w-none 2xl:w-[38rem] min-[2000px]:w-[46rem] xl:shrink-0 xl:shadow-none dark:border-gray-800">
               <SessionDetailPanel
                 key={selected.id}
                 session={selected}

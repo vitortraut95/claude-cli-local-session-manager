@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { JenkinsLinksModal } from "../components/JenkinsLinksModal";
 import { NicknameModal } from "../components/NicknameModal";
 import { OpenPrBaseChoiceModal } from "../components/OpenPrBaseChoiceModal";
 import { SessionBranchesModal } from "../components/SessionBranchesModal";
@@ -13,7 +12,6 @@ import * as sessionsApi from "../services/sessionsApi";
 import type { Session, WorkStatus } from "../../shared/session";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { DEFAULT_BRANCHES } from "../utils/branches";
-import { getTaskJenkinsGroups } from "../utils/jenkins";
 import { resolveSessionBranches } from "../utils/sessionBranches";
 import type { PendingAction } from "./useSessions";
 import { useLanguage } from "./useLanguage";
@@ -57,14 +55,13 @@ export type SessionDialog =
   | { kind: "branches" }
   | { kind: "task"; addRepo: boolean }
   | { kind: "history" }
-  | { kind: "jenkins" }
   | { kind: "openPrBase" }
   | { kind: "deleteWorktree" }
   | { kind: "doneWorktree"; finding: cleanupApi.CleanupFinding };
 
 /**
  * A session's actions and the dialogs they open: the status change that offers removing a done
- * worktree, "open PR" (with the base-branch choice), Jenkins links, and the task / history /
+ * worktree, "open PR" (with the base-branch choice), and the task / history /
  * conversation / nickname / branches dialogs. `dialogs` must be rendered by the caller.
  */
 export function useSessionActions(
@@ -82,17 +79,6 @@ export function useSessionActions(
   const doneWorktreeFinding = dialog?.kind === "doneWorktree" ? dialog.finding : null;
 
   const { origin: originBranch, destination: taskBranch } = resolveSessionBranches(session);
-  // `gitBranch` is null when the folder isn't a git repo, where a job link would be meaningless.
-  const jenkinsGroups =
-    session.directoryMissing || session.gitBranch === null || session.isAppRepo
-      ? null
-      : getTaskJenkinsGroups(
-          teamLinks.jenkinsBaseUrl,
-          teamLinks.envPreviews,
-          session,
-          taskBranch ?? null,
-          originBranch,
-        );
   const canOpenPr = Boolean(taskBranch) && !session.directoryMissing && !session.isAppRepo;
   const canOpenTask = !session.directoryMissing && !session.isAppRepo;
   const showsBranches =
@@ -197,9 +183,6 @@ export function useSessionActions(
           onCancel={close}
         />
       )}
-      {dialog?.kind === "jenkins" && jenkinsGroups && (
-        <JenkinsLinksModal groups={jenkinsGroups} onClose={close} />
-      )}
       {dialog?.kind === "openPrBase" && <OpenPrBaseChoiceModal session={session} onClose={close} />}
       {dialog?.kind === "history" && <TaskHistoryModal session={session} onClose={close} />}
       <ConfirmDialog
@@ -237,7 +220,6 @@ export function useSessionActions(
     changeStatus,
     openPr,
     openingPrUrl,
-    jenkinsGroups,
     originBranch,
     taskBranch,
     canOpenPr,

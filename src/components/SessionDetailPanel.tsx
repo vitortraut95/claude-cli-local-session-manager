@@ -7,7 +7,6 @@ import {
   GitFork,
   GitPullRequest,
   Loader2,
-  MessageSquare,
   MoreHorizontal,
   Pencil,
   Play,
@@ -16,13 +15,11 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useId, useState, type ReactNode } from "react";
-import jenkinsIcon from "../assets/jenkins.svg";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSessionActions, type SessionHandlers } from "../hooks/useSessionActions";
 import type { PendingAction } from "../hooks/useSessions";
-import * as sessionsApi from "../services/sessionsApi";
 import * as tasksApi from "../services/tasksApi";
-import type { Session, TranscriptTurn } from "../../shared/session";
+import type { Session } from "../../shared/session";
 import { formatUpdatedAt } from "../utils/formatDate";
 import { formatWorktreePath } from "../utils/formatPath";
 import { sessionDisplayTitle } from "../utils/sessionTitle";
@@ -35,12 +32,10 @@ import { LinkifiedText } from "./LinkifiedText";
 import { MissingDirectoryNotice } from "./MissingDirectoryNotice";
 import { PreviewLinks } from "./PreviewLinks";
 import { MenuItem, SessionMenuItems } from "./SessionRow";
-import { TaskHistoryView } from "./TaskHistoryModal";
 import { Tooltip } from "./Tooltip";
 import { WorkStatusSelect } from "./WorkStatusSelect";
 import { attentionText } from "./attentionText";
 
-type Tab = "overview" | "conversation" | "history";
 
 type SessionDetailPanelProps = {
   session: Session;
@@ -78,8 +73,8 @@ const linkButton =
  * Keyed by the session's id by its parent, so another session starts fresh on its overview.
  *
  * Everything about one session beside the list:
- * task and status, resume / editor / PR, then tabs with the overview (branches, folder, task
- * repositories, local previews, first prompt, links), the conversation and the task's history.
+ * task and status, resume / editor / PR, then branches, folder, task repositories, local previews,
+ * first prompt and links. The conversation and the task's history open as modals.
  * Delete is confirmed in the footer itself.
  */
 export function SessionDetailPanel({
@@ -92,10 +87,9 @@ export function SessionDetailPanel({
 }: SessionDetailPanelProps) {
   const { t, language } = useLanguage();
   const actions = useSessionActions(session, handlers, pendingAction);
-  const [tab, setTab] = useState<Tab>("overview");
+  const statusId = useId();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [taskLink, setTaskLink] = useState<{ key: string; link: string | null } | null>(null);
-  const tabsId = useId();
   const key = session.taskKey ?? session.testKey ?? null;
   const title = sessionDisplayTitle(session);
   const busy = actions.busy.deleting || actions.busy.continuing || actions.busy.nickname;
@@ -121,11 +115,6 @@ export function SessionDetailPanel({
   }, [session.taskKey]);
   const jiraLink = taskLink && taskLink.key === session.taskKey ? taskLink.link : null;
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "overview", label: t("detail.tab.overview") },
-    { id: "conversation", label: t("detail.tab.conversation") },
-    ...(session.hasHistory ? [{ id: "history" as const, label: t("detail.tab.history") }] : []),
-  ];
 
   return (
     <aside aria-label={t("detail.label")} className="flex h-full min-h-0 flex-col bg-panel">
@@ -210,7 +199,7 @@ export function SessionDetailPanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
-          <span id={`${tabsId}-status`}>{t("detail.status")}</span>
+          <span id={statusId}>{t("detail.status")}</span>
           <WorkStatusSelect
             value={session.status ?? null}
             taskKey={session.taskKey ?? null}
@@ -320,50 +309,7 @@ export function SessionDetailPanel({
         </div>
       </div>
 
-      <div
-        role="tablist"
-        aria-label={t("detail.label")}
-        className="flex gap-1 border-b border-gray-200 px-3 dark:border-gray-800"
-      >
-        {tabs.map((item) => {
-          const selected = item.id === tab;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              id={`${tabsId}-tab-${item.id}`}
-              aria-selected={selected}
-              aria-controls={`${tabsId}-panel`}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => setTab(item.id)}
-              onKeyDown={(event) => {
-                if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
-                const index = tabs.findIndex((entry) => entry.id === tab);
-                const next =
-                  tabs[(index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]!;
-                setTab(next.id);
-                document.getElementById(`${tabsId}-tab-${next.id}`)?.focus();
-              }}
-              className={`h-11 px-2.5 text-sm font-medium ${
-                selected
-                  ? "text-gray-900 shadow-[inset_0_-2px_0_var(--color-violet-600)] dark:text-gray-100 dark:shadow-[inset_0_-2px_0_var(--color-violet-400)]"
-                  : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-              }`}
-            >
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div
-        role="tabpanel"
-        id={`${tabsId}-panel`}
-        aria-labelledby={`${tabsId}-tab-${tab}`}
-        className="min-h-0 flex-1 overflow-y-auto px-5"
-      >
-        {tab === "overview" && (
+      <div className="min-h-0 flex-1 overflow-y-auto px-5">
           <div className="pb-4">
             {session.directoryMissing && (
               <div className="pt-4">
@@ -514,7 +460,7 @@ export function SessionDetailPanel({
                   </p>
                   <button
                     type="button"
-                    onClick={() => setTab("conversation")}
+                    onClick={() => actions.open({ kind: "preview" })}
                     className={`${linkButton} mt-1 -ml-2`}
                   >
                     {t("detail.openConversation")}
@@ -525,7 +471,7 @@ export function SessionDetailPanel({
               )}
             </Section>
 
-            {(actions.canOpenPr || actions.jenkinsGroups !== null || key !== null) && (
+            {(actions.canOpenPr || key !== null) && (
               <Section title={t("detail.links")}>
                 <div className="flex flex-wrap gap-2">
                   {actions.canOpenPr && (
@@ -537,16 +483,6 @@ export function SessionDetailPanel({
                       icon={<GitPullRequest className="h-3.5 w-3.5" />}
                     >
                       {t("sessions.menu.pr")}
-                    </Button>
-                  )}
-                  {actions.jenkinsGroups && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => actions.open({ kind: "jenkins" })}
-                      icon={<img src={jenkinsIcon} alt="" className="h-4 w-4" />}
-                    >
-                      {t("sessions.menu.jenkins")}
                     </Button>
                   )}
                   {key && (
@@ -563,20 +499,6 @@ export function SessionDetailPanel({
               </Section>
             )}
           </div>
-        )}
-
-        {tab === "conversation" && (
-          <ConversationList
-            session={session}
-            onOpen={(index) => actions.open({ kind: "preview", index })}
-          />
-        )}
-
-        {tab === "history" && (
-          <div className="py-4">
-            <TaskHistoryView session={session} />
-          </div>
-        )}
       </div>
 
       {confirmingDelete ? (
@@ -637,94 +559,5 @@ export function SessionDetailPanel({
       )}
       {actions.dialogs}
     </aside>
-  );
-}
-
-/** Every prompt of the session (newest last), each opening the full conversation on it. */
-function ConversationList({
-  session,
-  onOpen,
-}: {
-  session: Session;
-  onOpen: (index: number) => void;
-}) {
-  const { t } = useLanguage();
-  const [turns, setTurns] = useState<TranscriptTurn[] | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    sessionsApi
-      .fetchSessionTranscript(session.id)
-      .then((result) => {
-        if (!cancelled) setTurns(result);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setFailed(true);
-        setTurns(session.prompts.map((prompt) => ({ prompt, timestamp: null, items: [] })));
-      });
-    return () => {
-      cancelled = true;
-    };
-    // session.prompts only feeds the fallback.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.id]);
-
-  if (turns === null) {
-    return (
-      <p className="flex items-center gap-2 py-4 text-sm text-gray-500 dark:text-gray-400">
-        <Loader2 className="h-4 w-4 animate-spin" /> {t("transcriptModal.loading")}
-      </p>
-    );
-  }
-  if (turns.length === 0) {
-    return (
-      <p className="py-4 text-sm text-gray-500 dark:text-gray-400">{t("transcriptModal.empty")}</p>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-2 py-4">
-      {failed && (
-        <p className="text-xs text-amber-700 dark:text-amber-400">
-          {t("transcriptModal.loadError")}
-        </p>
-      )}
-      <ol className="flex flex-col gap-2">
-        {turns.map((turn, index) => {
-          const tools = turn.items.filter((item) => item.kind === "tool").length;
-          return (
-            <li key={index}>
-              <button
-                type="button"
-                onClick={() => onOpen(index)}
-                className="flex w-full flex-col gap-1 rounded-lg border border-gray-200 bg-white p-3 text-left hover:border-violet-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-violet-500/50"
-              >
-                <span className="flex justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span>
-                    #{index + 1}
-                    {turn.timestamp &&
-                      ` · ${new Date(turn.timestamp).toLocaleString([], {
-                        day: "2-digit",
-                        month: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}`}
-                  </span>
-                  {tools > 0 && <span>{t("transcriptModal.toolCount", { count: tools })}</span>}
-                </span>
-                <span className="line-clamp-3 text-sm break-words text-gray-800 dark:text-gray-200">
-                  {turn.prompt}
-                </span>
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-violet-700 dark:text-violet-300">
-                  <MessageSquare className="h-3 w-3" aria-hidden="true" />
-                  {t("detail.conversation.open")}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </div>
   );
 }
