@@ -10,11 +10,11 @@ type ModalSize = "sm" | "md" | "lg" | "xl" | "xxl" | "xxxl" | "full";
 
 const SIZE_CLASSES: Record<ModalSize, string> = {
   sm: "max-w-sm",
-  md: "max-w-lg min-[2000px]:max-w-xl",
-  lg: "max-w-2xl min-[2000px]:max-w-3xl",
-  xl: "max-w-4xl min-[2000px]:max-w-5xl",
-  xxl: "max-w-6xl min-[2000px]:max-w-7xl",
-  xxxl: "max-w-[84rem] min-[2000px]:max-w-[110rem]",
+  md: "max-w-lg 3xl:max-w-xl",
+  lg: "max-w-2xl 3xl:max-w-3xl",
+  xl: "max-w-4xl 3xl:max-w-5xl",
+  xxl: "max-w-6xl 3xl:max-w-7xl",
+  xxxl: "max-w-[84rem] 3xl:max-w-[110rem]",
   // The whole window (minus the overlay's gutter), for dashboards like the Board.
   full: "h-[96dvh] max-w-none",
 };
@@ -25,10 +25,10 @@ const SIDE_SIZE_CLASSES: Record<ModalSize, string> = {
   sm: "max-w-md",
   md: "max-w-xl 2xl:max-w-2xl",
   lg: "max-w-3xl 2xl:max-w-4xl",
-  xl: "max-w-4xl 2xl:max-w-5xl min-[2000px]:max-w-6xl",
-  xxl: "max-w-5xl 2xl:max-w-6xl min-[2000px]:max-w-7xl",
-  xxxl: "max-w-6xl 2xl:max-w-7xl min-[2000px]:max-w-[100rem]",
-  full: "max-w-7xl min-[2000px]:max-w-[110rem]",
+  xl: "max-w-4xl 2xl:max-w-5xl 3xl:max-w-6xl",
+  xxl: "max-w-5xl 2xl:max-w-6xl 3xl:max-w-7xl",
+  xxxl: "max-w-6xl 2xl:max-w-7xl 3xl:max-w-[100rem]",
+  full: "max-w-7xl 3xl:max-w-[110rem]",
 };
 
 type ModalProps = {

@@ -13,6 +13,9 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /* Ultrawide screens. In rem so it sorts after 2xl (a px breakpoint would come first and lose). */
+  --breakpoint-3xl: 118rem;
+
   --color-gray-50: #f7f7fa;
   --color-gray-100: #eeeef3;
   --color-gray-200: #e0e0e8;

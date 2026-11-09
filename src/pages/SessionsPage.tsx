@@ -529,7 +529,7 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
           (viewMode === "list" ? (
             renderGroups()
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3 min-[1900px]:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4">
               {sessions.map((session) => (
                 <SessionCard
                   key={session.id}
@@ -651,7 +651,7 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
               onClick={closePanel}
               className="fixed inset-0 z-30 bg-gray-950/40 xl:hidden"
             />
-            <div className="panel-in fixed inset-y-0 right-0 z-40 w-full max-w-lg border-l border-gray-200 shadow-2xl xl:sticky xl:top-0 xl:z-auto xl:h-dvh xl:w-[32rem] xl:max-w-none 2xl:w-[38rem] min-[2000px]:w-[46rem] xl:shrink-0 xl:shadow-none dark:border-gray-800">
+            <div className="panel-in fixed inset-y-0 right-0 z-40 w-full max-w-lg border-l border-gray-200 shadow-2xl xl:sticky xl:top-0 xl:z-auto xl:h-dvh xl:w-[32rem] xl:max-w-none 2xl:w-[38rem] 3xl:w-[46rem] xl:shrink-0 xl:shadow-none dark:border-gray-800">
               <SessionDetailPanel
                 key={selected.id}
                 session={selected}
