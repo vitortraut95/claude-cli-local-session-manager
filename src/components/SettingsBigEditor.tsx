@@ -1,5 +1,5 @@
 import { useLanguage } from "../hooks/useLanguage";
-import type { EnvPreviews, UserPreferences } from "../services/preferencesApi";
+import type { UserPreferences } from "../services/preferencesApi";
 import type { SkillsHubStatus } from "../services/skillsHubApi";
 import { BigEditorModal } from "./BigEditorModal";
 import { Input } from "./Input";
@@ -14,9 +14,7 @@ export type BigEditorKey =
   | "defaultSessionPrompt"
   | "branchTypes"
   | "recentProjectPaths"
-  | "jenkinsBaseUrl"
   | "skillsHubRepoUrl"
-  | "envPreviews"
   | "worktreeSetup";
 
 export type HubConfigDraft = { repoUrl: string; path: string };
@@ -32,28 +30,6 @@ type SettingsBigEditorProps = {
 
 const TEXTAREA_CLASS =
   "w-full rounded-lg border border-gray-300 bg-white p-3 font-mono text-xs text-gray-900 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/25 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100";
-
-/** The envPreviews editor's JSON draft, parsed — null when it isn't valid JSON of the right shape. */
-function parseEnvPreviews(raw: string): EnvPreviews | null {
-  try {
-    const parsed: unknown = JSON.parse(raw.trim() || "{}");
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
-    const valid = Object.values(parsed as Record<string, unknown>).every(
-      (list) =>
-        Array.isArray(list) &&
-        list.every(
-          (item: unknown) =>
-            typeof item === "object" &&
-            item !== null &&
-            typeof (item as Record<string, unknown>).label === "string" &&
-            typeof (item as Record<string, unknown>).url === "string",
-        ),
-    );
-    return valid ? (parsed as EnvPreviews) : null;
-  } catch {
-    return null;
-  }
-}
 
 /** The big editor for one settings key; closes itself only when the save succeeds. */
 export function SettingsBigEditor({
@@ -78,59 +54,6 @@ export function SettingsBigEditor({
             if (await save({ workspaceDirs: value })) onClose();
           }}
           render={(value, setValue) => <WorkspaceDirsEditor value={value} onChange={setValue} />}
-        />
-      );
-    case "jenkinsBaseUrl":
-      return (
-        <BigEditorModal
-          title={t("settings.jenkinsBaseUrl.title")}
-          description={t("settings.jenkinsBaseUrl.description")}
-          initial={prefs.jenkinsBaseUrl ?? ""}
-          onCancel={onClose}
-          onSave={async (value) => {
-            if (await save({ jenkinsBaseUrl: value.trim() })) onClose();
-          }}
-          render={(value, setValue) => (
-            <Input
-              type="url"
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-              placeholder="https://jenkins.example.com"
-              className="font-mono"
-              autoFocus
-            />
-          )}
-        />
-      );
-    case "envPreviews":
-      return (
-        <BigEditorModal
-          title={t("settings.envPreviews.title")}
-          description={t("settings.envPreviews.description")}
-          initial={JSON.stringify(prefs.envPreviews ?? {}, null, 2)}
-          canSave={(value) => parseEnvPreviews(value) !== null}
-          onCancel={onClose}
-          onSave={async (value) => {
-            const parsed = parseEnvPreviews(value);
-            if (parsed && (await save({ envPreviews: parsed }))) onClose();
-          }}
-          render={(value, setValue) => (
-            <>
-              <textarea
-                value={value}
-                onChange={(event) => setValue(event.target.value)}
-                autoFocus
-                rows={24}
-                spellCheck={false}
-                className={TEXTAREA_CLASS}
-              />
-              {parseEnvPreviews(value) === null && (
-                <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-                  {t("settings.envPreviews.invalid")}
-                </p>
-              )}
-            </>
-          )}
         />
       );
     case "worktreeSetup":

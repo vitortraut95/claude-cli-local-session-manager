@@ -116,11 +116,6 @@ export const settings = {
     "The folder(s) where you keep your repos — the app uses them to know every project you work on.",
     "A(s) pasta(s) onde você guarda seus repos — o app usa isso para conhecer todos os seus projetos.",
   ),
-  "setup.jenkins.label": dict("Jenkins base URL", "URL base do Jenkins"),
-  "setup.jenkins.hint": dict(
-    "Enables the Jenkins button on session cards. Leave empty if your team doesn't use Jenkins.",
-    "Habilita o botão do Jenkins nos cards de sessão. Deixe vazio se o seu time não usa Jenkins.",
-  ),
   "setup.skillsHub.label": dict(
     "Team skills repo (clone URL)",
     "Repo de skills do time (URL de clone)",
@@ -153,11 +148,6 @@ export const settings = {
   "preferencesFile.invalid": dict(
     "That file isn't valid JSON.",
     "Esse arquivo não é um JSON válido.",
-  ),
-  "settings.jenkinsBaseUrl.title": dict("Jenkins base URL", "URL base do Jenkins"),
-  "settings.jenkinsBaseUrl.description": dict(
-    "Your team's Jenkins, used by the Jenkins button on session cards. Empty = button hidden.",
-    "O Jenkins do seu time, usado pelo botão do Jenkins nos cards de sessão. Vazio = botão escondido.",
   ),
   "settings.remoteControl.title": dict(
     "Answer sessions from your phone (Remote Control)",
@@ -213,18 +203,9 @@ export const settings = {
   "settings.worktreeSetup.repo": dict("Repo", "Repo"),
   "settings.worktreeSetup.linkNodeModules": dict("Link node_modules", "Linkar node_modules"),
   "settings.worktreeSetup.copyEnvFiles": dict("Copy .env*", "Copiar .env*"),
-  "settings.envPreviews.title": dict("env/* preview links", "Links de preview de env/*"),
-  "settings.envPreviews.description": dict(
-    'Preview sites an env/* branch deploys, per project folder name, shown in the Jenkins modal. JSON: { "<project>": [{ "label": "BR", "url": "http://{env}.example.com/" }] } — {env} becomes the branch slug (env/PROJ-1 → env-proj-1).',
-    'Sites de preview que uma branch env/* publica, por nome da pasta do projeto, mostrados no modal do Jenkins. JSON: { "<projeto>": [{ "label": "BR", "url": "http://{env}.example.com/" }] } — {env} vira o slug da branch (env/PROJ-1 → env-proj-1).',
-  ),
   "settings.envPreviews.preview": dict(
     "{count} project(s): {projects}",
     "{count} projeto(s): {projects}",
-  ),
-  "settings.envPreviews.invalid": dict(
-    "Invalid JSON or shape — expected an object of { label, url } lists.",
-    "JSON ou formato inválido — esperado um objeto de listas { label, url }.",
   ),
   "settings.preview.notUsed": dict("not used", "não usado"),
   "settings.skillsHub.noRepo": dict("repo not configured", "repo não configurado"),

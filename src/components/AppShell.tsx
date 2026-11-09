@@ -97,9 +97,7 @@ export function AppShell() {
           setGridLayout(prefs.terminalLayout === "limux-grid");
           setAutomationsOn(prefs.boardAutomations ?? false);
           setSetupPrefs(
-            prefs.workspaceDirs == null ||
-              prefs.jenkinsBaseUrl === null ||
-              prefs.skillsHub?.repoUrl === null
+            prefs.workspaceDirs == null || prefs.skillsHub?.repoUrl === null
               ? prefs
               : null,
           );
@@ -148,6 +146,8 @@ export function AppShell() {
     }
   }, [gridLayout, refreshSoon, showToast, t]);
 
+  const [automationRevision, setAutomationRevision] = useState(0);
+
   const navigate = useCallback(
     (next: AppView) => {
       setView(next);
@@ -169,6 +169,7 @@ export function AppShell() {
         setAutomationFocus(focus);
         setPanel("automation");
       },
+      automationRevision,
       startTour: () => {
         setTourStep(0);
         setTourOpen(true);
@@ -179,7 +180,16 @@ export function AppShell() {
       gridLayout,
       sessionsChanged: refreshSoon,
     }),
-    [view, navigate, automationsOn, resumeOpen, resumingOpen, gridLayout, refreshSoon],
+    [
+      view,
+      navigate,
+      automationRevision,
+      automationsOn,
+      resumeOpen,
+      resumingOpen,
+      gridLayout,
+      refreshSoon,
+    ],
   );
 
   // N: new task, from anywhere outside a field or a dialog.
@@ -196,7 +206,10 @@ export function AppShell() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [panel]);
 
-  const closePanel = () => setPanel(null);
+  const closePanel = () => {
+    if (panel === "automation") setAutomationRevision((revision) => revision + 1);
+    setPanel(null);
+  };
   const reloadSignals = signals.reload;
   const onQueueChanged = useCallback(() => {
     reloadSignals();
@@ -240,6 +253,7 @@ export function AppShell() {
           theme={theme}
           onToggleTheme={toggleTheme}
           onOpenCleanup={() => setPanel("cleanup")}
+          onOpenRefinement={() => setPanel("refinement")}
           onOpenSkills={() => setPanel("skills")}
           onOpenSettings={() => setPanel("settings")}
         />
@@ -261,7 +275,10 @@ export function AppShell() {
       <RefinementModal
         open={panel === "refinement"}
         onClose={closePanel}
-        onSessionCreated={refreshSoon}
+        onSessionCreated={() => {
+          refreshSoon();
+          navigate("sessions");
+        }}
       />
       <CleanupModal
         open={panel === "cleanup"}

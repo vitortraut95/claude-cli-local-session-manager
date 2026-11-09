@@ -6,8 +6,6 @@ type Translate = (key: TranslationKey, params?: Record<string, string | number>)
 /** Why a session is in "needs you", in a line. */
 export function attentionText(reason: AttentionReason, t: Translate): string {
   switch (reason.kind) {
-    case "missingDirectory":
-      return t("sessions.reason.missingDirectory");
     case "waitingUser":
       return t("taskSidebar.reason.waitingUser");
     case "launchError":

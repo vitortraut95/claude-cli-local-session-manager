@@ -14,6 +14,7 @@ import {
   Workflow,
   Wrench,
   EyeOff,
+  Pencil,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
@@ -96,7 +97,7 @@ function BoardOff() {
 /** The board watcher at a glance: state, what it's doing, its last decisions and its history. */
 function BoardWatcher() {
   const { t, language } = useLanguage();
-  const { openAutomation: onOpenAutomation } = useShell();
+  const { openAutomation: onOpenAutomation, automationRevision } = useShell();
   const { showToast } = useToast();
   const [status, setStatus] = useState<BoardWatcherStatus | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -142,7 +143,7 @@ function BoardWatcher() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [t]);
+  }, [t, automationRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,7 +156,7 @@ function BoardWatcher() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [automationRevision]);
 
   // The history changes when a look or a session finishes, so it's re-read then.
   const historyRefreshKey = `${status?.lastTickAt ?? ""}|${String(status?.reviewing ?? false)}`;
@@ -464,14 +465,18 @@ function BoardWatcher() {
                   )}
                 </p>
                 <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-400">
-                  {status.nextLookAt
-                    ? t("board.nextLookIn", { when: formatUpdatedAt(status.nextLookAt, language) })
-                    : t("board.never")}
+                  {status.pausedReason
+                    ? t("board.resumeForNextLook")
+                    : status.nextLookAt
+                      ? t("board.nextLookIn", { when: formatUpdatedAt(status.nextLookAt, language) })
+                      : t("board.never")}
                 </p>
               </div>
             </div>
             {settings && (
-              <ul aria-label={t("boardPage.modes")} className="relative flex flex-wrap gap-2">
+              <div className="relative flex flex-col gap-1.5">
+              <p className="text-xs text-gray-600 dark:text-gray-400">{t("board.mode.chips.label")}</p>
+              <ul aria-label={t("boardPage.modes")} className="flex flex-wrap gap-2">
                 {automationChips.map(({ automation, on }) => (
                   <li key={automation}>
                     <button
@@ -482,6 +487,7 @@ function BoardWatcher() {
                     >
                       {t(`board.mode.chip.${automation}` as TranslationKey)}:{" "}
                       {t(on ? "automationModes.on" : "automationModes.off")}
+                      <Pencil aria-hidden="true" className="h-3 w-3 opacity-60" />
                     </button>
                   </li>
                 ))}
@@ -494,9 +500,11 @@ function BoardWatcher() {
                   >
                     {t("board.mode.chip.notices")}:{" "}
                     {t(noticesOn ? "automationModes.on" : "automationModes.off")}
+                    <Pencil aria-hidden="true" className="h-3 w-3 opacity-60" />
                   </button>
                 </li>
               </ul>
+              </div>
             )}
           </section>
         )}

@@ -11,8 +11,8 @@ export const sessions = {
   "nicknameModal.placeholder": dict("Nickname", "Apelido"),
   "sessionBranchesModal.title": dict("Session branches", "Branches da sessão"),
   "sessionBranchesModal.description": dict(
-    "Used by the Jenkins, preview and PR links. Saved only in this app — nothing is changed in git. Leave a field blank to go back to what the nickname or the session's transcript gives (shown in grey).",
-    "Usadas nos links do Jenkins, das previews e do PR. Salvas só neste app — nada muda no git. Deixe um campo em branco para voltar ao que o apelido ou o histórico da sessão indica (mostrado em cinza).",
+    "Used by the PR link. Saved only in this app — nothing is changed in git. Leave a field blank to go back to what the nickname or the session's transcript gives (shown in grey).",
+    "Usadas no link do PR. Salvas só neste app — nada muda no git. Deixe um campo em branco para voltar ao que o apelido ou o histórico da sessão indica (mostrado em cinza).",
   ),
   "sessionBranchesModal.origin": dict(
     "Base (the branch the task was created from)",
@@ -20,14 +20,6 @@ export const sessions = {
   ),
   "sessionBranchesModal.destination": dict("Task branch", "Branch da tarefa"),
   "sessionBranchesModal.noFallback": dict("None", "Nenhuma"),
-  "jenkinsLinksModal.title": dict("Jenkins", "Jenkins"),
-  "jenkinsLinksModal.section.currentBranch": dict("Current branch", "Branch atual"),
-  "jenkinsLinksModal.section.originBranch": dict("Branch it was created from", "Branch de origem"),
-  "jenkinsLinksModal.section.envPreviews": dict("{branch} previews:", "Previews do {branch}:"),
-  "jenkinsLinksModal.section.views": dict("Project", "Projeto"),
-  "jenkinsLinksModal.project": dict("{project} (all branches)", "{project} (todas as branches)"),
-  "jenkinsLinksModal.pullRequests": dict("Pull requests", "Pull requests"),
-  "jenkinsLinksModal.tags": dict("Tags", "Tags"),
   "transcriptModal.loading": dict("Loading conversation…", "Carregando conversa…"),
   "transcriptModal.empty": dict(
     "No prompts found for this session.",
@@ -136,11 +128,6 @@ export const sessions = {
     "Veja a conversa: prompts, respostas e ações do agente",
   ),
   "sessionCard.previewAriaLabel": dict("See conversation", "Ver conversa"),
-  "sessionCard.openJenkinsTooltip": dict(
-    "Jenkins links for this project and branch",
-    "Links do Jenkins deste projeto e branch",
-  ),
-  "sessionCard.openJenkinsAriaLabel": dict("Jenkins links", "Links do Jenkins"),
   "sessionCard.openPrTooltip": dict(
     "Open this branch's compare/PR page (GitHub or Bitbucket)",
     "Abrir a página de comparação/PR desta branch (GitHub ou Bitbucket)",

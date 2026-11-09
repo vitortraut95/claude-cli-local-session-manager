@@ -5,6 +5,7 @@ import {
   ListTodo,
   Menu,
   Moon,
+  Scale,
   Settings,
   Sparkles,
   Sun,
@@ -51,6 +52,7 @@ export type AppNavProps = {
   theme: Theme;
   onToggleTheme: () => void;
   onOpenCleanup: () => void;
+  onOpenRefinement: () => void;
   onOpenSkills: () => void;
   onOpenSettings: () => void;
 };
@@ -178,6 +180,18 @@ export function AppNav(props: AppNavProps) {
     <>
       <button
         type="button"
+        data-tour="refine"
+        onClick={() => {
+          onPick?.();
+          props.onOpenRefinement();
+        }}
+        className={itemClass(false)}
+      >
+        <Scale className="h-[18px] w-[18px]" />
+        <span className="truncate">{t("header.refineTasks")}</span>
+      </button>
+      <button
+        type="button"
         data-tour="cleanup"
         onClick={() => {
           onPick?.();
@@ -263,7 +277,7 @@ export function AppNav(props: AppNavProps) {
             onPick?.();
             props.onOpenSettings();
           }}
-          className={`${itemClass(false)} flex-1`}
+          className={`${itemClass(false)} min-w-0 flex-1`}
         >
           <Settings className="h-[18px] w-[18px]" />
           <span className="truncate">{t("nav.settings")}</span>
@@ -278,7 +292,7 @@ export function AppNav(props: AppNavProps) {
       {/* Large screens: fixed sidebar. */}
       <nav
         aria-label={t("nav.label")}
-        className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-1 overflow-y-auto border-r border-gray-200 bg-shell px-3 py-4 lg:flex dark:border-gray-800"
+        className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-1 overflow-x-hidden overflow-y-auto border-r border-gray-200 bg-shell px-3 py-4 lg:flex dark:border-gray-800"
       >
         <div className="flex items-center gap-2.5 px-2 pb-4">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white">

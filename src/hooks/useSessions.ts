@@ -18,6 +18,7 @@ import {
   compareSessions,
   sessionGroup,
   type SessionGroup,
+  type SessionSort,
   type TaskProblems,
 } from "../utils/sessionGroups";
 
@@ -69,6 +70,7 @@ export function useSessions(problems: TaskProblems = NO_PROBLEMS) {
   const [perPageRaw, setPerPageRaw] = useUrlParam("per_page", String(DEFAULT_PER_PAGE));
   const [quickRaw, setQuickRaw] = useUrlParam("show", "");
   const [showDoneRaw, setShowDoneRaw] = useUrlParam("done", "");
+  const [sortRaw, setSortRaw] = useUrlParam("sort", "");
   const [pendingActions, setPendingActions] = useState<Record<string, PendingAction>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { showToast } = useToast();
@@ -77,6 +79,7 @@ export function useSessions(problems: TaskProblems = NO_PROBLEMS) {
   const statusFilter = parseWorkStatusFilter(statusFilterRaw);
   const quickFilter = parseQuickFilter(quickRaw);
   const showDone = showDoneRaw === "1";
+  const sort: SessionSort = sortRaw === "date" ? "date" : "groups";
   const perPage = parsePerPage(perPageRaw);
   const page = parsePage(pageRaw);
 
@@ -103,6 +106,14 @@ export function useSessions(problems: TaskProblems = NO_PROBLEMS) {
       setPageRaw("1");
     },
     [setStatusFilterRaw, setPageRaw],
+  );
+
+  const setSort = useCallback(
+    (value: SessionSort) => {
+      setSortRaw(value === "date" ? "date" : "");
+      setPageRaw("1");
+    },
+    [setSortRaw, setPageRaw],
   );
 
   const setQuickFilter = useCallback(
@@ -286,12 +297,13 @@ export function useSessions(problems: TaskProblems = NO_PROBLEMS) {
       );
     });
 
-    return [...filtered].sort((a, b) => compareSessions(a, b, problems));
-  }, [sessions, searchQuery, promptMatches, projectFilter, statusFilter, quickFilter, problems]);
+    return [...filtered].sort((a, b) => compareSessions(a, b, problems, sort));
+  }, [sessions, searchQuery, promptMatches, projectFilter, statusFilter, quickFilter, problems, sort]);
 
   // Done sessions stay folded at the end of the list unless asked for: by "show done", a search
   // (looking for something specific) or the status filter itself.
   const foldsDone =
+    sort === "groups" &&
     !showDone && searchQuery.trim() === "" && statusFilter !== "done" && quickFilter === "";
   const visibleSessions = useMemo(
     () =>
@@ -676,6 +688,8 @@ export function useSessions(problems: TaskProblems = NO_PROBLEMS) {
     groupCounts,
     showDone,
     setShowDone,
+    sort,
+    setSort,
     quickFilter,
     setQuickFilter,
     /** When the list was last read from the server (ms), for "updated N s ago". */

@@ -168,7 +168,7 @@ export function SkillsCatalogPicker({
             ? t("skillsHub.manage.catalogsInferred")
             : t("skillsHub.manage.catalogsNone")}
       </p>
-      <ul className="flex flex-col gap-2">
+      <ul className="grid grid-cols-1 gap-2 2xl:grid-cols-2">
         {status.catalogs.map((catalog) => {
           const whole = isWhole(catalog.name);
           const pickedCount = catalog.skills.filter((k) => isPicked(catalog.name, k.name)).length;
@@ -176,7 +176,7 @@ export function SkillsCatalogPicker({
           return (
             <li
               key={catalog.name}
-              className={`rounded-lg border p-3 ${pickedCount > 0 ? "border-gray-400 dark:border-gray-600" : "border-gray-200 dark:border-gray-800"}`}
+              className={`rounded-lg border px-3 py-2 ${pickedCount > 0 ? "border-gray-400 dark:border-gray-600" : "border-gray-200 dark:border-gray-800"}`}
             >
               <label className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
                 <TriStateCheckbox
@@ -194,7 +194,7 @@ export function SkillsCatalogPicker({
                       })}
                 </span>
               </label>
-              <ul className="mt-2 flex flex-wrap gap-1.5 pl-6">
+              <ul className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-1 pl-6">
                 {catalog.skills.map((skill) => {
                   const picked = isPicked(catalog.name, skill.name);
                   const neededBy = picked
@@ -241,7 +241,7 @@ export function SkillsCatalogPicker({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="ml-0.5 p-0.5!"
+                        className="ml-0.5 min-h-0! min-w-0! p-0.5!"
                         aria-label={t("skillsHub.preview.open", { name: skill.name })}
                         onClick={() => onPreview(catalog.name, skill.name)}
                         icon={<Info className="h-3.5 w-3.5" />}
