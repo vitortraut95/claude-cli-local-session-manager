@@ -56,13 +56,21 @@ export async function runTick(
         await deps.notifier.notify("digest", `Weak description: ${subject}`, decision.reason);
         state.handled[`gate:${subject}`] = decision.ref ?? "";
         break;
-      case "claim-test":
+      case "claim-test": {
+        // Not claimed (and tried again on the next look) while there's nothing to test.
+        const problem = await deps.tasks.testBranchProblem(subject);
+        if (problem) {
+          decision.action = "wait";
+          decision.reason = problem;
+          break;
+        }
         await deps.board.transition(subject, config.testingStatusId);
         await deps.tasks.enqueue(subject, "test");
         state.handled[`test:${subject}`] = decision.ref ?? "";
         if (!state.claimedTests.includes(subject)) state.claimedTests.push(subject);
         countTestClaim(state, config, now);
         break;
+      }
       case "start-progress":
         if (config.inProgressStatusId) {
           await deps.board.transition(subject, config.inProgressStatusId);

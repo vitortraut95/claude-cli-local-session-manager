@@ -31,6 +31,8 @@ type Tick = {
   startedDevKeys?: string[];
   /** PRs that carry a teammate's AI review comment from this tick on. */
   aiReviewed?: string[];
+  /** Tickets whose test branch isn't on origin in this tick. */
+  missingTestBranches?: string[];
   expect: { effects: string[]; decisions?: Record<string, DecisionAction | "none"> };
 };
 
@@ -114,6 +116,7 @@ async function runScenario(scenario: Scenario, verbose: boolean): Promise<string
     if (tick.prs) world.prs = tick.prs.map(toPullRequest);
     world.reviews = tick.reviews ?? {};
     if (tick.startedDevKeys) world.startedDevKeys = tick.startedDevKeys;
+    world.missingTestBranches = tick.missingTestBranches ?? [];
     if (tick.aiReviewed) world.aiReviewed = [...(world.aiReviewed ?? []), ...tick.aiReviewed];
     const effects: string[] = [];
     const decisions = await runTick(

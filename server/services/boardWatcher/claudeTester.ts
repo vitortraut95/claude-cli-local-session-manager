@@ -167,6 +167,23 @@ export async function findTestRepos(
   return found.filter((r) => r.keep).map(({ keep: _keep, ...r }) => r);
 }
 
+/** Why the ticket's test can't start yet (a repo of it without its branch on origin), or null.
+ *  Checked before claiming, so a ticket isn't moved to Testing for a test that can't run. */
+export async function testBranchProblem(
+  issue: BoardIssue,
+  localRepos: Record<string, string>,
+  prBranches: { repo: string; branch: string }[],
+): Promise<string | null> {
+  const repos = await findTestRepos(issue, issue.comments, localRepos, prBranches);
+  for (const r of repos) {
+    if (!r.branch) return `no ${issue.key} branch on origin in ${r.repo}`;
+    if (!(await tryGit(["rev-parse", "--verify", "--quiet", `origin/${r.branch}`], r.path))) {
+      return `${r.repo}: branch ${r.branch} isn't on origin`;
+    }
+  }
+  return null;
+}
+
 async function testBranches(
   issue: BoardIssue,
   comments: IssueComment[],

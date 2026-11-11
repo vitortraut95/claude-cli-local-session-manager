@@ -102,6 +102,8 @@ export type TaskSink = {
   enqueue(key: string, kind: "dev" | "test" | "retest"): Promise<void>;
   /** The user's dev tasks whose session started, first started first. */
   startedDevKeys(): Promise<string[]>;
+  /** Why a Wait Test ticket's test can't start yet (its branch isn't on origin), or null. */
+  testBranchProblem(key: string): Promise<string | null>;
 };
 
 export type WatcherDeps = {

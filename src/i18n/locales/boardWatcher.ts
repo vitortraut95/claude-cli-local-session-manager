@@ -89,6 +89,7 @@ export const boardWatcher = {
   "board.queue.state.queued": dict("Waiting for a session", "Na fila"),
   "board.queue.state.next": dict("Will do", "Vai fazer"),
   "board.queue.state.waiting": dict("On hold", "Esperando"),
+  "board.queue.state.waitingOtherDev": dict("Waiting for another dev", "Esperando outro dev"),
   "board.queue.calls": dict("API calls of the last look", "Chamadas da última olhada"),
   "board.queue.work.review": dict("Code review", "Code review"),
   "board.queue.work.dev": dict("Implementation", "Implementação"),

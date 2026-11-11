@@ -52,6 +52,8 @@ The watcher is a safety net, not a competitor: it only takes tickets nobody pick
   tag, CMS/admin access, a real purchase or confirming with someone, or have no link to test on,
   are left for a person (and listed in the digest with the reason).
 - At most 2 at once and 4 a day. It claims (moves to Testing) only when it starts right away.
+- Only with the ticket's branch on origin in each of its repos; without it, it stays in Wait Test
+  and is checked again on the next look.
 - Result: posts the report and evidence; moves to PO Validation when it passes; when it fails, only
   comments and alerts the user.
 

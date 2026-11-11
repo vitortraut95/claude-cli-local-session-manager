@@ -1229,5 +1229,44 @@
     "state": {
       "priority": ["DEMO-41"]
     }
+  },
+  {
+    "name": "no test branch on origin yet: not claimed until it shows up",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-19",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "comments": [
+              {
+                "id": "c1",
+                "authorId": "ana",
+                "created": "2026-10-27T10:00:00-03:00",
+                "body": "PR: https://code.example.com/web/pull-requests/49\n\n**Como testar**\n\n1. Abra o carrinho. Esperado: novo layout."
+              }
+            ]
+          }
+        ],
+        "missingTestBranches": ["DEMO-19"],
+        "expect": {
+          "effects": [],
+          "decisions": {
+            "DEMO-19": "wait"
+          }
+        }
+      },
+      {
+        "now": "2026-10-28T14:10:00-03:00",
+        "expect": {
+          "effects": ["transition DEMO-19 -> testing", "enqueue test DEMO-19"],
+          "decisions": {
+            "DEMO-19": "claim-test"
+          }
+        }
+      }
+    ]
   }
 ]
