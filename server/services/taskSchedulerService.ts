@@ -15,7 +15,8 @@ import {
   type TestLaunchOutcome,
 } from "./taskTestService.js";
 import { getMaxUsagePercent } from "./usageService.js";
-import { firstWorkspaceDir } from "./workspaceService.js";
+import { firstWorkspaceDir, otherWorkspaceDirs } from "./workspaceService.js";
+import { API_PORT } from "../utils/apiPort.js";
 import { recordEvent } from "../utils/history.js";
 import { BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
 import { getFreeMemoryPercent, getMemoryPressure } from "../utils/systemResources.js";
@@ -56,12 +57,12 @@ let lastLaunchAt = 0;
 let ticking = false;
 
 /** A test or review entry needs no branch prefix (it works on a branch that already exists), and
- *  neither does one with no repo (no branch is made). */
+ *  neither does one with no repo (no branch is made). A multi-repo one finds its repos itself. */
 function isReady(entry: QueueEntry): boolean {
   return (
     !entry.launchedAt &&
     !entry.error &&
-    (entry.noRepo || entry.repos.length > 0) &&
+    (entry.noRepo || entry.multiRepo === true || entry.repos.length > 0) &&
     (entry.kind !== "dev" || entry.noRepo || entry.branchPrefix !== null)
   );
 }
@@ -131,6 +132,14 @@ const PROMPT_TEXT = {
     noRepo:
       "No repo was picked for this task: this is the folder the repos live in ({dir}). If it " +
       "needs code changes, find the repo(s) here first.",
+    multiRepo:
+      "This task spans more than one repo: this is the folder the repos live in ({dir}). Find in " +
+      "the ticket which repos change (ask me if it doesn't say). For each one, before changing " +
+      "anything, create the task branch {branch} (from {base}) in its own worktree with:\n" +
+      "{command}\n" +
+      "with folderPath = the repo's folder. The response's workingDirectory is where you work " +
+      "on that repo — never in the repo's own checkout. Commits, push and PR one repo at a time.",
+    defaultBase: "the repo's default branch",
     extraDirs: "This task also spans these folders (already added with --add-dir): {dirs}",
     sharedNodeModules:
       "node_modules here is a symlink to the main checkout's, shared with other tasks: {dirs}. " +
@@ -145,6 +154,15 @@ const PROMPT_TEXT = {
     noRepo:
       "Nenhum repo foi escolhido para esta tarefa: esta é a pasta onde ficam os repos ({dir}). " +
       "Se ela precisar mudar código, ache o(s) repo(s) aqui antes.",
+    multiRepo:
+      "Esta tarefa envolve mais de um repo: esta é a pasta onde ficam os repos ({dir}). Veja no " +
+      "ticket quais repos mudam (pergunte se ele não disser). Em cada um, antes de mudar " +
+      "qualquer coisa, crie a branch da tarefa {branch} (a partir de {base}) num worktree " +
+      "próprio com:\n" +
+      "{command}\n" +
+      "com folderPath = a pasta do repo. O workingDirectory da resposta é onde você trabalha " +
+      "nesse repo — nunca no checkout do próprio repo. Commits, push e PR um repo por vez.",
+    defaultBase: "a branch padrão do repo",
     extraDirs: "Esta tarefa também envolve estas pastas (já adicionadas com --add-dir): {dirs}",
     sharedNodeModules:
       "O node_modules aqui é um link para o da raiz do repo, compartilhado com outras tarefas: " +
@@ -155,13 +173,13 @@ const PROMPT_TEXT = {
 
 /** Same message "New task" composes: `Task: <link>` (or every link of a grouped entry), the
  *  default prompt, the extra-dirs note and the shared node_modules warning. `linked` = absolute paths of the linked node_modules;
- *  `noRepoDir` = where a task with no repo opens. */
+ *  `rootNote` = what a session opened in the repos folder (no repo / multi-repo) is told. */
 function composePrompt(
   prefs: UserPreferences,
   entry: QueueEntry,
   addDirs: string[],
   linked: string[],
-  noRepoDir: string | null = null,
+  rootNote = "",
 ): string {
   const text = PROMPT_TEXT[prefs.language ?? "en"];
   const tasks = queueEntryTasks(entry);
@@ -170,7 +188,7 @@ function composePrompt(
       ? [text.groupedTasks, ...tasks.map((task) => `- ${task.link ?? task.key}`)].join("\n")
       : `${text.task}: ${entry.link ?? entry.key}`,
     prefs.defaultPrompt.trim(),
-    noRepoDir ? text.noRepo.replace("{dir}", noRepoDir) : "",
+    rootNote,
     addDirs.length > 0 ? text.extraDirs.replace("{dirs}", addDirs.join(", ")) : "",
     linked.length > 0 ? text.sharedNodeModules.replace("{dirs}", linked.join(", ")) : "",
   ]
@@ -251,18 +269,43 @@ async function launchEntry(
 ): Promise<LaunchOutcome | null> {
   if (entry.kind === "test") return launchTest(entry, prefs, launchTestEntry);
   if (entry.kind === "review") return launchTest(entry, prefs, launchReviewEntry);
-  return entry.noRepo ? launchNoRepoEntry(entry, prefs) : launchDevEntry(entry, prefs);
+  if (entry.noRepo || entry.multiRepo) return launchRootEntry(entry, prefs);
+  return launchDevEntry(entry, prefs);
 }
 
-/** A task with no repo: just the session, in the first workspace dir — no branch, no worktree. */
-async function launchNoRepoEntry(
-  entry: QueueEntry,
-  prefs: UserPreferences,
-): Promise<LaunchOutcome> {
+/** The note for a multi-repo session: the task branch and the call that makes it in each repo. */
+function multiRepoNote(entry: QueueEntry, prefs: UserPreferences, dir: string): string {
+  const text = PROMPT_TEXT[prefs.language ?? "en"];
+  const branch = queueEntryBranch(entry);
+  const body = JSON.stringify({
+    folderPath: "<repo>",
+    branchName: branch,
+    baseBranch: entry.baseBranch ?? "",
+    useLocalBranch: entry.useLocalBaseBranch,
+    useWorktree: true,
+  });
+  const command =
+    `curl -s -X POST http://localhost:${API_PORT}/tasks/by-key/${entry.key}/repos ` +
+    `-H 'Content-Type: application/json' -d '${body}'`;
+  return text.multiRepo
+    .replace("{dir}", dir)
+    .replace("{branch}", branch)
+    .replace("{base}", entry.baseBranch ?? text.defaultBase)
+    .replace("{command}", command);
+}
+
+/** A task with no repo, or one spanning several: the session opens in the first workspace dir
+ *  (the other ones added with --add-dir); a multi-repo one makes its branches itself. */
+async function launchRootEntry(entry: QueueEntry, prefs: UserPreferences): Promise<LaunchOutcome> {
   const dir = await firstWorkspaceDir(prefs);
+  const addDirs = entry.multiRepo ? await otherWorkspaceDirs(prefs, dir) : [];
+  const rootNote = entry.multiRepo
+    ? multiRepoNote(entry, prefs, dir)
+    : PROMPT_TEXT[prefs.language ?? "en"].noRepo.replace("{dir}", dir);
   const { sessionId } = await launchTaskTerminal({
     worktreePath: dir,
-    prompt: composePrompt(prefs, entry, [], [], dir),
+    prompt: composePrompt(prefs, entry, addDirs, [], rootNote),
+    addDirs,
     permissionModeAuto: prefs.useAutoPermissionModeByDefault,
     repoRoot: "",
     nickname: queueEntryNickname(entry),

@@ -69,6 +69,27 @@ export const taskQueue = {
     "Escolha o tipo pra colar as tarefas.",
   ),
   "taskQueueModal.noRepo": dict("No repo (repos folder)", "Sem repo (pasta dos repos)"),
+  "taskQueueModal.multiRepo": dict(
+    "Several repos (repos folder)",
+    "Vários repos (pasta dos repos)",
+  ),
+  "taskQueueModal.multiRepoOption": dict(
+    "Several repos — open in the repos folder",
+    "Vários repos — abrir na pasta dos repos",
+  ),
+  "taskQueueModal.repoCount": dict("Repos", "Repos"),
+  "taskQueueModal.repoCount.single": dict("One repo", "Um repo"),
+  "taskQueueModal.repoCount.multi": dict("Several repos", "Vários repos"),
+  "taskQueueModal.repoCount.singleHint": dict(
+    "The task changes one repo: it gets its own branch and worktree there.",
+    "A tarefa muda um repo: ganha branch e worktree próprios nele.",
+  ),
+  "taskQueueModal.repoCount.multiHint": dict(
+    "Opens in the repos folder; Claude finds the repos in the ticket and makes the task branch " +
+      "(own worktree) in each one.",
+    "Abre na pasta dos repos; o Claude acha os repos no ticket e cria a branch da tarefa " +
+      "(worktree próprio) em cada um.",
+  ),
   "taskQueueModal.noRepoOption": dict(
     "No repo — open in the repos folder",
     "Sem repo — abrir na pasta dos repos",

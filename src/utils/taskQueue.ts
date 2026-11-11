@@ -60,6 +60,7 @@ export type DraftEntry = Pick<QueueEntry, "key" | "link" | "repos"> & {
   groupedTasks: QueueGroupedTask[];
   kind: QueueKind;
   noRepo: boolean;
+  multiRepo: boolean;
   branchPrefix: string | null;
   branch: string | null;
   baseBranch: string | null;
@@ -71,6 +72,8 @@ export type DraftEntry = Pick<QueueEntry, "key" | "link" | "repos"> & {
 
 /** Repo select value for "no repo": the session opens in the folder the repos live in. */
 export const NO_REPO_VALUE = "__no_repo__";
+/** Repo select value for "several repos": same folder, the session makes a branch in each. */
+export const MULTI_REPO_VALUE = "__multi_repo__";
 
 export function toDraft({
   key,
@@ -79,6 +82,7 @@ export function toDraft({
   kind,
   repos,
   noRepo,
+  multiRepo,
   branchPrefix,
   branch,
   baseBranch,
@@ -94,6 +98,7 @@ export function toDraft({
     kind: kind ?? "dev",
     repos,
     noRepo: noRepo ?? false,
+    multiRepo: multiRepo ?? false,
     branchPrefix: branchPrefix ?? null,
     branch: branch ?? null,
     baseBranch: baseBranch ?? null,
@@ -118,8 +123,10 @@ export function branchNameFor(
 }
 
 /** A test needs no branch prefix (it tests the branch the task already has), and neither does a
- *  task with no repo (no branch is made). A review's repo is found by the server. */
+ *  task with no repo (no branch is made). A review's repo is found by the server, a multi-repo
+ *  task's by its session. */
 export function isMissingSetup(entry: DraftEntry): boolean {
   if (entry.noRepo || entry.kind === "review") return false;
+  if (entry.multiRepo) return entry.branchPrefix === null;
   return entry.repos.length === 0 || (entry.kind === "dev" && entry.branchPrefix === null);
 }

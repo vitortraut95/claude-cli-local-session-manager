@@ -192,6 +192,7 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
           ? [...new Set(raw.repos.filter((r): r is string => typeof r === "string" && !!r.trim()))]
           : [],
         noRepo: raw.noRepo === true,
+        multiRepo: raw.multiRepo === true,
         branchPrefix: typeof raw.branchPrefix === "string" ? raw.branchPrefix.trim() : null,
         branch: asTextOrNull(raw.branch),
         baseBranch: asTextOrNull(raw.baseBranch),

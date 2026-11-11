@@ -206,8 +206,8 @@ export const guide = {
   // Queue
   "guide.queue.add.title": dict("Queue tasks", "Enfileirar tarefas"),
   "guide.queue.add.what": dict(
-    "Paste links or keys (development, test or code review), pick the repository and branch, and the scheduler opens them one at a time, each in its own worktree, while there's room.",
-    "Cole links ou chaves (desenvolvimento, teste ou code review), escolha repositório e branch, e o agendador abre uma de cada vez, cada uma no seu worktree, enquanto houver vaga.",
+    "Paste links or keys (development, test or code review), pick the repository and branch, and the scheduler opens them one at a time, each in its own worktree, while there's room. A task spanning several repos opens in the repos folder, and Claude makes the branch in each repo the ticket names.",
+    "Cole links ou chaves (desenvolvimento, teste ou code review), escolha repositório e branch, e o agendador abre uma de cada vez, cada uma no seu worktree, enquanto houver vaga. Tarefa em vários repos abre na pasta dos repos, e o Claude cria a branch em cada repo que o ticket citar.",
   ),
   "guide.queue.add.where": dict("Navigation › Task queue", "Navegação › Fila"),
   "guide.queue.review.title": dict("Code review in the queue", "Code review na fila"),

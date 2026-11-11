@@ -1,3 +1,4 @@
+import { FolderGit2, FolderTree } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -36,6 +37,8 @@ export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: Task
   const { showToast } = useToast();
   const [pasteText, setPasteText] = useState("");
   const [pasteRepo, setPasteRepo] = useState("");
+  // Dev only: the session opens in the repos folder and finds the repos in the ticket.
+  const [pasteMultiRepo, setPasteMultiRepo] = useState(false);
   // No default on purpose: env/feature/fix/none changes what the pipeline does with the branch.
   const [pastePrefix, setPastePrefix] = useState<string | null>(null);
   // Chosen first: the other fields only show up once it is.
@@ -47,6 +50,8 @@ export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: Task
   const handleAdd = () => {
     if (!pasteKind) return;
     const isReview = pasteKind === "review";
+    const multiRepo = pasteKind === "dev" && pasteMultiRepo;
+    const repoChoice = isReview || multiRepo ? "" : pasteRepo;
     // A review's repo is its PR's, found by the server.
     const pasted = isReview
       ? parsePastedPullRequests(pasteText).map((pr) => ({ ...pr, groupedTasks: [] }))
@@ -69,8 +74,9 @@ export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: Task
       fresh.map((task) => ({
         ...task,
         kind: pasteKind,
-        repos: !isReview && pasteRepo && pasteRepo !== NO_REPO_VALUE ? [pasteRepo] : [],
-        noRepo: !isReview && pasteRepo === NO_REPO_VALUE,
+        repos: repoChoice && repoChoice !== NO_REPO_VALUE ? [repoChoice] : [],
+        noRepo: repoChoice === NO_REPO_VALUE,
+        multiRepo,
         branchPrefix: pasteKind === "dev" ? pastePrefix : null,
         branch: null,
         baseBranch: pasteKind === "dev" ? pasteBase.trim() || null : null,
@@ -126,27 +132,41 @@ export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: Task
           </label>
           {pasteKind !== "review" && (
             <div className="flex flex-col gap-2.5">
-              <SettingRow
-                controlWidth="w-64"
-                label={t("taskQueueModal.pasteRepo")}
-                description={t("taskQueueModal.pasteRepo.hint")}
-                control={
-                  <Select
-                    value={pasteRepo}
-                    onChange={(event) => setPasteRepo(event.target.value)}
-                    aria-label={t("taskQueueModal.pasteRepo")}
-                  >
-                    <option value="">{t("taskQueueModal.pasteRepoNone")}</option>
-                    <option value={NO_REPO_VALUE}>{t("taskQueueModal.noRepoOption")}</option>
-                    {projects.map((project) => (
-                      <option key={project.path} value={project.path}>
-                        {project.label}
-                      </option>
-                    ))}
-                  </Select>
-                }
-              />
-              {pasteKind === "dev" && pasteRepo !== NO_REPO_VALUE && (
+              {pasteKind === "dev" && (
+                <SettingRow
+                  controlWidth="w-64"
+                  label={t("taskQueueModal.repoCount")}
+                  description={t(
+                    pasteMultiRepo
+                      ? "taskQueueModal.repoCount.multiHint"
+                      : "taskQueueModal.repoCount.singleHint",
+                  )}
+                  control={<RepoCountPicker multi={pasteMultiRepo} onChange={setPasteMultiRepo} />}
+                />
+              )}
+              {!(pasteKind === "dev" && pasteMultiRepo) && (
+                <SettingRow
+                  controlWidth="w-64"
+                  label={t("taskQueueModal.pasteRepo")}
+                  description={t("taskQueueModal.pasteRepo.hint")}
+                  control={
+                    <Select
+                      value={pasteRepo}
+                      onChange={(event) => setPasteRepo(event.target.value)}
+                      aria-label={t("taskQueueModal.pasteRepo")}
+                    >
+                      <option value="">{t("taskQueueModal.pasteRepoNone")}</option>
+                      <option value={NO_REPO_VALUE}>{t("taskQueueModal.noRepoOption")}</option>
+                      {projects.map((project) => (
+                        <option key={project.path} value={project.path}>
+                          {project.label}
+                        </option>
+                      ))}
+                    </Select>
+                  }
+                />
+              )}
+              {pasteKind === "dev" && (pasteMultiRepo || pasteRepo !== NO_REPO_VALUE) && (
                 <>
                   <SettingRow
                     controlWidth="w-64"
@@ -196,6 +216,37 @@ export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: Task
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+type RepoCountPickerProps = { multi: boolean; onChange: (multi: boolean) => void };
+
+function RepoCountPicker({ multi, onChange }: RepoCountPickerProps) {
+  const { t } = useLanguage();
+  const options = [
+    { value: false, icon: FolderGit2, label: t("taskQueueModal.repoCount.single") },
+    { value: true, icon: FolderTree, label: t("taskQueueModal.repoCount.multi") },
+  ];
+  return (
+    <div role="radiogroup" aria-label={t("taskQueueModal.repoCount")} className="flex gap-1.5">
+      {options.map(({ value, icon: Icon, label }) => (
+        <button
+          key={label}
+          type="button"
+          role="radio"
+          aria-checked={multi === value}
+          onClick={() => onChange(value)}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
+            multi === value
+              ? "border-violet-500 bg-violet-50 text-violet-700 dark:border-violet-400 dark:bg-violet-950/50 dark:text-violet-300"
+              : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800/60"
+          }`}
+        >
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
