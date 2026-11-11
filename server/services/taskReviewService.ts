@@ -5,9 +5,9 @@ import {
   listOpenPullRequests,
   type BitbucketCredentials,
 } from "./boardWatcher/bitbucket.js";
-import { prepareReview, REVIEW_RESULT_SHAPE } from "./boardWatcher/claudeReviewer.js";
+import { prepareReviewWorktree } from "./boardWatcher/claudeReviewer.js";
 import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
-import { getLessons } from "./boardWatcher/feedback.js";
+import { getLessons, lessonsSection } from "./boardWatcher/feedback.js";
 import { prUrl } from "./boardWatcher/instantNotices.js";
 import { localRepoPaths } from "./boardWatcher/sprintRepos.js";
 import { prSubject, type PullRequest } from "./boardWatcher/types.js";
@@ -52,18 +52,18 @@ export async function reviewBoardSetup(): Promise<{
   return { config, credentials: bitbucketCredentialsFromEnv(config.bitbucket.workspace) };
 }
 
-/** The open PR behind `subject`, with the repo's other open PRs. */
+/** The open PR behind `subject`. */
 export async function findOpenPullRequest(
   credentials: BitbucketCredentials,
   subject: string,
-): Promise<{ pr: PullRequest; openPrs: PullRequest[] }> {
+): Promise<PullRequest> {
   const [, repo = ""] = PR_SUBJECT.exec(subject) ?? [];
   const openPrs = repo ? await listOpenPullRequests(credentials, [repo]) : [];
   const pr = openPrs.find((p) => prSubject(p) === subject);
   if (!pr) {
     throw new ConflictError("REVIEW_PR_NOT_OPEN", `${subject} isn't an open pull request.`);
   }
-  return { pr, openPrs };
+  return pr;
 }
 
 /** The local clone of `repo` (a folder with its name in the workspace folders, or
@@ -79,24 +79,14 @@ const PROMPT_TEXT = {
   en: {
     nickname: "Review - {link}",
     name: "Review {key}",
-    result:
-      "When the review is done, send its result to the app, which posts the comments and approves " +
-      "the PR within its limits (never comment on or approve the PR yourself). Send it as JSON in " +
-      "this shape: {shape}\n\n{command}\n\nThe app answers with what it posted and marks this " +
-      "review done. If it answers with an error, show it and stop: the review shows up in the " +
-      "queue with that error.",
+    result: "Send the result as JSON with a POST to {url}",
     compact:
       "Last, suggest running /compact, in case this session is resumed to talk about the review.",
   },
   pt: {
     nickname: "Review - {link}",
     name: "Review {key}",
-    result:
-      "Quando terminar o review, mande o resultado para o app, que comenta e aprova o PR dentro " +
-      "dos limites dele (nunca comente nem aprove o PR você mesmo). Mande como JSON neste " +
-      "formato: {shape}\n\n{command}\n\nO app responde com o que publicou e marca este review " +
-      "como concluído. Se responder com erro, mostre o erro e pare: o review aparece na fila com " +
-      "ele.",
+    result: "Mande o resultado como JSON num POST para {url}",
     compact:
       "Por fim, sugira rodar /compact, caso esta sessão seja retomada pra conversar sobre o review.",
   },
@@ -119,7 +109,7 @@ export async function launchReviewEntry(
     );
   }
   const { config, credentials } = await reviewBoardSetup();
-  const { pr, openPrs } = await findOpenPullRequest(credentials, entry.key);
+  const pr = await findOpenPullRequest(credentials, entry.key);
   if (await hasAiReviewComment(credentials, pr)) {
     throw new ConflictError(
       "REVIEW_ALREADY_DONE",
@@ -133,23 +123,15 @@ export async function launchReviewEntry(
       `No local clone of ${pr.repo} in the workspace folders.`,
     );
   }
-  const { worktree, context } = await prepareReview(pr, {
-    repoPath,
-    openPrs,
-    jiraSite: config.jira?.site,
-    lessons: await getLessons("review"),
-  });
+  const worktree = await prepareReviewWorktree(pr, repoPath);
 
   const text = PROMPT_TEXT[prefs.language ?? "en"];
   const link = entry.link ?? prUrl(config, pr) ?? entry.key;
   const sessionId = randomUUID();
-  const command =
-    `curl -sS -X POST http://localhost:${API_PORT}/sessions/${sessionId}/review-result ` +
-    `-H 'Content-Type: application/json' --data-binary @- <<'JSON'\n<the JSON>\nJSON`;
+  const url = `http://localhost:${API_PORT}/sessions/${sessionId}/review-result`;
   const prompt = [
-    `/${skill} ${link}`,
-    context,
-    text.result.replace("{shape}", REVIEW_RESULT_SHAPE).replace("{command}", command),
+    `/${skill} ${link}${lessonsSection(await getLessons("review"))}`,
+    text.result.replace("{url}", url),
     text.compact,
   ].join("\n\n");
 
