@@ -59,14 +59,14 @@ The watcher is a safety net, not a competitor: it only takes tickets nobody pick
 
 ## Limits
 
-| Setting               | Default                                  | Why                                       |
-| --------------------- | ---------------------------------------- | ----------------------------------------- |
-| Polling               | 10 min in business hours, 60 min outside | reading is cheap; little changes at night |
-| Visible actions       | weekdays 09:00–18:00 (machine timezone)  | nobody gets notified at 3 a.m.            |
-| Comments per PR       | 3, blocking/major only                   | no nitpicks on a colleague's PR           |
-| AI reviews per PR     | one, for the whole team                  | then a person reviews; no AI loop         |
-| Approvals per day     | 8, then the watcher pauses and alerts    | that many in a day means something's off  |
-| Tests claimed at once | 2, and 4 a day                           | doesn't hog the column                    |
+| Setting               | Default                                                               | Why                                       |
+| --------------------- | --------------------------------------------------------------------- | ----------------------------------------- |
+| Polling               | 10 min in business hours (`lookIntervalMinutes`, 5–480), none outside | reading is cheap; little changes at night |
+| Visible actions       | weekdays 09:00–18:00 (machine timezone)                               | nobody gets notified at 3 a.m.            |
+| Comments per PR       | 3, blocking/major only                                                | no nitpicks on a colleague's PR           |
+| AI reviews per PR     | one, for the whole team                                               | then a person reviews; no AI loop         |
+| Approvals per day     | 8, then the watcher pauses and alerts                                 | that many in a day means something's off  |
+| Tests claimed at once | 2, and 4 a day                                                        | doesn't hog the column                    |
 
 ## Playing nice
 

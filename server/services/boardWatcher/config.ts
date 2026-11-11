@@ -20,6 +20,8 @@ export type BusinessHours = {
 };
 
 export type BoardWatcherLimits = {
+  /** Minutes between two looks at the board in business hours. */
+  lookIntervalMinutes: number;
   maxCommentsPerPr: number;
   /** Past this the watcher pauses itself: that many approvals in a day means something's off. */
   maxApprovesPerDay: number;
@@ -94,6 +96,7 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
 };
 
 export const DEFAULT_LIMITS: BoardWatcherLimits = {
+  lookIntervalMinutes: 10,
   maxCommentsPerPr: 3,
   maxApprovesPerDay: 8,
   maxClaimedTests: 2,

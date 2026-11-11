@@ -28,6 +28,8 @@ export const AUTOMATIONS = ["codeReview", "devQueue", "testQueue", "rebuild"] as
 export type Automation = (typeof AUTOMATIONS)[number];
 
 export type AutomationLimits = {
+  /** Minutes between two looks at the board in business hours. */
+  lookIntervalMinutes?: number;
   waitTestGraceMinutes: number;
   maxClaimedTests: number;
   maxClaimsPerDay: number;

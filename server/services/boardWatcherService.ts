@@ -122,8 +122,8 @@ import {
 } from "./boardWatcher/types.js";
 
 /**
- * Runs the board watcher inside the server: a look at the board every 10 minutes in business
- * hours (60 outside), the digest to Teams at the start and end of the day, and an alert when a
+ * Runs the board watcher inside the server: a look at the board every `lookIntervalMinutes` in
+ * business hours (none outside), the digest to Teams at the start and end of the day, and an alert when a
  * look fails. Off unless `boardWatcher.json` has `"enabled": true`; each automation on does its
  * writes (queue a task, move a card, comment, approve) for real (`boardWatcher/boardDeps.ts`).
  * PRs due for review go to the task queue as review entries (`taskReviewService.ts`), whose
@@ -134,7 +134,6 @@ import {
 const STATE_FILE = path.join(REPO_ROOT, "boardWatcher-state.json");
 /** The actions only simulated back when there was a simulation mode, out of the history. */
 const SIMULATED_FILE = path.join(REPO_ROOT, "boardWatcher-actions-simulated.jsonl");
-const BUSINESS_INTERVAL_MS = 10 * 60_000;
 const OFF_HOURS_INTERVAL_MS = 60 * 60_000;
 /** Local times the digest goes out, on business days. */
 /** When the digest goes out: at the start of business hours and DIGEST_BEFORE_END_MIN before
@@ -300,21 +299,23 @@ async function saveState(state: PersistedState): Promise<void> {
   await rename(tmp, STATE_FILE);
 }
 
-/** The latest digest time that has passed today (business days only), or null. */
-function dueDigestSlot(now: Date, config: BoardWatcherConfig): Date | null {
+/** Today's digest times (business days only). */
+function digestSlots(now: Date, config: BoardWatcherConfig): Date[] {
   const { timezone, days } = config.businessHours;
   const local = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
-  if (!days.includes(local.getDay())) return null;
+  if (!days.includes(local.getDay())) return [];
   const offsetMs = local.getTime() - now.getTime();
-  let due: Date | null = null;
-  for (const time of digestTimes(config)) {
+  return digestTimes(config).map((time) => {
     const [h, m] = time.split(":").map(Number);
     const slotLocal = new Date(local);
     slotLocal.setHours(h ?? 0, m ?? 0, 0, 0);
-    const slot = new Date(slotLocal.getTime() - offsetMs);
-    if (slot.getTime() <= now.getTime()) due = slot;
-  }
-  return due;
+    return new Date(slotLocal.getTime() - offsetMs);
+  });
+}
+
+/** The latest digest time that has passed today (business days only), or null. */
+function dueDigestSlot(now: Date, config: BoardWatcherConfig): Date | null {
+  return digestSlots(now, config).findLast((slot) => slot.getTime() <= now.getTime()) ?? null;
 }
 
 async function sendDigestIfDue(
@@ -810,9 +811,11 @@ function schedule(config: BoardWatcherConfig | null): void {
   const now = new Date();
   const businessTime = config ? isBusinessTime(now, config.businessHours) : false;
   let delay: number;
-  if (businessTime) {
-    // Every few minutes, so one look lands in the digest's slot before business hours end.
-    delay = BUSINESS_INTERVAL_MS;
+  if (config && businessTime) {
+    // A long interval is cut short so a look lands in the digest's slot before hours end.
+    delay = config.lookIntervalMinutes * 60_000;
+    const nextDigest = digestSlots(now, config).find((slot) => slot.getTime() > now.getTime());
+    if (nextDigest) delay = Math.min(delay, nextDigest.getTime() - now.getTime() + 1000);
   } else {
     // Eye closed: nothing until business hours start again.
     const start = config ? nextBusinessStart(now, config.businessHours) : null;
@@ -820,6 +823,12 @@ function schedule(config: BoardWatcherConfig | null): void {
   }
   nextLookAt = new Date(Date.now() + delay).toISOString();
   timer = setTimeout(() => void look(), delay);
+}
+
+/** The next look follows a new interval right away (the "Automation" modal saved it). */
+export async function rescheduleBoardWatcher(): Promise<void> {
+  if (running) return;
+  schedule(await loadBoardWatcherConfig().catch(() => null));
 }
 
 /** A session started by hand is no longer let through outside business hours once it runs. */

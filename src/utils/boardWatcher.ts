@@ -8,6 +8,7 @@ import type { Language } from "../i18n/translations";
 
 /** Same bounds the server accepts (`LIMIT_RANGES` in `server/services/boardWatcher/settings.ts`). */
 export const LIMIT_BOUNDS: Record<keyof AutomationLimits, [number, number]> = {
+  lookIntervalMinutes: [5, 480],
   waitTestGraceMinutes: [0, 1440],
   maxClaimedTests: [1, 10],
   maxClaimsPerDay: [1, 50],

@@ -25,6 +25,7 @@ import {
  */
 
 const LIMIT_RANGES: Record<keyof AutomationLimits, [number, number]> = {
+  lookIntervalMinutes: [5, 480],
   waitTestGraceMinutes: [0, 1440],
   maxClaimedTests: [1, 10],
   maxClaimsPerDay: [1, 50],

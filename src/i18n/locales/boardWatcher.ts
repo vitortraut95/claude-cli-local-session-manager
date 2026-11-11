@@ -21,6 +21,14 @@ export const boardWatcher = {
     "Não foi possível salvar as configurações da automação.",
   ),
   "automation.limits": dict("Limits", "Limites"),
+  "automation.limit.lookIntervalMinutes": dict(
+    "Look at the board every (minutes)",
+    "Olhar o board a cada (minutos)",
+  ),
+  "automation.limit.lookIntervalMinutes.description": dict(
+    "Minutes between two looks at the board in business hours (e.g. 10, 30, 60, 120). The digest still goes out on time. \"Look now\" on the Board doesn't wait.",
+    "Minutos entre uma olhada e outra no board no horário comercial (ex.: 10, 30, 60, 120). O resumo continua saindo na hora certa. O \"Olhar agora\" do Board não espera.",
+  ),
   "automation.limit.waitTestGraceMinutes": dict(
     "Wait Test grace minutes",
     "Minutos de carência em Wait Test",
