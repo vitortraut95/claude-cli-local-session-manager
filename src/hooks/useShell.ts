@@ -6,6 +6,7 @@ import type { AppView } from "./useAppView";
 export type ShellActions = {
   view: AppView;
   navigate: (view: AppView) => void;
+  /** Goes to the task queue with its add form in focus: new tasks go through the queue. */
   openNewTask: () => void;
   openNewSession: () => void;
   openRefinement: () => void;

@@ -121,8 +121,8 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-/** Mirrors the "New task" modal's `newTaskModal.taskPrefix`, `extraRepos.promptNote` and
- *  `sharedNodeModulesNote` strings. */
+/** The prompt notes: the task link, the repos folder, the extra dirs and the
+ *  shared node_modules warning. */
 const PROMPT_TEXT = {
   en: {
     task: "Task",

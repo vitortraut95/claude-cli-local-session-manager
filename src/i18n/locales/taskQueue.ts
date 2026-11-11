@@ -15,8 +15,8 @@ export const taskQueue = {
   "header.grid.error": dict("Couldn't open the grid.", "Não foi possível abrir a grade."),
   "taskQueueModal.title": dict("Task queue", "Fila de tarefas"),
   "taskQueueModal.intro": dict(
-    "Paste the tasks and save: the queue launches one at a time, in list order, while there's room. Development = like \"New task\" (its own worktree, the default prompt); test = the test skill on the task's existing branch, in disposable worktrees.",
-    'Cole as tarefas e salve: a fila lan\u00e7a uma por vez, na ordem da lista, enquanto houver espa\u00e7o. Desenvolvimento = como na "Nova tarefa" (worktree pr\u00f3prio, prompt padr\u00e3o); teste = a skill de teste na branch que a tarefa j\u00e1 tem, em worktrees descart\u00e1veis.',
+    "Every new task goes here. Paste the tasks and save: the queue launches one at a time, in list order, while there's room. Development = its own branch and worktree, with the default prompt; test = the test skill on the task's existing branch, in disposable worktrees.",
+    "Toda tarefa nova entra aqui. Cole as tarefas e salve: a fila lança uma por vez, na ordem da lista, enquanto houver espaço. Desenvolvimento = branch e worktree próprios, com o prompt padrão; teste = a skill de teste na branch que a tarefa já tem, em worktrees descartáveis.",
   ),
   "taskQueueModal.dragHandle": dict(
     "Drag to reorder (top launches first)",

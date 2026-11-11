@@ -29,7 +29,7 @@ const STEPS: Step[] = [
     title: "tour.newTask.title",
     body: "tour.newTask.body",
     targets: ["new-task"],
-    view: "sessions",
+    view: "queue",
   },
   {
     id: "queue",

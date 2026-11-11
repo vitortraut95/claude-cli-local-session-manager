@@ -4,7 +4,9 @@ import {
   Eye,
   ListTodo,
   Menu,
+  MessageSquarePlus,
   Moon,
+  Plus,
   Scale,
   Settings,
   Sparkles,
@@ -51,6 +53,9 @@ export type AppNavProps = {
   };
   theme: Theme;
   onToggleTheme: () => void;
+  /** The task queue's add form: new tasks go through the queue. */
+  onNewTask: () => void;
+  onOpenNewSession: () => void;
   onOpenCleanup: () => void;
   onOpenRefinement: () => void;
   onOpenSkills: () => void;
@@ -106,6 +111,10 @@ export function AppNav(props: AppNavProps) {
   const pages: {
     view: AppView;
     label: string;
+    /** Shorter label for the phone's bottom bar. */
+    shortLabel?: string;
+    /** A second line under the label (sidebar only). */
+    hint?: string;
     icon: ReactNode;
     extra?: ReactNode;
   }[] = [
@@ -129,6 +138,16 @@ export function AppNav(props: AppNavProps) {
       ),
     },
     {
+      view: "queue",
+      label: t("nav.queue"),
+      shortLabel: t("nav.queue.short"),
+      hint: t("nav.queue.hint"),
+      icon: <ListTodo className="h-[18px] w-[18px]" />,
+      extra: (
+        <Count value={props.queueCount} label={t("nav.queue.count", { count: props.queueCount })} />
+      ),
+    },
+    {
       view: "board",
       label: t("nav.board"),
       icon: <Eye className="h-[18px] w-[18px]" />,
@@ -136,14 +155,6 @@ export function AppNav(props: AppNavProps) {
         <span className="ml-auto">
           <BetaBadge />
         </span>
-      ),
-    },
-    {
-      view: "queue",
-      label: t("nav.queue"),
-      icon: <ListTodo className="h-[18px] w-[18px]" />,
-      extra: (
-        <Count value={props.queueCount} label={t("nav.queue.count", { count: props.queueCount })} />
       ),
     },
   ];
@@ -163,7 +174,16 @@ export function AppNav(props: AppNavProps) {
         className={itemClass(current)}
       >
         <span className={current ? "text-violet-600 dark:text-violet-400" : ""}>{page.icon}</span>
-        <span className="truncate">{page.label}</span>
+        {page.hint ? (
+          <span className="flex min-w-0 flex-col py-1.5 leading-tight">
+            <span className="truncate">{page.label}</span>
+            <span className="truncate text-xs font-normal text-gray-500 dark:text-gray-400">
+              {page.hint}
+            </span>
+          </span>
+        ) : (
+          <span className="truncate">{page.label}</span>
+        )}
         {page.extra}
       </button>
     );
@@ -176,8 +196,86 @@ export function AppNav(props: AppNavProps) {
     );
   };
 
+  const pageItemFor = (view: AppView) => {
+    const page = pages.find((p) => p.view === view);
+    return page ? pageItem(page) : null;
+  };
+
+  const newTaskButton = (onPick?: () => void) => (
+    <button
+      type="button"
+      data-tour="new-task"
+      title={t("shortcuts.newTask")}
+      onClick={() => {
+        onPick?.();
+        props.onNewTask();
+      }}
+      className="flex min-h-10 w-full items-center gap-2.5 rounded-lg bg-violet-600 px-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-violet-700"
+    >
+      <Plus className="h-[18px] w-[18px]" />
+      <span className="truncate">{t("header.newTask")}</span>
+      <kbd className="ml-auto rounded bg-white/20 px-1.5 font-mono text-[11px]">N</kbd>
+    </button>
+  );
+
+  // A key feature: next to the pages, with what it is underneath.
+  const skillsItem = (onPick?: () => void) => (
+    <Tooltip
+      content={
+        skills.warning
+          ? t(skills.notConfigured ? "header.skills.notConfigured" : "header.skills.notInstalled")
+          : skills.linked !== null
+            ? t("header.skills.active", { count: skills.linked })
+            : null
+      }
+    >
+      <button
+        type="button"
+        data-tour="skills"
+        onClick={() => {
+          onPick?.();
+          props.onOpenSkills();
+        }}
+        className={itemClass(false)}
+      >
+        <Wand2 className="h-[18px] w-[18px] text-violet-600 dark:text-violet-400" />
+        <span className="flex min-w-0 flex-col py-1.5 leading-tight">
+          <span className="truncate">{t("nav.skills")}</span>
+          <span className="truncate text-xs font-normal text-gray-500 dark:text-gray-400">
+            {t("nav.skills.hint")}
+          </span>
+        </span>
+        {skills.warning ? (
+          <AlertTriangle
+            aria-hidden="true"
+            className="ml-auto h-4 w-4 text-amber-600 dark:text-amber-400"
+          />
+        ) : (
+          skills.linked !== null && (
+            <Count
+              value={skills.linked}
+              label={t("header.skills.active", { count: skills.linked })}
+            />
+          )
+        )}
+      </button>
+    </Tooltip>
+  );
+
   const toolItems = (onPick?: () => void) => (
     <>
+      <button
+        type="button"
+        data-tour="new-session"
+        onClick={() => {
+          onPick?.();
+          props.onOpenNewSession();
+        }}
+        className={itemClass(false)}
+      >
+        <MessageSquarePlus className="h-[18px] w-[18px]" />
+        <span className="truncate">{t("header.newSession")}</span>
+      </button>
       <button
         type="button"
         data-tour="refine"
@@ -202,41 +300,6 @@ export function AppNav(props: AppNavProps) {
         <Sparkles className="h-[18px] w-[18px]" />
         <span className="truncate">{t("nav.cleanup")}</span>
       </button>
-      <Tooltip
-        content={
-          skills.warning
-            ? t(skills.notConfigured ? "header.skills.notConfigured" : "header.skills.notInstalled")
-            : skills.linked !== null
-              ? t("header.skills.active", { count: skills.linked })
-              : null
-        }
-      >
-        <button
-          type="button"
-          data-tour="skills"
-          onClick={() => {
-            onPick?.();
-            props.onOpenSkills();
-          }}
-          className={itemClass(false)}
-        >
-          <Wand2 className="h-[18px] w-[18px]" />
-          <span className="truncate">{t("nav.skills")}</span>
-          {skills.warning ? (
-            <AlertTriangle
-              aria-hidden="true"
-              className="ml-auto h-4 w-4 text-amber-600 dark:text-amber-400"
-            />
-          ) : (
-            skills.linked !== null && (
-              <Count
-                value={skills.linked}
-                label={t("header.skills.active", { count: skills.linked })}
-              />
-            )
-          )}
-        </button>
-      </Tooltip>
       <button
         type="button"
         data-tour="guide"
@@ -307,7 +370,11 @@ export function AppNav(props: AppNavProps) {
             </span>
           </span>
         </div>
-        {pages.map((page) => pageItem(page))}
+        <div className="pb-2">{newTaskButton()}</div>
+        {pageItemFor("sessions")}
+        {pageItemFor("queue")}
+        {skillsItem()}
+        {pageItemFor("board")}
         <div className="my-2 border-t border-gray-200 dark:border-gray-800" />
         {toolItems()}
         <div className="min-h-6 flex-1" />
@@ -334,7 +401,7 @@ export function AppNav(props: AppNavProps) {
               }`}
             >
               {page.icon}
-              {page.label}
+              {page.shortLabel ?? page.label}
               {page.view === "sessions" && props.attentionCount > 0 && (
                 <span
                   aria-hidden="true"
@@ -367,6 +434,9 @@ export function AppNav(props: AppNavProps) {
         size="sm"
       >
         <div className="flex flex-col gap-1">
+          {newTaskButton(() => setMoreOpen(false))}
+          <div className="h-2" />
+          {skillsItem(() => setMoreOpen(false))}
           {toolItems(() => setMoreOpen(false))}
           <div className="my-3 border-t border-gray-200 dark:border-gray-800" />
           {footer(() => setMoreOpen(false))}

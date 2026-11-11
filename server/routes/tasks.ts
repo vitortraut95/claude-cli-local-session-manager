@@ -25,11 +25,9 @@ import {
   syncSkillsHub,
 } from "../services/skillsHubService.js";
 import {
-  createTaskWorktree,
   getRecentProjectFolders,
   getRepoInfo,
   launchTaskTerminal,
-  resolveBaseBranch,
 } from "../services/taskService.js";
 import { getHeavyRunHookStatus, setHeavyRunHookInstalled } from "../services/heavyRunService.js";
 import { stopPreviewsIn, taskWorktrees } from "../services/previewService.js";
@@ -197,28 +195,6 @@ tasksRouter.get("/repo-info", async (req, res) => {
   const folderPath = typeof req.query.folderPath === "string" ? req.query.folderPath : "";
   const info = await getRepoInfo(folderPath);
   res.json(info);
-});
-
-tasksRouter.post("/resolve-base-branch", async (req, res) => {
-  const result = await resolveBaseBranch(
-    extractStringField(req.body, "folderPath"),
-    extractStringField(req.body, "baseBranch"),
-    extractBooleanField(req.body, "useLocalBranch", false),
-  );
-  res.json(result);
-});
-
-tasksRouter.post("/worktree", async (req, res) => {
-  const result = await createTaskWorktree(
-    extractStringField(req.body, "folderPath"),
-    extractStringField(req.body, "branchName"),
-    extractStringField(req.body, "baseBranchRef"),
-    extractStringField(req.body, "baseBranch"),
-    extractBooleanField(req.body, "useWorktree", true),
-    normalizeTaskKey(extractStringField(req.body, "taskKey")),
-    extractStringField(req.body, "taskLink") || null,
-  );
-  res.json(result);
 });
 
 tasksRouter.post("/launch", async (req, res) => {
