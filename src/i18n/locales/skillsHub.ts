@@ -115,7 +115,7 @@ export const skillsHub = {
     "O clone não está na {defaultBranch}: você usa as skills desta branch, e as atualizações seguem o upstream dela.",
   ),
   "skillsHub.manage.syncNow": dict("Update now", "Atualizar agora"),
-  "skillsHub.modal.title": dict("Team skills", "Skills do time"),
+  "skillsHub.modal.title": dict("Skills", "Skills"),
   "skillsHub.panel.choose": dict("Choose", "Escolher"),
   "skillsHub.panel.chooseCatalogs": dict(
     "Skills hub found — pick your team's catalog(s) or individual skills to use them in your tasks.",

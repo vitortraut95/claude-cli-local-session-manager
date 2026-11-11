@@ -1,5 +1,6 @@
 import {
   ExternalLink,
+  FileText,
   FolderPlus,
   GripVertical,
   Loader2,
@@ -49,6 +50,7 @@ type TaskQueueRowProps = {
   onUngroup: (key: string) => void;
   onRemove: () => void;
   onStartNow: () => void;
+  onPreviewPrompt: () => void;
   onRetry: () => void;
   /** Pointer down / up on the drag handle. */
   onArmDrag: () => void;
@@ -85,6 +87,7 @@ export function TaskQueueRow({
   onUngroup,
   onRemove,
   onStartNow,
+  onPreviewPrompt,
   onRetry,
   onArmDrag,
   onDisarmDrag,
@@ -255,61 +258,71 @@ export function TaskQueueRow({
           )}
 
           <span>{t("taskQueueModal.reposLabel")}</span>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {entry.noRepo && <TaskQueueNoRepoChip onRemove={() => onUpdate({ noRepo: false })} />}
-            {entry.multiRepo && (
-              <TaskQueueMultiRepoChip onRemove={() => onUpdate({ multiRepo: false })} />
-            )}
-            <TaskQueueRepoChips repos={entry.repos} projects={projects} onRemove={removeRepo} />
-            {!entry.noRepo &&
-              !entry.multiRepo &&
-              (available.length > 0 || entry.repos.length === 0) && (
-                <div className="w-48">
-                  <Select
-                    icon={<FolderPlus className="h-4 w-4" />}
-                    value=""
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      if (value === NO_REPO_VALUE) {
-                        onUpdate({ noRepo: true, repos: [] });
-                      } else if (value === MULTI_REPO_VALUE) {
-                        onUpdate({ multiRepo: true, repos: [] });
-                      } else if (value) {
-                        onUpdate({ repos: [...entry.repos, value] });
-                      }
-                    }}
-                    aria-label={t("taskQueueModal.addRepo")}
-                    className={
-                      entry.repos.length === 0
-                        ? "border-amber-400 py-1 dark:border-amber-600"
-                        : "py-1"
-                    }
-                  >
-                    <option value="">{t("taskQueueModal.addRepo")}</option>
-                    {entry.repos.length === 0 && entry.kind === "dev" && (
-                      <option value={MULTI_REPO_VALUE}>
-                        {t("taskQueueModal.multiRepoOption")}
-                      </option>
-                    )}
-                    {entry.repos.length === 0 && (
-                      <option value={NO_REPO_VALUE}>{t("taskQueueModal.noRepoOption")}</option>
-                    )}
-                    {available.map((project) => (
-                      <option key={project.path} value={project.path}>
-                        {project.label}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
+          {entry.kind === "test" ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {entry.repos.length > 0 ? (
+                <TaskQueueRepoChips repos={entry.repos} projects={projects} onRemove={removeRepo} />
+              ) : (
+                <span>{t("taskQueueModal.testRoot")}</span>
               )}
-            {entry.repos.length === 0 && !entry.noRepo && !entry.multiRepo && (
-              <span className="text-amber-600 dark:text-amber-400">
-                {t("taskQueueModal.missingRepo")}
-              </span>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {entry.noRepo && <TaskQueueNoRepoChip onRemove={() => onUpdate({ noRepo: false })} />}
+              {entry.multiRepo && (
+                <TaskQueueMultiRepoChip onRemove={() => onUpdate({ multiRepo: false })} />
+              )}
+              <TaskQueueRepoChips repos={entry.repos} projects={projects} onRemove={removeRepo} />
+              {!entry.noRepo &&
+                !entry.multiRepo &&
+                (available.length > 0 || entry.repos.length === 0) && (
+                  <div className="w-48">
+                    <Select
+                      icon={<FolderPlus className="h-4 w-4" />}
+                      value=""
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (value === NO_REPO_VALUE) {
+                          onUpdate({ noRepo: true, repos: [] });
+                        } else if (value === MULTI_REPO_VALUE) {
+                          onUpdate({ multiRepo: true, repos: [] });
+                        } else if (value) {
+                          onUpdate({ repos: [...entry.repos, value] });
+                        }
+                      }}
+                      aria-label={t("taskQueueModal.addRepo")}
+                      className={
+                        entry.repos.length === 0
+                          ? "border-amber-400 py-1 dark:border-amber-600"
+                          : "py-1"
+                      }
+                    >
+                      <option value="">{t("taskQueueModal.addRepo")}</option>
+                      {entry.repos.length === 0 && entry.kind === "dev" && (
+                        <option value={MULTI_REPO_VALUE}>
+                          {t("taskQueueModal.multiRepoOption")}
+                        </option>
+                      )}
+                      {entry.repos.length === 0 && (
+                        <option value={NO_REPO_VALUE}>{t("taskQueueModal.noRepoOption")}</option>
+                      )}
+                      {available.map((project) => (
+                        <option key={project.path} value={project.path}>
+                          {project.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                )}
+              {entry.repos.length === 0 && !entry.noRepo && !entry.multiRepo && (
+                <span className="text-amber-600 dark:text-amber-400">
+                  {t("taskQueueModal.missingRepo")}
+                </span>
+              )}
+            </div>
+          )}
 
-          {entry.noRepo ? null : entry.kind === "test" ? (
+          {entry.kind === "test" ? (
             <>
               <span>{t("taskQueueModal.testBranchLabel")}</span>
               <div className="w-72">
@@ -323,7 +336,7 @@ export function TaskQueueRow({
                 />
               </div>
             </>
-          ) : (
+          ) : entry.noRepo ? null : (
             <>
               <span>{t("taskQueueModal.branchLabel")}</span>
               <div className="flex flex-wrap items-center gap-2">
@@ -374,6 +387,28 @@ export function TaskQueueRow({
               </div>
             </>
           )}
+
+          <span className="self-start pt-1.5">{t("taskQueueModal.notesLabel")}</span>
+          <div className="flex flex-col items-start gap-1">
+            <textarea
+              value={entry.notes}
+              onChange={(event) => onUpdate({ notes: event.target.value })}
+              placeholder={t("taskQueueModal.notesPlaceholder")}
+              aria-label={t("taskQueueModal.notesLabel")}
+              rows={entry.notes.includes("\n") ? 3 : 1}
+              className="w-full max-w-xl resize-y rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 placeholder:text-gray-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/25 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
+            />
+            {entry.kind === "dev" && (
+              <button
+                type="button"
+                onClick={onPreviewPrompt}
+                className="flex items-center gap-1 text-violet-700 hover:underline dark:text-violet-300"
+              >
+                <FileText className="h-3 w-3" />
+                {t("taskQueueModal.previewPrompt")}
+              </button>
+            )}
+          </div>
         </div>
       )}
 

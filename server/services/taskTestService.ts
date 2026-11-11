@@ -136,6 +136,12 @@ const PROMPT_TEXT = {
     nickname: "Test - {link}",
     name: "Test {key}",
     noSkill: "Test the task {link}",
+    notes: "Notes for this task:",
+    rootFolder:
+      "This is the folder the repos live in ({dir}). Find in the ticket which repos the task " +
+      "changed{branch}; work in a disposable worktree detached at it, never in the main " +
+      "checkouts. Don't commit or push.",
+    rootBranch: " (branch {branch} on origin)",
     worktrees:
       "Test worktrees (already added with --add-dir), each detached at the task branch from " +
       "origin: {dirs}. They're disposable and get deleted once this test is marked done: if the " +
@@ -161,6 +167,12 @@ const PROMPT_TEXT = {
     nickname: "Teste - {link}",
     name: "Teste {key}",
     noSkill: "Teste a tarefa {link}",
+    notes: "Observações desta tarefa:",
+    rootFolder:
+      "Esta é a pasta onde ficam os repos ({dir}). Veja no ticket quais repos a tarefa mudou" +
+      "{branch}; trabalhe num worktree descartável detached nela, nunca nos checkouts " +
+      "principais. Não faça commit nem push.",
+    rootBranch: " (branch {branch} no origin)",
     worktrees:
       "Worktrees de teste (já adicionados com --add-dir), cada um detached na branch da tarefa " +
       "do origin: {dirs}. São descartáveis e apagados quando este teste for marcado como " +
@@ -193,15 +205,14 @@ export type TestLaunchOutcome = {
   linkedNodeModules: number;
 };
 
-/** Launches a queue entry of kind "test". A repo after the first that can't be prepared doesn't
- *  stop the test (its error is returned); the first one does. With `noRepo`, the skill runs with
- *  no worktree at all. */
+/** Launches a queue entry of kind "test", always in the repos folder. A repo after the first that
+ *  can't be prepared doesn't stop the test (its error is returned); the first one does. With no
+ *  repo (the Board passes the ticket's), the session finds them itself. */
 export async function launchTestEntry(
   entry: QueueEntry,
   prefs: UserPreferences,
 ): Promise<TestLaunchOutcome | null> {
   const [mainFolder] = entry.repos;
-  if (!mainFolder && !entry.noRepo) return null;
   const skill = await resolveInstalledSkill(
     prefs.taskTestSkill,
     "TASK_TEST_SKILL_NOT_INSTALLED",
@@ -230,6 +241,7 @@ export async function launchTestEntry(
   }
 
   const text = PROMPT_TEXT[prefs.language ?? "en"];
+  const dir = await firstWorkspaceDir(prefs);
   // A grouped entry tests every ticket on the first one's branch.
   const tasks = queueEntryTasks(entry);
   const link = tasks.map((task) => task.link ?? task.key).join(" ");
@@ -239,7 +251,15 @@ export async function launchTestEntry(
     `-H 'Content-Type: application/json' -d '{"status":"${status}"}'`;
   const prompt = [
     skill ? `/${skill} ${link}` : text.noSkill.replace("{link}", link),
-    worktrees.length > 0 ? text.worktrees.replace("{dirs}", worktrees.join(", ")) : "",
+    entry.notes ? `${text.notes}\n${entry.notes}` : "",
+    worktrees.length > 0
+      ? text.worktrees.replace("{dirs}", worktrees.join(", "))
+      : text.rootFolder
+          .replace("{dir}", dir)
+          .replace(
+            "{branch}",
+            entry.branch ? text.rootBranch.replace("{branch}", entry.branch) : "",
+          ),
     linked.length > 0 ? text.sharedNodeModules.replace("{dirs}", linked.join(", ")) : "",
     extraErrors.length > 0 ? text.failedRepos.replace("{errors}", extraErrors.join("; ")) : "",
     text.result,
@@ -254,7 +274,7 @@ export async function launchTestEntry(
   await markTestSession(sessionId, entry.key, worktrees);
   try {
     await launchTaskTerminal({
-      worktreePath: await firstWorkspaceDir(prefs),
+      worktreePath: dir,
       prompt,
       permissionModeAuto: prefs.taskTestPermissionModeAuto,
       repoRoot: "",

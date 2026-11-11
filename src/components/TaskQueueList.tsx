@@ -18,6 +18,8 @@ type TaskQueueListProps = {
   saving: boolean;
   onStartNow: (key: string) => void;
   onRetry: (key: string) => void;
+  /** Shows what a development entry's session will be sent. */
+  onPreviewPrompt: (entry: DraftEntry) => void;
   /** Drops the launched entries, saved right away (other unsaved edits stay unsaved). */
   onRemoveLaunched: () => void;
 };
@@ -34,6 +36,7 @@ export function TaskQueueList({
   saving,
   onStartNow,
   onRetry,
+  onPreviewPrompt,
   onRemoveLaunched,
 }: TaskQueueListProps) {
   const { t } = useLanguage();
@@ -187,6 +190,7 @@ export function TaskQueueList({
                     setEntries((current) => current.filter((e) => e.key !== entry.key))
                   }
                   onStartNow={() => onStartNow(entry.key)}
+                  onPreviewPrompt={() => onPreviewPrompt(entry)}
                   onRetry={() => {
                     onRetry(entry.key);
                     updateEntry(entry.key, { error: null });

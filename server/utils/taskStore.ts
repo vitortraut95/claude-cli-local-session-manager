@@ -197,6 +197,7 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
         branch: asTextOrNull(raw.branch),
         baseBranch: asTextOrNull(raw.baseBranch),
         useLocalBaseBranch: raw.useLocalBaseBranch === true,
+        notes: asTextOrNull(raw.notes),
         addedAt: typeof raw.addedAt === "string" ? raw.addedAt : "",
         launchedAt: asTextOrNull(raw.launchedAt),
         sessionId: asTextOrNull(raw.sessionId),

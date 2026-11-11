@@ -15,8 +15,8 @@ export const shell = {
   "nav.queue.hint": dict("New tasks go here", "Novas tarefas entram aqui"),
   "nav.queue.count": dict("{count} waiting in line", "{count} esperando na fila"),
   "nav.cleanup": dict("Cleanup", "Limpeza"),
-  "nav.skills": dict("Team skills", "Skills do time"),
-  "nav.skills.hint": dict("What Claude knows how to do", "O que o Claude sabe fazer"),
+  "nav.skills": dict("Skills", "Skills"),
+  "nav.skills.hint": dict("Skill management", "Gerenciamento de skills"),
   "nav.guide": dict("Guide", "Guia"),
   "nav.settings": dict("Settings", "Configurações"),
   "nav.more": dict("More", "Mais"),
@@ -59,7 +59,7 @@ export const shell = {
   "sessions.group.stopped": dict("Stopped", "Paradas"),
   "sessions.group.done": dict("Done", "Concluídas"),
   "sessions.done.show": dict("Show the {count} done", "Mostrar as {count} concluídas"),
-  "sessions.done.hide": dict("Fold the done ones", "Recolher as concluídas"),
+  "sessions.done.hide": dict("Hide the done ones", "Ocultar concluídas"),
   "sessions.noTask": dict("no task", "sem tarefa"),
   "sessions.live.running": dict("Running", "Rodando"),
   "sessions.live.stopped": dict("Stopped", "Parada"),
@@ -163,8 +163,8 @@ export const shell = {
 
   // Queue page
   "queuePage.unsaved": dict(
-    "You have changes that aren't saved: the scheduler only sees the saved queue.",
-    "Há alterações não salvas: o agendador só enxerga a fila salva.",
+    "Unsaved changes: the queue only runs what's saved.",
+    "Alterações não salvas: a fila só roda o que está salvo.",
   ),
   "queuePage.discard": dict("Discard", "Descartar"),
   "queuePage.saved": dict("Queue saved", "Fila salva"),

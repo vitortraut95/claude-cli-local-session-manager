@@ -34,6 +34,7 @@ import { stopPreviewsIn, taskWorktrees } from "../services/previewService.js";
 import { getTaskQueue, saveTaskQueue } from "../services/taskQueueService.js";
 import { launchRefinement } from "../services/taskRefinementService.js";
 import {
+  getQueueLaunches,
   getSchedulerStatus,
   launchQueueEntryNow,
   runSchedulerNow,
@@ -249,6 +250,10 @@ tasksRouter.put("/queue", async (req, res) => {
 /** Room left for the scheduler (sessions, RAM, plan usage) and why it's waiting, if it is. */
 tasksRouter.get("/queue/status", async (_req, res) => {
   res.json(await getSchedulerStatus());
+});
+
+tasksRouter.get("/queue/launches", (_req, res) => {
+  res.json({ launches: getQueueLaunches() });
 });
 
 tasksRouter.post("/queue/run", async (_req, res) => {

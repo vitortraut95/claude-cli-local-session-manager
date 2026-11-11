@@ -10,6 +10,7 @@ import type {
   ProjectFolderOption,
   QueueEntry,
   QueueEntryInput,
+  QueueLaunch,
   RefinementInput,
   RepoInfo,
   SchedulerStatus,
@@ -25,6 +26,8 @@ export type {
   QueueEntryInput,
   QueueGroupedTask,
   QueueKind,
+  QueueLaunch,
+  QueueLaunchStep,
   RefinementInput,
   RepoInfo,
   SchedulerBlock,
@@ -179,6 +182,21 @@ export async function startQueueEntryNow(key: string): Promise<void> {
   await withServerErrorMessage(() =>
     client.post(`/queue/${encodeURIComponent(key)}/start-now`, undefined, { timeout: 0 }),
   );
+}
+
+/** The launches in progress and the ones finished a moment ago (the "Launching" panel). */
+export async function fetchQueueLaunches(): Promise<QueueLaunch[]> {
+  const { data } = await withServerErrorMessage(() =>
+    client.get<{ launches: QueueLaunch[] }>("/queue/launches"),
+  );
+  return data.launches;
+}
+
+/** Fired when this tab starts a launch, so the "Launching" panel looks right away. */
+export const QUEUE_LAUNCH_STARTED_EVENT = "queue-launch-started";
+
+export function notifyQueueLaunchStarted(): void {
+  window.dispatchEvent(new Event(QUEUE_LAUNCH_STARTED_EVENT));
 }
 
 export async function fetchHeavyRunHookStatus(): Promise<HeavyRunHookStatus> {

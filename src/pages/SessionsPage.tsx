@@ -440,6 +440,16 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
               {t("sessions.group.attention.hint")}
             </span>
           )}
+          {group === "done" && showDone && (
+            <button
+              type="button"
+              onClick={() => setShowDone(false)}
+              className="ml-auto flex items-center gap-1 text-xs font-medium text-violet-700 hover:underline dark:text-violet-300"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+              {t("sessions.done.hide")}
+            </button>
+          )}
         </div>
         {renderRows(byGroup.get(group)!)}
       </section>

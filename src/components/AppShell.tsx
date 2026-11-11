@@ -22,6 +22,7 @@ import { AppNav } from "./AppNav";
 import { AutomationModal } from "./AutomationModal";
 import type { AutomationFocus } from "./AutomationModesEditor";
 import { CleanupModal } from "./CleanupModal";
+import { LaunchPanel } from "./LaunchPanel";
 import { NewSessionModal } from "./NewSessionModal";
 import { RefinementModal } from "./RefinementModal";
 import { SettingsModal } from "./SettingsModal";
@@ -226,10 +227,10 @@ export function AppShell() {
   const showTour = tourOpen && loaded && !showSetup && panel === null;
 
   const allSessions = sessions.allSessions;
-  const notDoneCount = allSessions.filter((session) => session.status !== "done").length;
-  const attentionCount = allSessions.filter(
-    (session) => sessionGroup(session, signals.problems) === "attention",
-  ).length;
+  // Same groups as the list: a session whose folder is gone counts as done there too.
+  const groups = allSessions.map((session) => sessionGroup(session, signals.problems));
+  const notDoneCount = groups.filter((group) => group !== "done").length;
+  const attentionCount = groups.filter((group) => group === "attention").length;
 
   return (
     <ShellContext.Provider value={shell}>
@@ -318,6 +319,7 @@ export function AppShell() {
           }}
         />
       )}
+      <LaunchPanel onOpenQueue={() => navigate("queue")} />
       <UpdateOverlay
         updating={autoUpdating}
         error={autoUpdateError}

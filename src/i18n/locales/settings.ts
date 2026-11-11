@@ -39,8 +39,8 @@ export const settings = {
   ),
   "settings.defaultPrompt.title": dict("Default prompt", "Prompt padrão"),
   "settings.defaultPrompt.description": dict(
-    'Pre-filled instructions in the "New task" modal.',
-    'Instruções que já vêm preenchidas no modal "Nova tarefa".',
+    "Sent in every development session the task queue opens, after the task link.",
+    "Vai em toda sessão de desenvolvimento que a fila de tarefas abre, depois do link da tarefa.",
   ),
   "settings.defaultSessionPrompt.title": dict("Default session prompt", "Prompt padrão de sessão"),
   "settings.defaultSessionPrompt.description": dict(

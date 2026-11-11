@@ -29,7 +29,12 @@ import {
   upsertTask,
   type QueueEntry,
 } from "../utils/taskStore.js";
-import type { SchedulerBlock, SchedulerStatus } from "../../shared/tasks.js";
+import type {
+  QueueLaunch,
+  QueueLaunchStep,
+  SchedulerBlock,
+  SchedulerStatus,
+} from "../../shared/tasks.js";
 
 /**
  * Launches the task queue on its own: every `TICK_MS` it checks for room (live sessions, free
@@ -56,13 +61,14 @@ const launchingKeys = new Set<string>();
 let lastLaunchAt = 0;
 let ticking = false;
 
-/** A test or review entry needs no branch prefix (it works on a branch that already exists), and
- *  neither does one with no repo (no branch is made). A multi-repo one finds its repos itself. */
+/** A test or review entry needs no branch prefix (it works on a branch that already exists) nor a
+ *  repo (it opens in the repos folder), and a dev one with no repo needs no prefix (no branch is
+ *  made). A multi-repo one finds its repos itself. */
 function isReady(entry: QueueEntry): boolean {
   return (
     !entry.launchedAt &&
     !entry.error &&
-    (entry.noRepo || entry.multiRepo === true || entry.repos.length > 0) &&
+    (entry.kind !== "dev" || entry.noRepo || entry.multiRepo === true || entry.repos.length > 0) &&
     (entry.kind !== "dev" || entry.noRepo || entry.branchPrefix !== null)
   );
 }
@@ -132,6 +138,7 @@ const PROMPT_TEXT = {
     noRepo:
       "No repo was picked for this task: this is the folder the repos live in ({dir}). If it " +
       "needs code changes, find the repo(s) here first.",
+    notes: "Notes for this task:",
     multiRepo:
       "This task spans more than one repo: this is the folder the repos live in ({dir}). Find in " +
       "the ticket which repos change (ask me if it doesn't say). For each one, before changing " +
@@ -154,6 +161,7 @@ const PROMPT_TEXT = {
     noRepo:
       "Nenhum repo foi escolhido para esta tarefa: esta é a pasta onde ficam os repos ({dir}). " +
       "Se ela precisar mudar código, ache o(s) repo(s) aqui antes.",
+    notes: "Observações desta tarefa:",
     multiRepo:
       "Esta tarefa envolve mais de um repo: esta é a pasta onde ficam os repos ({dir}). Veja no " +
       "ticket quais repos mudam (pergunte se ele não disser). Em cada um, antes de mudar " +
@@ -188,6 +196,7 @@ function composePrompt(
       ? [text.groupedTasks, ...tasks.map((task) => `- ${task.link ?? task.key}`)].join("\n")
       : `${text.task}: ${entry.link ?? entry.key}`,
     prefs.defaultPrompt.trim(),
+    entry.notes ? `${text.notes}\n${entry.notes}` : "",
     rootNote,
     addDirs.length > 0 ? text.extraDirs.replace("{dirs}", addDirs.join(", ")) : "",
     linked.length > 0 ? text.sharedNodeModules.replace("{dirs}", linked.join(", ")) : "",
@@ -263,14 +272,94 @@ async function waitForSessionStart(sessionId: string): Promise<void> {
   );
 }
 
+/** The steps of every launch in progress (or finished a moment ago), for the "Launching" panel.
+ *  In memory only: a restart forgets them, and the panel just stops showing them. */
+const launches = new Map<string, QueueLaunch>();
+const FINISHED_LAUNCH_TTL_MS = 2 * 60_000;
+
+/** Updates one launch's steps as it goes; `run` marks its step doing → done, or error (and
+ *  rethrows). */
+type LaunchTracker = {
+  run: <T>(step: string, work: () => Promise<T>) => Promise<T>;
+  done: (step: string) => void;
+};
+
+function plannedSteps(entry: QueueEntry): QueueLaunchStep[] {
+  const pending = (key: string, label?: string): QueueLaunchStep => ({
+    key,
+    ...(label ? { label } : {}),
+    status: "pending",
+  });
+  if (entry.kind !== "dev") return [pending("prepare"), pending("session")];
+  if (entry.noRepo || entry.multiRepo) return [pending("terminal"), pending("session")];
+  return [
+    pending("repo"),
+    pending("base"),
+    pending("worktree"),
+    ...entry.repos.slice(1).map((folder) => pending(`extra:${folder}`, path.basename(folder))),
+    pending("terminal"),
+    pending("session"),
+  ];
+}
+
+function startLaunchTracking(entry: QueueEntry): { launch: QueueLaunch; tracker: LaunchTracker } {
+  const startedAt = new Date().toISOString();
+  const launch: QueueLaunch = {
+    id: `${entry.key}@${startedAt}`,
+    key: entry.key,
+    keys: queueEntryTasks(entry).map((task) => task.key),
+    link: entry.link,
+    kind: entry.kind,
+    startedAt,
+    finishedAt: null,
+    error: null,
+    steps: plannedSteps(entry),
+  };
+  launches.set(launch.id, launch);
+  const set = (key: string, status: QueueLaunchStep["status"], error?: string) => {
+    launch.steps = launch.steps.map((step) =>
+      step.key === key ? { ...step, status, ...(error ? { error } : {}) } : step,
+    );
+  };
+  return {
+    launch,
+    tracker: {
+      run: async (key, work) => {
+        set(key, "doing");
+        try {
+          const result = await work();
+          set(key, "done");
+          return result;
+        } catch (err) {
+          set(key, "error", errorMessage(err));
+          throw err;
+        }
+      },
+      done: (key) => set(key, "done"),
+    },
+  };
+}
+
+/** The launches still going plus the ones finished in the last couple of minutes. */
+export function getQueueLaunches(): QueueLaunch[] {
+  const now = Date.now();
+  for (const [id, launch] of launches) {
+    if (launch.finishedAt && now - Date.parse(launch.finishedAt) > FINISHED_LAUNCH_TTL_MS) {
+      launches.delete(id);
+    }
+  }
+  return [...launches.values()];
+}
+
 async function launchEntry(
   entry: QueueEntry,
   prefs: UserPreferences,
+  tracker: LaunchTracker,
 ): Promise<LaunchOutcome | null> {
-  if (entry.kind === "test") return launchTest(entry, prefs, launchTestEntry);
-  if (entry.kind === "review") return launchTest(entry, prefs, launchReviewEntry);
-  if (entry.noRepo || entry.multiRepo) return launchRootEntry(entry, prefs);
-  return launchDevEntry(entry, prefs);
+  if (entry.kind === "test") return launchTest(entry, prefs, launchTestEntry, tracker);
+  if (entry.kind === "review") return launchTest(entry, prefs, launchReviewEntry, tracker);
+  if (entry.noRepo || entry.multiRepo) return launchRootEntry(entry, prefs, tracker);
+  return launchDevEntry(entry, prefs, tracker);
 }
 
 /** The note for a multi-repo session: the task branch and the call that makes it in each repo. */
@@ -296,25 +385,32 @@ function multiRepoNote(entry: QueueEntry, prefs: UserPreferences, dir: string): 
 
 /** A task with no repo, or one spanning several: the session opens in the first workspace dir
  *  (the other ones added with --add-dir); a multi-repo one makes its branches itself. */
-async function launchRootEntry(entry: QueueEntry, prefs: UserPreferences): Promise<LaunchOutcome> {
+async function launchRootEntry(
+  entry: QueueEntry,
+  prefs: UserPreferences,
+  tracker: LaunchTracker,
+): Promise<LaunchOutcome> {
   const dir = await firstWorkspaceDir(prefs);
   const addDirs = entry.multiRepo ? await otherWorkspaceDirs(prefs, dir) : [];
   const rootNote = entry.multiRepo
     ? multiRepoNote(entry, prefs, dir)
     : PROMPT_TEXT[prefs.language ?? "en"].noRepo.replace("{dir}", dir);
-  const { sessionId } = await launchTaskTerminal({
-    worktreePath: dir,
-    prompt: composePrompt(prefs, entry, addDirs, [], rootNote),
-    addDirs,
-    permissionModeAuto: prefs.useAutoPermissionModeByDefault,
-    repoRoot: "",
-    nickname: queueEntryNickname(entry),
-    name: queueEntryName(entry),
-  });
-  if (sessionId) {
+  const { sessionId } = await tracker.run("terminal", () =>
+    launchTaskTerminal({
+      worktreePath: dir,
+      prompt: composePrompt(prefs, entry, addDirs, [], rootNote),
+      addDirs,
+      permissionModeAuto: prefs.useAutoPermissionModeByDefault,
+      repoRoot: "",
+      nickname: queueEntryNickname(entry),
+      name: queueEntryName(entry),
+    }),
+  );
+  await tracker.run("session", async () => {
+    if (!sessionId) return;
     pendingLaunches.set(sessionId, Date.now());
     await waitForSessionStart(sessionId);
-  }
+  });
   await updateQueueEntry(entry.key, {
     launchedAt: new Date().toISOString(),
     sessionId,
@@ -337,11 +433,14 @@ async function launchTest(
   entry: QueueEntry,
   prefs: UserPreferences,
   launch: (entry: QueueEntry, prefs: UserPreferences) => Promise<TestLaunchOutcome | null>,
+  tracker: LaunchTracker,
 ): Promise<LaunchOutcome | null> {
-  const outcome = await launch(entry, prefs);
+  const outcome = await tracker.run("prepare", () => launch(entry, prefs));
   if (!outcome) return null;
-  pendingLaunches.set(outcome.sessionId, Date.now());
-  await waitForSessionStart(outcome.sessionId);
+  await tracker.run("session", async () => {
+    pendingLaunches.set(outcome.sessionId, Date.now());
+    await waitForSessionStart(outcome.sessionId);
+  });
   await updateQueueEntry(entry.key, {
     launchedAt: new Date().toISOString(),
     sessionId: outcome.sessionId,
@@ -353,29 +452,25 @@ async function launchTest(
 async function launchDevEntry(
   entry: QueueEntry,
   prefs: UserPreferences,
+  tracker: LaunchTracker,
 ): Promise<LaunchOutcome | null> {
   const [mainFolder, ...extraFolders] = entry.repos;
   if (!mainFolder) return null;
   const branch = queueEntryBranch(entry);
 
-  const repo = await getRepoInfo(mainFolder);
+  const repo = await tracker.run("repo", () => getRepoInfo(mainFolder));
   const base = entry.baseBranch ?? repo.defaultBaseBranch;
   const linked: string[] = [];
   let worktreePath = await findExistingTaskWorktree(repo.repoRoot, branch, entry.key);
-  if (!worktreePath) {
-    const { baseBranchRef } = await resolveBaseBranch(
-      repo.repoRoot,
-      base,
-      entry.useLocalBaseBranch,
+  if (worktreePath) {
+    tracker.done("base");
+    tracker.done("worktree");
+  } else {
+    const { baseBranchRef } = await tracker.run("base", () =>
+      resolveBaseBranch(repo.repoRoot, base, entry.useLocalBaseBranch),
     );
-    const created = await createTaskWorktree(
-      repo.repoRoot,
-      branch,
-      baseBranchRef,
-      base,
-      true,
-      entry.key,
-      entry.link,
+    const created = await tracker.run("worktree", () =>
+      createTaskWorktree(repo.repoRoot, branch, baseBranchRef, base, true, entry.key, entry.link),
     );
     worktreePath = created.worktreePath;
     linked.push(...created.setup.linked.map((rel) => path.join(created.worktreePath, rel)));
@@ -386,41 +481,47 @@ async function launchDevEntry(
   const extraErrors: string[] = [];
   for (const folder of extraFolders) {
     try {
-      const existing = await findExistingTaskWorktree(folder, branch, entry.key);
-      if (existing) {
-        addDirs.push(existing);
-        continue;
-      }
-      const result = await addRepoToTask(entry.key, {
-        folderPath: folder,
-        branchName: branch,
-        baseBranch: "",
-        useLocalBranch: false,
-        useWorktree: true,
-        taskLink: entry.link,
+      await tracker.run(`extra:${folder}`, async () => {
+        const existing = await findExistingTaskWorktree(folder, branch, entry.key);
+        if (existing) {
+          addDirs.push(existing);
+          return;
+        }
+        const result = await addRepoToTask(entry.key, {
+          folderPath: folder,
+          branchName: branch,
+          baseBranch: "",
+          useLocalBranch: false,
+          useWorktree: true,
+          taskLink: entry.link,
+        });
+        addDirs.push(result.workingDirectory);
+        linked.push(...result.setup.linked.map((rel) => path.join(result.workingDirectory, rel)));
       });
-      addDirs.push(result.workingDirectory);
-      linked.push(...result.setup.linked.map((rel) => path.join(result.workingDirectory, rel)));
     } catch (err) {
       extraErrors.push(`${folder}: ${errorMessage(err)}`);
     }
   }
 
-  const { sessionId } = await launchTaskTerminal({
-    worktreePath,
-    prompt: composePrompt(prefs, entry, addDirs, linked),
-    permissionModeAuto: prefs.useAutoPermissionModeByDefault,
-    repoRoot: repo.repoRoot,
-    nickname: queueEntryNickname(entry),
-    name: queueEntryName(entry),
-    originBranch: base,
-    destinationBranch: branch,
-    addDirs,
-  });
-  if (sessionId) {
+  const mainWorktree = worktreePath;
+  const { sessionId } = await tracker.run("terminal", () =>
+    launchTaskTerminal({
+      worktreePath: mainWorktree,
+      prompt: composePrompt(prefs, entry, addDirs, linked),
+      permissionModeAuto: prefs.useAutoPermissionModeByDefault,
+      repoRoot: repo.repoRoot,
+      nickname: queueEntryNickname(entry),
+      name: queueEntryName(entry),
+      originBranch: base,
+      destinationBranch: branch,
+      addDirs,
+    }),
+  );
+  await tracker.run("session", async () => {
+    if (!sessionId) return;
     pendingLaunches.set(sessionId, Date.now());
     await waitForSessionStart(sessionId);
-  }
+  });
 
   await updateQueueEntry(entry.key, {
     launchedAt: new Date().toISOString(),
@@ -498,6 +599,7 @@ async function launchTracked(
   now: boolean,
 ): Promise<LaunchOutcome | null> {
   launchingKeys.add(entry.key);
+  const { launch, tracker } = startLaunchTracking(entry);
   const startedAt = Date.now();
   lastLaunchAt = startedAt;
   const extra = now ? { now: true } : {};
@@ -509,7 +611,8 @@ async function launchTracked(
     ...extra,
   });
   try {
-    const outcome = await launchEntry(entry, prefs);
+    const outcome = await launchEntry(entry, prefs, tracker);
+    launch.finishedAt = new Date().toISOString();
     recordEvent("queue.launched", {
       key: entry.key,
       durationMs: Date.now() - startedAt,
@@ -522,6 +625,8 @@ async function launchTracked(
     return outcome;
   } catch (err) {
     const message = errorMessage(err);
+    launch.finishedAt = new Date().toISOString();
+    launch.error = message;
     console.warn(`[scheduler] ${entry.key} failed: ${message}`);
     recordEvent("queue.launch.failed", {
       key: entry.key,
