@@ -10,10 +10,12 @@ import {
   approvePullRequest,
   bitbucketCredentialsFromEnv,
   commentOnPullRequest,
+  findPullRequestsForKey,
   hasAiReviewComment,
   listOpenPullRequests,
   postAiReviewComment,
 } from "./bitbucket.js";
+import { testBranchProblem } from "./claudeTester.js";
 import type { BoardWatcherConfig } from "./config.js";
 import { markConflicts } from "./conflicts.js";
 import { issueUrl, noticeLiveAction, noticePause, prUrl } from "./instantNotices.js";
@@ -190,6 +192,15 @@ export function createBoardDeps(
           .filter((e) => e.kind === "dev" && e.launchedAt)
           .sort((a, b) => (a.launchedAt ?? "").localeCompare(b.launchedAt ?? ""))
           .map((e) => e.key),
+      testBranchProblem: async (key) => {
+        const issue = issuesByKey.get(key);
+        if (!issue) return null;
+        const repos = await sprintRepos(config);
+        const prBranches = await findPullRequestsForKey(bitbucketCredentials, repos, key).catch(
+          () => [],
+        );
+        return testBranchProblem(issue, await localRepoPaths(config, repos), prBranches);
+      },
       enqueue: async (key, kind) => {
         const issue = issuesByKey.get(key);
         if (kind === "dev") {

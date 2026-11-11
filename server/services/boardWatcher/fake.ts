@@ -21,6 +21,8 @@ export type FakeWorld = {
   startedDevKeys?: string[];
   /** PRs that already carry the AI review comment (by anyone). */
   aiReviewed?: string[];
+  /** Tickets whose test branch isn't on origin. */
+  missingTestBranches?: string[];
 };
 
 export function createFakeDeps(world: FakeWorld, me: string, effects: string[]): WatcherDeps {
@@ -70,6 +72,10 @@ export function createFakeDeps(world: FakeWorld, me: string, effects: string[]):
         return Promise.resolve();
       },
       startedDevKeys: () => Promise.resolve(world.startedDevKeys ?? []),
+      testBranchProblem: (key) =>
+        Promise.resolve(
+          (world.missingTestBranches ?? []).includes(key) ? "branch isn't on origin" : null,
+        ),
     },
   };
 }

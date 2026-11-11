@@ -58,6 +58,8 @@ const SERVER_TEXT_PT: [RegExp, string][] = [
   [/^Paused from the app$/, "pausado pelo app"],
   [/^plan usage at (\d+)% \(limit (\d+)%\)$/, "uso do plano em $1% (limite $2%)"],
   [/^tests waiting: /, "testes esperando: "],
+  [/no (\S+) branch on origin in (\S+)/, "sem branch da $1 no origin em $2"],
+  [/branch (\S+) isn't on origin/, "branch $1 não está no origin"],
   [/^(\S+) is In Progress$/, "$1 está em In Progress"],
   [/started, and none of yours is In Progress/, "sessão iniciada e nenhuma sua em In Progress"],
   [/VPN disconnected/, "VPN desconectada"],

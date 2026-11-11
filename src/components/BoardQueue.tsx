@@ -27,6 +27,9 @@ const STATE_LABEL: Record<QueueState, TranslationKey> = {
   waiting: "board.queue.state.waiting",
 };
 
+/** Skip reason of a ticket the user developed (`decide.ts`): someone else has to test it. */
+const USER_DEVELOPED_IT = "the user developed it";
+
 const STATE_TONE: Record<QueueState, string> = {
   running:
     "bg-violet-500/15 text-violet-800 ring-violet-500/40 dark:text-violet-200 dark:ring-violet-400/40",
@@ -248,7 +251,11 @@ export function BoardQueue({
                         aria-hidden="true"
                       />
                     )}
-                    {t(STATE_LABEL[item.state])}
+                    {t(
+                      item.state === "waiting" && item.reason?.includes(USER_DEVELOPED_IT)
+                        ? "board.queue.state.waitingOtherDev"
+                        : STATE_LABEL[item.state],
+                    )}
                   </span>
                   {item.decision?.canStart && (
                     <Tooltip content={t("board.queue.startNow.tooltip")}>
