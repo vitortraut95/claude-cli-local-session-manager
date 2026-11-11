@@ -87,14 +87,16 @@ The watcher is a safety net, not a competitor: it only takes tickets nobody pick
 ### Review session
 
 Runs as a background Claude session in a local worktree of the PR's source branch (so it can
-search the whole repo for other uses of what changed), read-only: no edits, commits or pushes. It
-gets the diff against the merge-base, the ticket with its comments, and the other open PRs that
-touch the same files or tickets (a review once flagged a "bug" that a sibling PR already handled).
-Each finding comes back with severity, file, line and `topic`: questions for PO/design/content
-(copy, prices, Figma parity) are `product` and are never posted; they stay in the actions log.
-A PR bundling more than one ticket is normal for the team: scope is never flagged, but all of its
-code is reviewed.
-Reviews run one at a time after a look, with a cost cap per review (`review.maxBudgetUsd`).
+search the whole repo for other uses of what changed), read-only: no edits, commits or pushes.
+How to review lives in a skill (`review.skill`, default `automated-code-review`, from the skills
+hub); without it installed the review fails. The app only hands it the context: the diff against
+the merge-base, the ticket with its comments, the other open PRs that touch the same files or
+tickets, and the user's lessons from earlier reviews. It asks for the skill's result: a verdict and
+findings, each with severity, file, line and `topic`. Questions for PO/design/content (`product`)
+and `minor` findings are never posted; they stay in the actions log. Posting, approving and every
+limit stay in the app.
+Reviews run one at a time after a look, with a cost cap per review (`review.maxBudgetUsd`). The
+session is kept (named `Review <repo>#<id>`), so it shows in the session list once it's over.
 
 The repos aren't configured: they're every repo with a PR linked to an issue of the active sprint
 (Jira's development panel, re-read per issue every 30 min, `sprintRepos.ts`). Each repo's local
