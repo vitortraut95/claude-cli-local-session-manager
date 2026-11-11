@@ -162,6 +162,7 @@ export function SessionCard({
           value={session.status ?? null}
           taskKey={session.taskKey ?? null}
           testKey={session.testKey ?? null}
+          reviewKey={session.reviewKey ?? null}
           saving={pendingAction === "status"}
           onChange={(status) => void actions.changeStatus(status)}
         />

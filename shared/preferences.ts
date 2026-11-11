@@ -86,6 +86,9 @@ export type UserPreferences = {
   /** Installed skill queued tests run as `/<skill> <ticket link>`; "" = no skill, the prompt starts
    *  with "Test the task <ticket link>". Optional: older files lack it. */
   taskTestSkill: string;
+  /** Installed skill queued code reviews run as `/<skill> <PR link>`; "" = none chosen (review
+   *  entries fail to launch). Optional: older files lack it. */
+  taskReviewSkill: string;
   /** Installed skill "Refine tasks" sessions run as `/<skill> <pasted tickets>`; "" = none chosen
    *  (the modal stays locked). Optional: older files lack it. */
   taskRefinementSkill: string;

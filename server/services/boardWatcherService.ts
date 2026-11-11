@@ -11,12 +11,19 @@ import type {
 import { takeCallCounts } from "./boardWatcher/http.js";
 import { backupWatcherFiles, restoreMissingWatcherFiles } from "./boardWatcher/backup.js";
 import { recordEvent } from "../utils/history.js";
-import { getTaskStore, onStoreChange, type StoreChange } from "../utils/taskStore.js";
+import {
+  getTaskStore,
+  onStoreChange,
+  setSessionStatus,
+  updateQueueEntry,
+  type StoreChange,
+} from "../utils/taskStore.js";
+import { tryGit } from "../utils/git.js";
 import { getUserPreferences } from "./preferencesService.js";
 import { getMaxUsagePercent } from "./usageService.js";
 import { findRemoteSessionUrl } from "./session/remoteUrl.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
-import { BadRequestError, ConflictError } from "../utils/httpError.js";
+import { BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
 import { buildResult, HomologPatchError, replayToHomolog } from "./boardWatcher/homologReplay.js";
 import {
   isBusinessDay,
@@ -48,12 +55,9 @@ import {
   branchBuild,
   findPullRequestsForKey,
   hasAiReviewComment,
-  listOpenPullRequests,
-  pullRequestHead,
   pullRequestNews,
-  sameCommit,
 } from "./boardWatcher/bitbucket.js";
-import { runClaudeReview } from "./boardWatcher/claudeReviewer.js";
+import { parseReviewOutput } from "./boardWatcher/claudeReviewer.js";
 import {
   commentsUpToPlan,
   findTestRepos,
@@ -91,7 +95,12 @@ import { ARCHIVE_FILE, rotateActions } from "./boardWatcher/history.js";
 import { networkProblem, remindOnDesktop } from "./boardWatcher/network.js";
 import { isTestReport, testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
-import { addTestEntryIfAbsent, requeueTestEntry } from "./taskQueueService.js";
+import {
+  addReviewEntryIfAbsent,
+  addTestEntryIfAbsent,
+  requeueTestEntry,
+} from "./taskQueueService.js";
+import { findOpenPullRequest, reviewBoardSetup, reviewRepoPath } from "./taskReviewService.js";
 import {
   automationSignal,
   automationsOn,
@@ -106,6 +115,7 @@ import {
   byPriority,
   emptyWatcherState,
   prSubject,
+  type AiReviewOutcome,
   type BoardIssue,
   type PullRequest,
   type WatcherState,
@@ -116,8 +126,8 @@ import {
  * hours (60 outside), the digest to Teams at the start and end of the day, and an alert when a
  * look fails. Off unless `boardWatcher.json` has `"enabled": true`; each automation on does its
  * writes (queue a task, move a card, comment, approve) for real (`boardWatcher/boardDeps.ts`).
- * PRs due for review get a review session (`claudeReviewer.ts`), one at a time after the look,
- * whose findings go through the same rules. State between looks lives in the gitignored
+ * PRs due for review go to the task queue as review entries (`taskReviewService.ts`), whose
+ * findings come back through `submitReviewResult` and go through the same rules. State between looks lives in the gitignored
  * `boardWatcher-state.json`; every read-modify-write of it goes through `serial`.
  */
 
@@ -854,9 +864,9 @@ function noteBlocked(reason: string): void {
   noteActivity("blocked", undefined, reason);
 }
 
-/** Runs the pending review and test sessions one at a time (reviews first: they're quick). A
- *  review's result goes through `applyReview`; a test's verdict and report are recorded with what
- *  would be done with them. */
+/** Hands the pending reviews and tests on, one at a time (reviews first): a review goes to the task
+ *  queue (its result comes back through `submitReviewResult`), a test to the queue or to a
+ *  headless session whose verdict and report are recorded with what would be done with them. */
 async function drainJobs(): Promise<void> {
   if (reviewing) return;
   reviewing = true;
@@ -885,9 +895,9 @@ async function drainJobs(): Promise<void> {
       const signal = automationSignal();
       const pr = reviews[0];
       const test = tests[0];
-      // A headless test or a review is a Claude session of its own: same plan limit as the queue.
-      const headlessTest = test && config.test?.runner === "headless";
-      if (pr || headlessTest) {
+      // A headless test is a Claude session of its own: same plan limit as the queue.
+      const headlessTest = !pr && test && config.test?.runner === "headless";
+      if (headlessTest) {
         const { maxUsagePercent } = (await getUserPreferences()).orchestrator;
         const usage = await getMaxUsagePercent(true);
         if (usage !== null && usage >= maxUsagePercent) {
@@ -928,88 +938,33 @@ async function drainJobs(): Promise<void> {
         if (signal.aborted) return;
         continue;
       }
+      // A review is a session of the task queue: queued here, launched by the scheduler, its
+      // result posted by `submitReviewResult`.
       const subject = prSubject(pr);
-      const started = Date.now();
-      let outcome: string;
       try {
-        const repoPath = (await localRepoPaths(config, [pr.repo]))[pr.repo];
+        const repoPath = await reviewRepoPath(config, pr.repo);
         if (!repoPath) throw new Error(`No local clone of ${pr.repo} in the workspace folders.`);
-        const credentials = bitbucketCredentialsFromEnv(config.bitbucket.workspace);
-        // Merged, closed, pushed to or reviewed by a teammate's automation while it waited: no
-        // session for it. A new push is queued again by the next look, with the new commit.
-        const head = await pullRequestHead(credentials, pr);
-        const reviewedElsewhere = await hasAiReviewComment(credentials, pr);
-        if (reviewedElsewhere || head.state !== "OPEN" || !sameCommit(pr.sourceHash, head.hash)) {
-          const reason = reviewedElsewhere
-            ? "already reviewed by AI"
-            : head.state !== "OPEN"
-              ? head.state
-              : "new push";
-          await serial(async () => {
-            const state = await loadState();
-            state.pendingReviews = state.pendingReviews.filter((p) => prSubject(p) !== subject);
-            if (reviewedElsewhere) {
-              state.handled[`ai-reviewed:${subject}`] = pr.sourceHash ?? pr.lastPushAt;
-            }
-            await saveState(state);
-          });
-          noteActivity("reviewSkipped", subject, reason);
-          recordEvent("boardWatcher.reviewSkipped", { subject, reason });
-          continue;
-        }
-        const openPrs = await listOpenPullRequests(credentials, [pr.repo]);
+        const added = await addReviewEntryIfAbsent({
+          key: subject,
+          link: prUrl(config, pr),
+          repo: repoPath,
+        });
         await unforce(subject);
-        const endReview = startActivity("review", subject);
-        const output = await runClaudeReview(pr, {
-          repoPath,
-          prUrl: prUrl(config, pr),
-          skill: config.review?.skill,
-          signal,
-          jiraSite: config.jira?.site,
-          openPrs,
-          model: config.review?.model,
-          smallModel: config.review?.smallModel,
-          smallPr: config.review?.smallPr,
-          maxBudgetUsd: config.review?.maxBudgetUsd,
-          lessons: await getLessons("review"),
-        }).finally(endReview);
         await serial(async () => {
           const state = await loadState();
           state.pendingReviews = state.pendingReviews.filter((p) => prSubject(p) !== subject);
-          await recordAction({
-            action: "reviewed",
-            subject,
-            title: pr.title,
-            detail: `${output.summary} · Bate com a LED: ${output.ticketMatch} · Confiança: ${output.confidence} · Modelo: ${output.model} (${output.size.files} arquivos, ${output.size.lines} linhas)`,
-            costUsd: output.costUsd,
-            durationMs: output.durationMs ?? Date.now() - started,
-          });
-          await applyReview(
-            pr,
-            output,
-            guardDeps(
-              createBoardDeps(config, () => new Date()),
-              signal,
-            ),
-            state,
-            config,
-          );
           await saveState(state);
         });
-        if (output.findings.some((f) => f.severity === "blocking" && f.topic !== "product")) {
-          noticeReviewBlocked(config, pr, output.summary, output.findings);
-        }
-        outcome = `${output.findings.length} finding(s), ${output.verdict}`;
-        noteActivity("reviewDone", subject, outcome);
+        await recordAction({
+          action: "queued-review",
+          subject,
+          title: pr.title,
+          detail: added ? "na fila de tarefas" : "já estava na fila",
+        });
+        noteActivity("reviewDone", subject, added ? "queued" : "already queued");
       } catch (err) {
-        // Switched off: the PR stays queued for when it's back on, with no failure told.
-        if (signal.aborted) {
-          recordEvent("boardWatcher.stopped", { during: "review", subject });
-          noteActivity("stopped", subject, "review");
-          return;
-        }
-        outcome = err instanceof Error ? err.message : String(err);
-        console.warn(`[board-watcher] Review of ${subject} failed:`, outcome);
+        const outcome = err instanceof Error ? err.message : String(err);
+        console.warn(`[board-watcher] Couldn't queue the review of ${subject}:`, outcome);
         noteActivity("reviewFailed", subject, outcome);
         await serial(async () => {
           const state = await loadState();
@@ -1019,10 +974,78 @@ async function drainJobs(): Promise<void> {
         await recordAction({ action: "review-failed", subject, title: pr.title, detail: outcome });
         noticeJobFailed("review", subject, pr.title, outcome, prUrl(config, pr));
       }
-      recordEvent("boardWatcher.review", { subject, outcome, durationMs: Date.now() - started });
     }
   } finally {
     reviewing = false;
+  }
+}
+
+/**
+ * The result a queued review session sent (`POST /sessions/:id/review-result`), posted on the PR
+ * like any automated review (`applyReview`: the board's limits, approval and the AI review
+ * comment) and the session marked done. The PR must still be open at the reviewed commit and
+ * without an AI review; when it can't be posted, the error goes on the queue entry.
+ */
+export async function submitReviewResult(
+  sessionId: string,
+  body: unknown,
+): Promise<{ outcome: AiReviewOutcome["kind"]; posted: number }> {
+  const queued = (await getTaskStore()).sessions[sessionId]?.test;
+  if (queued?.kind !== "review") {
+    throw new NotFoundError("REVIEW_SESSION_NOT_FOUND", `${sessionId} isn't a review session.`);
+  }
+  const output = parseReviewOutput(body);
+  const subject = queued.key;
+  try {
+    if (!(await automationsOn())) {
+      throw new ConflictError(
+        "REVIEW_AUTOMATIONS_OFF",
+        "The board automations are off: turn them on to post the review.",
+      );
+    }
+    const { config, credentials } = await reviewBoardSetup();
+    const { pr } = await findOpenPullRequest(credentials, subject);
+    // What was reviewed: a push since then makes posting fail (`assertUnchanged`).
+    const reviewed = queued.worktrees[0]
+      ? await tryGit(["rev-parse", "HEAD"], queued.worktrees[0])
+      : null;
+    if (reviewed) pr.sourceHash = reviewed;
+    if (await hasAiReviewComment(credentials, pr)) {
+      throw new ConflictError("REVIEW_ALREADY_DONE", `${subject} already has its AI review.`);
+    }
+    const applied = await serial(async () => {
+      const state = await loadState();
+      await recordAction({
+        action: "reviewed",
+        subject,
+        title: pr.title,
+        detail: `${output.summary} · Bate com a LED: ${output.ticketMatch} · Confiança: ${output.confidence}`,
+      });
+      const result = await applyReview(
+        pr,
+        output,
+        createBoardDeps(config, () => new Date()),
+        state,
+        config,
+      );
+      await saveState(state);
+      return result;
+    });
+    if (output.findings.some((f) => f.severity === "blocking" && f.topic !== "product")) {
+      noticeReviewBlocked(config, pr, output.summary, output.findings);
+    }
+    noteActivity("reviewDone", subject, `${output.findings.length} finding(s), ${output.verdict}`);
+    await setSessionStatus(sessionId, "done", "scheduler");
+    recordEvent("boardWatcher.review", { subject, outcome: applied.outcome.kind });
+    return { outcome: applied.outcome.kind, posted: applied.posted };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    noteActivity("reviewFailed", subject, message);
+    await updateQueueEntry(subject, { error: message }).catch(() => undefined);
+    await recordAction({ action: "review-failed", subject, title: "", detail: message }).catch(
+      () => undefined,
+    );
+    throw err;
   }
 }
 

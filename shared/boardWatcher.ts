@@ -101,6 +101,7 @@ export type WatcherActionKind =
   | "retest"
   | "start-progress"
   | "queued-test"
+  | "queued-review"
   | "review"
   | "reviewed"
   | "review-failed"
@@ -132,7 +133,7 @@ export const HISTORY_FILTERS = ["all", "reviews", "tests", "queue", "notices"] a
 export type HistoryFilter = (typeof HISTORY_FILTERS)[number];
 
 const HISTORY_FILTER_KINDS: Record<Exclude<HistoryFilter, "all">, WatcherActionKind[]> = {
-  reviews: ["review", "reviewed", "review-failed", "approve", "comment"],
+  reviews: ["queued-review", "review", "reviewed", "review-failed", "approve", "comment"],
   tests: ["claim-test", "retest", "tested", "test-failed", "homolog"],
   queue: ["enqueue-dev", "queued-test", "start-progress"],
   notices: ["notify", "build-failed", "pr-news"],

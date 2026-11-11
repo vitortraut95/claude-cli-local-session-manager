@@ -4,6 +4,8 @@ export const WORK_STATUSES = ["todo", "in_progress", "waiting_user", "done"] as 
 export type WorkStatus = (typeof WORK_STATUSES)[number];
 /** The ones a test session can take: waiting keeps its worktrees for a re-test, done removes them. */
 export const TEST_WORK_STATUSES: readonly WorkStatus[] = ["in_progress", "waiting_user", "done"];
+/** The ones a review session can take: done once its result was posted. */
+export const REVIEW_WORK_STATUSES: readonly WorkStatus[] = ["in_progress", "done"];
 
 export type Session = {
   id: string;
@@ -50,6 +52,9 @@ export type Session = {
   /** Ticket key a test session (launched from the queue) tests; its status is then only
    *  in_progress/done. Optional: an older backend omits it. */
   testKey?: string | null;
+  /** The pull request (`repo#id`) a review session (launched from the queue) reviews; its status
+   *  is then only in_progress/done. Optional: an older backend omits it. */
+  reviewKey?: string | null;
   /** Every repo/branch of that task, this session's included. Only set when `taskKey` is. */
   taskRepos?: TaskRepoRef[];
   /** Hand-set work status: the task's when the session has a key, else the session's own. */

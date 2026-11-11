@@ -135,6 +135,7 @@ export const ACTION_KIND_KEYS = {
   retest: "board.kind.retest",
   "start-progress": "board.kind.start-progress",
   "queued-test": "board.kind.queued-test",
+  "queued-review": "board.kind.queued-review",
   review: "board.kind.review",
   reviewed: "board.kind.reviewed",
   "review-failed": "board.kind.review-failed",

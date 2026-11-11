@@ -155,6 +155,7 @@ const PROMPT_TEXT = {
       "Mark it done only when there's nothing left for this test (final verdict delivered and, " +
       "if asked, published in the task); the worktrees are deleted once this session closes: " +
       "{command}",
+    compact: "Last, suggest running /compact, in case this session is resumed for a re-test.",
   },
   pt: {
     nickname: "Teste - {link}",
@@ -179,6 +180,7 @@ const PROMPT_TEXT = {
       "Marque como concluído só quando não sobrar nada deste teste (veredito final entregue e, " +
       "se pedido, publicado na tarefa); os worktrees são apagados quando esta sessão fechar: " +
       "{command}",
+    compact: "Por fim, sugira rodar /compact, caso esta sessão seja retomada pra um reteste.",
   },
 };
 
@@ -243,6 +245,7 @@ export async function launchTestEntry(
     text.result,
     text.waiting.replace("{command}", statusCommand("waiting_user")),
     text.done.replace("{command}", statusCommand("done")),
+    text.compact,
   ]
     .filter(Boolean)
     .join("\n\n");

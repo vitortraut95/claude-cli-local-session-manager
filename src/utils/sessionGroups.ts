@@ -57,11 +57,12 @@ export function buildTaskProblems(
   return problems;
 }
 
-/** The task's key, or the test's when the session has no task. */
+/** The task's key, or the test's (or the reviewed PR's) when the session has no task. */
 export function sessionKey(session: Session): string {
   return (
-    [session.taskKey, session.testKey].map((key) => key?.trim() ?? "").find((key) => key !== "") ??
-    ""
+    [session.taskKey, session.testKey, session.reviewKey]
+      .map((key) => key?.trim() ?? "")
+      .find((key) => key !== "") ?? ""
   );
 }
 

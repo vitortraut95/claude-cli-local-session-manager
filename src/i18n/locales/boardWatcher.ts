@@ -439,6 +439,7 @@ export const boardWatcher = {
   "board.kind.homolog": dict("Pointed to homolog", "Apontou pra homolog"),
   "board.kind.start-progress": dict("Moved to In Progress", "Moveu para In Progress"),
   "board.kind.queued-test": dict("Queued for test", "Entrou na fila de teste"),
+  "board.kind.queued-review": dict("Queued for code review", "Entrou na fila de code review"),
   "board.kind.review": dict("Review started", "Review iniciado"),
   "board.kind.reviewed": dict("Review done", "Review feito"),
   "board.kind.review-failed": dict("Review didn't run", "Review não rodou"),

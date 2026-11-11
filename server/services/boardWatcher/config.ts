@@ -91,16 +91,6 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
     model?: string;
     maxBudgetUsd?: number;
   };
-  /** The review sessions (`claudeReviewer.ts`). A small PR (up to `smallPr` changed files and
-   *  lines) is reviewed with `smallModel` (default "sonnet"), the rest with `model` (default: the
-   *  CLI's). `skill`: the installed skill that reviews (default "automated-code-review"). */
-  review?: {
-    skill?: string;
-    model?: string;
-    smallModel?: string;
-    smallPr?: { maxFiles?: number; maxLines?: number };
-    maxBudgetUsd?: number;
-  };
 };
 
 export const DEFAULT_LIMITS: BoardWatcherLimits = {

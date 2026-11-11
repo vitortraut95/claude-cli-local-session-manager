@@ -196,12 +196,14 @@ async function listSessionsUncached(): Promise<Session[]> {
       if (saved?.taskKey && repoRoot && gitBranch) {
         void moveSessionTaskKeyToBranch(session.id, repoRoot, gitBranch).catch(() => undefined);
       }
-      // Recorded beats inferred from the task branch. A test session has no task here (the task
-      // is someone else's): its status is its own.
-      const testKey = saved?.test?.key ?? null;
-      const recordedTaskKey = testKey ? null : (saved?.taskKey ?? branchEntry?.taskKey ?? null);
+      // Recorded beats inferred from the task branch. A test or review session has no task here
+      // (the task is someone else's): its status is its own.
+      const queued = saved?.test ?? null;
+      const testKey = queued?.kind === "test" ? queued.key : null;
+      const reviewKey = queued?.kind === "review" ? queued.key : null;
+      const recordedTaskKey = queued ? null : (saved?.taskKey ?? branchEntry?.taskKey ?? null);
       const inferredTaskKey =
-        recordedTaskKey === null && !testKey ? inferTaskKey(saved?.destination ?? gitBranch) : null;
+        recordedTaskKey === null && !queued ? inferTaskKey(saved?.destination ?? gitBranch) : null;
       return {
         ...session,
         prompts: session.prompts.slice(0, 1),
@@ -219,6 +221,7 @@ async function listSessionsUncached(): Promise<Session[]> {
         taskKey: recordedTaskKey ?? inferredTaskKey,
         taskKeyInferred: inferredTaskKey !== null,
         testKey,
+        reviewKey,
         status:
           store.tasks[recordedTaskKey ?? inferredTaskKey ?? ""]?.status ?? saved?.status ?? null,
       };

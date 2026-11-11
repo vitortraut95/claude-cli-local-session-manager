@@ -8,7 +8,12 @@ import {
   launchTaskTerminal,
   resolveBaseBranch,
 } from "./taskService.js";
-import { cleanupFinishedTests, launchTestEntry } from "./taskTestService.js";
+import { launchReviewEntry } from "./taskReviewService.js";
+import {
+  cleanupFinishedTests,
+  launchTestEntry,
+  type TestLaunchOutcome,
+} from "./taskTestService.js";
 import { getMaxUsagePercent } from "./usageService.js";
 import { firstWorkspaceDir } from "./workspaceService.js";
 import { recordEvent } from "../utils/history.js";
@@ -32,7 +37,8 @@ import type { SchedulerBlock, SchedulerStatus } from "../../shared/tasks.js";
  * repo's default), always in its own worktree, extra repos via
  * `--add-dir`, the default prompt — in a new terminal; a test entry runs `taskTestSkill` (or a plain
  * "test the task" prompt) on the
- * task's existing branch instead (`taskTestService.ts`). Launches are `launchSpacingMinutes` apart:
+ * task's existing branch instead (`taskTestService.ts`), and a review entry runs `taskReviewSkill`
+ * on a PR's commit (`taskReviewService.ts`). Launches are `launchSpacingMinutes` apart:
  * a session's memory (tests, preview servers) only shows up minutes after it opens, so free RAM at
  * launch time alone would let the whole queue start at once.
  */
@@ -49,14 +55,14 @@ const launchingKeys = new Set<string>();
 let lastLaunchAt = 0;
 let ticking = false;
 
-/** A test entry needs no branch prefix (it tests a branch that already exists), and neither does
- *  one with no repo (no branch is made). */
+/** A test or review entry needs no branch prefix (it works on a branch that already exists), and
+ *  neither does one with no repo (no branch is made). */
 function isReady(entry: QueueEntry): boolean {
   return (
     !entry.launchedAt &&
     !entry.error &&
     (entry.noRepo || entry.repos.length > 0) &&
-    (entry.kind === "test" || entry.noRepo || entry.branchPrefix !== null)
+    (entry.kind !== "dev" || entry.noRepo || entry.branchPrefix !== null)
   );
 }
 
@@ -243,7 +249,8 @@ async function launchEntry(
   entry: QueueEntry,
   prefs: UserPreferences,
 ): Promise<LaunchOutcome | null> {
-  if (entry.kind === "test") return launchTest(entry, prefs);
+  if (entry.kind === "test") return launchTest(entry, prefs, launchTestEntry);
+  if (entry.kind === "review") return launchTest(entry, prefs, launchReviewEntry);
   return entry.noRepo ? launchNoRepoEntry(entry, prefs) : launchDevEntry(entry, prefs);
 }
 
@@ -281,13 +288,14 @@ async function launchNoRepoEntry(
   };
 }
 
-/** Same waiting and bookkeeping as a dev entry, but the task's own status is left alone (the task
- *  is someone else's); the test session's status is set by `launchTestEntry`. */
+/** A test or review entry: same waiting and bookkeeping as a dev entry, but the task's own status
+ *  is left alone (the task is someone else's); the session's status is set by `launch`. */
 async function launchTest(
   entry: QueueEntry,
   prefs: UserPreferences,
+  launch: (entry: QueueEntry, prefs: UserPreferences) => Promise<TestLaunchOutcome | null>,
 ): Promise<LaunchOutcome | null> {
-  const outcome = await launchTestEntry(entry, prefs);
+  const outcome = await launch(entry, prefs);
   if (!outcome) return null;
   pendingLaunches.set(outcome.sessionId, Date.now());
   await waitForSessionStart(outcome.sessionId);

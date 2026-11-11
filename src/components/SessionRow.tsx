@@ -171,12 +171,12 @@ export function SessionRow({
         <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-600 dark:text-gray-400">
           <span
             className={`font-mono ${
-              session.taskKey || session.testKey
+              session.taskKey || session.testKey || session.reviewKey
                 ? "text-violet-700 dark:text-violet-300"
                 : "text-gray-500 dark:text-gray-500"
             }`}
           >
-            {session.taskKey ?? session.testKey ?? t("sessions.noTask")}
+            {session.taskKey ?? session.testKey ?? session.reviewKey ?? t("sessions.noTask")}
           </span>
           <span className="inline-flex min-w-0 items-center gap-1">
             {session.isWorktree ? (
@@ -216,6 +216,7 @@ export function SessionRow({
           value={session.status ?? null}
           taskKey={session.taskKey ?? null}
           testKey={session.testKey ?? null}
+          reviewKey={session.reviewKey ?? null}
           saving={actions.busy.status}
           onChange={(status) => void actions.changeStatus(status)}
         />

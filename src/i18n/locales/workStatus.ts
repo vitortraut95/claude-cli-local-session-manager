@@ -15,6 +15,11 @@ export const workStatus = {
     "Status of this session (it has no task)",
     "Status desta sessão (ela não tem tarefa)",
   ),
+  "workStatus.reviewTooltip": dict(
+    "Code review of {key}: in progress or done. It's done once the app posts the result on the PR; once done and closed, its worktree is deleted (the session can still be resumed).",
+    "Code review do {key}: em andamento ou concluído. Fica concluído quando o app publica o resultado no PR; concluído e fechado, o worktree dele é apagado (a sessão continua podendo ser retomada).",
+  ),
+  "workStatus.reviewChip": dict("Code review", "Code review"),
   "workStatus.testTooltip": dict(
     "Test of {key}: in progress, waiting (on a fix or a decision; the test worktrees stay for the re-test) or done. Once done and closed, its test worktrees are deleted (the session can still be resumed).",
     "Teste da {key}: em andamento, aguardando (ajuste ou decisão de alguém; os worktrees de teste ficam pro reteste) ou concluído. Concluído e fechado, os worktrees de teste são apagados (a sessão continua podendo ser retomada).",

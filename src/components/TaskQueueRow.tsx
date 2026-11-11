@@ -86,6 +86,8 @@ export function TaskQueueRow({
 }: TaskQueueRowProps) {
   const { t } = useLanguage();
   const locked = Boolean(entry.launchedAt) || launching;
+  // A review has nothing to set up: its PR says the repo and the commit.
+  const summary = locked || entry.kind === "review";
   const available = projects.filter((p) => !entry.repos.includes(p.path));
   const removeRepo = (repo: string) => onUpdate({ repos: entry.repos.filter((r) => r !== repo) });
 
@@ -153,9 +155,9 @@ export function TaskQueueRow({
             </span>
           ))}
           {renderState()}
-          {locked && <TaskQueueKindBadge kind={entry.kind} />}
-          {locked && entry.noRepo && <TaskQueueNoRepoChip />}
-          {locked && <TaskQueueRepoChips repos={entry.repos} projects={projects} />}
+          {summary && <TaskQueueKindBadge kind={entry.kind} />}
+          {summary && entry.noRepo && <TaskQueueNoRepoChip />}
+          {summary && <TaskQueueRepoChips repos={entry.repos} projects={projects} />}
         </div>
         <div className="flex shrink-0 items-center">
           {!locked && (
@@ -183,8 +185,9 @@ export function TaskQueueRow({
         </div>
       </div>
 
-      {locked ? (
-        !entry.noRepo && (
+      {summary ? (
+        !entry.noRepo &&
+        entry.kind !== "review" && (
           <p className="flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-gray-400">
             {entry.kind === "test" ? (
               <span>
@@ -219,6 +222,7 @@ export function TaskQueueRow({
             value={entry.kind}
             onChange={(kind) => onUpdate({ kind })}
             large={false}
+            kinds={["dev", "test"]}
           />
 
           {groupCandidates.length > 0 && (
@@ -358,13 +362,13 @@ export function TaskQueueRow({
       {entry.error && (
         <div
           className={`flex items-start justify-between gap-2 rounded-md px-2 py-1.5 text-xs ${
-            entry.launchedAt
+            entry.launchedAt && entry.kind !== "review"
               ? "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
               : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
           }`}
         >
           <span className="whitespace-pre-wrap break-words">
-            {entry.launchedAt
+            {entry.launchedAt && entry.kind !== "review"
               ? t("taskQueueModal.extraRepoFailed", { message: entry.error })
               : entry.error}
           </span>

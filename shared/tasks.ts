@@ -84,7 +84,9 @@ export type WorktreeSetupResult = {
 };
 
 /** "dev" = develop the task (new branch and worktree); "test" = test someone else's branch. */
-export type QueueKind = "dev" | "test";
+/** dev = develop the ticket; test = test its branch; review = the AI code review of a pull
+ *  request (`key` is its `repo#id`, `link` its page). */
+export type QueueKind = "dev" | "test" | "review";
 
 /** A ticket done together with the entry's own, in the same branch and session. */
 export type QueueGroupedTask = { key: string; link: string | null };

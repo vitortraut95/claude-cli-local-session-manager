@@ -1,4 +1,4 @@
-import { FlaskConical, Scale, Settings } from "lucide-react";
+import { FlaskConical, GitPullRequest, Scale, Settings } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { Theme } from "../hooks/useTheme";
 import type { UserPreferences } from "../services/preferencesApi";
@@ -176,6 +176,22 @@ export function SettingsList({
               preference="taskTestSkill"
               icon={<FlaskConical className="h-3.5 w-3.5" />}
               label={t("taskTestSkill.title")}
+              skillsHub={skillsHub}
+              showDescription={false}
+            />
+          }
+        />
+      )}
+      {skillsHub?.installedSkills && (
+        <PreferenceRow
+          title={t("taskReviewSkill.title")}
+          description={t("taskReviewSkill.description")}
+          keyName="taskReviewSkill"
+          control={
+            <SkillPreferenceSelect
+              preference="taskReviewSkill"
+              icon={<GitPullRequest className="h-3.5 w-3.5" />}
+              label={t("taskReviewSkill.title")}
               skillsHub={skillsHub}
               showDescription={false}
             />

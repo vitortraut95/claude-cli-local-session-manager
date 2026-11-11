@@ -122,7 +122,7 @@ async function pauseAtApprovalCap(
 
 /** Posts the relevant findings, approves when nothing blocks it and marks the PR as reviewed by
  *  AI, so no automation reviews it again. Also used for a review that ran outside the tick
- *  (`boardWatcherService`). */
+ *  (`boardWatcherService`). Returns how it ended and how many findings were posted. */
 export async function applyReview(
   pr: PullRequest,
   result: ReviewResult,
@@ -130,7 +130,7 @@ export async function applyReview(
   state: WatcherState,
   config: BoardWatcherConfig,
   now = new Date(),
-): Promise<void> {
+): Promise<{ outcome: AiReviewOutcome; posted: number }> {
   const subject = prSubject(pr);
   const relevant = result.findings.filter((f) => f.severity !== "minor" && f.topic !== "product");
   const productQuestions = result.findings.filter((f) => f.topic === "product");
@@ -149,6 +149,7 @@ export async function applyReview(
   await deps.codeHost.markAiReviewed(pr, { outcome, summary: result.summary, posted });
   state.handled[`review:${subject}`] = pr.lastPushAt;
   state.handled[`ai-reviewed:${subject}`] = pr.sourceHash ?? pr.lastPushAt;
+  return { outcome, posted: posted.length };
 }
 
 async function approveUnlessBlocked(

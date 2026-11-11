@@ -1,4 +1,4 @@
-import { Code2, FlaskConical } from "lucide-react";
+import { Code2, FlaskConical, GitPullRequest } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { QueueKind } from "../services/tasksApi";
 
@@ -17,24 +17,38 @@ const KIND_STYLES: Record<QueueKind, { icon: typeof Code2; active: string; badge
       "dark:border-teal-400 dark:bg-teal-950/50 dark:text-teal-300",
     badge: "bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300",
   },
+  review: {
+    icon: GitPullRequest,
+    active:
+      "border-sky-500 bg-sky-50 text-sky-700 ring-2 ring-sky-500/20 " +
+      "dark:border-sky-400 dark:bg-sky-950/50 dark:text-sky-300",
+    badge: "bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300",
+  },
 };
 
 type TaskQueueKindPickerProps = {
   value: QueueKind | null;
   onChange: (kind: QueueKind) => void;
   large: boolean;
+  /** The kinds offered; a ticket entry can't become a review (its key is a PR's). */
+  kinds?: readonly QueueKind[];
 };
 
 /** Big cards (with what each kind does) for the paste form, a compact toggle in the rows. */
-export function TaskQueueKindPicker({ value, onChange, large }: TaskQueueKindPickerProps) {
+export function TaskQueueKindPicker({
+  value,
+  onChange,
+  large,
+  kinds = ["dev", "test", "review"],
+}: TaskQueueKindPickerProps) {
   const { t } = useLanguage();
   return (
     <div
       role="radiogroup"
       aria-label={t("taskQueueModal.kindAriaLabel")}
-      className={large ? "grid grid-cols-2 gap-3" : "flex gap-1.5"}
+      className={large ? "grid grid-cols-1 gap-3 sm:grid-cols-3" : "flex gap-1.5"}
     >
-      {(["dev", "test"] as const).map((kind) => {
+      {kinds.map((kind) => {
         const { icon: Icon, active } = KIND_STYLES[kind];
         const selected = value === kind;
         return (

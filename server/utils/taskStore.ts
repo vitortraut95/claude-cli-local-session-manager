@@ -15,14 +15,15 @@ export type { QueueEntry, QueueEntryInput } from "../../shared/tasks.js";
  * - `sessions[<session id>]`: `nickname` (a local label, never replaces the real title),
  *   `origin`/`destination` (the session's base/task branches, either may be null), and a work
  *   `status` for a session with no task (a task's status lives on the task, shared by its sessions),
- *   and `test` for a test session (`taskTestService.ts`). A `taskKey`
+ *   and `test` for a test or review session (`taskTestService.ts`, `taskReviewService.ts`). A `taskKey`
  *   here comes from older versions and is moved to the branch entry on the next listing.
  * - `repoBranches[<repo root>][<branch>]`: the base a "New task" branch was created off (only when
  *   it differs from the repo default), its `taskKey` (the only place a task link is kept; none =
  *   inferred from the branch, see `taskKeys.ts`) and worktree. Keyed by `(repoRoot, branch)`
  *   because the session id doesn't exist yet at creation and a non-worktree task shares the repo
  *   root. Forgotten once the branch is deleted.
- * - `queue`: tasks waiting to be started (`kind` dev = develop it, test = test its branch), each with the repos it'll be worked in (the first one is
+ * - `queue`: tasks waiting to be started (`kind` dev = develop it, test = test its branch,
+ *   review = AI review of a PR), each with the repos it'll be worked in (the first one is
  *   the main repo, the others join its session via `--add-dir`), in the order they were added.
  *   The scheduler sets `launchedAt`/`sessionId` once it starts one, or `error` when that failed
  *   (skipped until cleared).
@@ -42,9 +43,10 @@ type TaskEntry = {
   createdAt: string;
 };
 
-/** A test session (launched from the queue): the ticket it tests and the disposable worktrees it
- *  was given, emptied once they're removed. */
-export type TestSessionInfo = { key: string; worktrees: string[] };
+/** A test or review session (launched from the queue): the ticket it tests (`kind` test) or the
+ *  PR it reviews (`kind` review, `repo#id`), and the disposable worktrees it was given, emptied
+ *  once they're removed. */
+export type TestSessionInfo = { key: string; worktrees: string[]; kind: "test" | "review" };
 
 type SessionEntry = {
   nickname: string | null;
@@ -117,6 +119,7 @@ function normalizeTestInfo(raw: unknown): TestSessionInfo | null {
   if (!isRecord(raw) || typeof raw.key !== "string" || !raw.key.trim()) return null;
   return {
     key: raw.key.trim(),
+    kind: raw.kind === "review" ? "review" : "test",
     worktrees: Array.isArray(raw.worktrees)
       ? raw.worktrees.filter((w): w is string => typeof w === "string" && !!w.trim())
       : [],
@@ -184,7 +187,7 @@ function normalizeStore(parsed: Record<string, unknown>): TaskStore {
                 : [],
             )
           : [],
-        kind: raw.kind === "test" ? "test" : "dev",
+        kind: raw.kind === "test" || raw.kind === "review" ? raw.kind : "dev",
         repos: Array.isArray(raw.repos)
           ? [...new Set(raw.repos.filter((r): r is string => typeof r === "string" && !!r.trim()))]
           : [],
@@ -427,9 +430,14 @@ export function forgetSession(id: string): Promise<void> {
   });
 }
 
-/** Marks `id` as a test session of `key`, given `worktrees`. */
-export function markTestSession(id: string, key: string, worktrees: string[]): Promise<void> {
-  return updateSession(id, { test: { key, worktrees } });
+/** Marks `id` as a test (or review) session of `key`, given `worktrees`. */
+export function markTestSession(
+  id: string,
+  key: string,
+  worktrees: string[],
+  kind: TestSessionInfo["kind"] = "test",
+): Promise<void> {
+  return updateSession(id, { test: { key, worktrees, kind } });
 }
 
 /** The test worktrees still left to remove (the session stays marked as a test). */

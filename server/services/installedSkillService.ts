@@ -2,11 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { getUserSkillsDir, listInstalledSkills } from "./skillsHubService.js";
 import { updateUserPreferences } from "./preferencesService.js";
-import {
-  FRONTMATTER_PATTERN,
-  parseSkillRef,
-  readFrontmatterList,
-} from "./skillsHub/catalog.js";
+import { FRONTMATTER_PATTERN, parseSkillRef, readFrontmatterList } from "./skillsHub/catalog.js";
 import { AppError } from "../utils/httpError.js";
 
 /** A skill folder name as `/<name>` takes it — also keeps it from smuggling anything into the
@@ -14,7 +10,7 @@ import { AppError } from "../utils/httpError.js";
 const SKILL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 
 /** Preferences holding the name of an installed skill. */
-type SkillPreferenceKey = "taskTestSkill" | "taskRefinementSkill";
+type SkillPreferenceKey = "taskTestSkill" | "taskReviewSkill" | "taskRefinementSkill";
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -25,8 +21,8 @@ async function requiredNames(name: string): Promise<string[]> {
   try {
     const raw = await readFile(path.join(getUserSkillsDir(), name, "SKILL.md"), "utf-8");
     const frontmatter = FRONTMATTER_PATTERN.exec(raw)?.[1] ?? "";
-    return readFrontmatterList(frontmatter, "requires-skills").map(
-      (ref) => parseSkillRef(ref, "").split("/").pop()!,
+    return readFrontmatterList(frontmatter, "requires-skills").map((ref) =>
+      parseSkillRef(ref, "").split("/").pop()!,
     );
   } catch {
     return [];

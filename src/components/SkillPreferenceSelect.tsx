@@ -9,7 +9,7 @@ import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Select } from "./Select";
 
 /** Preferences holding the name of an installed skill. */
-export type SkillPreference = "taskTestSkill" | "taskRefinementSkill";
+export type SkillPreference = "taskTestSkill" | "taskReviewSkill" | "taskRefinementSkill";
 
 type SkillPreferenceSelectProps = {
   preference: SkillPreference;

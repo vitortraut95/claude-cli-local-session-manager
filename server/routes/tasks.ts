@@ -66,6 +66,7 @@ type LateFields =
   | "jenkinsBaseUrl"
   | "envPreviews"
   | "taskTestSkill"
+  | "taskReviewSkill"
   | "taskRefinementSkill"
   | "taskTestPermissionModeAuto"
   | "theme"
@@ -108,6 +109,7 @@ function isValidPreferences(
       typeof candidate.jenkinsBaseUrl === "string") &&
     (candidate.envPreviews === undefined || isEnvPreviews(candidate.envPreviews)) &&
     (candidate.taskTestSkill === undefined || typeof candidate.taskTestSkill === "string") &&
+    (candidate.taskReviewSkill === undefined || typeof candidate.taskReviewSkill === "string") &&
     (candidate.taskRefinementSkill === undefined ||
       typeof candidate.taskRefinementSkill === "string") &&
     (candidate.taskTestPermissionModeAuto === undefined ||
@@ -146,7 +148,8 @@ tasksRouter.put("/preferences", async (req, res) => {
         "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
         "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +
         "autoUpdateOnStart? }, jenkinsBaseUrl?: string | null, envPreviews?: { [project]: " +
-        "{ label, url }[] }, taskTestSkill?: string, taskRefinementSkill?: string, " +
+        "{ label, url }[] }, taskTestSkill?: string, taskReviewSkill?: string, " +
+        "taskRefinementSkill?: string, " +
         "taskTestPermissionModeAuto?: boolean, remoteControl?: boolean, " +
         'theme?: "light"|"dark"|null, orchestrator?: { enabled, maxSessions, ' +
         "minFreeMemoryPercent, maxUsagePercent }, worktreeSetup?: { [project]: " +
