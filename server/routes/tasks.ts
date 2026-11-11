@@ -1,3 +1,4 @@
+import { PR_SUBJECT } from "../services/taskReviewService.js";
 import { Router } from "express";
 import {
   getPreferencesPath,
@@ -280,7 +281,9 @@ tasksRouter.post("/queue/run", async (_req, res) => {
 
 /** "Start now": launches that entry right away, ignoring its place in line and every limit. */
 tasksRouter.post("/queue/:key/start-now", async (req, res) => {
-  const outcome = await launchQueueEntryNow(parseTaskKeyParam(req.params.key));
+  // A review entry's key is its PR (`repo#id`), not a ticket.
+  const key = PR_SUBJECT.test(req.params.key) ? req.params.key : parseTaskKeyParam(req.params.key);
+  const outcome = await launchQueueEntryNow(key);
   res.json({ success: true, sessionId: outcome?.sessionId ?? null });
 });
 
