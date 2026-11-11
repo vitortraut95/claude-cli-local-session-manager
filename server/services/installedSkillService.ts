@@ -51,7 +51,8 @@ async function findRenamedSkill(name: string): Promise<string | null> {
   return specific.length === 1 ? specific[0]! : null;
 }
 
-async function isInstalled(name: string): Promise<boolean> {
+export async function isInstalled(name: string): Promise<boolean> {
+  if (!SKILL_NAME_PATTERN.test(name)) return false;
   try {
     await stat(path.join(getUserSkillsDir(), name, "SKILL.md"));
     return true;

@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
+import { isInstalled } from "../installedSkillService.js";
 import { forceRemoveWorktree, runGit } from "../../utils/git.js";
 import { sanitizedSpawnEnv } from "../../utils/spawnEnv.js";
 import { lessonsSection } from "./feedback.js";
@@ -9,9 +10,12 @@ import { prSubject, type PullRequest, type ReviewFinding, type ReviewResult } fr
 
 /**
  * A real PR review: a detached worktree of the PR's commit in the local clone, then a
- * non-interactive `claude -p` limited to reading (Read/Grep/Glob and read-only git), given the
- * ticket with its comments and the other open PRs touching the same ticket or files. It's the
- * PR's one AI review: a full one, never a follow-up round. Returns structured findings; posting them is up to the caller. The worktree is always removed.
+ * non-interactive `claude -p` limited to reading (Read/Grep/Glob and read-only git) running the
+ * review skill (`review.skill`), which holds how to review. This file only gathers the context
+ * (merge-base, the ticket with its comments, the other open PRs touching the same ticket or
+ * files, the user's lessons) and asks for the skill's result format. It's the PR's one AI review:
+ * a full one, never a follow-up round. Returns structured findings; posting them is up to the
+ * caller. The worktree is always removed; the session stays in the session list.
  */
 
 const execFileAsync = promisify(execFile);
@@ -19,6 +23,7 @@ const REVIEW_TIMEOUT_MS = 20 * 60_000;
 const TICKET_KEY = /\b[A-Z][A-Z0-9]+-\d+\b/;
 /** Up to this, a PR counts as small (a quicker, cheaper model reviews it). */
 const SMALL_PR = { maxFiles: 5, maxLines: 150 };
+export const DEFAULT_REVIEW_SKILL = "automated-code-review";
 
 export type ReviewOutput = ReviewResult & {
   summary: string;
@@ -35,6 +40,10 @@ export type ReviewOutput = ReviewResult & {
 
 export type ReviewContext = {
   repoPath: string;
+  /** The PR's page, what the skill is called with (its `repo#id` without one). */
+  prUrl: string | null;
+  /** The installed skill that reviews; default `DEFAULT_REVIEW_SKILL`. */
+  skill?: string;
   /** Kills the session (the automations switch went off). */
   signal?: AbortSignal;
   jiraSite?: string;
@@ -75,6 +84,7 @@ const OUTPUT_SCHEMA = {
 };
 
 const READ_ONLY_TOOLS = [
+  "Skill",
   "Read",
   "Grep",
   "Glob",
@@ -120,6 +130,8 @@ async function changedFiles(cwd: string, base: string, head: string): Promise<st
 }
 
 function buildPrompt(
+  skill: string,
+  prUrl: string,
   pr: PullRequest,
   base: string,
   ticket: string,
@@ -133,24 +145,20 @@ function buildPrompt(
         )
         .join("\n")
     : "None.";
-  return `You are reviewing a colleague's pull request. You are in a read-only checkout of its commit; never edit files, never run anything that writes.
+  return `/${skill} ${prUrl}
+
+Unattended run for the board automations: no questions, read-only, never post or approve anything (the caller posts the result).
 
 PR ${prSubject(pr)}: "${pr.title}"
-Branch ${pr.sourceBranch} → ${pr.destinationBranch}. See the change with \`git diff ${base}...HEAD\` (merge-base already resolved). Search the whole repo for other uses of what changed.
+Branch ${pr.sourceBranch} → ${pr.destinationBranch}. You are in a checkout of its commit; see the change with \`git diff ${base}...HEAD\` (merge-base already resolved).
 
-Ticket (what the PR should do):
+Ticket:
 ${ticket}
 
-Other open PRs on the same ticket or files (one of them may already handle something this PR seems to miss; check before flagging):
+Other open PRs on the same ticket or files:
 ${relatedText}
 
-Look for correctness bugs, edge cases (null/undefined, empty lists, missing countries/brands/locales), regressions in other uses of changed code, security issues and behavior that contradicts the ticket. Verify every finding in the code; drop what you can't back up.
-
-Severity: blocking = a real bug, security issue or regression that should stop the merge; major = worth fixing but not a blocker; minor = style/nitpicks (never posted).
-Topic: code = about the code; product = a question for PO/design/content (prices to confirm, copy, Figma parity). Product findings never block and are not posted.
-A PR may bundle more than one ticket (the team sometimes does one along with another): never flag scope, extra commits or tickets missing from the title, but review all of its code the same way.
-
-Write each finding's body in Portuguese (pt-BR), short, in a suggestion tone, exactly as it would be posted as an inline comment to a colleague. summary/ticketMatch/confidence in pt-BR too. verdict: approve, comment-and-approve or do-not-approve (only with a blocking code finding).`;
+Return the skill's result (summary, ticketMatch, verdict, confidence, findings) as the structured output.`;
 }
 
 export async function runClaudeReview(
@@ -159,6 +167,10 @@ export async function runClaudeReview(
 ): Promise<ReviewOutput> {
   if (!pr.sourceHash || !pr.sourceBranch || !pr.destinationBranch) {
     throw new Error(`${prSubject(pr)} has no source commit or branches.`);
+  }
+  const skill = context.skill ?? DEFAULT_REVIEW_SKILL;
+  if (!(await isInstalled(skill))) {
+    throw new Error(`The review skill "${skill}" isn't installed in ~/.claude/skills.`);
   }
   const related = context.openPrs.filter(
     (other) => prSubject(other) !== prSubject(pr) && other.repo === pr.repo && other.sourceHash,
@@ -201,7 +213,14 @@ export async function runClaudeReview(
     );
 
     const prompt =
-      buildPrompt(pr, base, await ticketContext(context.jiraSite, key), relatedWithFiles) +
+      buildPrompt(
+        skill,
+        context.prUrl ?? prSubject(pr),
+        pr,
+        base,
+        await ticketContext(context.jiraSite, key),
+        relatedWithFiles,
+      ) +
       lessonsSection(context.lessons ?? []);
     const size = await diffSize(worktree, base);
     const small =
@@ -223,7 +242,8 @@ export async function runClaudeReview(
       "--permission-mode",
       "dontAsk",
       "--strict-mcp-config",
-      "--no-session-persistence",
+      "--name",
+      `Review ${prSubject(pr)}`,
       ...(model ? ["--model", model] : []),
       ...(context.maxBudgetUsd ? ["--max-budget-usd", String(context.maxBudgetUsd)] : []),
     ];

@@ -962,6 +962,8 @@ async function drainJobs(): Promise<void> {
         const endReview = startActivity("review", subject);
         const output = await runClaudeReview(pr, {
           repoPath,
+          prUrl: prUrl(config, pr),
+          skill: config.review?.skill,
           signal,
           jiraSite: config.jira?.site,
           openPrs,
