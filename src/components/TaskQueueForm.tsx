@@ -1,5 +1,5 @@
 import { FolderGit2, FolderTree } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { ProjectFolderOption, QueueKind } from "../services/tasksApi";
@@ -24,6 +24,8 @@ const TEXTAREA_CLASSNAME =
   "dark:focus:ring-violet-400/30";
 
 type TaskQueueFormProps = {
+  /** Goes up on each "New task": the form scrolls into view and takes the focus. */
+  focusRequest: number;
   projects: ProjectFolderOption[];
   branchTypes: string[];
   /** Keys already in the list (grouped ones too): pasting one again is reported, not added. */
@@ -32,9 +34,16 @@ type TaskQueueFormProps = {
 };
 
 /** Paste tickets and the setup they share; the kind is picked first, the rest shows up after. */
-export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: TaskQueueFormProps) {
+export function TaskQueueForm({
+  focusRequest,
+  projects,
+  branchTypes,
+  listedKeys,
+  onAdd,
+}: TaskQueueFormProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
+  const rootRef = useRef<HTMLDivElement>(null);
   const [pasteText, setPasteText] = useState("");
   const [pasteRepo, setPasteRepo] = useState("");
   // Dev only: the session opens in the repos folder and finds the repos in the ticket.
@@ -46,6 +55,16 @@ export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: Task
   // "" = each repo's default branch.
   const [pasteBase, setPasteBase] = useState("");
   const [pasteUseLocalBase, setPasteUseLocalBase] = useState(false);
+
+  // The kind comes first, so it's what gets the focus until one is picked.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (focusRequest === 0 || !root) return;
+    root.scrollIntoView({ behavior: "smooth", block: "start" });
+    root
+      .querySelector<HTMLElement>("textarea, [role='radio'][aria-checked='true'], [role='radio']")
+      ?.focus({ preventScroll: true });
+  }, [focusRequest]);
 
   const handleAdd = () => {
     if (!pasteKind) return;
@@ -96,7 +115,7 @@ export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: Task
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div ref={rootRef} className="flex scroll-mt-6 flex-col gap-3">
       <div>
         <span className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">
           {t("taskQueueModal.kindLabel")}

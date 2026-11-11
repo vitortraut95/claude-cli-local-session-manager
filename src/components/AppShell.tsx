@@ -23,7 +23,6 @@ import { AutomationModal } from "./AutomationModal";
 import type { AutomationFocus } from "./AutomationModesEditor";
 import { CleanupModal } from "./CleanupModal";
 import { NewSessionModal } from "./NewSessionModal";
-import { NewTaskModal } from "./NewTaskModal";
 import { RefinementModal } from "./RefinementModal";
 import { SettingsModal } from "./SettingsModal";
 import { ReviewSkillModal } from "./ReviewSkillModal";
@@ -33,8 +32,7 @@ import { UpdateOverlay } from "./UpdateOverlay";
 import { WelcomeTour } from "./WelcomeTour";
 import { hasSeenTour, markTourSeen } from "../utils/tour";
 
-type Panel =
-  "newTask" | "newSession" | "refinement" | "cleanup" | "skills" | "settings" | "automation";
+type Panel = "newSession" | "refinement" | "cleanup" | "skills" | "settings" | "automation";
 
 /** True while the focus is in a field, where single-key shortcuts must type instead. */
 function typingInField(target: EventTarget | null): boolean {
@@ -49,8 +47,7 @@ function typingInField(target: EventTarget | null): boolean {
 
 /**
  * The app: navigation on the left (a bottom bar on phones), the current page beside it, and the
- * panels any page can open (new task, new session, refinement, cleanup, skills, settings,
- * automations). Owns the preferences-driven state: initial setup, the Board's
+ * panels any page can open (new session, refinement, cleanup, skills, settings, automations). Owns the preferences-driven state: initial setup, the Board's
  * beta switch, the terminal layout, auto-update and plan usage.
  */
 export function AppShell() {
@@ -71,10 +68,10 @@ export function AppShell() {
     dismissAutoUpdateError,
   } = useUpdate();
   const usage = useUsageLimits();
-  // Also keeps the shared cached status warm for the New Task / New Session skills panels.
+  // Also keeps the shared cached status warm for the New Session skills panel.
   const skillsHub = useSkillsHubStatus(true);
 
-  // New task / new session / refinement stay mounted (toggled via `open`) so closing them by
+  // New session / refinement stay mounted (toggled via `open`) so closing them by
   // accident keeps what was typed; the rest mount only while open.
   const [panel, setPanel] = useState<Panel | null>(null);
   const [automationFocus, setAutomationFocus] = useState<AutomationFocus | undefined>();
@@ -146,6 +143,8 @@ export function AppShell() {
   }, [gridLayout, refreshSoon, showToast, t]);
 
   const [automationRevision, setAutomationRevision] = useState(0);
+  // Goes up on each "New task", so the queue page focuses its add form.
+  const [newTaskRequest, setNewTaskRequest] = useState(0);
 
   const navigate = useCallback(
     (next: AppView) => {
@@ -154,11 +153,16 @@ export function AppShell() {
     [setView],
   );
 
+  const openNewTask = useCallback(() => {
+    setView("queue");
+    setNewTaskRequest((request) => request + 1);
+  }, [setView]);
+
   const shell: ShellActions = useMemo(
     () => ({
       view,
       navigate,
-      openNewTask: () => setPanel("newTask"),
+      openNewTask,
       openNewSession: () => setPanel("newSession"),
       openRefinement: () => setPanel("refinement"),
       openCleanup: () => setPanel("cleanup"),
@@ -182,6 +186,7 @@ export function AppShell() {
     [
       view,
       navigate,
+      openNewTask,
       automationRevision,
       automationsOn,
       resumeOpen,
@@ -191,19 +196,19 @@ export function AppShell() {
     ],
   );
 
-  // N: new task, from anywhere outside a field or a dialog.
+  // N: new task (the queue's add form), from anywhere outside a field or a dialog.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
       if (typingInField(event.target) || panel !== null) return;
       if (event.key === "n" || event.key === "N") {
         event.preventDefault();
-        setPanel("newTask");
+        openNewTask();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [panel]);
+  }, [panel, openNewTask]);
 
   const closePanel = () => {
     if (panel === "automation") setAutomationRevision((revision) => revision + 1);
@@ -251,6 +256,8 @@ export function AppShell() {
           }}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onNewTask={openNewTask}
+          onOpenNewSession={() => setPanel("newSession")}
           onOpenCleanup={() => setPanel("cleanup")}
           onOpenRefinement={() => setPanel("refinement")}
           onOpenSkills={() => setPanel("skills")}
@@ -260,12 +267,15 @@ export function AppShell() {
           {view === "sessions" && <SessionsPage sessions={sessions} problems={signals.problems} />}
           {view === "board" && <BoardPage />}
           {/* Kept mounted once opened, so unsaved queue edits survive a visit to another page. */}
-          <QueueSlot active={view === "queue"} onChanged={onQueueChanged} />
+          <QueueSlot
+            active={view === "queue"}
+            onChanged={onQueueChanged}
+            newTaskRequest={newTaskRequest}
+          />
           {view === "guide" && <GuidePage />}
         </div>
       </div>
 
-      <NewTaskModal open={panel === "newTask"} onClose={closePanel} onTaskCreated={refreshSoon} />
       <NewSessionModal
         open={panel === "newSession"}
         onClose={closePanel}
@@ -318,13 +328,21 @@ export function AppShell() {
 }
 
 /** Mounts the queue page the first time it's shown and keeps it (hidden) afterwards. */
-function QueueSlot({ active, onChanged }: { active: boolean; onChanged: () => void }) {
+function QueueSlot({
+  active,
+  onChanged,
+  newTaskRequest,
+}: {
+  active: boolean;
+  onChanged: () => void;
+  newTaskRequest: number;
+}) {
   const [visited, setVisited] = useState(active);
   if (active && !visited) setVisited(true);
   if (!visited) return null;
   return (
     <div hidden={!active}>
-      <TaskQueuePage active={active} onChanged={onChanged} />
+      <TaskQueuePage active={active} onChanged={onChanged} newTaskRequest={newTaskRequest} />
     </div>
   );
 }

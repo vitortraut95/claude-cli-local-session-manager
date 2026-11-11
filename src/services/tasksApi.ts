@@ -14,7 +14,6 @@ import type {
   RepoInfo,
   SchedulerStatus,
   TaskDetails,
-  WorktreeSetupResult,
 } from "../../shared/tasks";
 export type {
   AddRepoInput,
@@ -49,46 +48,6 @@ export async function fetchProjectFolders(): Promise<ProjectFolderOption[]> {
 export async function fetchRepoInfo(folderPath: string): Promise<RepoInfo> {
   const { data } = await withServerErrorMessage(() =>
     client.get<RepoInfo>("/repo-info", { params: { folderPath } }),
-  );
-  return data;
-}
-
-/** First step of "New task" (then `createTaskWorktree`, `launchTaskTerminal`); each call is one
- *  step in the modal's progress checklist. */
-export async function resolveBaseBranch(
-  folderPath: string,
-  baseBranch: string,
-  useLocalBranch = false,
-): Promise<{ baseBranchRef: string }> {
-  const { data } = await withServerErrorMessage(() =>
-    client.post<{ baseBranchRef: string }>("/resolve-base-branch", {
-      folderPath,
-      baseBranch,
-      useLocalBranch,
-    }),
-  );
-  return data;
-}
-
-export async function createTaskWorktree(
-  folderPath: string,
-  branchName: string,
-  baseBranchRef: string,
-  baseBranch: string,
-  useWorktree: boolean,
-  taskKey = "",
-  taskLink = "",
-): Promise<{ worktreePath: string; setup?: WorktreeSetupResult }> {
-  const { data } = await withServerErrorMessage(() =>
-    client.post<{ worktreePath: string; setup?: WorktreeSetupResult }>("/worktree", {
-      folderPath,
-      branchName,
-      baseBranchRef,
-      baseBranch,
-      useWorktree,
-      taskKey,
-      taskLink,
-    }),
   );
   return data;
 }

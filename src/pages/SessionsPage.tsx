@@ -6,10 +6,8 @@ import {
   History,
   LayoutGrid,
   LayoutList,
-  MessageSquarePlus,
   Plus,
   RefreshCw,
-  Scale,
   SquareTerminal,
   Trash2,
   X,
@@ -17,7 +15,6 @@ import {
   Layers,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AnchoredMenu } from "../components/AnchoredMenu";
 import { Button } from "../components/Button";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { DeleteOptions } from "../components/InlineDeleteConfirm";
@@ -29,7 +26,7 @@ import { ResumeConflictModal } from "../components/ResumeConflictModal";
 import { SearchBar } from "../components/SearchBar";
 import { SessionCard } from "../components/SessionCard";
 import { SessionDetailPanel } from "../components/SessionDetailPanel";
-import { MenuItem, SessionRow } from "../components/SessionRow";
+import { SessionRow } from "../components/SessionRow";
 import { Tooltip } from "../components/Tooltip";
 import { WorkStatusFilter } from "../components/WorkStatusFilter";
 import { attentionText } from "../components/attentionText";
@@ -288,47 +285,6 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
               {t(shell.gridLayout ? "header.grid" : "header.resumeOpen")}
             </Button>
           </Tooltip>
-          <div className="inline-flex rounded-lg shadow-sm" data-tour="new-task">
-            <Button
-              onClick={shell.openNewTask}
-              className="rounded-r-none shadow-none"
-              title={t("shortcuts.newTask")}
-              icon={<Plus className="h-4 w-4" />}
-            >
-              {t("header.newTask")}
-              <kbd className="ml-1 hidden rounded bg-white/20 px-1.5 font-mono text-[11px] sm:inline">
-                N
-              </kbd>
-            </Button>
-            <AnchoredMenu
-              align="right"
-              hideChevron
-              ariaLabel={t("sessions.moreWays")}
-              buttonClassName="min-h-10 w-10 justify-center rounded-r-lg border-l border-white/25 bg-violet-600 text-white hover:bg-violet-700"
-              label={<ChevronDown className="h-4 w-4" />}
-            >
-              {(close) => (
-                <div className="flex min-w-52 flex-col">
-                  <MenuItem
-                    icon={<MessageSquarePlus className="h-4 w-4" />}
-                    label={t("header.newSession")}
-                    onClick={() => {
-                      close();
-                      shell.openNewSession();
-                    }}
-                  />
-                  <MenuItem
-                    icon={<Scale className="h-4 w-4" />}
-                    label={t("header.refineTasks")}
-                    onClick={() => {
-                      close();
-                      shell.openRefinement();
-                    }}
-                  />
-                </div>
-              )}
-            </AnchoredMenu>
-          </div>
         </>
       }
     >

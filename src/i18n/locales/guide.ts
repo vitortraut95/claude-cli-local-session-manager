@@ -177,31 +177,25 @@ export const guide = {
   // Starting work
   "guide.start.newTask.title": dict("New task", "Nova tarefa"),
   "guide.start.newTask.what": dict(
-    "From a Jira link: project, other repositories, branch (with a preview of its name), worktree, prompt and team skills. Shows each step live while it creates and opens the terminal.",
-    "A partir de um link do Jira: projeto, outros repositórios, branch (com prévia do nome), worktree, prompt e skills do time. Mostra cada passo ao vivo enquanto cria e abre o terminal.",
+    "Every new task goes through the task queue: paste the Jira links, pick the kind and the repository (or several), and the queue creates the branch and the worktree and opens Claude with the default prompt.",
+    "Toda tarefa nova entra pela fila de tarefas: cole os links do Jira, escolha o tipo e o repositório (ou vários), e a fila cria a branch e o worktree e abre o Claude com o prompt padrão.",
   ),
   "guide.start.newTask.where": dict(
-    "“New task” at the top of Sessions, or the N key anywhere",
-    "“Nova tarefa” no topo de Sessões, ou a tecla N em qualquer tela",
+    "Navigation › + New task, or the N key anywhere (opens the Task queue's form)",
+    "Navegação › + Nova tarefa, ou a tecla N em qualquer tela (abre o formulário da Fila de tarefas)",
   ),
   "guide.start.newSession.title": dict("New session", "Nova sessão"),
   "guide.start.newSession.what": dict(
     "Claude in any folder with your default session prompt, no task attached.",
     "O Claude em qualquer pasta com o seu prompt padrão de sessão, sem tarefa.",
   ),
-  "guide.start.newSession.where": dict(
-    "Arrow next to New task › New session",
-    "Seta ao lado de Nova tarefa › Nova sessão",
-  ),
+  "guide.start.newSession.where": dict("Navigation › New session", "Navegação › Nova sessão"),
   "guide.start.refine.title": dict("Refine tasks", "Refinar tarefas"),
   "guide.start.refine.what": dict(
     "Runs the team's refinement skill on a sprint or on tickets you paste, optionally sending the result to the PO.",
     "Roda a skill de refinamento do time numa sprint ou nos tickets que você colar, com opção de mandar o resultado direto ao PO.",
   ),
-  "guide.start.refine.where": dict(
-    "Navigation › Refine tasks (also in the arrow next to New task)",
-    "Navegação › Refinar tarefas (também na seta ao lado de Nova tarefa)",
-  ),
+  "guide.start.refine.where": dict("Navigation › Refine tasks", "Navegação › Refinar tarefas"),
 
   // Queue
   "guide.queue.add.title": dict("Queue tasks", "Enfileirar tarefas"),
@@ -209,7 +203,7 @@ export const guide = {
     "Paste links or keys (development, test or code review), pick the repository and branch, and the scheduler opens them one at a time, each in its own worktree, while there's room. A task spanning several repos opens in the repos folder, and Claude makes the branch in each repo the ticket names.",
     "Cole links ou chaves (desenvolvimento, teste ou code review), escolha repositório e branch, e o agendador abre uma de cada vez, cada uma no seu worktree, enquanto houver vaga. Tarefa em vários repos abre na pasta dos repos, e o Claude cria a branch em cada repo que o ticket citar.",
   ),
-  "guide.queue.add.where": dict("Navigation › Task queue", "Navegação › Fila"),
+  "guide.queue.add.where": dict("Navigation › Task queue", "Navegação › Fila de tarefas"),
   "guide.queue.review.title": dict("Code review in the queue", "Code review na fila"),
   "guide.queue.review.what": dict(
     "Paste pull request links as Code review: each one opens a terminal with the code review skill (chosen in Skills) on the PR's commit, and the app posts the comments and the approval within the Board's limits. The Board automations queue colleagues' PRs here too. A review is only in progress or done.",
@@ -336,8 +330,8 @@ export const guide = {
   ),
   "guide.tools.shortcuts.title": dict("Shortcuts", "Atalhos"),
   "guide.tools.shortcuts.what": dict(
-    "N opens New task, / jumps to the search, Esc closes panels and menus.",
-    "N abre Nova tarefa, / vai para a busca, Esc fecha painéis e menus.",
+    "N opens the task queue's form for a new task, / jumps to the search, Esc closes panels and menus.",
+    "N abre o formulário da fila para uma tarefa nova, / vai para a busca, Esc fecha painéis e menus.",
   ),
   "guide.tools.shortcuts.where": dict(
     "Anywhere outside a text field",
@@ -362,10 +356,10 @@ export const guide = {
     "Sessions are grouped: needs you, running, stopped; the done ones fold at the end. Click a title to open its panel with every action, without leaving the list.",
     "As sessões vêm agrupadas: precisa de você, rodando, paradas; as concluídas ficam recolhidas no fim. Clique num título para abrir o painel com todas as ações, sem sair da lista.",
   ),
-  "tour.newTask.title": dict("Start from a Jira link", "Comece por um link do Jira"),
+  "tour.newTask.title": dict("Every task starts in the queue", "Toda tarefa começa pela fila"),
   "tour.newTask.body": dict(
-    "“New task” (or N) creates the branch, the worktree and opens Claude with the team's prompt. Its arrow has New session and Refine tasks.",
-    "“Nova tarefa” (ou N) cria a branch, o worktree e abre o Claude com o prompt do time. A seta ao lado tem Nova sessão e Refinar tarefas.",
+    "“+ New task” (or N) opens the task queue's form: paste the Jira links and pick the repo. The queue creates the branch and the worktree and opens Claude with the team's prompt.",
+    "“+ Nova tarefa” (ou N) abre o formulário da fila de tarefas: cole os links do Jira e escolha o repo. A fila cria a branch e o worktree e abre o Claude com o prompt do time.",
   ),
   "tour.queue.title": dict("Queue the ready tasks", "Enfileire as tarefas prontas"),
   "tour.queue.body": dict(
@@ -379,8 +373,8 @@ export const guide = {
   ),
   "tour.tools.title": dict("Cleanup, skills and settings", "Limpeza, skills e configurações"),
   "tour.tools.body": dict(
-    "Below the pages: Cleanup for old worktrees and sessions, the team's skills, and at the bottom plan usage, updates and Settings.",
-    "Abaixo das páginas: Limpeza para worktrees e sessões antigas, as skills do time e, no rodapé, uso do plano, atualizações e Configurações.",
+    "Team skills sits with the pages: what Claude knows how to do on every session. Below: New session, Refine tasks and Cleanup; at the bottom, plan usage, updates and Settings.",
+    "As skills do time ficam junto das páginas: o que o Claude sabe fazer em cada sessão. Abaixo: Nova sessão, Refinar tarefas e Limpeza; no rodapé, uso do plano, atualizações e Configurações.",
   ),
   "tour.guide.title": dict("Everything else is in the Guide", "Todo o resto está no Guia"),
   "tour.guide.body": dict(

@@ -22,6 +22,8 @@ type TaskQueuePageProps = {
   active: boolean;
   /** The saved queue or a launch changed: the list and the navigation's count should reload. */
   onChanged: () => void;
+  /** Goes up on each "New task": the add form is brought into view and focused. */
+  newTaskRequest: number;
 };
 
 /** What "Save queue" sends for each entry. */
@@ -72,7 +74,7 @@ function editSnapshot(entries: DraftEntry[]): string {
  * and the scheduler launches them one by one (own worktree each) while there's room. Edits stay
  * local until "Save queue" (a bar says so); the scheduler's progress is merged in as it happens.
  */
-export function TaskQueuePage({ active, onChanged }: TaskQueuePageProps) {
+export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePageProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const { projects } = useProjectFolders(true);
@@ -332,31 +334,31 @@ export function TaskQueuePage({ active, onChanged }: TaskQueuePageProps) {
         </aside>
 
         <div className="flex min-w-0 flex-col gap-6">
+          <section className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+            <TaskQueueForm
+              focusRequest={newTaskRequest}
+              projects={projects}
+              branchTypes={branchTypes}
+              listedKeys={new Set(entries.flatMap(entryKeys))}
+              onAdd={(fresh) => setEntries((current) => [...current, ...fresh])}
+            />
+          </section>
 
-        <section className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-          <TaskQueueForm
+          <TaskQueueList
+            entries={entries}
+            setEntries={setEntries}
+            loading={loading}
+            loadFailed={loadFailed}
+            isLaunching={isLaunching}
             projects={projects}
             branchTypes={branchTypes}
-            listedKeys={new Set(entries.flatMap(entryKeys))}
-            onAdd={(fresh) => setEntries((current) => [...current, ...fresh])}
+            saving={saving}
+            onStartNow={(key) => void handleStartNow(key)}
+            onRemoveLaunched={() => void handleRemoveLaunched()}
+            onRetry={(key) => {
+              retriedRef.current.add(key);
+            }}
           />
-        </section>
-
-        <TaskQueueList
-          entries={entries}
-          setEntries={setEntries}
-          loading={loading}
-          loadFailed={loadFailed}
-          isLaunching={isLaunching}
-          projects={projects}
-          branchTypes={branchTypes}
-          saving={saving}
-          onStartNow={(key) => void handleStartNow(key)}
-          onRemoveLaunched={() => void handleRemoveLaunched()}
-          onRetry={(key) => {
-            retriedRef.current.add(key);
-          }}
-        />
         </div>
       </div>
     </div>
