@@ -24,6 +24,7 @@ import {
 import {
   getBoardWatcherStatus,
   pauseBoardWatcher,
+  rescheduleBoardWatcher,
   resumeBoardWatcher,
   prioritizeBoardWatcherItems,
   runBoardWatcherNow,
@@ -182,7 +183,9 @@ boardWatcherRouter.get("/settings", async (_req, res) => {
 });
 
 boardWatcherRouter.put("/settings", async (req, res) => {
-  res.json(await saveAutomationSettings(req.body));
+  const settings = await saveAutomationSettings(req.body);
+  await rescheduleBoardWatcher();
+  res.json(settings);
 });
 
 /** The latest recorded actions, newest first (`?limit=`, default 200, at most 1000). */

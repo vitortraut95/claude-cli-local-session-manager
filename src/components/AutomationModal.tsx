@@ -19,6 +19,7 @@ import { Modal } from "./Modal";
 import { SettingRow } from "./SettingRow";
 
 const LIMIT_LABELS: Record<keyof AutomationLimits, TranslationKey> = {
+  lookIntervalMinutes: "automation.limit.lookIntervalMinutes",
   waitTestGraceMinutes: "automation.limit.waitTestGraceMinutes",
   maxClaimedTests: "automation.limit.maxClaimedTests",
   maxClaimsPerDay: "automation.limit.maxClaimsPerDay",
@@ -29,6 +30,7 @@ const LIMIT_LABELS: Record<keyof AutomationLimits, TranslationKey> = {
 };
 
 const LIMIT_DESCRIPTIONS: Record<keyof AutomationLimits, TranslationKey> = {
+  lookIntervalMinutes: "automation.limit.lookIntervalMinutes.description",
   waitTestGraceMinutes: "automation.limit.waitTestGraceMinutes.description",
   maxClaimedTests: "automation.limit.maxClaimedTests.description",
   maxClaimsPerDay: "automation.limit.maxClaimsPerDay.description",
@@ -268,7 +270,7 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
                             type="number"
                             min={LIMIT_BOUNDS[field][0]}
                             max={LIMIT_BOUNDS[field][1]}
-                            value={drafts[field] ?? String(settings.limits[field])}
+                            value={drafts[field] ?? String(settings.limits[field] ?? "")}
                             aria-label={t(LIMIT_LABELS[field])}
                             onChange={(event) =>
                               setDrafts((current) => ({ ...current, [field]: event.target.value }))
