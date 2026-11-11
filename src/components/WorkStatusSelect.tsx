@@ -1,6 +1,6 @@
-import { ChevronDown, FlaskConical, Loader2 } from "lucide-react";
+import { ChevronDown, FlaskConical, GitPullRequest, Loader2 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
-import { TEST_WORK_STATUSES, type WorkStatus } from "../../shared/session";
+import { REVIEW_WORK_STATUSES, TEST_WORK_STATUSES, type WorkStatus } from "../../shared/session";
 import { WORK_STATUS_CLASSES, WORK_STATUS_LABEL_KEYS, WORK_STATUSES } from "../utils/workStatus";
 import { Tooltip } from "./Tooltip";
 
@@ -10,6 +10,8 @@ type WorkStatusSelectProps = {
   taskKey: string | null;
   /** Set for a test session: only in progress, waiting or done, behind a "Test" chip. */
   testKey?: string | null;
+  /** Set for a review session: only in progress or done, behind a "Code review" chip. */
+  reviewKey?: string | null;
   saving: boolean;
   onChange: (status: WorkStatus | null) => void;
 };
@@ -19,19 +21,23 @@ export function WorkStatusSelect({
   value,
   taskKey,
   testKey = null,
+  reviewKey = null,
   saving,
   onChange,
 }: WorkStatusSelectProps) {
   const { t } = useLanguage();
-  const statuses = testKey ? TEST_WORK_STATUSES : WORK_STATUSES;
+  const queued = testKey !== null || reviewKey !== null;
+  const statuses = reviewKey ? REVIEW_WORK_STATUSES : testKey ? TEST_WORK_STATUSES : WORK_STATUSES;
   return (
     <Tooltip
       content={
-        testKey
-          ? t("workStatus.testTooltip", { key: testKey })
-          : taskKey
-            ? t("workStatus.taskTooltip", { key: taskKey })
-            : t("workStatus.sessionTooltip")
+        reviewKey
+          ? t("workStatus.reviewTooltip", { key: reviewKey })
+          : testKey
+            ? t("workStatus.testTooltip", { key: testKey })
+            : taskKey
+              ? t("workStatus.taskTooltip", { key: taskKey })
+              : t("workStatus.sessionTooltip")
       }
     >
       <span className="relative inline-flex w-fit items-center gap-1">
@@ -41,6 +47,12 @@ export function WorkStatusSelect({
             {t("workStatus.testChip")}
           </span>
         )}
+        {reviewKey && (
+          <span className="flex h-5 items-center gap-1 rounded-full bg-sky-50 px-2 text-xs font-medium text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
+            <GitPullRequest className="h-3 w-3" />
+            {t("workStatus.reviewChip")}
+          </span>
+        )}
         <select
           value={value ?? ""}
           onChange={(event) => onChange((event.target.value || null) as WorkStatus | null)}
@@ -48,8 +60,8 @@ export function WorkStatusSelect({
           aria-label={t("workStatus.ariaLabel")}
           className={`cursor-pointer appearance-none h-5 rounded-full border py-0 pl-2.5 pr-6 text-xs leading-4 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-500/25 disabled:cursor-wait disabled:opacity-60 dark:focus:ring-violet-400/30 ${WORK_STATUS_CLASSES[value ?? "none"]}`}
         >
-          {(!testKey || value === null) && (
-            <option value="" disabled={Boolean(testKey)}>
+          {(!queued || value === null) && (
+            <option value="" disabled={queued}>
               {t("workStatus.none")}
             </option>
           )}

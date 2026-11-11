@@ -3,12 +3,13 @@ import { AppError, BadRequestError } from "../utils/httpError.js";
 import { isTaskKey, normalizeTaskKey } from "../utils/taskKeys.js";
 import { recordEvent } from "../utils/history.js";
 import { SAFE_BRANCH_NAME } from "./taskService.js";
+import { PR_SUBJECT, reviewBoardSetup, reviewRepoPath } from "./taskReviewService.js";
 import { getQueue, setQueue, type QueueEntry, type QueueEntryInput } from "../utils/taskStore.js";
 import type { QueueGroupedTask } from "../../shared/tasks.js";
 
 /**
- * The task queue: tickets pasted in to be worked on, each tied to the repo(s) it'll be done in.
- * `taskSchedulerService` launches them.
+ * The task queue: tickets pasted in to be worked on, each tied to the repo(s) it'll be done in,
+ * and pull requests to review (`repo#id`). `taskSchedulerService` launches them.
  */
 
 export function getTaskQueue(): Promise<QueueEntry[]> {
@@ -25,6 +26,7 @@ const SAFE_BRANCH_PREFIX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 /** Each repo is stored as its repo root, so a subfolder and the root don't count twice. A task
  *  with no repo yet is kept (still to be chosen); `noRepo` = none on purpose (repos ignored). */
 async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
+  if (isRecord(raw) && raw.kind === "review") return parseReviewEntry(raw);
   const rawKey = isRecord(raw) && typeof raw.key === "string" ? raw.key : "";
   const key = normalizeTaskKey(rawKey);
   if (!key || !isTaskKey(key)) {
@@ -101,6 +103,43 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
     baseBranch: rawBase || null,
     useLocalBaseBranch,
     error,
+  };
+}
+
+/** A PR to review: `repo#id` and its page; the repo is its local clone, found once. */
+async function parseReviewEntry(raw: Record<string, unknown>): Promise<QueueEntryInput> {
+  const key = typeof raw.key === "string" ? raw.key.trim() : "";
+  const repo = PR_SUBJECT.exec(key)?.[1];
+  if (!repo) {
+    throw new BadRequestError(
+      "QUEUE_INVALID_PR",
+      `"${key}" isn't a pull request (paste its link, e.g. .../my-repo/pull-requests/12).`,
+    );
+  }
+  const saved = Array.isArray(raw.repos) && typeof raw.repos[0] === "string" ? raw.repos[0] : "";
+  let repoPath = saved.trim();
+  if (!repoPath) {
+    const { config } = await reviewBoardSetup();
+    repoPath = (await reviewRepoPath(config, repo)) ?? "";
+    if (!repoPath) {
+      throw new AppError(
+        "REVIEW_REPO_NOT_FOUND",
+        `No local clone of ${repo} in the workspace folders.`,
+      );
+    }
+  }
+  return {
+    key,
+    link: typeof raw.link === "string" && raw.link.trim() ? raw.link.trim() : null,
+    groupedTasks: [],
+    kind: "review",
+    repos: [repoPath],
+    noRepo: false,
+    branchPrefix: null,
+    branch: null,
+    baseBranch: null,
+    useLocalBaseBranch: false,
+    error: typeof raw.error === "string" && raw.error.trim() ? raw.error.trim() : null,
   };
 }
 
@@ -207,6 +246,29 @@ export async function addTestEntryIfAbsent(entry: {
         error: null,
       },
     ],
+  });
+  return true;
+}
+
+/**
+ * Adds a review entry for the PR `key` (`repo#id`) at the end of the queue. For the board
+ * automations, which queue the PRs due for their AI review: one that already launched is replaced
+ * (its result couldn't be posted, e.g. a push came in meanwhile); one still waiting is left as it
+ * is (false).
+ */
+export async function addReviewEntryIfAbsent(entry: {
+  key: string;
+  link: string | null;
+  repo: string;
+}): Promise<boolean> {
+  const queue = await getQueue();
+  const existing = queue.find((e) => e.key === entry.key);
+  if (existing && !existing.launchedAt) return false;
+  const rest = queue.filter((e) => e.key !== entry.key);
+  // Removed first, so the new entry comes back without the old launch fields.
+  if (existing) await saveTaskQueue({ entries: rest });
+  await saveTaskQueue({
+    entries: [...rest, { key: entry.key, link: entry.link, kind: "review", repos: [entry.repo] }],
   });
   return true;
 }

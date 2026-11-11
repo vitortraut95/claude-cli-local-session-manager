@@ -25,6 +25,7 @@ import {
   stopSiblingAndResume,
 } from "../services/sessionService.js";
 import { getSessionTask, setSessionTask } from "../services/taskGroupService.js";
+import { submitReviewResult } from "../services/boardWatcherService.js";
 import { extractLayoutField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
 import { sendErrorResponse } from "../utils/httpError.js";
 
@@ -79,6 +80,11 @@ sessionsRouter.patch("/:id/nickname", async (req, res) => {
 sessionsRouter.patch("/:id/status", async (req, res) => {
   await setSessionWorkStatus(req.params.id, parseWorkStatus(req.body));
   res.json({ success: true });
+});
+
+/** A queued review session's result: posted on the PR within the board's limits. */
+sessionsRouter.post("/:id/review-result", async (req, res) => {
+  res.json(await submitReviewResult(req.params.id, req.body));
 });
 
 sessionsRouter.patch("/:id/branches", async (req, res) => {

@@ -235,15 +235,20 @@ export const newTask = {
     "The skill the task queue's test entries run with the task's link. None = \"Test the task <link>\".",
     'A skill que os testes da fila de tarefas rodam com o link da tarefa. Nenhuma = "Teste a tarefa <link>".',
   ),
+  "taskReviewSkill.title": dict("Code review skill", "Skill de code review"),
+  "taskReviewSkill.description": dict(
+    "The skill the task queue's code reviews run with the PR's link (the board automations queue them too). The app posts the result on the PR within the board's limits.",
+    "A skill que os code reviews da fila de tarefas rodam com o link do PR (as automações do Board também colocam na fila). O app publica o resultado no PR dentro dos limites do Board.",
+  ),
   "taskRefinementSkill.title": dict("Refinement skill", "Skill de refinamento"),
   "taskRefinementSkill.description": dict(
-    "The skill \"Refine tasks\" runs with the chosen sprint or tasks to estimate them and draft the questions for the PO.",
-    "A skill que o \"Refinar tarefas\" roda com a sprint ou as tarefas escolhidas pra pontuar e levantar as perguntas pro PO.",
+    'The skill "Refine tasks" runs with the chosen sprint or tasks to estimate them and draft the questions for the PO.',
+    'A skill que o "Refinar tarefas" roda com a sprint ou as tarefas escolhidas pra pontuar e levantar as perguntas pro PO.',
   ),
   "refinementModal.title": dict("Refine tasks", "Refinar tarefas"),
   "refinementModal.intro": dict(
-    "Name a sprint to refine all of it, or paste specific tasks (link or key, one per line). A new session prepares the whole batch, goes through the technical round with the devs one card at a time and then writes the comments for the PO. Nothing is written to Jira without your OK; \"resume the refinement\" in the session picks up where it stopped.",
-    "Informe uma sprint pra refinar ela toda, ou cole tarefas específicas (link ou chave, uma por linha). Uma sessão nova prepara o lote todo, passa pela etapa técnica com os devs um card por vez e depois monta os comentários pro PO. Nada vai pro Jira sem o seu OK; \"retoma o refinamento\" na sessão volta de onde parou.",
+    'Name a sprint to refine all of it, or paste specific tasks (link or key, one per line). A new session prepares the whole batch, goes through the technical round with the devs one card at a time and then writes the comments for the PO. Nothing is written to Jira without your OK; "resume the refinement" in the session picks up where it stopped.',
+    'Informe uma sprint pra refinar ela toda, ou cole tarefas específicas (link ou chave, uma por linha). Uma sessão nova prepara o lote todo, passa pela etapa técnica com os devs um card por vez e depois monta os comentários pro PO. Nada vai pro Jira sem o seu OK; "retoma o refinamento" na sessão volta de onde parou.',
   ),
   "refinementModal.skillLabel": dict("Skill", "Skill"),
   "refinementModal.skillRequired": dict(
@@ -276,8 +281,8 @@ export const newTask = {
   ),
   "refinementModal.notesLabel": dict("Additional notes", "Observações adicionais"),
   "refinementModal.notesPlaceholder": dict(
-    "Exceptions the skill doesn't cover, e.g. \"PROJ-123 already has the backend ready\". Sent along with the tasks; the first line also goes into the session name.",
-    "Exceções que a skill não cobre, ex.: \"PROJ-123 já tem o backend pronto\". Vai junto com as tarefas; a primeira linha também entra no nome da sessão.",
+    'Exceptions the skill doesn\'t cover, e.g. "PROJ-123 already has the backend ready". Sent along with the tasks; the first line also goes into the session name.',
+    'Exceções que a skill não cobre, ex.: "PROJ-123 já tem o backend pronto". Vai junto com as tarefas; a primeira linha também entra no nome da sessão.',
   ),
   "refinementModal.confirm": dict("Open session", "Abrir sessão"),
   "refinementModal.launched": dict("Refinement session opened.", "Sessão de refinamento aberta."),

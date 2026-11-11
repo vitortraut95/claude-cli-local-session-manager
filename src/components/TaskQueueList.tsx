@@ -116,11 +116,7 @@ export function TaskQueueList({
             </span>
           )}
           {launchedCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onRemoveLaunched}
-            >
+            <Button variant="ghost" size="sm" onClick={onRemoveLaunched}>
               {t("taskQueueModal.removeLaunched", { count: launchedCount })}
             </Button>
           )}
@@ -177,7 +173,11 @@ export function TaskQueueList({
                     locked
                       ? []
                       : entries.filter(
-                          (e) => e.key !== entry.key && !e.launchedAt && !isLaunching(e.key),
+                          (e) =>
+                            e.key !== entry.key &&
+                            e.kind !== "review" &&
+                            !e.launchedAt &&
+                            !isLaunching(e.key),
                         )
                   }
                   onUpdate={(patch) => updateEntry(entry.key, patch)}

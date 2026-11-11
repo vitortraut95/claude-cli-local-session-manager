@@ -2,7 +2,13 @@ import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { ProjectFolderOption, QueueKind } from "../services/tasksApi";
-import { type DraftEntry, entryKeys, NO_REPO_VALUE, parsePastedTasks } from "../utils/taskQueue";
+import {
+  type DraftEntry,
+  entryKeys,
+  NO_REPO_VALUE,
+  parsePastedPullRequests,
+  parsePastedTasks,
+} from "../utils/taskQueue";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { SettingRow } from "./SettingRow";
@@ -40,9 +46,16 @@ export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: Task
 
   const handleAdd = () => {
     if (!pasteKind) return;
-    const pasted = parsePastedTasks(pasteText);
+    const isReview = pasteKind === "review";
+    // A review's repo is its PR's, found by the server.
+    const pasted = isReview
+      ? parsePastedPullRequests(pasteText).map((pr) => ({ ...pr, groupedTasks: [] }))
+      : parsePastedTasks(pasteText);
     if (pasted.length === 0) {
-      showToast(t("taskQueueModal.noneFound"), "error");
+      showToast(
+        t(isReview ? "taskQueueModal.reviewNoneFound" : "taskQueueModal.noneFound"),
+        "error",
+      );
       return;
     }
     const repeated = pasted.flatMap(entryKeys).filter((key) => listedKeys.has(key));
@@ -56,8 +69,8 @@ export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: Task
       fresh.map((task) => ({
         ...task,
         kind: pasteKind,
-        repos: pasteRepo && pasteRepo !== NO_REPO_VALUE ? [pasteRepo] : [],
-        noRepo: pasteRepo === NO_REPO_VALUE,
+        repos: !isReview && pasteRepo && pasteRepo !== NO_REPO_VALUE ? [pasteRepo] : [],
+        noRepo: !isReview && pasteRepo === NO_REPO_VALUE,
         branchPrefix: pasteKind === "dev" ? pastePrefix : null,
         branch: null,
         baseBranch: pasteKind === "dev" ? pasteBase.trim() || null : null,
@@ -92,80 +105,90 @@ export function TaskQueueForm({ projects, branchTypes, listedKeys, onAdd }: Task
         <>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-              {t("taskQueueModal.pasteLabel")}
+              {t(
+                pasteKind === "review"
+                  ? "taskQueueModal.reviewPasteLabel"
+                  : "taskQueueModal.pasteLabel",
+              )}
             </span>
             <textarea
               value={pasteText}
               onChange={(event) => setPasteText(event.target.value)}
-              placeholder={t("taskQueueModal.pastePlaceholder")}
+              placeholder={t(
+                pasteKind === "review"
+                  ? "taskQueueModal.reviewPastePlaceholder"
+                  : "taskQueueModal.pastePlaceholder",
+              )}
               rows={4}
               className={TEXTAREA_CLASSNAME}
               autoFocus
             />
           </label>
-          <div className="flex flex-col gap-2.5">
-            <SettingRow
-              controlWidth="w-64"
-              label={t("taskQueueModal.pasteRepo")}
-              description={t("taskQueueModal.pasteRepo.hint")}
-              control={
-                <Select
-                  value={pasteRepo}
-                  onChange={(event) => setPasteRepo(event.target.value)}
-                  aria-label={t("taskQueueModal.pasteRepo")}
-                >
-                  <option value="">{t("taskQueueModal.pasteRepoNone")}</option>
-                  <option value={NO_REPO_VALUE}>{t("taskQueueModal.noRepoOption")}</option>
-                  {projects.map((project) => (
-                    <option key={project.path} value={project.path}>
-                      {project.label}
-                    </option>
-                  ))}
-                </Select>
-              }
-            />
-            {pasteKind === "dev" && pasteRepo !== NO_REPO_VALUE && (
-              <>
-                <SettingRow
-                  controlWidth="w-64"
-                  label={t("taskQueueModal.pastePrefix")}
-                  description={t("taskQueueModal.pastePrefix.hint")}
-                  control={
-                    <TaskQueuePrefixSelect
-                      value={pastePrefix}
-                      onChange={setPastePrefix}
-                      branchTypes={branchTypes}
-                    />
-                  }
-                />
-                <SettingRow
-                  controlWidth="w-64"
-                  label={t("newTaskModal.baseBranchLabel")}
-                  description={t("taskQueueModal.pasteBase.hint")}
-                  control={
-                    <Input
-                      type="text"
-                      value={pasteBase}
-                      onChange={(event) => setPasteBase(event.target.value)}
-                      placeholder={t("taskQueueModal.basePlaceholder")}
-                      aria-label={t("newTaskModal.baseBranchLabel")}
-                    />
-                  }
-                />
-                {pasteBase.trim() && (
-                  <label className="flex items-start gap-2 pl-[17rem] text-xs text-gray-500 dark:text-gray-400">
-                    <input
-                      type="checkbox"
-                      checked={pasteUseLocalBase}
-                      onChange={(event) => setPasteUseLocalBase(event.target.checked)}
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-violet-600 dark:accent-violet-400"
-                    />
-                    {t("newTaskModal.useLocalBaseBranchLabel")}
-                  </label>
-                )}
-              </>
-            )}
-          </div>
+          {pasteKind !== "review" && (
+            <div className="flex flex-col gap-2.5">
+              <SettingRow
+                controlWidth="w-64"
+                label={t("taskQueueModal.pasteRepo")}
+                description={t("taskQueueModal.pasteRepo.hint")}
+                control={
+                  <Select
+                    value={pasteRepo}
+                    onChange={(event) => setPasteRepo(event.target.value)}
+                    aria-label={t("taskQueueModal.pasteRepo")}
+                  >
+                    <option value="">{t("taskQueueModal.pasteRepoNone")}</option>
+                    <option value={NO_REPO_VALUE}>{t("taskQueueModal.noRepoOption")}</option>
+                    {projects.map((project) => (
+                      <option key={project.path} value={project.path}>
+                        {project.label}
+                      </option>
+                    ))}
+                  </Select>
+                }
+              />
+              {pasteKind === "dev" && pasteRepo !== NO_REPO_VALUE && (
+                <>
+                  <SettingRow
+                    controlWidth="w-64"
+                    label={t("taskQueueModal.pastePrefix")}
+                    description={t("taskQueueModal.pastePrefix.hint")}
+                    control={
+                      <TaskQueuePrefixSelect
+                        value={pastePrefix}
+                        onChange={setPastePrefix}
+                        branchTypes={branchTypes}
+                      />
+                    }
+                  />
+                  <SettingRow
+                    controlWidth="w-64"
+                    label={t("newTaskModal.baseBranchLabel")}
+                    description={t("taskQueueModal.pasteBase.hint")}
+                    control={
+                      <Input
+                        type="text"
+                        value={pasteBase}
+                        onChange={(event) => setPasteBase(event.target.value)}
+                        placeholder={t("taskQueueModal.basePlaceholder")}
+                        aria-label={t("newTaskModal.baseBranchLabel")}
+                      />
+                    }
+                  />
+                  {pasteBase.trim() && (
+                    <label className="flex items-start gap-2 pl-[17rem] text-xs text-gray-500 dark:text-gray-400">
+                      <input
+                        type="checkbox"
+                        checked={pasteUseLocalBase}
+                        onChange={(event) => setPasteUseLocalBase(event.target.checked)}
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-violet-600 dark:accent-violet-400"
+                      />
+                      {t("newTaskModal.useLocalBaseBranchLabel")}
+                    </label>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           <div className="flex justify-end">
             <Button variant="outline" onClick={handleAdd} disabled={!pasteText.trim()}>
               {t("taskQueueModal.add")}

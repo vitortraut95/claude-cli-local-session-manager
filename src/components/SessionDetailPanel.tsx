@@ -36,7 +36,6 @@ import { Tooltip } from "./Tooltip";
 import { WorkStatusSelect } from "./WorkStatusSelect";
 import { attentionText } from "./attentionText";
 
-
 type SessionDetailPanelProps = {
   session: Session;
   pendingAction?: PendingAction;
@@ -114,7 +113,6 @@ export function SessionDetailPanel({
     };
   }, [session.taskKey]);
   const jiraLink = taskLink && taskLink.key === session.taskKey ? taskLink.link : null;
-
 
   return (
     <aside aria-label={t("detail.label")} className="flex h-full min-h-0 flex-col bg-panel">
@@ -204,6 +202,7 @@ export function SessionDetailPanel({
             value={session.status ?? null}
             taskKey={session.taskKey ?? null}
             testKey={session.testKey ?? null}
+            reviewKey={session.reviewKey ?? null}
             saving={actions.busy.status}
             onChange={(status) => void actions.changeStatus(status)}
           />
@@ -310,195 +309,193 @@ export function SessionDetailPanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5">
-          <div className="pb-4">
-            {session.directoryMissing && (
-              <div className="pt-4">
-                <MissingDirectoryNotice
-                  session={session}
-                  isOpeningVSCode={actions.busy.vscode}
-                  isResumingAtMissingWorktreeRoot={actions.busy.missingRootResume}
-                  onOpenMissingWorktreeRootInVSCode={handlers.onOpenMissingWorktreeRootInVSCode}
-                  onStartNewSessionAtMissingWorktreeRoot={
-                    handlers.onStartNewSessionAtMissingWorktreeRoot
-                  }
-                />
-              </div>
-            )}
-
-            {actions.showsBranches && (
-              <Section
-                title={t("detail.branches")}
-                action={
-                  <button
-                    type="button"
-                    onClick={() => actions.open({ kind: "branches" })}
-                    disabled={actions.busy.branches}
-                    className={linkButton}
-                  >
-                    {actions.busy.branches && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    {t("detail.edit")}
-                  </button>
+        <div className="pb-4">
+          {session.directoryMissing && (
+            <div className="pt-4">
+              <MissingDirectoryNotice
+                session={session}
+                isOpeningVSCode={actions.busy.vscode}
+                isResumingAtMissingWorktreeRoot={actions.busy.missingRootResume}
+                onOpenMissingWorktreeRootInVSCode={handlers.onOpenMissingWorktreeRootInVSCode}
+                onStartNewSessionAtMissingWorktreeRoot={
+                  handlers.onStartNewSessionAtMissingWorktreeRoot
                 }
-              >
-                <p className="flex flex-wrap items-center gap-2 font-mono text-sm">
-                  {actions.originBranch && actions.originBranch !== actions.taskBranch && (
-                    <>
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {actions.originBranch}
-                      </span>
-                      <ArrowRight className="h-3.5 w-3.5 text-gray-400" aria-hidden="true" />
-                    </>
-                  )}
-                  <span className="inline-flex items-center gap-1.5 text-gray-900 dark:text-gray-100">
-                    <GitBranch className="h-3.5 w-3.5 text-gray-400" aria-hidden="true" />
-                    {actions.taskBranch}
-                  </span>
-                </p>
-              </Section>
-            )}
+              />
+            </div>
+          )}
 
-            <Section title={t("detail.folder")}>
-              <p
-                className="flex items-start gap-2 text-sm text-gray-800 dark:text-gray-200"
-                title={session.workingDirectory ?? session.project}
-              >
-                {session.isWorktree ? (
-                  <GitFork
-                    className="mt-0.5 h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <Folder className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+          {actions.showsBranches && (
+            <Section
+              title={t("detail.branches")}
+              action={
+                <button
+                  type="button"
+                  onClick={() => actions.open({ kind: "branches" })}
+                  disabled={actions.busy.branches}
+                  className={linkButton}
+                >
+                  {actions.busy.branches && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {t("detail.edit")}
+                </button>
+              }
+            >
+              <p className="flex flex-wrap items-center gap-2 font-mono text-sm">
+                {actions.originBranch && actions.originBranch !== actions.taskBranch && (
+                  <>
+                    <span className="text-gray-600 dark:text-gray-400">{actions.originBranch}</span>
+                    <ArrowRight className="h-3.5 w-3.5 text-gray-400" aria-hidden="true" />
+                  </>
                 )}
-                <span className="min-w-0 break-all">
-                  {worktree ? (
-                    <>
-                      {t("detail.worktree", { name: worktree.name })}
-                      <span className="block font-mono text-xs text-gray-500 dark:text-gray-400">
-                        {worktree.prefix}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="font-mono text-xs">
-                      {session.workingDirectory ?? session.project}
-                    </span>
-                  )}
+                <span className="inline-flex items-center gap-1.5 text-gray-900 dark:text-gray-100">
+                  <GitBranch className="h-3.5 w-3.5 text-gray-400" aria-hidden="true" />
+                  {actions.taskBranch}
                 </span>
               </p>
             </Section>
+          )}
 
-            {actions.canOpenTask && (
-              <Section
-                title={t("detail.repos")}
-                action={
-                  <button
-                    type="button"
-                    onClick={() => actions.open({ kind: "task", addRepo: false })}
-                    className={linkButton}
-                  >
-                    {t("detail.manageTask")}
-                  </button>
-                }
-              >
-                {(session.taskRepos?.length ?? 0) > 0 ? (
-                  <ul className="flex flex-col gap-2">
-                    {session.taskRepos!.map((repo) => {
-                      const isThis =
-                        repo.repoRoot === session.repoRoot && repo.branch === session.gitBranch;
-                      return (
-                        <li
-                          key={`${repo.repoRoot}:${repo.branch}`}
-                          className="flex items-start gap-2.5 text-sm"
-                        >
-                          <Folder
-                            className="mt-0.5 h-4 w-4 shrink-0 text-gray-400"
-                            aria-hidden="true"
-                          />
-                          <span className="flex min-w-0 flex-1 flex-col">
-                            <span className="text-gray-900 dark:text-gray-100">{repo.project}</span>
-                            <span className="truncate font-mono text-xs text-gray-500 dark:text-gray-400">
-                              {repo.branch}
-                            </span>
-                          </span>
-                          <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
-                            {isThis
-                              ? t("detail.repos.this")
-                              : t("detail.repos.sessions", { count: repo.sessionIds.length })}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => actions.open({ kind: "task", addRepo: true })}
-                  className={`${linkButton} mt-1 -ml-2`}
-                >
-                  {t("detail.addRepo")}
-                </button>
-              </Section>
-            )}
-
-            <Section title={t("detail.previews")}>
-              {(session.previews?.length ?? 0) > 0 ? (
-                <PreviewLinks
-                  variant="list"
-                  previews={session.previews ?? []}
-                  onChanged={() => handlers.onWorktreeSyncComplete(session)}
+          <Section title={t("detail.folder")}>
+            <p
+              className="flex items-start gap-2 text-sm text-gray-800 dark:text-gray-200"
+              title={session.workingDirectory ?? session.project}
+            >
+              {session.isWorktree ? (
+                <GitFork
+                  className="mt-0.5 h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400"
+                  aria-hidden="true"
                 />
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t("detail.noPreviews")}</p>
+                <Folder className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
               )}
-            </Section>
+              <span className="min-w-0 break-all">
+                {worktree ? (
+                  <>
+                    {t("detail.worktree", { name: worktree.name })}
+                    <span className="block font-mono text-xs text-gray-500 dark:text-gray-400">
+                      {worktree.prefix}
+                    </span>
+                  </>
+                ) : (
+                  <span className="font-mono text-xs">
+                    {session.workingDirectory ?? session.project}
+                  </span>
+                )}
+              </span>
+            </p>
+          </Section>
 
-            <Section title={t("detail.firstPrompt")}>
-              {session.prompts[0] ? (
-                <>
-                  <p className="line-clamp-6 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm whitespace-pre-line break-words text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                    <LinkifiedText text={session.prompts[0]} />
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => actions.open({ kind: "preview" })}
-                    className={`${linkButton} mt-1 -ml-2`}
-                  >
-                    {t("detail.openConversation")}
-                  </button>
-                </>
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t("detail.noPrompt")}</p>
-              )}
+          {actions.canOpenTask && (
+            <Section
+              title={t("detail.repos")}
+              action={
+                <button
+                  type="button"
+                  onClick={() => actions.open({ kind: "task", addRepo: false })}
+                  className={linkButton}
+                >
+                  {t("detail.manageTask")}
+                </button>
+              }
+            >
+              {(session.taskRepos?.length ?? 0) > 0 ? (
+                <ul className="flex flex-col gap-2">
+                  {session.taskRepos!.map((repo) => {
+                    const isThis =
+                      repo.repoRoot === session.repoRoot && repo.branch === session.gitBranch;
+                    return (
+                      <li
+                        key={`${repo.repoRoot}:${repo.branch}`}
+                        className="flex items-start gap-2.5 text-sm"
+                      >
+                        <Folder
+                          className="mt-0.5 h-4 w-4 shrink-0 text-gray-400"
+                          aria-hidden="true"
+                        />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="text-gray-900 dark:text-gray-100">{repo.project}</span>
+                          <span className="truncate font-mono text-xs text-gray-500 dark:text-gray-400">
+                            {repo.branch}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                          {isThis
+                            ? t("detail.repos.this")
+                            : t("detail.repos.sessions", { count: repo.sessionIds.length })}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => actions.open({ kind: "task", addRepo: true })}
+                className={`${linkButton} mt-1 -ml-2`}
+              >
+                {t("detail.addRepo")}
+              </button>
             </Section>
+          )}
 
-            {(actions.canOpenPr || key !== null) && (
-              <Section title={t("detail.links")}>
-                <div className="flex flex-wrap gap-2">
-                  {actions.canOpenPr && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void actions.openPr()}
-                      disabled={actions.openingPrUrl}
-                      icon={<GitPullRequest className="h-3.5 w-3.5" />}
-                    >
-                      {t("sessions.menu.pr")}
-                    </Button>
-                  )}
-                  {key && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlers.onFilterByTask(key)}
-                      icon={<Search className="h-3.5 w-3.5" />}
-                    >
-                      {t("detail.filterByTask", { key })}
-                    </Button>
-                  )}
-                </div>
-              </Section>
+          <Section title={t("detail.previews")}>
+            {(session.previews?.length ?? 0) > 0 ? (
+              <PreviewLinks
+                variant="list"
+                previews={session.previews ?? []}
+                onChanged={() => handlers.onWorktreeSyncComplete(session)}
+              />
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t("detail.noPreviews")}</p>
             )}
-          </div>
+          </Section>
+
+          <Section title={t("detail.firstPrompt")}>
+            {session.prompts[0] ? (
+              <>
+                <p className="line-clamp-6 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm whitespace-pre-line break-words text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                  <LinkifiedText text={session.prompts[0]} />
+                </p>
+                <button
+                  type="button"
+                  onClick={() => actions.open({ kind: "preview" })}
+                  className={`${linkButton} mt-1 -ml-2`}
+                >
+                  {t("detail.openConversation")}
+                </button>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t("detail.noPrompt")}</p>
+            )}
+          </Section>
+
+          {(actions.canOpenPr || key !== null) && (
+            <Section title={t("detail.links")}>
+              <div className="flex flex-wrap gap-2">
+                {actions.canOpenPr && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void actions.openPr()}
+                    disabled={actions.openingPrUrl}
+                    icon={<GitPullRequest className="h-3.5 w-3.5" />}
+                  >
+                    {t("sessions.menu.pr")}
+                  </Button>
+                )}
+                {key && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlers.onFilterByTask(key)}
+                    icon={<Search className="h-3.5 w-3.5" />}
+                  >
+                    {t("detail.filterByTask", { key })}
+                  </Button>
+                )}
+              </div>
+            </Section>
+          )}
+        </div>
       </div>
 
       {confirmingDelete ? (

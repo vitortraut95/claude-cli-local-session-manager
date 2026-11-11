@@ -107,6 +107,26 @@ export const apiErrors = {
     "The configured test skill isn't installed on this machine anymore. Choose another one or install it again.",
     "A skill de teste configurada não está mais instalada nesta máquina. Escolha outra ou instale de novo.",
   ),
+  "apiError.taskReviewSkillNotInstalled": dict(
+    "The configured code review skill isn't installed on this machine anymore. Choose another one or install it again.",
+    "A skill de code review configurada não está mais instalada nesta máquina. Escolha outra ou instale de novo.",
+  ),
+  "apiError.taskReviewSkillRequired": dict(
+    "Choose the code review skill in Skills first.",
+    "Escolha a skill de code review em Skills primeiro.",
+  ),
+  "apiError.queueInvalidPr": dict(
+    "That isn't a pull request link.",
+    "Isso não é um link de pull request.",
+  ),
+  "apiError.reviewNeedsBoard": dict(
+    "Code reviews need the board automations set up with Bitbucket.",
+    "Code review precisa das automações do Board configuradas com o Bitbucket.",
+  ),
+  "apiError.reviewRepoNotFound": dict(
+    "No local clone of this PR's repo in the workspace folders.",
+    "Nenhum clone local do repo deste PR nas pastas de trabalho.",
+  ),
   "apiError.taskRefinementSkillRequired": dict(
     "Choose the refinement skill first.",
     "Escolha a skill de refinamento primeiro.",

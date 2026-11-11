@@ -1,4 +1,4 @@
-import { FlaskConical, Loader2, Scale, Wand2 } from "lucide-react";
+import { FlaskConical, GitPullRequest, Loader2, Scale, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
@@ -102,6 +102,23 @@ function ManageSection({
             preference="taskTestSkill"
             icon={<FlaskConical className="h-3.5 w-3.5" />}
             label={t("taskTestSkill.title")}
+            skillsHub={status}
+          />
+        </section>
+      )}
+
+      {status.installedSkills && (
+        <section className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+          <h3 className="mb-1 font-medium text-gray-900 dark:text-gray-100">
+            {t("taskReviewSkill.title")}
+          </h3>
+          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+            {t("taskReviewSkill.description")}
+          </p>
+          <SkillPreferenceSelect
+            preference="taskReviewSkill"
+            icon={<GitPullRequest className="h-3.5 w-3.5" />}
+            label={t("taskReviewSkill.title")}
             skillsHub={status}
           />
         </section>

@@ -86,17 +86,24 @@ The watcher is a safety net, not a competitor: it only takes tickets nobody pick
 
 ### Review session
 
-Runs as a background Claude session in a local worktree of the PR's source branch (so it can
-search the whole repo for other uses of what changed), read-only: no edits, commits or pushes.
-How to review lives in a skill (`review.skill`, default `automated-code-review`, from the skills
-hub); without it installed the review fails. The app only hands it the context: the diff against
-the merge-base, the ticket with its comments, the other open PRs that touch the same files or
-tickets, and the user's lessons from earlier reviews. It asks for the skill's result: a verdict and
-findings, each with severity, file, line and `topic`. Questions for PO/design/content (`product`)
-and `minor` findings are never posted; they stay in the actions log. Posting, approving and every
-limit stay in the app.
-Reviews run one at a time after a look, with a cost cap per review (`review.maxBudgetUsd`). The
-session is kept (named `Review <repo>#<id>`), so it shows in the session list once it's over.
+A PR due for review goes to the app's task queue as a review entry (`repo#id`, the PR's link),
+like a test does; the scheduler launches it within the queue's limits. The session opens in a
+terminal, in a disposable worktree of the PR's commit (so it can search the whole repo for other
+uses of what changed), and runs the code review skill chosen in Skills (`taskReviewSkill`, e.g.
+`automated-code-review` from the skills hub), which holds how to review; without one the entry
+fails to launch. The app only hands it the context: the diff against the merge-base, the ticket
+with its comments, the other open PRs that touch the same files or tickets, and the user's lessons
+from earlier reviews.
+
+The session never posts: it sends its result (a verdict and findings, each with severity, file,
+line and `topic`) to `POST /sessions/:id/review-result`, and the app posts it like any automated
+review: questions for PO/design/content (`product`) and `minor` findings are never posted (they
+stay in the actions log), the limits above apply and the AI review comment marks the PR. The PR
+must still be open at the reviewed commit and without an AI review; otherwise the error goes on the
+queue entry, and the next look queues the PR again after a new push. A review session is only in
+progress or done (done once the result is posted); done and closed, its worktree is removed.
+
+PR links pasted in the queue as "Code review" go the same way.
 
 The repos aren't configured: they're every repo with a PR linked to an issue of the active sprint
 (Jira's development panel, re-read per issue every 30 min, `sprintRepos.ts`). Each repo's local

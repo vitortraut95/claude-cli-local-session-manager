@@ -38,6 +38,23 @@ export const taskQueue = {
   "taskQueueModal.baseLocal": dict("local branch", "branch local"),
   "taskQueueModal.kind.dev": dict("Development", "Desenvolvimento"),
   "taskQueueModal.kind.test": dict("Test", "Teste"),
+  "taskQueueModal.kind.review": dict("Code review", "Code review"),
+  "taskQueueModal.kind.review.hint": dict(
+    "The code review skill on a PR; the app comments and approves",
+    "A skill de code review num PR; o app comenta e aprova",
+  ),
+  "taskQueueModal.reviewPasteLabel": dict(
+    "Pull requests (links, one per line)",
+    "Pull requests (links, um por linha)",
+  ),
+  "taskQueueModal.reviewPastePlaceholder": dict(
+    "https://bitbucket.org/team/my-repo/pull-requests/12",
+    "https://bitbucket.org/time/meu-repo/pull-requests/12",
+  ),
+  "taskQueueModal.reviewNoneFound": dict(
+    "No pull request link found in the pasted text.",
+    "Nenhum link de pull request no texto colado.",
+  ),
   "taskQueueModal.kindLabel": dict("Kind", "Tipo"),
   "taskQueueModal.kind.dev.hint": dict(
     "New branch in its own worktree, with the default prompt",
@@ -56,7 +73,10 @@ export const taskQueue = {
     "No repo — open in the repos folder",
     "Sem repo — abrir na pasta dos repos",
   ),
-  "taskQueueModal.kindAriaLabel": dict("Development or test", "Desenvolvimento ou teste"),
+  "taskQueueModal.kindAriaLabel": dict(
+    "Development, test or code review",
+    "Desenvolvimento, teste ou code review",
+  ),
   "taskQueueModal.testBranchLabel": dict("Branch to test", "Branch a testar"),
   "taskQueueModal.testBranchPlaceholder": dict(
     "found on origin by the key",

@@ -59,6 +59,7 @@ const SECTIONS: GuideSection[] = [
     id: "queue",
     items: [
       { id: "add", action: "queue" },
+      { id: "review", action: "queue" },
       { id: "scheduler", action: "queue" },
       { id: "edit", action: "queue" },
     ],

@@ -44,7 +44,10 @@ export const guide = {
     "Sessions › filter bar (press / to jump to the search)",
     "Sessões › barra de filtros (aperte / para ir à busca)",
   ),
-  "guide.sessions.views.title": dict("List or cards, by group or by date", "Lista ou cards, por grupo ou por data"),
+  "guide.sessions.views.title": dict(
+    "List or cards, by group or by date",
+    "Lista ou cards, por grupo ou por data",
+  ),
   "guide.sessions.views.what": dict(
     "The list is the default; the cards show the same actions in a grid. The order is by group by default, or by date (newest first, nothing folded).",
     "A lista é o padrão; os cards mostram as mesmas ações em grade. A ordem é por grupo por padrão, ou por data (mais recentes primeiro, nada recolhido).",
@@ -203,10 +206,19 @@ export const guide = {
   // Queue
   "guide.queue.add.title": dict("Queue tasks", "Enfileirar tarefas"),
   "guide.queue.add.what": dict(
-    "Paste links or keys (development or test), pick the repository and branch, and the scheduler opens them one at a time, each in its own worktree, while there's room.",
-    "Cole links ou chaves (desenvolvimento ou teste), escolha repositório e branch, e o agendador abre uma de cada vez, cada uma no seu worktree, enquanto houver vaga.",
+    "Paste links or keys (development, test or code review), pick the repository and branch, and the scheduler opens them one at a time, each in its own worktree, while there's room.",
+    "Cole links ou chaves (desenvolvimento, teste ou code review), escolha repositório e branch, e o agendador abre uma de cada vez, cada uma no seu worktree, enquanto houver vaga.",
   ),
   "guide.queue.add.where": dict("Navigation › Task queue", "Navegação › Fila"),
+  "guide.queue.review.title": dict("Code review in the queue", "Code review na fila"),
+  "guide.queue.review.what": dict(
+    "Paste pull request links as Code review: each one opens a terminal with the code review skill (chosen in Skills) on the PR's commit, and the app posts the comments and the approval within the Board's limits. The Board automations queue colleagues' PRs here too. A review is only in progress or done.",
+    "Cole links de pull request como Code review: cada um abre um terminal com a skill de code review (escolhida em Skills) no commit do PR, e o app publica os comentários e a aprovação dentro dos limites do Board. As automações do Board também colocam os PRs dos colegas aqui. Um review só fica em andamento ou concluído.",
+  ),
+  "guide.queue.review.where": dict(
+    "Task queue › Code review kind; skill in Skills › Code review skill",
+    "Fila › tipo Code review; skill em Skills › Skill de code review",
+  ),
   "guide.queue.scheduler.title": dict("Scheduler and limits", "Agendador e limites"),
   "guide.queue.scheduler.what": dict(
     "Why it's waiting (sessions, memory, plan usage, interval), Check now and Pause. Its settings: sessions at once, free RAM, plan usage, minutes between launches, and the heavy-command hook that keeps tests and builds from freezing the machine.",

@@ -39,6 +39,22 @@ export function parsePastedTasks(text: string): PastedTask[] {
   return entries;
 }
 
+/** A Bitbucket pull request link: `…/<workspace>/<repo>/pull-requests/<id>`. */
+const PR_LINK_PATTERN = /^https?:\/\/[^\s/]+\/[^\s/]+\/([^\s/]+)\/pull-requests\/(\d+)/i;
+
+/** Pull requests out of a pasted list of links, as review entries' `repo#id` and link (without
+ *  anything after the id, like `/diff`). A repeated one keeps its first place. */
+export function parsePastedPullRequests(text: string): QueueGroupedTask[] {
+  const entries: QueueGroupedTask[] = [];
+  for (const token of text.split(/[\s,;]+/)) {
+    const match = PR_LINK_PATTERN.exec(token);
+    if (!match?.[1] || !match[2]) continue;
+    const key = `${match[1]}#${match[2]}`;
+    if (!entries.some((entry) => entry.key === key)) entries.push({ key, link: match[0] });
+  }
+  return entries;
+}
+
 /** The optional (older-backend) fields resolved, so the rows never deal with `undefined`. */
 export type DraftEntry = Pick<QueueEntry, "key" | "link" | "repos"> & {
   groupedTasks: QueueGroupedTask[];
@@ -102,8 +118,8 @@ export function branchNameFor(
 }
 
 /** A test needs no branch prefix (it tests the branch the task already has), and neither does a
- *  task with no repo (no branch is made). */
+ *  task with no repo (no branch is made). A review's repo is found by the server. */
 export function isMissingSetup(entry: DraftEntry): boolean {
-  if (entry.noRepo) return false;
+  if (entry.noRepo || entry.kind === "review") return false;
   return entry.repos.length === 0 || (entry.kind === "dev" && entry.branchPrefix === null);
 }
