@@ -1004,7 +1004,7 @@ export async function submitReviewResult(
       );
     }
     const { config, credentials } = await reviewBoardSetup();
-    const { pr } = await findOpenPullRequest(credentials, subject);
+    const pr = await findOpenPullRequest(credentials, subject);
     // What was reviewed: a push since then makes posting fail (`assertUnchanged`).
     const reviewed = queued.worktrees[0]
       ? await tryGit(["rev-parse", "HEAD"], queued.worktrees[0])

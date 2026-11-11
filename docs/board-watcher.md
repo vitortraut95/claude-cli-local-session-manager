@@ -90,10 +90,9 @@ A PR due for review goes to the app's task queue as a review entry (`repo#id`, t
 like a test does; the scheduler launches it within the queue's limits. The session opens in a
 terminal, in a disposable worktree of the PR's commit (so it can search the whole repo for other
 uses of what changed), and runs the code review skill chosen in Skills (`taskReviewSkill`, e.g.
-`automated-code-review` from the skills hub), which holds how to review; without one the entry
-fails to launch. The app only hands it the context: the diff against the merge-base, the ticket
-with its comments, the other open PRs that touch the same files or tickets, and the user's lessons
-from earlier reviews.
+`automated-code-review` from the skills hub), which holds how to review and gathers its own
+context (diff, ticket, related PRs); without one the entry fails to launch. The prompt only has the
+skill with the PR link, the user's lessons from earlier reviews and the URL to send the result to.
 
 The session never posts: it sends its result (a verdict and findings, each with severity, file,
 line and `topic`) to `POST /sessions/:id/review-result`, and the app posts it like any automated
