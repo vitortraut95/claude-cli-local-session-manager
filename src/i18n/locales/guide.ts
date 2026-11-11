@@ -244,8 +244,8 @@ export const guide = {
   "guide.board.eye.where": dict("Navigation › Board", "Navegação › Board"),
   "guide.board.modes.title": dict("Automation modes", "Modos das automações"),
   "guide.board.modes.what": dict(
-    "Code review (one AI review per colleague's PR), To Do, Tests, Rebuild and Teams notices, each on or off, plus business hours and limits.",
-    "Code review (uma review por IA por PR de colega), A fazer, Testes, Rebuild e avisos no Teams, cada um ligado ou desligado, além do horário e dos limites.",
+    "Code review (one AI review per colleague's PR, with the code review skill chosen right in its card), To Do, Tests, Rebuild and Teams notices, each on or off, plus business hours and limits.",
+    "Code review (uma review por IA por PR de colega, com a skill de code review escolhida no próprio card), A fazer, Testes, Rebuild e avisos no Teams, cada um ligado ou desligado, além do horário e dos limites.",
   ),
   "guide.board.modes.where": dict(
     "Board › a mode chip (opens that automation highlighted)",

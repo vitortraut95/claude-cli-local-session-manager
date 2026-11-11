@@ -23,7 +23,7 @@ import {
   SECRET_NAMES,
   type SecretName,
 } from "./secrets.js";
-import { featuresOf, writeSwitches } from "./settings.js";
+import { assertReviewSkillFor, featuresOf, writeSwitches } from "./settings.js";
 
 /**
  * The automations setup panel: each step checks what it's given against the real service (Jira,
@@ -397,6 +397,7 @@ export async function finishSetup(input: SetupFinishInput): Promise<void> {
   if (!raw.columns?.codeReview?.length) {
     throw new BadRequestError("SETUP_NO_CODE_REVIEW", "Map the board's columns first.");
   }
+  await assertReviewSkillFor(input.features);
   await patchRaw((next) => {
     next.enabled = true;
     writeSwitches(next, input.features);

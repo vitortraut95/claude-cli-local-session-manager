@@ -19,6 +19,15 @@ export const automationModes = {
     "Reviews each colleague's PR once with AI when its ticket reaches Code Review, whoever is listed as reviewer. The first teammate's automation to get there posts a marker comment, and nobody's automation reviews that PR again. It posts the findings and approves when nothing blocks.",
     "Revisa com IA cada PR de colega uma vez, quando a tarefa chega em Code Review, independente de quem está como revisor. A automação do primeiro colega a chegar lá posta um comentário marcador, e nenhuma automação revisa esse PR de novo. Posta os achados e aprova quando nada bloqueia.",
   ),
+  "reviewSkillModal.title": dict("Choose the code review skill", "Escolha a skill de code review"),
+  "reviewSkillModal.intro": dict(
+    "The code review automation is on, but no code review skill is chosen (or it isn't installed anymore). Each review the Board queues runs this skill, so they fail to launch without it. Choose one; a hub skill not installed yet is installed on the spot.",
+    "A automação de code review está ligada, mas nenhuma skill de code review está escolhida (ou ela não está mais instalada). Cada review que o Board coloca na fila roda essa skill, então sem ela eles falham ao abrir. Escolha uma; uma skill do hub ainda não instalada é instalada na hora.",
+  ),
+  "automationModes.codeReview.skillRequired": dict(
+    "Choose the code review skill to turn code review on: each review runs it in a session of the task queue.",
+    "Escolha a skill de code review pra ligar o code review: cada review roda ela numa sessão da fila de tarefas.",
+  ),
   "automationModes.codeReview.note": dict(
     "In your name. Style details and small suggestions are never posted. No approval if the PR got a push after the review.",
     "No seu nome. Detalhes de estilo e sugestões pequenas nunca são postados. Não aprova se o PR recebeu push depois do review.",

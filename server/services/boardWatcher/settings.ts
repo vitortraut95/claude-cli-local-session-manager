@@ -6,6 +6,8 @@ import type {
   AutomationSettingsInput,
 } from "../../../shared/boardWatcher.js";
 import { BadRequestError, ConflictError } from "../../utils/httpError.js";
+import { isInstalled } from "../installedSkillService.js";
+import { getUserPreferences } from "../preferencesService.js";
 import {
   BOARD_WATCHER_CONFIG_FILE,
   DEFAULT_BUSINESS_HOURS,
@@ -47,6 +49,21 @@ export function featuresOf(config: SwitchSource): AutomationFeatures {
     digest: config?.notifications?.digest !== false,
     rebuild: config?.rebuild?.enabled !== false,
   };
+}
+
+/** Turning code review on needs the code review skill chosen and installed: the reviews it queues
+ *  run it (`taskReviewService.ts`). */
+export async function assertReviewSkillFor(
+  features: Partial<Record<string, unknown>> = {},
+): Promise<void> {
+  if (features.codeReview !== true) return;
+  const skill = (await getUserPreferences()).taskReviewSkill;
+  if (!skill || !(await isInstalled(skill))) {
+    throw new BadRequestError(
+      "TASK_REVIEW_SKILL_REQUIRED",
+      "Choose the code review skill before turning code review on.",
+    );
+  }
 }
 
 /** Writes switches into a raw `boardWatcher.json`; refuses unknown ones. */
@@ -123,6 +140,7 @@ export async function saveAutomationSettings(body: unknown): Promise<AutomationS
     if (typeof input.enabled !== "boolean") throw new BadRequestError("BAD_SETTING", "enabled");
     raw.enabled = input.enabled;
   }
+  await assertReviewSkillFor(input.features);
   writeSwitches(raw, input.features);
   for (const [limit, value] of Object.entries(input.limits ?? {})) {
     const range = LIMIT_RANGES[limit as keyof AutomationLimits];
