@@ -1,5 +1,8 @@
+import { GitPullRequest } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
+import { useReviewSkill } from "../hooks/useReviewSkill";
+import { SkillPreferenceSelect } from "./SkillPreferenceSelect";
 import type { TranslationKey } from "../i18n/translations";
 import type { AutomationFeatures } from "../services/boardWatcherApi";
 import type { Automation } from "../../shared/boardWatcher";
@@ -156,6 +159,33 @@ function Note({ children }: { children: ReactNode }) {
   return <p className="text-xs text-gray-600 dark:text-gray-400">{children}</p>;
 }
 
+/** The code review skill the reviews run, chosen right in the card; without it code review
+ *  can't be turned on. */
+function ReviewSkillField({ reviewSkill }: { reviewSkill: ReturnType<typeof useReviewSkill> }) {
+  const { t } = useLanguage();
+  const { skillsHub, loaded, ready } = reviewSkill;
+  return (
+    <div>
+      <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+        {t("taskReviewSkill.title")}
+      </span>
+      {skillsHub?.installedSkills && (
+        <SkillPreferenceSelect
+          preference="taskReviewSkill"
+          icon={<GitPullRequest className="h-3.5 w-3.5" />}
+          label={t("taskReviewSkill.title")}
+          skillsHub={skillsHub}
+        />
+      )}
+      {loaded && !ready && (
+        <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+          {t("automationModes.codeReview.skillRequired")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /**
  * The automations, one card each, on or off; an automation that is on acts for real, so its card
  * only adds the options that go with it. Used by the Automation modal (saved on each change) and by
@@ -170,14 +200,18 @@ export function AutomationModesEditor({
 }: ModesEditorProps) {
   const { t } = useLanguage();
   const setFeature = (key: keyof AutomationFeatures, value: boolean) => onChange({ [key]: value });
+  const reviewSkill = useReviewSkill();
 
   const isOn = (automation: Automation) => !unavailable[automation] && features[automation];
 
+  // Code review can always be turned off, but only on with its skill.
+  const blocked = (automation: Automation) =>
+    automation === "codeReview" && !reviewSkill.ready && !features.codeReview;
   const toggle = (automation: Automation, title: string) => (
     <OnOffSelector
       label={title}
       on={isOn(automation)}
-      disabled={disabled || Boolean(unavailable[automation])}
+      disabled={disabled || Boolean(unavailable[automation]) || blocked(automation)}
       onChange={(on) => setFeature(automation, on)}
     />
   );
@@ -200,6 +234,7 @@ export function AutomationModesEditor({
         unavailable={unavailable.codeReview}
         focused={focus === "codeReview"}
       >
+        <ReviewSkillField reviewSkill={reviewSkill} />
         {review && (
           <>
             <Note>{t("automationModes.codeReview.note")}</Note>

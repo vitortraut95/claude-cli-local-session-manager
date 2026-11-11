@@ -26,6 +26,7 @@ import { NewSessionModal } from "./NewSessionModal";
 import { NewTaskModal } from "./NewTaskModal";
 import { RefinementModal } from "./RefinementModal";
 import { SettingsModal } from "./SettingsModal";
+import { ReviewSkillModal } from "./ReviewSkillModal";
 import { SetupModal } from "./SetupModal";
 import { SkillsHubModal } from "./SkillsHubModal";
 import { UpdateOverlay } from "./UpdateOverlay";
@@ -97,9 +98,7 @@ export function AppShell() {
           setGridLayout(prefs.terminalLayout === "limux-grid");
           setAutomationsOn(prefs.boardAutomations ?? false);
           setSetupPrefs(
-            prefs.workspaceDirs == null || prefs.skillsHub?.repoUrl === null
-              ? prefs
-              : null,
+            prefs.workspaceDirs == null || prefs.skillsHub?.repoUrl === null ? prefs : null,
           );
         })
         .catch(() => undefined);
@@ -297,6 +296,7 @@ export function AppShell() {
           onSkip={() => setSetupSkipped(true)}
         />
       )}
+      {!showSetup && !showTour && <ReviewSkillModal automationsOn={automationsOn} />}
       {showTour && (
         <WelcomeTour
           index={tourStep}
