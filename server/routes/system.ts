@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getUpdateJobStatus, getUpdateStatus, startUpdate } from "../services/updateService.js";
 import { getClaudeUsageStatus } from "../services/usageService.js";
+import { getClaudeCliStatus, updateClaudeCli } from "../services/claudeCliService.js";
 import { resumeOpenTasks } from "../services/sessionService.js";
 import {
   closeIdleGridPanes,
@@ -23,6 +24,16 @@ export const systemRouter = Router();
 systemRouter.get("/usage-limits", async (req, res) => {
   const status = await getClaudeUsageStatus(req.query.refresh === "1");
   res.json(status);
+});
+
+/** Installed Claude CLI version against the newest on npm. */
+systemRouter.get("/claude-cli", async (_req, res) => {
+  res.json(await getClaudeCliStatus());
+});
+
+/** Runs `claude update`; answers with the new status. */
+systemRouter.post("/claude-cli/update", async (_req, res) => {
+  res.json(await updateClaudeCli());
 });
 
 /** The Limux grid Claude sessions open in when `terminalLayout` is "limux-grid". */

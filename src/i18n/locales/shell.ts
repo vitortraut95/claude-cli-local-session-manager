@@ -24,6 +24,24 @@ export const shell = {
   "nav.preferences": dict("Language and theme", "Idioma e tema"),
   "updateButton.sidebar.available": dict("Update available", "Atualização disponível"),
   "updateButton.sidebar.upToDate": dict("App up to date", "App atualizado"),
+  "claudeCli.available": dict(
+    "Update Claude CLI to {latest}",
+    "Atualizar Claude CLI para {latest}",
+  ),
+  "claudeCli.updating": dict("Updating Claude CLI…", "Atualizando o Claude CLI…"),
+  "claudeCli.tooltip": dict(
+    'Claude CLI {version} installed, {latest} available. Click to run "{command}"; sessions already open keep the old version until reopened.',
+    'Claude CLI {version} instalado, {latest} disponível. Clique para rodar "{command}"; sessões já abertas seguem na versão antiga até serem reabertas.',
+  ),
+  "claudeCli.updated": dict(
+    "Claude CLI updated to {version}. New sessions use it; reopen the open ones to switch.",
+    "Claude CLI atualizado para {version}. Sessões novas já usam; reabra as abertas para trocar.",
+  ),
+  "claudeCli.updateError": dict(
+    "Couldn't update Claude CLI.",
+    "Não deu para atualizar o Claude CLI.",
+  ),
+  "claudeCli.runByHand": dict("Run in a terminal: {command}", "Rode num terminal: {command}"),
 
   // Sessions page
   "sessions.title": dict("Sessions", "Sessões"),

@@ -22,6 +22,7 @@ import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
 import type { SkillsHubStatus } from "../services/skillsHubApi";
 import type { ClaudeUsageStatus, UpdateStatus } from "../services/systemApi";
 import { BetaBadge } from "./BetaBadge";
+import { ClaudeCliUpdateButton } from "./ClaudeCliUpdateButton";
 import { Modal } from "./Modal";
 import { Select } from "./Select";
 import { Tooltip } from "./Tooltip";
@@ -332,6 +333,7 @@ export function AppNav(props: AppNavProps) {
         updating={props.update.updating}
         onUpdate={props.update.apply}
       />
+      <ClaudeCliUpdateButton />
       <div className="flex items-center gap-1">
         <button
           type="button"

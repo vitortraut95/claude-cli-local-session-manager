@@ -2,6 +2,7 @@ import axios from "axios";
 import { withServerErrorMessage } from "../utils/apiClient";
 import type { ResumeOpenResult } from "./sessionsApi";
 import type {
+  ClaudeCliStatus,
   ClaudeUsageStatus,
   LimuxInstallResult,
   LimuxStatus,
@@ -9,6 +10,7 @@ import type {
   UpdateStatus,
 } from "../../shared/system";
 export type {
+  ClaudeCliStatus,
   ClaudeExtraUsage,
   ClaudeUsageLimit,
   ClaudeUsageStatus,
@@ -43,6 +45,19 @@ export async function fetchUsageLimits(forceRefresh = false): Promise<ClaudeUsag
     client.get<ClaudeUsageStatus>("/usage-limits", {
       params: forceRefresh ? { refresh: "1" } : undefined,
     }),
+  );
+  return data;
+}
+
+export async function fetchClaudeCliStatus(): Promise<ClaudeCliStatus> {
+  const { data } = await withServerErrorMessage(() => client.get<ClaudeCliStatus>("/claude-cli"));
+  return data;
+}
+
+/** Runs `claude update` on the server; resolves with the new status. */
+export async function updateClaudeCli(): Promise<ClaudeCliStatus> {
+  const { data } = await withServerErrorMessage(() =>
+    client.post<ClaudeCliStatus>("/claude-cli/update"),
   );
   return data;
 }
