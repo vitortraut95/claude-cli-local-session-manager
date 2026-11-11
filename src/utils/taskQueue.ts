@@ -1,4 +1,5 @@
 import type { QueueEntry, QueueGroupedTask, QueueKind } from "../services/tasksApi";
+import type { Language } from "../../shared/preferences";
 
 /** Same loose match as the server's `normalizeTaskKey`: a bare key or one inside a ticket URL. */
 const KEY_PATTERN = /([A-Za-z][A-Za-z0-9]+-\d+)/;
@@ -65,6 +66,8 @@ export type DraftEntry = Pick<QueueEntry, "key" | "link" | "repos"> & {
   branch: string | null;
   baseBranch: string | null;
   useLocalBaseBranch: boolean;
+  /** "" = none. */
+  notes: string;
   launchedAt: string | null;
   sessionId: string | null;
   error: string | null;
@@ -87,6 +90,7 @@ export function toDraft({
   branch,
   baseBranch,
   useLocalBaseBranch,
+  notes,
   launchedAt,
   sessionId,
   error,
@@ -103,6 +107,7 @@ export function toDraft({
     branch: branch ?? null,
     baseBranch: baseBranch ?? null,
     useLocalBaseBranch: useLocalBaseBranch ?? false,
+    notes: notes ?? "",
     launchedAt: launchedAt ?? null,
     sessionId: sessionId ?? null,
     error: error ?? null,
@@ -122,11 +127,50 @@ export function branchNameFor(
   return entry.branchPrefix ? `${entry.branchPrefix}/${keys}` : keys;
 }
 
-/** A test needs no branch prefix (it tests the branch the task already has), and neither does a
- *  task with no repo (no branch is made). A review's repo is found by the server, a multi-repo
- *  task's by its session. */
+/** Only development needs setup: a test opens in the repos folder on the task's branch and a
+ *  review's repo is found by the server. A dev task with no repo needs no prefix (no branch is
+ *  made); a multi-repo one finds its repos itself. */
 export function isMissingSetup(entry: DraftEntry): boolean {
-  if (entry.noRepo || entry.kind === "review") return false;
+  if (entry.noRepo || entry.kind !== "dev") return false;
   if (entry.multiRepo) return entry.branchPrefix === null;
-  return entry.repos.length === 0 || (entry.kind === "dev" && entry.branchPrefix === null);
+  return entry.repos.length === 0 || entry.branchPrefix === null;
+}
+
+/** Mirrors the start of `composePrompt` (taskSchedulerService.ts), in the preferences' language;
+ *  the automatic notes are only known at launch. */
+const PREVIEW_TEXT = {
+  en: {
+    task: "Task",
+    groupedTasks:
+      "Tasks delivered together, in this one branch and a single PR (every commit names all " +
+      "the keys):",
+    notes: "Notes for this task:",
+  },
+  pt: {
+    task: "Tarefa",
+    groupedTasks:
+      "Tarefas entregues juntas, nesta mesma branch e num PR só (todo commit cita todas as " +
+      "chaves):",
+    notes: "Observações desta tarefa:",
+  },
+};
+
+/** What a development entry's session is sent, minus the notes added at launch. */
+export function previewDevPrompt(
+  entry: DraftEntry,
+  defaultPrompt: string,
+  language: Language,
+): string {
+  const text = PREVIEW_TEXT[language];
+  const tasks = [{ key: entry.key, link: entry.link }, ...entry.groupedTasks];
+  const notes = entry.notes.trim();
+  return [
+    tasks.length > 1
+      ? [text.groupedTasks, ...tasks.map((task) => `- ${task.link ?? task.key}`)].join("\n")
+      : `${text.task}: ${entry.link ?? entry.key}`,
+    defaultPrompt.trim(),
+    notes ? `${text.notes}\n${notes}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }

@@ -113,6 +113,9 @@ export type QueueEntry = {
    *  `useLocalBaseBranch` takes the local branch instead of a freshly fetched origin one. */
   baseBranch: string | null;
   useLocalBaseBranch: boolean;
+  /** Dev and test only: sent in this task's prompt, after the default one. Optional for an older
+   *  backend. */
+  notes?: string | null;
   addedAt: string;
   launchedAt: string | null;
   sessionId: string | null;
@@ -133,6 +136,7 @@ export type QueueEntryInput = Pick<
   | "branch"
   | "baseBranch"
   | "useLocalBaseBranch"
+  | "notes"
   | "error"
 >;
 
@@ -157,6 +161,30 @@ export type SchedulerStatus = {
   launching: string | null;
   /** Every entry being launched (the tick's and any "Start now"). */
   launchingKeys: string[];
+};
+
+/** One step of a queue launch, as the "Launching" panel shows it. `key` names the step ("repo",
+ *  "base", "worktree", "extra", "prepare", "terminal", "session"); `label` = the repo, for "extra". */
+export type QueueLaunchStep = {
+  key: string;
+  label?: string;
+  status: "pending" | "doing" | "done" | "error";
+  error?: string;
+};
+
+/** A launch in progress, or finished a moment ago (kept a while so the panel can show the end). */
+export type QueueLaunch = {
+  /** `key` + `startedAt`: tells two launches of the same entry apart. */
+  id: string;
+  key: string;
+  /** Every key of the entry (grouped ones too). */
+  keys: string[];
+  link: string | null;
+  kind: QueueKind;
+  startedAt: string;
+  finishedAt: string | null;
+  error: string | null;
+  steps: QueueLaunchStep[];
 };
 
 export type HeavyRunHookStatus = {

@@ -1,7 +1,9 @@
 import { Loader2, Save } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../components/Button";
+import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
+import { QueuePromptPanel } from "../components/QueuePromptPanel";
 import { SchedulerPanel } from "../components/SchedulerPanel";
 import { TaskQueueForm } from "../components/TaskQueueForm";
 import { TaskQueueList } from "../components/TaskQueueList";
@@ -10,9 +12,9 @@ import { useProjectFolders } from "../hooks/useProjectFolders";
 import { useToast } from "../hooks/useToast";
 import * as preferencesApi from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
-import type { QueueEntry, SchedulerStatus } from "../services/tasksApi";
+import type { QueueEntry, QueueKind, SchedulerStatus } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
-import { type DraftEntry, entryKeys, toDraft } from "../utils/taskQueue";
+import { type DraftEntry, entryKeys, previewDevPrompt, toDraft } from "../utils/taskQueue";
 
 /** While shown, the scheduler's progress (launches, errors, room left) is re-read this often. */
 const POLL_MS = 10_000;
@@ -41,6 +43,7 @@ function toStored(entries: DraftEntry[]) {
       branch,
       baseBranch,
       useLocalBaseBranch,
+      notes,
       error,
     }) => ({
       key,
@@ -54,6 +57,7 @@ function toStored(entries: DraftEntry[]) {
       branch,
       baseBranch,
       useLocalBaseBranch,
+      notes,
       error,
     }),
   );
@@ -84,6 +88,10 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [branchTypes, setBranchTypes] = useState<string[]>([]);
+  const [prefs, setPrefs] = useState<preferencesApi.UserPreferences | null>(null);
+  const [previewEntry, setPreviewEntry] = useState<DraftEntry | null>(null);
+  // The prompt panel is about development sessions: shown only while adding those.
+  const [formKind, setFormKind] = useState<QueueKind | null>(null);
   const [status, setStatus] = useState<SchedulerStatus | null>(null);
   const [runningNow, setRunningNow] = useState(false);
   // Keys whose error the user cleared to retry: a poll mustn't bring the old error back.
@@ -104,14 +112,29 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
       .finally(() => setLoading(false));
   }, []);
 
+  // Re-read when saved anywhere (the default prompt is edited here and in Settings).
   useEffect(() => {
     let cancelled = false;
-    preferencesApi
-      .fetchPreferences()
-      .then((prefs) => {
-        if (!cancelled) setBranchTypes(prefs.branchTypes);
-      })
-      .catch(() => undefined);
+    const load = () => {
+      preferencesApi
+        .fetchPreferences()
+        .then((next) => {
+          if (cancelled) return;
+          setPrefs(next);
+          setBranchTypes(next.branchTypes);
+        })
+        .catch(() => undefined);
+    };
+    load();
+    window.addEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, load);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     tasksApi
       .fetchTaskQueue()
       .then((list) => {
@@ -162,6 +185,7 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
             useLocalBaseBranch: server.launchedAt
               ? (server.useLocalBaseBranch ?? false)
               : entry.useLocalBaseBranch,
+            notes: server.launchedAt ? (server.notes ?? "") : entry.notes,
             launchedAt: server.launchedAt ?? null,
             sessionId: server.sessionId ?? null,
             error: keepLocalError ? entry.error : (server.error ?? null),
@@ -205,8 +229,8 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
     status?.launching === key ||
     (status?.launchingKeys?.includes(key) ?? false);
 
-  const persist = async () => {
-    const stored = await tasksApi.saveTaskQueue(toStored(entries));
+  const persist = async (list: DraftEntry[] = entries) => {
+    const stored = await tasksApi.saveTaskQueue(toStored(list));
     retriedRef.current.clear();
     const drafts = stored.map(toDraft);
     setEntries(drafts);
@@ -214,10 +238,12 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
     onChanged();
   };
 
-  const handleStartNow = async (key: string) => {
+  /** `saved` = the queue was just saved with this entry in it. */
+  const handleStartNow = async (key: string, saved = false) => {
     setStartingNow((current) => new Set(current).add(key));
     try {
-      await persist();
+      if (!saved) await persist();
+      tasksApi.notifyQueueLaunchStarted();
       await tasksApi.startQueueEntryNow(key);
       showToast(t("taskQueueModal.startNow.started", { key }), "success");
     } catch (err) {
@@ -234,6 +260,20 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
         .then(mergeProgress)
         .catch(() => undefined);
     }
+  };
+
+  // "Add and start now": saved with the new entries, then each one is started right away.
+  const handleAddAndStart = async (fresh: DraftEntry[]) => {
+    const next = [...entries, ...fresh];
+    setEntries(next);
+    try {
+      await persist(next);
+    } catch (err) {
+      const message = resolveApiErrorMessage(err, t, "newTaskModal.unexpectedFailure");
+      showToast(t("taskQueueModal.saveError", { message }), "error");
+      return;
+    }
+    for (const entry of fresh) void handleStartNow(entry.key, true);
   };
 
   const handleRemoveLaunched = async () => {
@@ -307,23 +347,10 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
         }
       />
 
-      {dirty && (
-        <div
-          role="status"
-          className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 sm:px-7 dark:border-amber-500/30 dark:bg-amber-950/80 dark:text-amber-200"
-        >
-          <span className="min-w-0 flex-1">{t("queuePage.unsaved")}</span>
-          <Button variant="ghost" size="sm" onClick={loadQueue} disabled={saving}>
-            {t("queuePage.discard")}
-          </Button>
-          <Button size="sm" onClick={() => void handleSave()} disabled={saving}>
-            {t("taskQueueModal.save")}
-          </Button>
-        </div>
-      )}
-
       {/* Ultrawide: the scheduler and its settings in a column on the left, the queue beside it. */}
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-7 3xl:grid 3xl:max-w-none 3xl:grid-cols-[30rem_minmax(0,1fr)] 3xl:items-start">
+      <div
+        className={`mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-7 ${dirty ? "pb-28" : ""} 3xl:grid 3xl:max-w-none 3xl:grid-cols-[30rem_minmax(0,1fr)] 3xl:items-start`}
+      >
         <aside className="3xl:sticky 3xl:top-6 3xl:max-h-[calc(100dvh-3rem)] 3xl:overflow-y-auto">
           <SchedulerPanel
             status={status}
@@ -341,8 +368,12 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
               branchTypes={branchTypes}
               listedKeys={new Set(entries.flatMap(entryKeys))}
               onAdd={(fresh) => setEntries((current) => [...current, ...fresh])}
+              onAddAndStart={(fresh) => void handleAddAndStart(fresh)}
+              onKindChange={setFormKind}
             />
           </section>
+
+          {formKind === "dev" && <QueuePromptPanel defaultPrompt={prefs?.defaultPrompt ?? null} />}
 
           <TaskQueueList
             entries={entries}
@@ -358,9 +389,43 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
             onRetry={(key) => {
               retriedRef.current.add(key);
             }}
+            onPreviewPrompt={setPreviewEntry}
           />
         </div>
       </div>
+
+      {previewEntry && (
+        <Modal
+          open
+          title={t("taskQueueModal.previewTitle", { key: entryKeys(previewEntry).join(" + ") })}
+          onClose={() => setPreviewEntry(null)}
+          size="xl"
+        >
+          <pre className="max-h-[60vh] overflow-y-auto rounded-lg bg-gray-50 p-3 font-mono text-xs whitespace-pre-wrap text-gray-800 dark:bg-gray-800/60 dark:text-gray-200">
+            {previewDevPrompt(previewEntry, prefs?.defaultPrompt ?? "", prefs?.language ?? "en")}
+          </pre>
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            {t("taskQueueModal.previewAuto")}
+          </p>
+        </Modal>
+      )}
+
+      {/* Floats over the bottom of the page (above the phone's bottom bar), centered on the content. */}
+      {dirty && (
+        <div
+          role="status"
+          className="fixed bottom-20 left-1/2 z-30 flex w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 items-center gap-3 rounded-xl border border-gray-200 bg-white py-2.5 pr-2.5 pl-4 text-sm text-gray-700 shadow-lg lg:bottom-6 lg:left-[calc(50%+7.5rem)] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+        >
+          <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+          <span className="min-w-0 flex-1">{t("queuePage.unsaved")}</span>
+          <Button variant="ghost" size="sm" onClick={loadQueue} disabled={saving}>
+            {t("queuePage.discard")}
+          </Button>
+          <Button size="sm" onClick={() => void handleSave()} disabled={saving}>
+            {t("taskQueueModal.save")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

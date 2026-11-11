@@ -14,6 +14,77 @@ export const taskQueue = {
   "header.resumeOpen": dict("Resume open tasks", "Retomar não concluídas"),
   "header.grid.error": dict("Couldn't open the grid.", "Não foi possível abrir a grade."),
   "taskQueueModal.title": dict("Task queue", "Fila de tarefas"),
+  "taskQueueModal.notesLabel": dict("Notes", "Observações"),
+  "taskQueueModal.notesPlaceholder": dict(
+    "Sent in this task's prompt (optional)",
+    "Vão no prompt desta tarefa (opcional)",
+  ),
+  "taskQueueModal.formNotesPlaceholder": dict(
+    "Optional: sent in the prompt of each pasted task, after the default prompt. Each task's own can be changed in the list.",
+    "Opcional: vão no prompt de cada tarefa colada, depois do prompt padrão. Dá pra mudar as de cada uma na lista.",
+  ),
+  "taskQueueModal.previewPrompt": dict("See the prompt", "Ver o prompt"),
+  "taskQueueModal.previewTitle": dict("Prompt for {key}", "Prompt de {key}"),
+  "taskQueueModal.previewAuto": dict(
+    "At launch, the automatic notes are added too when they apply: other repos, shared node_modules, the repos folder.",
+    "Na hora de lançar entram também as notas automáticas, quando se aplicam: outros repos, node_modules compartilhado, pasta dos repos.",
+  ),
+  "taskQueueModal.addAndStart": dict("Add and start now", "Adicionar e começar agora"),
+  "taskQueueModal.addAndStart.hint": dict(
+    "Saves the queue and opens these tasks right away, without waiting for room.",
+    "Salva a fila e abre estas tarefas na hora, sem esperar vaga.",
+  ),
+  "taskQueueModal.addAndStart.notReady": dict(
+    "Choose the repo and the branch prefix first.",
+    "Escolha antes o repo e o prefixo da branch.",
+  ),
+  "taskQueueModal.testRoot": dict(
+    "Repos folder (the test finds them in the ticket)",
+    "Pasta dos repos (o teste acha no ticket)",
+  ),
+  "taskQueueModal.testRoot.hint": dict(
+    "Opens in the repos folder: the test skill gets the link (and the branch, if you type it in the list) and finds the repos in the ticket.",
+    "Abre na pasta dos repos: a skill de teste recebe o link (e a branch, se você digitar na lista) e acha os repos no ticket.",
+  ),
+  "launchPanel.title": dict("Launches", "Lançamentos"),
+  "launchPanel.running": dict("Launching {count}", "Lançando {count}"),
+  "launchPanel.collapse": dict("Fold to the side", "Recolher pro lado"),
+  "launchPanel.expand": dict("Show the launches", "Mostrar os lançamentos"),
+  "launchPanel.close": dict("Close", "Fechar"),
+  "launchPanel.done": dict("Session open ✓", "Sessão aberta ✓"),
+  "launchPanel.failed": dict(
+    "Didn't launch: fix it in the queue and retry.",
+    "Não lançou: corrija na fila e tente de novo.",
+  ),
+  "launchPanel.openQueue": dict("See in the queue", "Ver na fila"),
+  "launchPanel.step.repo": dict("Read the repository", "Ler o repositório"),
+  "launchPanel.step.base": dict(
+    "Fetch the latest base branch",
+    "Buscar a branch base mais recente",
+  ),
+  "launchPanel.step.worktree": dict(
+    "Create the branch and worktree",
+    "Criar a branch e o worktree",
+  ),
+  "launchPanel.step.extra": dict("Branch in {repo}", "Branch no {repo}"),
+  "launchPanel.step.prepare": dict("Prepare and open the terminal", "Preparar e abrir o terminal"),
+  "launchPanel.step.terminal": dict("Open the terminal", "Abrir o terminal"),
+  "launchPanel.step.session": dict("Wait for Claude to start", "Esperar o Claude iniciar"),
+  "queuePrompt.title": dict(
+    "What each development session gets",
+    "O que cada sessão de desenvolvimento recebe",
+  ),
+  "queuePrompt.info": dict(
+    "A development session's prompt, in order: “Task: <link>”, the default prompt, the task's notes, then the automatic notes (other repos, shared node_modules, the repos folder).",
+    "O prompt de uma sessão de desenvolvimento, nesta ordem: “Tarefa: <link>”, o prompt padrão, as observações da tarefa e depois as notas automáticas (outros repos, node_modules compartilhado, pasta dos repos).",
+  ),
+  "queuePrompt.edit": dict("Edit default prompt", "Editar prompt padrão"),
+  "queuePrompt.empty": dict("No default prompt yet.", "Ainda sem prompt padrão."),
+  "queuePrompt.loading": dict("Loading…", "Carregando…"),
+  "queuePrompt.notesHint": dict(
+    "Each task can also have its own notes (in the form and in the list).",
+    "Cada tarefa também pode ter as próprias observações (no formulário e na lista).",
+  ),
   "taskQueueModal.intro": dict(
     "Every new task goes here. Paste the tasks and save: the queue launches one at a time, in list order, while there's room. Development = its own branch and worktree, with the default prompt; test = the test skill on the task's existing branch, in disposable worktrees.",
     "Toda tarefa nova entra aqui. Cole as tarefas e salve: a fila lança uma por vez, na ordem da lista, enquanto houver espaço. Desenvolvimento = branch e worktree próprios, com o prompt padrão; teste = a skill de teste na branch que a tarefa já tem, em worktrees descartáveis.",

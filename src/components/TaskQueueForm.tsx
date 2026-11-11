@@ -1,4 +1,4 @@
-import { FolderGit2, FolderTree } from "lucide-react";
+import { FolderGit2, FolderTree, Rocket } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -16,6 +16,7 @@ import { SettingRow } from "./SettingRow";
 import { Select } from "./Select";
 import { TaskQueueKindPicker } from "./TaskQueueKind";
 import { TaskQueuePrefixSelect } from "./TaskQueuePrefixSelect";
+import { Tooltip } from "./Tooltip";
 
 const TEXTAREA_CLASSNAME =
   "w-full rounded-lg border border-gray-300 bg-white p-3 text-sm text-gray-900 placeholder:text-gray-400 " +
@@ -31,6 +32,10 @@ type TaskQueueFormProps = {
   /** Keys already in the list (grouped ones too): pasting one again is reported, not added. */
   listedKeys: Set<string>;
   onAdd: (entries: DraftEntry[]) => void;
+  /** Same, then saved and started right away (no waiting for room). */
+  onAddAndStart: (entries: DraftEntry[]) => void;
+  /** The kind picked (null = none yet). */
+  onKindChange: (kind: QueueKind | null) => void;
 };
 
 /** Paste tickets and the setup they share; the kind is picked first, the rest shows up after. */
@@ -40,6 +45,8 @@ export function TaskQueueForm({
   branchTypes,
   listedKeys,
   onAdd,
+  onAddAndStart,
+  onKindChange,
 }: TaskQueueFormProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
@@ -55,6 +62,7 @@ export function TaskQueueForm({
   // "" = each repo's default branch.
   const [pasteBase, setPasteBase] = useState("");
   const [pasteUseLocalBase, setPasteUseLocalBase] = useState(false);
+  const [pasteNotes, setPasteNotes] = useState("");
 
   // The kind comes first, so it's what gets the focus until one is picked.
   useEffect(() => {
@@ -66,11 +74,18 @@ export function TaskQueueForm({
       ?.focus({ preventScroll: true });
   }, [focusRequest]);
 
-  const handleAdd = () => {
+  // What the scheduler needs before it can launch (see `isReady` on the server).
+  const readyToStart =
+    pasteKind !== "dev" ||
+    (!pasteMultiRepo && pasteRepo === NO_REPO_VALUE) ||
+    ((pasteMultiRepo || pasteRepo !== "") && pastePrefix !== null);
+
+  const handleAdd = (startNow = false) => {
     if (!pasteKind) return;
     const isReview = pasteKind === "review";
     const multiRepo = pasteKind === "dev" && pasteMultiRepo;
-    const repoChoice = isReview || multiRepo ? "" : pasteRepo;
+    // A test or review needs no repo: a test opens in the repos folder, a review's is its PR's.
+    const repoChoice = pasteKind === "dev" && !multiRepo ? pasteRepo : "";
     // A review's repo is its PR's, found by the server.
     const pasted = isReview
       ? parsePastedPullRequests(pasteText).map((pr) => ({ ...pr, groupedTasks: [] }))
@@ -89,7 +104,7 @@ export function TaskQueueForm({
         ...task,
         groupedTasks: task.groupedTasks.filter((grouped) => !listedKeys.has(grouped.key)),
       }));
-    onAdd(
+    (startNow ? onAddAndStart : onAdd)(
       fresh.map((task) => ({
         ...task,
         kind: pasteKind,
@@ -100,12 +115,14 @@ export function TaskQueueForm({
         branch: null,
         baseBranch: pasteKind === "dev" ? pasteBase.trim() || null : null,
         useLocalBaseBranch: pasteKind === "dev" && pasteUseLocalBase,
+        notes: isReview ? "" : pasteNotes.trim(),
         launchedAt: null,
         sessionId: null,
         error: null,
       })),
     );
     setPasteText("");
+    setPasteNotes("");
     if (fresh.length > 0) {
       showToast(t("taskQueueModal.added", { count: fresh.length }), "success");
     }
@@ -120,7 +137,14 @@ export function TaskQueueForm({
         <span className="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">
           {t("taskQueueModal.kindLabel")}
         </span>
-        <TaskQueueKindPicker value={pasteKind} onChange={setPasteKind} large />
+        <TaskQueueKindPicker
+          value={pasteKind}
+          onChange={(kind) => {
+            setPasteKind(kind);
+            onKindChange(kind);
+          }}
+          large
+        />
       </div>
       {pasteKind === null ? (
         <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -149,7 +173,12 @@ export function TaskQueueForm({
               autoFocus
             />
           </label>
-          {pasteKind !== "review" && (
+          {pasteKind === "test" && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {t("taskQueueModal.testRoot.hint")}
+            </p>
+          )}
+          {pasteKind === "dev" && (
             <div className="flex flex-col gap-2.5">
               {pasteKind === "dev" && (
                 <SettingRow
@@ -163,7 +192,7 @@ export function TaskQueueForm({
                   control={<RepoCountPicker multi={pasteMultiRepo} onChange={setPasteMultiRepo} />}
                 />
               )}
-              {!(pasteKind === "dev" && pasteMultiRepo) && (
+              {pasteKind === "dev" && !pasteMultiRepo && (
                 <SettingRow
                   controlWidth="w-64"
                   label={t("taskQueueModal.pasteRepo")}
@@ -228,10 +257,41 @@ export function TaskQueueForm({
               )}
             </div>
           )}
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={handleAdd} disabled={!pasteText.trim()}>
+          {pasteKind !== "review" && (
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                {t("taskQueueModal.notesLabel")}
+              </span>
+              <textarea
+                value={pasteNotes}
+                onChange={(event) => setPasteNotes(event.target.value)}
+                placeholder={t("taskQueueModal.formNotesPlaceholder")}
+                rows={2}
+                className={TEXTAREA_CLASSNAME}
+              />
+            </label>
+          )}
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" onClick={() => handleAdd()} disabled={!pasteText.trim()}>
               {t("taskQueueModal.add")}
             </Button>
+            <Tooltip
+              content={t(
+                readyToStart
+                  ? "taskQueueModal.addAndStart.hint"
+                  : "taskQueueModal.addAndStart.notReady",
+              )}
+            >
+              <span>
+                <Button
+                  onClick={() => handleAdd(true)}
+                  disabled={!pasteText.trim() || !readyToStart}
+                  icon={<Rocket className="h-4 w-4" />}
+                >
+                  {t("taskQueueModal.addAndStart")}
+                </Button>
+              </span>
+            </Tooltip>
           </div>
         </>
       )}

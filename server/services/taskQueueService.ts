@@ -90,6 +90,7 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
     );
   }
   const useLocalBaseBranch = isRecord(raw) && raw.useLocalBaseBranch === true;
+  const notes = isRecord(raw) && typeof raw.notes === "string" ? raw.notes.trim() : "";
   // Kept as sent: the modal clears it to retry a failed launch.
   const error =
     isRecord(raw) && typeof raw.error === "string" && raw.error.trim() ? raw.error.trim() : null;
@@ -105,6 +106,7 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
     branch: rawBranch || null,
     baseBranch: rawBase || null,
     useLocalBaseBranch,
+    notes: notes || null,
     error,
   };
 }
@@ -200,6 +202,7 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
       before.branch !== entry.branch ||
       before.baseBranch !== entry.baseBranch ||
       before.useLocalBaseBranch !== entry.useLocalBaseBranch ||
+      (before.notes ?? null) !== (entry.notes ?? null) ||
       before.repos.join("\n") !== entry.repos.join("\n")
     ) {
       recordEvent("queue.updated", {

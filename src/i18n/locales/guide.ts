@@ -200,10 +200,28 @@ export const guide = {
   // Queue
   "guide.queue.add.title": dict("Queue tasks", "Enfileirar tarefas"),
   "guide.queue.add.what": dict(
-    "Paste links or keys (development, test or code review), pick the repository and branch, and the scheduler opens them one at a time, each in its own worktree, while there's room. A task spanning several repos opens in the repos folder, and Claude makes the branch in each repo the ticket names.",
-    "Cole links ou chaves (desenvolvimento, teste ou code review), escolha repositório e branch, e o agendador abre uma de cada vez, cada uma no seu worktree, enquanto houver vaga. Tarefa em vários repos abre na pasta dos repos, e o Claude cria a branch em cada repo que o ticket citar.",
+    "Paste links or keys (development, test or code review), pick the repository and branch, and the scheduler opens them one at a time, each in its own worktree, while there's room — or right away with “Add and start now”. A task spanning several repos opens in the repos folder, and Claude makes the branch in each repo the ticket names. A test always opens in the repos folder.",
+    "Cole links ou chaves (desenvolvimento, teste ou code review), escolha repositório e branch, e o agendador abre uma de cada vez, cada uma no seu worktree, enquanto houver vaga — ou na hora, com “Adicionar e começar agora”. Tarefa em vários repos abre na pasta dos repos, e o Claude cria a branch em cada repo que o ticket citar. Teste sempre abre na pasta dos repos.",
   ),
   "guide.queue.add.where": dict("Navigation › Task queue", "Navegação › Fila de tarefas"),
+  "guide.queue.prompt.title": dict("Default prompt and notes", "Prompt padrão e observações"),
+  "guide.queue.prompt.what": dict(
+    "What each development session gets: the task link, the default prompt (editable right there) and the task's own notes, plus automatic notes at launch. “See the prompt” on a task shows it before launching.",
+    "O que cada sessão de desenvolvimento recebe: o link da tarefa, o prompt padrão (editável ali mesmo) e as observações da própria tarefa, mais as notas automáticas na hora de lançar. “Ver o prompt” numa tarefa mostra antes de lançar.",
+  ),
+  "guide.queue.prompt.where": dict(
+    "Task queue › Development › What each development session gets; notes in the form and on each task",
+    "Fila de tarefas › Desenvolvimento › O que cada sessão de desenvolvimento recebe; observações no formulário e em cada tarefa",
+  ),
+  "guide.queue.launches.title": dict("Launches panel", "Painel de lançamentos"),
+  "guide.queue.launches.what": dict(
+    "While the queue opens a task (scheduler, Start now, Add and start now or the Board), a panel on the right shows each step live. Fold it to the edge; it closes by itself when everything went fine and stays when a launch failed.",
+    "Enquanto a fila abre uma tarefa (agendador, Começar agora, Adicionar e começar agora ou o Board), um painel à direita mostra cada passo ao vivo. Dá pra recolher pra borda; fecha sozinho quando tudo deu certo e fica quando um lançamento falhou.",
+  ),
+  "guide.queue.launches.where": dict(
+    "Any page, on the right, during a launch",
+    "Qualquer página, à direita, durante um lançamento",
+  ),
   "guide.queue.review.title": dict("Code review in the queue", "Code review na fila"),
   "guide.queue.review.what": dict(
     "Paste pull request links as Code review: each one opens a terminal with the code review skill (chosen in Skills) on the PR's commit, and the app posts the comments and the approval within the Board's limits. The Board automations queue colleagues' PRs here too. A review is only in progress or done.",
@@ -295,8 +313,8 @@ export const guide = {
     "Configure e clone o repositório de skills do time, escolha catálogos ou skills (com prévia de cada uma), atualize e defina as skills de teste e de refinamento.",
   ),
   "guide.tools.skills.where": dict(
-    "Navigation › Team skills (amber while not set up)",
-    "Navegação › Skills do time (âmbar enquanto não configurado)",
+    "Navigation › Skills (amber while not set up)",
+    "Navegação › Skills (âmbar enquanto não configurado)",
   ),
   "guide.tools.settings.title": dict("Settings", "Configurações"),
   "guide.tools.settings.what": dict(
@@ -373,8 +391,8 @@ export const guide = {
   ),
   "tour.tools.title": dict("Cleanup, skills and settings", "Limpeza, skills e configurações"),
   "tour.tools.body": dict(
-    "Team skills sits with the pages: what Claude knows how to do on every session. Below: New session, Refine tasks and Cleanup; at the bottom, plan usage, updates and Settings.",
-    "As skills do time ficam junto das páginas: o que o Claude sabe fazer em cada sessão. Abaixo: Nova sessão, Refinar tarefas e Limpeza; no rodapé, uso do plano, atualizações e Configurações.",
+    "Skills sits with the pages: what Claude knows how to do on every session. Below: New session, Refine tasks and Cleanup; at the bottom, plan usage, updates and Settings.",
+    "Skills fica junto das páginas: o que o Claude sabe fazer em cada sessão. Abaixo: Nova sessão, Refinar tarefas e Limpeza; no rodapé, uso do plano, atualizações e Configurações.",
   ),
   "tour.guide.title": dict("Everything else is in the Guide", "Todo o resto está no Guia"),
   "tour.guide.body": dict(
