@@ -52,8 +52,11 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
       isRecord(task) && typeof task.link === "string" && task.link.trim() ? task.link.trim() : null;
     groupedTasks.push({ key: normalized, link: groupedLink });
   }
-  const noRepo = isRecord(raw) && raw.noRepo === true;
-  const folders = !noRepo && isRecord(raw) && Array.isArray(raw.repos) ? raw.repos : [];
+  const kind = isRecord(raw) && raw.kind === "test" ? "test" : "dev";
+  const multiRepo = kind === "dev" && isRecord(raw) && raw.multiRepo === true;
+  const noRepo = !multiRepo && isRecord(raw) && raw.noRepo === true;
+  const folders =
+    !noRepo && !multiRepo && isRecord(raw) && Array.isArray(raw.repos) ? raw.repos : [];
 
   const repos: string[] = [];
   for (const folder of folders) {
@@ -72,7 +75,6 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
       `"${branchPrefix}" isn't a valid branch prefix (letters, numbers, "-", "_" and "." only).`,
     );
   }
-  const kind = isRecord(raw) && raw.kind === "test" ? "test" : "dev";
   const rawBranch = isRecord(raw) && typeof raw.branch === "string" ? raw.branch.trim() : "";
   if (rawBranch && !SAFE_BRANCH_NAME.test(rawBranch)) {
     throw new BadRequestError(
@@ -98,6 +100,7 @@ async function parseEntry(raw: unknown): Promise<QueueEntryInput> {
     kind,
     repos,
     noRepo,
+    multiRepo,
     branchPrefix,
     branch: rawBranch || null,
     baseBranch: rawBase || null,
@@ -180,6 +183,7 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
         kind: entry.kind,
         repos: entry.repos,
         noRepo: entry.noRepo,
+        multiRepo: entry.multiRepo ?? false,
         branchPrefix: entry.branchPrefix,
         branch: entry.branch,
         baseBranch: entry.baseBranch,
@@ -191,6 +195,7 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
       before.kind !== entry.kind ||
       groupedKeysText(before) !== groupedKeysText(entry) ||
       before.noRepo !== entry.noRepo ||
+      Boolean(before.multiRepo) !== Boolean(entry.multiRepo) ||
       before.branchPrefix !== entry.branchPrefix ||
       before.branch !== entry.branch ||
       before.baseBranch !== entry.baseBranch ||
@@ -203,6 +208,7 @@ function recordQueueChanges(previous: Map<string, QueueEntry>, stored: QueueEntr
         kind: entry.kind,
         repos: entry.repos,
         noRepo: entry.noRepo,
+        multiRepo: entry.multiRepo ?? false,
         branchPrefix: entry.branchPrefix,
         branch: entry.branch,
         baseBranch: entry.baseBranch,

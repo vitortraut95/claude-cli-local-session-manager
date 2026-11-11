@@ -1,4 +1,4 @@
-import { FolderOpen, X } from "lucide-react";
+import { FolderOpen, FolderTree, X } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { ProjectFolderOption } from "../services/tasksApi";
 
@@ -51,6 +51,17 @@ export function TaskQueueNoRepoChip({ onRemove }: { onRemove?: () => void }) {
     <span className={CHIP_CLASSNAME}>
       <FolderOpen className="h-3 w-3" />
       {t("taskQueueModal.noRepo")}
+      {onRemove && <RemoveButton onClick={onRemove} />}
+    </span>
+  );
+}
+
+export function TaskQueueMultiRepoChip({ onRemove }: { onRemove?: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <span className={CHIP_CLASSNAME}>
+      <FolderTree className="h-3 w-3" />
+      {t("taskQueueModal.multiRepo")}
       {onRemove && <RemoveButton onClick={onRemove} />}
     </span>
   );

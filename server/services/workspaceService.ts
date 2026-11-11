@@ -26,6 +26,18 @@ export async function firstWorkspaceDir(prefs: UserPreferences): Promise<string>
   return os.homedir();
 }
 
+/** Every other existing workspace dir, for a session opened in `first` to reach their repos too. */
+export async function otherWorkspaceDirs(prefs: UserPreferences, first: string): Promise<string[]> {
+  const dirs: string[] = [];
+  for (const dir of prefs.workspaceDirs ?? []) {
+    const expanded = expandHome(dir);
+    if (expanded !== first && !dirs.includes(expanded) && (await directoryExists(expanded))) {
+      dirs.push(expanded);
+    }
+  }
+  return dirs;
+}
+
 /** Absolute paths of every repo directly inside `dir` (hidden folders skipped), sorted. */
 export async function findReposIn(dir: string): Promise<string[]> {
   let entries;

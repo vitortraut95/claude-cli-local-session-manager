@@ -101,6 +101,9 @@ export type QueueEntry = {
   repos: string[];
   /** No repo on purpose: the session opens in the first workspace dir, with no branch. */
   noRepo: boolean;
+  /** Dev only: spans several repos, found by the session in the ticket. It opens in the first
+   *  workspace dir and makes the task branch in each repo itself. Optional for an older backend. */
+  multiRepo?: boolean;
   /** The task branch is `<prefix>/<key>`; "" = just `<key>`; null = not chosen yet (not
    *  launched until it is). */
   branchPrefix: string | null;
@@ -125,6 +128,7 @@ export type QueueEntryInput = Pick<
   | "kind"
   | "repos"
   | "noRepo"
+  | "multiRepo"
   | "branchPrefix"
   | "branch"
   | "baseBranch"
