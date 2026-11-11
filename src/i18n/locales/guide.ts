@@ -337,6 +337,15 @@ export const guide = {
     "Aparece quando há versão nova. Ele também se atualiza sozinho ao abrir, nunca por cima de alterações locais; com alterações, pergunta antes de descartar.",
   ),
   "guide.tools.update.where": dict("Bottom of the navigation", "Rodapé da navegação"),
+  "guide.tools.claudeCli.title": dict("Update Claude CLI", "Atualizar o Claude CLI"),
+  "guide.tools.claudeCli.what": dict(
+    'Shows when npm has a newer Claude CLI than the one installed (new models usually need it). A click runs "claude update"; if that fails, it tells you to run it in a terminal.',
+    'Aparece quando o npm tem um Claude CLI mais novo que o instalado (modelo novo costuma precisar). O clique roda "claude update"; se falhar, mostra o comando pra rodar no terminal.',
+  ),
+  "guide.tools.claudeCli.where": dict(
+    "Bottom of the navigation, only while there's a new version",
+    "Rodapé da navegação, só enquanto há versão nova",
+  ),
   "guide.tools.language.title": dict("Language and theme", "Idioma e tema"),
   "guide.tools.language.what": dict(
     "English or Portuguese, dark or light theme.",

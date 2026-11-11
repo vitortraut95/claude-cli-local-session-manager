@@ -86,6 +86,7 @@ const SECTIONS: GuideSection[] = [
       { id: "settings", action: "settings" },
       { id: "usage" },
       { id: "update" },
+      { id: "claudeCli" },
       { id: "language" },
       { id: "shortcuts" },
     ],

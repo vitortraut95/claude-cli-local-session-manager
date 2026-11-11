@@ -62,3 +62,13 @@ export type LimuxStatus = {
 };
 
 export type LimuxInstallResult = LimuxStatus & { source: "github" | "bundled" };
+
+export type ClaudeCliStatus = {
+  installed: boolean;
+  version: string | null;
+  /** Newest on npm; null offline. */
+  latest: string | null;
+  updateAvailable: boolean;
+  /** What to run by hand when the button's update fails. */
+  updateCommand: string;
+};
