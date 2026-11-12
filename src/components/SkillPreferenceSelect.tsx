@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import * as preferencesApi from "../services/preferencesApi";
@@ -19,6 +19,8 @@ type SkillPreferenceSelectProps = {
   skillsHub: SkillsHubStatus;
   /** Shows the chosen skill's description under the select (off in a compact settings row). */
   showDescription?: boolean;
+  /** Scrolls to the select and focuses it once the saved value has loaded. */
+  autoFocus?: boolean;
 };
 
 /** A name `/<name>` takes — the server refuses anything else (e.g. a "(deprecated)" folder). */
@@ -86,11 +88,22 @@ export function SkillPreferenceSelect({
   label,
   skillsHub,
   showDescription = true,
+  autoFocus = false,
 }: SkillPreferenceSelectProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
   const [value, setValue] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const loaded = value !== null;
+
+  // The select stays disabled until the saved value loads, so the focus waits for it.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!autoFocus || !loaded || !root) return;
+    root.scrollIntoView({ behavior: "smooth", block: "center" });
+    root.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+  }, [autoFocus, loaded]);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,7 +166,7 @@ export function SkillPreferenceSelect({
   const selected = installedSkills.find((skill) => skill.name === value);
 
   return (
-    <div className="flex flex-col gap-1">
+    <div ref={rootRef} className="flex flex-col gap-1">
       <span className="flex items-center gap-2">
         {(value === null || saving) && (
           <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />

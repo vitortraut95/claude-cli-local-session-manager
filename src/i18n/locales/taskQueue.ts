@@ -42,6 +42,7 @@ export const taskQueue = {
     "Repos folder (the test finds them in the ticket)",
     "Pasta dos repos (o teste acha no ticket)",
   ),
+  "taskQueueModal.editSkill": dict("Edit", "Editar"),
   "taskQueueModal.testRoot.hint": dict(
     "Opens in the repos folder: the test skill gets the link (and the branch, if you type it in the list) and finds the repos in the ticket.",
     "Abre na pasta dos repos: a skill de teste recebe o link (e a branch, se você digitar na lista) e acha os repos no ticket.",

@@ -9,17 +9,25 @@ import { SkillsCatalogPicker } from "./SkillsCatalogPicker";
 import { SkillsHubCloneStatus } from "./SkillsHubCloneStatus";
 import { SkillsHubInstallSection } from "./SkillsHubInstallSection";
 import { SkillsHubRepoUrlSection } from "./SkillsHubRepoUrlSection";
-import { SkillPreferenceSelect } from "./SkillPreferenceSelect";
+import { SkillPreferenceSelect, type SkillPreference } from "./SkillPreferenceSelect";
 
 type SkillsHubModalProps = {
+  /** Highlights this preference's skill picker and gives it the focus. */
+  focus?: SkillPreference;
   onClose: () => void;
 };
+
+const PREFERENCE_SECTIONS: { preference: SkillPreference; icon: typeof FlaskConical }[] = [
+  { preference: "taskTestSkill", icon: FlaskConical },
+  { preference: "taskReviewSkill", icon: GitPullRequest },
+  { preference: "taskRefinementSkill", icon: Scale },
+];
 
 /**
  * Sets up and manages the team skills hub: repo URL, clone, catalog selection, each skill's link
  * state, and updating.
  */
-export function SkillsHubModal({ onClose }: SkillsHubModalProps) {
+export function SkillsHubModal({ focus, onClose }: SkillsHubModalProps) {
   const { t } = useLanguage();
   const { status, failed, reload } = useSkillsHubStatus(true);
   const [preview, setPreview] = useState<{ catalog: string; name: string } | null>(null);
@@ -54,6 +62,7 @@ export function SkillsHubModal({ onClose }: SkillsHubModalProps) {
       {status?.found && (
         <ManageSection
           status={status}
+          focus={focus}
           onChanged={reload}
           onPreview={(catalog, name) => setPreview({ catalog, name })}
         />
@@ -69,13 +78,15 @@ export function SkillsHubModal({ onClose }: SkillsHubModalProps) {
   );
 }
 
-/** Hub cloned: its state, the catalog selection and the task test skill. */
+/** Hub cloned: its state, the catalog selection and the skills the app runs. */
 function ManageSection({
   status,
+  focus,
   onChanged,
   onPreview,
 }: {
   status: SkillsHubStatus;
+  focus?: SkillPreference;
   onChanged: () => Promise<void>;
   onPreview: (catalog: string, name: string) => void;
 }) {
@@ -90,56 +101,31 @@ function ManageSection({
 
       <SkillsCatalogPicker status={status} onChanged={onChanged} onPreview={onPreview} />
 
-      {status.installedSkills && (
-        <section className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-          <h3 className="mb-1 font-medium text-gray-900 dark:text-gray-100">
-            {t("taskTestSkill.title")}
-          </h3>
-          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
-            {t("taskTestSkill.description")}
-          </p>
-          <SkillPreferenceSelect
-            preference="taskTestSkill"
-            icon={<FlaskConical className="h-3.5 w-3.5" />}
-            label={t("taskTestSkill.title")}
-            skillsHub={status}
-          />
-        </section>
-      )}
-
-      {status.installedSkills && (
-        <section className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-          <h3 className="mb-1 font-medium text-gray-900 dark:text-gray-100">
-            {t("taskReviewSkill.title")}
-          </h3>
-          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
-            {t("taskReviewSkill.description")}
-          </p>
-          <SkillPreferenceSelect
-            preference="taskReviewSkill"
-            icon={<GitPullRequest className="h-3.5 w-3.5" />}
-            label={t("taskReviewSkill.title")}
-            skillsHub={status}
-          />
-        </section>
-      )}
-
-      {status.installedSkills && (
-        <section className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-          <h3 className="mb-1 font-medium text-gray-900 dark:text-gray-100">
-            {t("taskRefinementSkill.title")}
-          </h3>
-          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
-            {t("taskRefinementSkill.description")}
-          </p>
-          <SkillPreferenceSelect
-            preference="taskRefinementSkill"
-            icon={<Scale className="h-3.5 w-3.5" />}
-            label={t("taskRefinementSkill.title")}
-            skillsHub={status}
-          />
-        </section>
-      )}
+      {status.installedSkills &&
+        PREFERENCE_SECTIONS.map(({ preference, icon: Icon }) => (
+          <section
+            key={preference}
+            className={`scroll-mt-4 rounded-lg border p-3 ${
+              focus === preference
+                ? "border-violet-500 ring-2 ring-violet-500/20 dark:border-violet-400"
+                : "border-gray-200 dark:border-gray-800"
+            }`}
+          >
+            <h3 className="mb-1 font-medium text-gray-900 dark:text-gray-100">
+              {t(`${preference}.title`)}
+            </h3>
+            <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+              {t(`${preference}.description`)}
+            </p>
+            <SkillPreferenceSelect
+              preference={preference}
+              icon={<Icon className="h-3.5 w-3.5" />}
+              label={t(`${preference}.title`)}
+              skillsHub={status}
+              autoFocus={focus === preference}
+            />
+          </section>
+        ))}
 
       <p className="text-xs text-gray-500 dark:text-gray-400">
         {t("skillsHub.manage.newSessionsNote")}

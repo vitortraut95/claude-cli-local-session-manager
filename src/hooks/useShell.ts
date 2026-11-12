@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import type { AutomationFocus } from "../components/AutomationModesEditor";
+import type { SkillPreference } from "../components/SkillPreferenceSelect";
 import type { AppView } from "./useAppView";
 
 /** What any page can ask of the app shell: move between pages and open the shared panels. */
@@ -11,7 +12,8 @@ export type ShellActions = {
   openNewSession: () => void;
   openRefinement: () => void;
   openCleanup: () => void;
-  openSkills: () => void;
+  /** The skills panel; with a preference, its skill picker is highlighted and focused. */
+  openSkills: (focus?: SkillPreference) => void;
   openSettings: () => void;
   /** The automations' modes, hours and limits, with one automation's card highlighted. */
   openAutomation: (focus?: AutomationFocus) => void;

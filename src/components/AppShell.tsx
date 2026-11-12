@@ -28,6 +28,7 @@ import { RefinementModal } from "./RefinementModal";
 import { SettingsModal } from "./SettingsModal";
 import { ReviewSkillModal } from "./ReviewSkillModal";
 import { SetupModal } from "./SetupModal";
+import type { SkillPreference } from "./SkillPreferenceSelect";
 import { SkillsHubModal } from "./SkillsHubModal";
 import { UpdateOverlay } from "./UpdateOverlay";
 import { WelcomeTour } from "./WelcomeTour";
@@ -76,6 +77,7 @@ export function AppShell() {
   // accident keeps what was typed; the rest mount only while open.
   const [panel, setPanel] = useState<Panel | null>(null);
   const [automationFocus, setAutomationFocus] = useState<AutomationFocus | undefined>();
+  const [skillsFocus, setSkillsFocus] = useState<SkillPreference | undefined>();
   const [automationsOn, setAutomationsOn] = useState(false);
   const [gridLayout, setGridLayout] = useState(false);
   const [resumingOpen, setResumingOpen] = useState(false);
@@ -167,7 +169,10 @@ export function AppShell() {
       openNewSession: () => setPanel("newSession"),
       openRefinement: () => setPanel("refinement"),
       openCleanup: () => setPanel("cleanup"),
-      openSkills: () => setPanel("skills"),
+      openSkills: (focus?: SkillPreference) => {
+        setSkillsFocus(focus);
+        setPanel("skills");
+      },
       openSettings: () => setPanel("settings"),
       openAutomation: (focus?: AutomationFocus) => {
         setAutomationFocus(focus);
@@ -296,7 +301,7 @@ export function AppShell() {
         onFindingExecuted={refreshSoon}
       />
       {panel === "automation" && <AutomationModal focus={automationFocus} onClose={closePanel} />}
-      {panel === "skills" && <SkillsHubModal onClose={closePanel} />}
+      {panel === "skills" && <SkillsHubModal focus={skillsFocus} onClose={closePanel} />}
       {panel === "settings" && (
         <SettingsModal theme={theme} onToggleTheme={toggleTheme} onClose={closePanel} />
       )}
