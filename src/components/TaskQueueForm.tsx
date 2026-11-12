@@ -1,6 +1,7 @@
-import { FolderGit2, FolderTree, Rocket } from "lucide-react";
+import { FolderGit2, FolderTree, Pencil, Rocket, Wand2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
+import { useShell } from "../hooks/useShell";
 import { useToast } from "../hooks/useToast";
 import type { ProjectFolderOption, QueueKind } from "../services/tasksApi";
 import {
@@ -36,6 +37,8 @@ type TaskQueueFormProps = {
   onAddAndStart: (entries: DraftEntry[]) => void;
   /** The kind picked (null = none yet). */
   onKindChange: (kind: QueueKind | null) => void;
+  /** Skills tests and reviews run with ("" = none); null while the preferences load. */
+  skills: { test: string; review: string } | null;
 };
 
 /** Paste tickets and the setup they share; the kind is picked first, the rest shows up after. */
@@ -47,6 +50,7 @@ export function TaskQueueForm({
   onAdd,
   onAddAndStart,
   onKindChange,
+  skills,
 }: TaskQueueFormProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
@@ -152,6 +156,7 @@ export function TaskQueueForm({
         </p>
       ) : (
         <>
+          {pasteKind !== "dev" && <KindSkill kind={pasteKind} skills={skills} />}
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
               {t(
@@ -295,6 +300,43 @@ export function TaskQueueForm({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/** The skill a test or review runs with, and a shortcut to its picker in the skills panel. */
+function KindSkill({
+  kind,
+  skills,
+}: {
+  kind: "test" | "review";
+  skills: TaskQueueFormProps["skills"];
+}) {
+  const { t } = useLanguage();
+  const shell = useShell();
+  const preference = kind === "test" ? "taskTestSkill" : "taskReviewSkill";
+  const skill = skills?.[kind];
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+      <Wand2 className="h-3.5 w-3.5 shrink-0" />
+      <span>{t(`${preference}.title`)}:</span>
+      {skill ? (
+        <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+          /{skill}
+        </code>
+      ) : (
+        <span className="text-amber-700 dark:text-amber-400">
+          {skills ? t("skillSelect.none") : "…"}
+        </span>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => shell.openSkills(preference)}
+        icon={<Pencil className="h-3.5 w-3.5" />}
+      >
+        {t("taskQueueModal.editSkill")}
+      </Button>
     </div>
   );
 }

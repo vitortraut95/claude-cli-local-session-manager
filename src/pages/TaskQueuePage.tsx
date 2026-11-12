@@ -370,6 +370,7 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
               onAdd={(fresh) => setEntries((current) => [...current, ...fresh])}
               onAddAndStart={(fresh) => void handleAddAndStart(fresh)}
               onKindChange={setFormKind}
+              skills={prefs && { test: prefs.taskTestSkill, review: prefs.taskReviewSkill }}
             />
           </section>
 

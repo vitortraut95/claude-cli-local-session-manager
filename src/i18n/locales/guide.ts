@@ -228,8 +228,8 @@ export const guide = {
     "Cole links de pull request como Code review: cada um abre um terminal com a skill de code review (escolhida em Skills) no commit do PR, e o app publica os comentários e a aprovação dentro dos limites do Board. As automações do Board também colocam os PRs dos colegas aqui. Um review só fica em andamento ou concluído.",
   ),
   "guide.queue.review.where": dict(
-    "Task queue › Code review kind; skill in Skills › Code review skill",
-    "Fila › tipo Code review; skill em Skills › Skill de code review",
+    "Task queue › Code review kind (the skill shows there, with Edit); also Skills › Code review skill",
+    "Fila › tipo Code review (a skill aparece ali, com Editar); também em Skills › Skill de code review",
   ),
   "guide.queue.scheduler.title": dict("Scheduler and limits", "Agendador e limites"),
   "guide.queue.scheduler.what": dict(
