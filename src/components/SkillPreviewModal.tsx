@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { SkillDetails } from "../services/skillsHubApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import { formatUpdatedAt } from "../utils/formatDate";
 import { MarkdownView } from "./MarkdownView";
 import { Modal } from "./Modal";
 import * as skillsHubApi from "../services/skillsHubApi";
@@ -16,7 +17,7 @@ type SkillPreviewModalProps = {
 /** Read-only view of one hub skill's SKILL.md (description, dependencies, full instructions and the
  *  files that come with it), opened from the skills selection modal's info icon. */
 export function SkillPreviewModal({ catalog, name, onClose }: SkillPreviewModalProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [details, setDetails] = useState<SkillDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +53,7 @@ export function SkillPreviewModal({ catalog, name, onClose }: SkillPreviewModalP
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       {details && (
         <div className="flex flex-col gap-4">
-          {(details.author ?? details.version) && (
+          {(details.author ?? details.version ?? details.updatedAt) && (
             <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
               {details.author && (
                 <span>
@@ -67,6 +68,14 @@ export function SkillPreviewModal({ catalog, name, onClose }: SkillPreviewModalP
                   {t("skillsHub.preview.version")}{" "}
                   <span className="font-mono text-gray-800 dark:text-gray-200">
                     {details.version}
+                  </span>
+                </span>
+              )}
+              {details.updatedAt && (
+                <span>
+                  {t("skillsHub.preview.updatedAt")}{" "}
+                  <span className="font-medium text-gray-800 dark:text-gray-200">
+                    {formatUpdatedAt(details.updatedAt, language)}
                   </span>
                 </span>
               )}

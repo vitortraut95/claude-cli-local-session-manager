@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import type { SkillDetails } from "../../../shared/skillsHub.js";
+import { tryGit } from "../../utils/git.js";
 import { AppError, NotFoundError } from "../../utils/httpError.js";
 import { getUserPreferences } from "../preferencesService.js";
 import {
@@ -22,6 +23,12 @@ async function listFilesRecursive(dir: string, base = dir): Promise<string[]> {
     }),
   );
   return nested.flat().sort();
+}
+
+/** ISO date of the last commit touching `dir`; null when git has none (or isn't there). */
+async function lastCommitDate(dir: string): Promise<string | null> {
+  const date = await tryGit(["log", "-1", "--format=%cI", "--", "."], dir);
+  return date && date.length > 0 ? date : null;
 }
 
 /** The full content of one hub skill, for the selection modal's preview. Looked up by name among
@@ -50,6 +57,7 @@ export async function getSkillDetails(
     requiresSkills: readFrontmatterList(frontmatter, "requires-skills"),
     author: readFrontmatterNestedScalar(frontmatter, "metadata", "author"),
     version: readFrontmatterNestedScalar(frontmatter, "metadata", "version"),
+    updatedAt: await lastCommitDate(skill.dir),
     body: raw.replace(FRONTMATTER_PATTERN, "").trim(),
     files: (await listFilesRecursive(skill.dir)).filter((file) => file !== "SKILL.md"),
     dir: skill.dir,

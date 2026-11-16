@@ -98,6 +98,9 @@ export type SkillDetails = {
    *  older backend omits them. */
   author?: string | null;
   version?: string | null;
+  /** ISO date of the last hub commit touching the skill folder; null outside git. Optional: an
+   *  older backend omits it. */
+  updatedAt?: string | null;
   /** SKILL.md without its frontmatter (markdown). */
   body: string;
   /** Every other file in the skill folder (references, scripts), relative to it. */

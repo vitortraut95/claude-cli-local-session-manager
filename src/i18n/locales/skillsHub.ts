@@ -208,6 +208,7 @@ export const skillsHub = {
   "skillsHub.preview.requires": dict("Depends on:", "Depende de:"),
   "skillsHub.preview.author": dict("Author:", "Autor:"),
   "skillsHub.preview.version": dict("Version:", "Versão:"),
+  "skillsHub.preview.updatedAt": dict("Last update:", "Última atualização:"),
   "skillsHub.preview.files": dict("Files that come with it", "Arquivos que vêm junto"),
   "skillsHub.preview.loadError": dict(
     "Couldn't read this skill.",
