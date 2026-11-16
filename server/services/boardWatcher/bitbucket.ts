@@ -146,8 +146,8 @@ export async function approvePullRequest(
 export const AI_REVIEW_MARKER = "🤖 **Review por IA**";
 
 /** The marker line first (what `hasAiReviewComment` looks for), then the review itself: its
- *  overview and the findings commented on the code, so the person reviewing next has it all in
- *  one place. */
+ *  overview and where each finding was commented, by severity. The findings' text lives only in
+ *  their own comments, so it isn't read twice. */
 export function aiReviewComment(pr: PullRequest, { outcome, summary, posted }: AiReview): string {
   const result =
     outcome.kind === "approved"
@@ -158,11 +158,12 @@ export function aiReviewComment(pr: PullRequest, { outcome, summary, posted }: A
   const commit = pr.sourceHash ? ` · commit \`${pr.sourceHash.slice(0, 7)}\`` : "";
   const findings = posted.length
     ? [
-        "**Apontamentos** (comentados no código):",
+        "**Apontamentos** (o texto está no comentário de cada um):",
         ...posted.map((f) => {
-          const where = f.file ? ` \`${f.file}${f.line ? `:${f.line}` : ""}\`` : "";
-          const body = f.body.replace(/\s+/g, " ").trim();
-          return `- **${SEVERITY_PT[f.severity]}**${where}: ${body.length > 300 ? `${body.slice(0, 300)}…` : body}`;
+          const where = f.file
+            ? `\`${f.file}${f.line ? `:${f.line}` : ""}\``
+            : "comentário geral do PR";
+          return `- **${SEVERITY_PT[f.severity]}**: ${where}`;
         }),
       ].join("\n")
     : "**Apontamentos:** nenhum.";
