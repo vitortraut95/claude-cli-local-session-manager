@@ -44,3 +44,21 @@ void test("a client error isn't retried", async () => {
   assert.equal(response.status, 404);
   assert.equal(takeCallCounts().retries, 0);
 });
+
+void test("a call that times out fails with a hint about the VPN instead of hanging", async () => {
+  mock.method(globalThis, "fetch", () =>
+    Promise.reject(new DOMException("The operation was aborted due to timeout", "TimeoutError")),
+  );
+  await assert.rejects(
+    apiFetch("bitbucket", "https://api.example.test/x", { method: "POST" }),
+    /bitbucket didn't answer in 30s — maybe the VPN/,
+  );
+  assert.equal(takeCallCounts().calls.bitbucket, 1);
+});
+
+void test("each attempt is sent with a timeout signal", async () => {
+  const fetchMock = answers(200);
+  await apiFetch("jira", "https://api.example.test/x");
+  const init = fetchMock.mock.calls[0]?.arguments[1];
+  assert.ok(init?.signal instanceof AbortSignal);
+});
