@@ -87,6 +87,12 @@ export const skillsHub = {
     "Marque catálogos inteiros ou clique em skills soltas. Nada é linkado até você aplicar.",
   ),
   "skillsHub.manage.catalogsTitle": dict("Catalogs and skills", "Catálogos e skills"),
+  "skillsHub.manage.authorFilter": dict("Filter by author", "Filtrar por autor"),
+  "skillsHub.manage.allAuthors": dict("All authors", "Todos os autores"),
+  "skillsHub.manage.sort": dict("Sort skills", "Ordenar skills"),
+  "skillsHub.manage.sortName": dict("Alphabetical", "Alfabética"),
+  "skillsHub.manage.sortRecent": dict("Most recent", "Mais recentes"),
+  "skillsHub.manage.updatedAt": dict("updated {date}", "atualizada {date}"),
   "skillsHub.manage.changePath": dict("Change folder", "Trocar pasta"),
   "skillsHub.manage.changePathHint": dict(
     'The repo and the clone folder are changed in one place: the gear (Settings) in the header → "Team skills" → Edit.',

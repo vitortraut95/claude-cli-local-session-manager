@@ -1,6 +1,7 @@
 import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import type { HubCatalog, HubSkill, InstalledSkill } from "../../../shared/skillsHub.js";
+import { tryGit } from "../../utils/git.js";
 import { getUserSkillsDir } from "./common.js";
 
 export const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
@@ -56,16 +57,21 @@ export function readFrontmatterNestedScalar(
 
 async function readSkillMeta(
   skillMdPath: string,
-): Promise<{ description: string; requires: string[] }> {
+): Promise<{ description: string; requires: string[]; authors: string[] }> {
   try {
     const raw = await readFile(skillMdPath, "utf-8");
     const frontmatter = FRONTMATTER_PATTERN.exec(raw)?.[1] ?? "";
+    const author = readFrontmatterNestedScalar(frontmatter, "metadata", "author") ?? "";
     return {
       description: readFrontmatterScalar(frontmatter, "description"),
       requires: readFrontmatterList(frontmatter, "requires-skills"),
+      authors: author
+        .split(",")
+        .map((name) => name.trim())
+        .filter((name) => name !== ""),
     };
   } catch {
-    return { description: "", requires: [] };
+    return { description: "", requires: [], authors: [] };
   }
 }
 
@@ -146,8 +152,39 @@ export async function listCatalogs(hubPath: string): Promise<HubCatalog[]> {
   return catalogs.filter((c) => c.skills.length > 0).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Skills in `~/.claude/skills`: real folders or links (broken ones skipped, via `stat`) holding a
- *  SKILL.md. */
+/** Fills each skill's `updatedAt` from one `git log` over `catalog/` (newest first, so the first
+ *  commit seen touching a skill folder is its last change). */
+export async function withUpdatedAt(
+  hubPath: string,
+  catalogs: HubCatalog[],
+): Promise<HubCatalog[]> {
+  const log = await tryGit(["log", "--format=%x00%cI", "--name-only", "--", "catalog"], hubPath);
+  const skillByFolder = new Map<string, HubSkill>();
+  for (const catalog of catalogs) {
+    for (const skill of catalog.skills) {
+      skillByFolder.set(path.relative(hubPath, skill.dir).split(path.sep).join("/"), skill);
+    }
+  }
+  const dates = new Map<HubSkill, string>();
+  let date = "";
+  for (const line of (log ?? "").split("\n")) {
+    if (line.startsWith("\0")) {
+      date = line.slice(1);
+      continue;
+    }
+    // catalog/<c>/<skill>/... or catalog/<c>/skills/<skill>/...
+    const parts = line.split("/");
+    for (const depth of [3, 4]) {
+      const skill = skillByFolder.get(parts.slice(0, depth).join("/"));
+      if (skill && parts.length > depth && !dates.has(skill)) dates.set(skill, date);
+    }
+  }
+  return catalogs.map((catalog) => ({
+    ...catalog,
+    skills: catalog.skills.map((skill) => ({ ...skill, updatedAt: dates.get(skill) ?? null })),
+  }));
+}
+
 /** The hub catalog an installed skill folder (usually a link) resolves into; null outside a hub. */
 async function skillCatalog(skillDir: string): Promise<string | null> {
   const real = await realpath(skillDir).catch(() => skillDir);
@@ -156,6 +193,8 @@ async function skillCatalog(skillDir: string): Promise<string | null> {
   return index >= 0 && index < parts.length - 2 ? (parts[index + 1] ?? null) : null;
 }
 
+/** Skills in `~/.claude/skills`: real folders or links (broken ones skipped, via `stat`) holding a
+ *  SKILL.md. */
 export async function listInstalledSkills(): Promise<InstalledSkill[]> {
   const dir = getUserSkillsDir();
   let names: string[];

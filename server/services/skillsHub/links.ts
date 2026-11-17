@@ -1,4 +1,4 @@
-import { lstat, mkdir, readdir, readlink, stat, symlink, unlink } from "node:fs/promises";
+import { lstat, mkdir, readdir, readlink, realpath, stat, symlink, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { HubCatalog, SkillStatus, SkillsSelection } from "../../../shared/skillsHub.js";
 import { AppError } from "../../utils/httpError.js";
@@ -25,6 +25,22 @@ async function inspectEntry(entryPath: string): Promise<LinkEntry> {
     targetExists = false;
   }
   return { kind: "link", target, targetExists };
+}
+
+/** A link that reaches `skillDir`, directly or through another path that resolves to the same
+ *  folder (like the link a hub leaves where a skill used to live before moving). */
+async function reachesSkill(
+  entry: LinkEntry,
+  entryPath: string,
+  skillDir: string,
+): Promise<boolean> {
+  if (entry.kind !== "link" || !entry.targetExists) return false;
+  if (path.resolve(entry.target) === path.resolve(skillDir)) return true;
+  const [actual, expected] = await Promise.all([
+    realpath(entryPath).catch(() => null),
+    realpath(skillDir).catch(() => null),
+  ]);
+  return actual !== null && actual === expected;
 }
 
 function isInside(child: string, parent: string): boolean {
@@ -128,11 +144,14 @@ export async function computeSkillStatuses(
         continue;
       }
       owner.set(skill.name, catalog.name);
-      const entry = await inspectEntry(path.join(skillsDir, skill.name));
+      const entryPath = path.join(skillsDir, skill.name);
+      const entry = await inspectEntry(entryPath);
       if (entry.kind === "absent") {
         statuses.push({ ...base, state: "missing" });
+      } else if (await reachesSkill(entry, entryPath, skill.dir)) {
+        statuses.push({ ...base, state: "linked" });
       } else if (entry.kind === "link" && path.resolve(entry.target) === path.resolve(skill.dir)) {
-        statuses.push({ ...base, state: entry.targetExists ? "linked" : "broken" });
+        statuses.push({ ...base, state: "broken" });
       } else if (
         entry.kind === "link" &&
         isInside(entry.target, catalogRoot) &&
@@ -159,8 +178,8 @@ async function inferSelection(catalogs: HubCatalog[]): Promise<SkillsSelection> 
   for (const catalog of catalogs) {
     const linked: string[] = [];
     for (const skill of catalog.skills) {
-      const entry = await inspectEntry(path.join(skillsDir, skill.name));
-      if (entry.kind === "link" && path.resolve(entry.target) === path.resolve(skill.dir)) {
+      const entryPath = path.join(skillsDir, skill.name);
+      if (await reachesSkill(await inspectEntry(entryPath), entryPath, skill.dir)) {
         linked.push(skill.name);
       }
     }
@@ -212,7 +231,7 @@ export type LinkResult = { linked: string[]; unlinked: string[]; conflicts: stri
 
 /**
  * Brings `~/.claude/skills` in line with the selection: links `missing` skills, re-points
- * `broken` ones, and removes links into the hub whose target vanished. With `pruneUnselected`
+ * `broken` ones and hub links that reach a skill by an old path, and removes links into the hub whose target vanished. With `pruneUnselected`
  * (only after an explicit choice), it also removes links to hub skills no longer selected.
  * Anything that isn't a link into this hub's `catalog/` is never touched.
  */
@@ -244,10 +263,18 @@ export async function applyLinks(
     }
     wanted.set(skill.name, skill.dir);
     const dest = path.join(skillsDir, skill.name);
-    if (status.state === "broken") {
+    let repoint = status.state === "broken";
+    if (status.state === "linked") {
+      const entry = await inspectEntry(dest);
+      repoint =
+        entry.kind === "link" &&
+        isInside(entry.target, catalogRoot) &&
+        path.resolve(entry.target) !== path.resolve(skill.dir);
+    }
+    if (repoint) {
       await unlink(dest);
     }
-    if (status.state === "missing" || status.state === "broken") {
+    if (status.state === "missing" || repoint) {
       await symlink(skill.dir, dest);
       result.linked.push(skill.name);
     }

@@ -309,8 +309,8 @@ export const guide = {
   "guide.tools.cleanup.where": dict("Navigation › Cleanup", "Navegação › Limpeza"),
   "guide.tools.skills.title": dict("Team skills", "Skills do time"),
   "guide.tools.skills.what": dict(
-    "Set up and clone the team's skills repository, pick catalogs or single skills (with a preview of each), update, and choose the test and refinement skills.",
-    "Configure e clone o repositório de skills do time, escolha catálogos ou skills (com prévia de cada uma), atualize e defina as skills de teste e de refinamento.",
+    "Set up and clone the team's skills repository, pick catalogs or single skills (with a preview of each, filtered by author and sorted by name or most recent), update, and choose the test and refinement skills.",
+    "Configure e clone o repositório de skills do time, escolha catálogos ou skills (com prévia de cada uma, filtro por autor e ordem alfabética ou por mais recentes), atualize e defina as skills de teste e de refinamento.",
   ),
   "guide.tools.skills.where": dict(
     "Navigation › Skills (amber while not set up)",

@@ -6,13 +6,34 @@ import type { TranslationKey } from "../i18n/translations";
 import * as skillsHubApi from "../services/skillsHubApi";
 import type {
   HubCatalog,
+  HubSkill,
   SkillLinkState,
   SkillsHubStatus,
   SkillsSelection,
 } from "../services/skillsHubApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import { formatUpdatedAt } from "../utils/formatDate";
 import { Button } from "./Button";
+import { Select } from "./Select";
 import { Tooltip } from "./Tooltip";
+
+type SkillSort = "recent" | "name";
+const SORT_KEY = "skillsHub.sort";
+
+function readSort(): SkillSort {
+  try {
+    return localStorage.getItem(SORT_KEY) === "recent" ? "recent" : "name";
+  } catch {
+    return "name";
+  }
+}
+
+function sortSkills(skills: HubSkill[], sort: SkillSort): HubSkill[] {
+  if (sort === "name") return skills;
+  return [...skills].sort(
+    (a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "") || a.name.localeCompare(b.name),
+  );
+}
 
 const STATE_LABEL_KEYS: Record<SkillLinkState, TranslationKey> = {
   linked: "skillsHub.state.linked",
@@ -38,8 +59,27 @@ export function SkillsCatalogPicker({
   onChanged: () => Promise<void>;
   onPreview: (catalog: string, name: string) => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
+  const [author, setAuthor] = useState("");
+  const [sort, setSort] = useState<SkillSort>(readSort);
+  const changeSort = (value: SkillSort) => {
+    setSort(value);
+    try {
+      localStorage.setItem(SORT_KEY, value);
+    } catch {
+      // Only a convenience: the default order still works.
+    }
+  };
+  const authors = useMemo(
+    () =>
+      [...new Set(status.catalogs.flatMap((c) => c.skills.flatMap((k) => k.authors ?? [])))].sort(
+        (a, b) => a.localeCompare(b, language === "pt" ? "pt-BR" : "en"),
+      ),
+    [status.catalogs, language],
+  );
+  // An author that disappeared from the hub (after a sync) falls back to "all".
+  const activeAuthor = authors.includes(author) ? author : "";
   const saved = useMemo<SkillsSelection>(
     () => ({ catalogs: status.selectedCatalogs, skills: status.selectedSkills }),
     [status.selectedCatalogs, status.selectedSkills],
@@ -146,12 +186,41 @@ export function SkillsCatalogPicker({
 
   return (
     <section>
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <h3 className="font-medium text-gray-900 dark:text-gray-100">
           {t("skillsHub.manage.catalogsTitle")}
         </h3>
+        {authors.length > 0 && (
+          <div className="w-48">
+            <Select
+              value={activeAuthor}
+              onChange={(event) => setAuthor(event.target.value)}
+              aria-label={t("skillsHub.manage.authorFilter")}
+              className="py-1"
+            >
+              <option value="">{t("skillsHub.manage.allAuthors")}</option>
+              {authors.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+        <div className="w-44">
+          <Select
+            value={sort}
+            onChange={(event) => changeSort(event.target.value as SkillSort)}
+            aria-label={t("skillsHub.manage.sort")}
+            className="py-1"
+          >
+            <option value="name">{t("skillsHub.manage.sortName")}</option>
+            <option value="recent">{t("skillsHub.manage.sortRecent")}</option>
+          </Select>
+        </div>
         {draftDirty && (
           <Button
+            className="ml-auto"
             size="sm"
             onClick={() => void apply()}
             disabled={applying}
@@ -170,6 +239,13 @@ export function SkillsCatalogPicker({
       </p>
       <ul className="flex flex-col gap-2">
         {status.catalogs.map((catalog) => {
+          const visible = sortSkills(
+            activeAuthor
+              ? catalog.skills.filter((k) => k.authors?.includes(activeAuthor))
+              : catalog.skills,
+            sort,
+          );
+          if (visible.length === 0) return null;
           const whole = isWhole(catalog.name);
           const pickedCount = catalog.skills.filter((k) => isPicked(catalog.name, k.name)).length;
           const states = skillsByCatalog.get(catalog.name);
@@ -195,7 +271,7 @@ export function SkillsCatalogPicker({
                 </span>
               </label>
               <ul className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-1 pl-6">
-                {catalog.skills.map((skill) => {
+                {visible.map((skill) => {
                   const picked = isPicked(catalog.name, skill.name);
                   const neededBy = picked
                     ? undefined
@@ -210,6 +286,19 @@ export function SkillsCatalogPicker({
                             {neededBy &&
                               `${t("skillsHub.manage.requiredBy", { names: neededBy.join(", ") })}\n\n`}
                             {skill.description || t("skillsHub.preview.noDescription")}
+                            {((skill.authors?.length ?? 0) > 0 || Boolean(skill.updatedAt)) && (
+                              <span className="mt-1.5 block text-gray-400">
+                                {[
+                                  skill.authors?.join(", "),
+                                  skill.updatedAt &&
+                                    t("skillsHub.manage.updatedAt", {
+                                      date: formatUpdatedAt(skill.updatedAt, language),
+                                    }),
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
+                            )}
                           </span>
                         }
                       >
