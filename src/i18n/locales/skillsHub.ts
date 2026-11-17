@@ -91,7 +91,7 @@ export const skillsHub = {
   "skillsHub.manage.allAuthors": dict("All authors", "Todos os autores"),
   "skillsHub.manage.sort": dict("Sort skills", "Ordenar skills"),
   "skillsHub.manage.sortName": dict("Alphabetical", "Alfabética"),
-  "skillsHub.manage.sortRecent": dict("Most recent", "Mais recentes"),
+  "skillsHub.manage.sortRecent": dict("Recently updated", "Atualizadas recentemente"),
   "skillsHub.manage.updatedAt": dict("updated {date}", "atualizada {date}"),
   "skillsHub.manage.changePath": dict("Change folder", "Trocar pasta"),
   "skillsHub.manage.changePathHint": dict(
