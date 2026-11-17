@@ -9,6 +9,11 @@ export type HubSkill = {
   /** Its `requires-skills` as written (`[<catalog>/]<skill>[@<range>]`). Optional: an older
    *  backend omits it. */
   requires?: string[];
+  /** `metadata.author`, split on commas. Optional: an older backend omits it. */
+  authors?: string[];
+  /** ISO date of the last hub commit touching the skill folder; null outside git. Optional: an
+   *  older backend omits it. */
+  updatedAt?: string | null;
 };
 
 export type HubCatalog = {
@@ -20,7 +25,8 @@ export type HubCatalog = {
 };
 
 /**
- * - `linked`: the skills dir already links to this exact folder.
+ * - `linked`: the skills dir already links to this folder (an old path into the hub that resolves
+ *   to it counts, and the next sync re-points it).
  * - `missing`: nothing there yet (a new skill) — the next sync links it.
  * - `broken`: a link into the hub whose target is gone (renamed/moved clone) — the next sync fixes it.
  * - `conflict`: something else owns the name (a real folder, a link elsewhere, or a skill with the

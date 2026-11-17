@@ -2,7 +2,7 @@ import type { SkillsHubStatus } from "../../../shared/skillsHub.js";
 import { tryGit } from "../../utils/git.js";
 import { getUserPreferences } from "../preferencesService.js";
 import { expandHome } from "../workspaceService.js";
-import { listCatalogs, listInstalledSkills } from "./catalog.js";
+import { listCatalogs, listInstalledSkills, withUpdatedAt } from "./catalog.js";
 import { getUserSkillsDir, HUB_GIT } from "./common.js";
 import { computeSkillStatuses, resolveSelection } from "./links.js";
 import {
@@ -82,7 +82,7 @@ export async function getSkillsHubStatus(): Promise<SkillsHubStatus> {
     found: true,
     path: hubPath,
     ...(await readGitState(hubPath)),
-    catalogs,
+    catalogs: await withUpdatedAt(hubPath, catalogs),
     selectedCatalogs: selection.catalogs,
     selectedSkills: selection.skills,
     catalogsChosen: prefs.catalogs !== null,
