@@ -91,6 +91,8 @@ export function SessionDetailPanel({
   const [taskLink, setTaskLink] = useState<{ key: string; link: string | null } | null>(null);
   const key = session.taskKey ?? session.testKey ?? null;
   const title = sessionDisplayTitle(session);
+  // A blank nickname counts as none.
+  const nickname = session.nickname?.trim() ?? "";
   const busy = actions.busy.deleting || actions.busy.continuing || actions.busy.nickname;
   const worktree =
     session.isWorktree && session.workingDirectory
@@ -166,14 +168,14 @@ export function SessionDetailPanel({
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <h2 className="text-lg leading-snug font-semibold tracking-tight break-words text-gray-900 dark:text-gray-100">
-              {title}
+              {session.title || title}
             </h2>
-            {session.nickname && (
+            {nickname && session.title && (
               <p
-                className="mt-0.5 line-clamp-2 text-xs text-gray-500 dark:text-gray-400"
-                title={session.title}
+                className="mt-0.5 line-clamp-3 text-xs break-words text-gray-500 italic dark:text-gray-400"
+                title={`${nickname}\n\n${t("sessionCard.nickname.localOnly")}`}
               >
-                {session.title}
+                <LinkifiedText text={nickname} />
               </p>
             )}
           </div>
