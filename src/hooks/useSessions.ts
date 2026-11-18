@@ -593,6 +593,24 @@ export function useSessions(problems: TaskProblems = NO_PROBLEMS) {
     [runAction, refreshSoon],
   );
 
+  /** Resumes despite another session active in the same folder (e.g. one that only follows up and
+   *  doesn't touch files); the server only refuses when this same session is already open. */
+  const forceResume = useCallback(
+    async (targetId: string, layout?: TerminalLayout) => {
+      const ok = await runAction(
+        targetId,
+        "continue",
+        () => sessionsApi.continueSession(targetId, layout),
+        "useSessions.terminalOpened",
+        "useSessions.resumeError",
+      );
+      if (!ok) return;
+      setResumeConflict(null);
+      refreshSoon();
+    },
+    [runAction, refreshSoon],
+  );
+
   const openInVSCode = useCallback(
     async (id: string) => {
       await runAction(
@@ -731,5 +749,6 @@ export function useSessions(problems: TaskProblems = NO_PROBLEMS) {
     resumeConflict,
     clearResumeConflict,
     stopAndCheckoutResume,
+    forceResume,
   };
 }

@@ -293,13 +293,19 @@ export const sessions = {
     "Esta mesma sessão já está aberta em outro terminal. Retomá-la aqui de novo iniciaria um segundo processo do Claude contra a mesma transcrição ao mesmo tempo.",
   ),
   "resumeConflictModal.intro.otherConflictSuffix": dict(
-    "is currently active in this project's folder. Resuming here too would put two Claude processes in the same working tree at once.",
-    "está ativa agora nesta pasta do projeto. Retomar aqui também colocaria dois processos do Claude na mesma working tree ao mesmo tempo.",
+    "is currently active in this folder. Resuming here too would put two Claude processes in the same folder at once.",
+    "está ativa agora nesta pasta. Retomar aqui também colocaria dois processos do Claude na mesma pasta ao mesmo tempo.",
   ),
   "resumeConflictModal.intro.pickOption": dict(
     "Pick one of the options below instead.",
     "Escolha uma das opções abaixo.",
   ),
+  "resumeConflictModal.force.title": dict("Continue anyway", "Continuar mesmo assim"),
+  "resumeConflictModal.force.body": dict(
+    "Resumes this session here with the other one still running. Fine when one of them doesn't change files (e.g. a follow-up session); otherwise both edit the same folder.",
+    "Retoma esta sessão aqui com a outra ainda rodando. Tranquilo quando uma delas não mexe em arquivos (ex.: sessão de acompanhamento); senão as duas editam a mesma pasta.",
+  ),
+  "resumeConflictModal.force.button": dict("Continue anyway", "Continuar mesmo assim"),
   "resumeConflictModal.worktree.title": dict(
     "Create a worktree (recommended)",
     "Criar um worktree (recomendado)",
