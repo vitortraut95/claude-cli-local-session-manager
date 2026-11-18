@@ -1,4 +1,4 @@
-import { GitFork, Loader2, TriangleAlert } from "lucide-react";
+import { GitFork, Loader2, Play, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { Session } from "../../shared/session";
@@ -13,12 +13,14 @@ type ResumeConflictModalProps = {
   isSwitching: boolean;
   onCreateWorktree: (name: string) => void;
   onStopAndCheckout: (branch: string) => void;
+  onForceResume: () => void;
   onCancel: () => void;
 };
 
 /**
  * Shown when resuming would conflict: another session is active in the same directory, or (when
- * `sibling.id === target.id`) this session is already open in another terminal.
+ * `sibling.id === target.id`) this session is already open in another terminal. The worktree and
+ * branch checkout options only show in a git repo; "continue anyway" only for another session.
  */
 export function ResumeConflictModal({
   target,
@@ -27,6 +29,7 @@ export function ResumeConflictModal({
   isSwitching,
   onCreateWorktree,
   onStopAndCheckout,
+  onForceResume,
   onCancel,
 }: ResumeConflictModalProps) {
   const { t } = useLanguage();
@@ -39,7 +42,9 @@ export function ResumeConflictModal({
   const trimmedName = worktreeName.trim();
   const trimmedBranch = branch.trim();
   const isBusy = isCreatingWorktree || isSwitching;
+  const [isForcing, setIsForcing] = useState(false);
   const isSelfConflict = sibling.id === target.id;
+  const isGitRepo = Boolean(target.repoRoot ?? target.gitBranch);
   const siblingLabel = sibling.nickname ?? sibling.title;
 
   return (
@@ -65,79 +70,112 @@ export function ResumeConflictModal({
         {t("resumeConflictModal.intro.pickOption")}
       </p>
 
-      <div className="mt-4 rounded-lg border border-gray-200 p-3 dark:border-gray-800">
-        <p className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
-          <GitFork className="h-4 w-4 shrink-0 text-violet-500 dark:text-violet-400" />
-          {t("resumeConflictModal.worktree.title")}
-        </p>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {t("resumeConflictModal.worktree.bodyPrefix")} <code>claude</code>{" "}
-          {t("resumeConflictModal.worktree.bodyMiddle")}{" "}
-          {isSelfConflict
-            ? t("resumeConflictModal.worktree.selfTerminalLabel")
-            : t("resumeConflictModal.worktree.otherSessionLabel")}{" "}
-          {t("resumeConflictModal.worktree.bodySuffix")}
-        </p>
-        <div className="mt-2 flex gap-2">
-          <Input
-            type="text"
-            value={worktreeName}
-            onChange={(event) => setWorktreeName(event.target.value)}
-            disabled={isBusy}
-            placeholder={t("resumeConflictModal.worktree.namePlaceholder")}
-            className="flex-1"
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isBusy || !trimmedName}
-            onClick={() => onCreateWorktree(trimmedName)}
-            icon={isCreatingWorktree && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          >
-            {t("resumeConflictModal.worktree.createButton")}
-          </Button>
+      {!isSelfConflict && (
+        <div className="mt-4 rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
+            <Play className="h-4 w-4 shrink-0 text-violet-500 dark:text-violet-400" />
+            {t("resumeConflictModal.force.title")}
+          </p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {t("resumeConflictModal.force.body")}
+          </p>
+          <div className="mt-2 flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isBusy}
+              onClick={() => {
+                setIsForcing(true);
+                onForceResume();
+              }}
+              icon={isSwitching && isForcing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            >
+              {t("resumeConflictModal.force.button")}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="mt-3 rounded-lg border border-red-200 p-3 dark:border-red-900/60">
-        <p className="flex items-center gap-1.5 text-sm font-medium text-red-700 dark:text-red-400">
-          <TriangleAlert className="h-4 w-4 shrink-0" />
-          {isSelfConflict
-            ? t("resumeConflictModal.stop.titleSelf")
-            : t("resumeConflictModal.stop.titleOther")}
-        </p>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {isSelfConflict ? (
-            t("resumeConflictModal.stop.bodySelf")
-          ) : (
-            <>
-              {t("resumeConflictModal.stop.bodyOtherPrefix")}{" "}
-              <span className="font-medium">{siblingLabel}</span>
-              {t("resumeConflictModal.stop.bodyOtherSuffix")}
-            </>
-          )}
-          {t("resumeConflictModal.stop.bodyCommon")}
-        </p>
-        <div className="mt-2 flex gap-2">
-          <Input
-            type="text"
-            value={branch}
-            onChange={(event) => setBranch(event.target.value)}
-            disabled={isBusy}
-            placeholder={t("resumeConflictModal.stop.branchPlaceholder")}
-            className="flex-1"
-          />
-          <Button
-            variant="danger"
-            size="sm"
-            disabled={isBusy || !trimmedBranch}
-            onClick={() => onStopAndCheckout(trimmedBranch)}
-            icon={isSwitching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          >
-            {t("resumeConflictModal.stop.confirmButton")}
-          </Button>
+      {isGitRepo && (
+        <div className="mt-3 rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200">
+            <GitFork className="h-4 w-4 shrink-0 text-violet-500 dark:text-violet-400" />
+            {t("resumeConflictModal.worktree.title")}
+          </p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {t("resumeConflictModal.worktree.bodyPrefix")} <code>claude</code>{" "}
+            {t("resumeConflictModal.worktree.bodyMiddle")}{" "}
+            {isSelfConflict
+              ? t("resumeConflictModal.worktree.selfTerminalLabel")
+              : t("resumeConflictModal.worktree.otherSessionLabel")}{" "}
+            {t("resumeConflictModal.worktree.bodySuffix")}
+          </p>
+          <div className="mt-2 flex gap-2">
+            <Input
+              type="text"
+              value={worktreeName}
+              onChange={(event) => setWorktreeName(event.target.value)}
+              disabled={isBusy}
+              placeholder={t("resumeConflictModal.worktree.namePlaceholder")}
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isBusy || !trimmedName}
+              onClick={() => onCreateWorktree(trimmedName)}
+              icon={isCreatingWorktree && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            >
+              {t("resumeConflictModal.worktree.createButton")}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {isGitRepo && (
+        <div className="mt-3 rounded-lg border border-red-200 p-3 dark:border-red-900/60">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-red-700 dark:text-red-400">
+            <TriangleAlert className="h-4 w-4 shrink-0" />
+            {isSelfConflict
+              ? t("resumeConflictModal.stop.titleSelf")
+              : t("resumeConflictModal.stop.titleOther")}
+          </p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {isSelfConflict ? (
+              t("resumeConflictModal.stop.bodySelf")
+            ) : (
+              <>
+                {t("resumeConflictModal.stop.bodyOtherPrefix")}{" "}
+                <span className="font-medium">{siblingLabel}</span>
+                {t("resumeConflictModal.stop.bodyOtherSuffix")}
+              </>
+            )}
+            {t("resumeConflictModal.stop.bodyCommon")}
+          </p>
+          <div className="mt-2 flex gap-2">
+            <Input
+              type="text"
+              value={branch}
+              onChange={(event) => setBranch(event.target.value)}
+              disabled={isBusy}
+              placeholder={t("resumeConflictModal.stop.branchPlaceholder")}
+              className="flex-1"
+            />
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={isBusy || !trimmedBranch}
+              onClick={() => {
+                setIsForcing(false);
+                onStopAndCheckout(trimmedBranch);
+              }}
+              icon={isSwitching && !isForcing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            >
+              {t("resumeConflictModal.stop.confirmButton")}
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 flex justify-end">
         <Button variant="outline" onClick={onCancel} disabled={isBusy}>

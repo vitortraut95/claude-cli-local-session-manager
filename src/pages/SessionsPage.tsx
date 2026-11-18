@@ -137,6 +137,7 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
     resumeConflict,
     clearResumeConflict,
     stopAndCheckoutResume,
+    forceResume,
   } = state;
   const [viewMode, setViewModeState] = useState(readViewMode);
   const [selectedId, setSelectedId] = useUrlParam("session", "");
@@ -674,6 +675,7 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
               resumeConflict.layout,
             )
           }
+          onForceResume={() => void forceResume(resumeConflict.target.id, resumeConflict.layout)}
           onCancel={clearResumeConflict}
         />
       )}
