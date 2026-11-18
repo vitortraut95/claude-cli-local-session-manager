@@ -89,9 +89,9 @@ export function MenuItem({
 }
 
 /**
- * One session in the grouped list: what it is (title, task, repo, branch, why it needs you), its
- * status, how many local URLs serve it, when it last changed, Resume, and every other action in
- * "⋯". Deleting asks on the row itself.
+ * One session in the grouped list: what it is (title, nickname, task, repo, branch, why it needs
+ * you), its status, how many local URLs serve it, when it last changed, Resume, and every other
+ * action in "⋯". Deleting asks on the row itself.
  */
 export function SessionRow({
   session,
@@ -109,6 +109,8 @@ export function SessionRow({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const busy = actions.busy.deleting || actions.busy.continuing || actions.busy.nickname;
   const title = sessionDisplayTitle(session);
+  // A blank nickname counts as none.
+  const nickname = session.nickname?.trim() ?? "";
   const otherRepos = (session.taskRepos ?? []).filter(
     (repo) => !(repo.repoRoot === session.repoRoot && repo.branch === session.gitBranch),
   ).length;
@@ -166,8 +168,16 @@ export function SessionRow({
           className="truncate text-sm font-medium text-gray-900 dark:text-gray-100"
           title={session.title}
         >
-          {title}
+          {session.title || title}
         </span>
+        {nickname && session.title && (
+          <span
+            className="truncate text-xs italic text-gray-500 dark:text-gray-400"
+            title={`${nickname}\n\n${t("sessionCard.nickname.localOnly")}`}
+          >
+            {nickname}
+          </span>
+        )}
         <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-600 dark:text-gray-400">
           <span
             className={`font-mono ${
