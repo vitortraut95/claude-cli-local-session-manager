@@ -45,8 +45,13 @@ type TaskEntry = {
 
 /** A test or review session (launched from the queue): the ticket it tests (`kind` test) or the
  *  PR it reviews (`kind` review, `repo#id`), and the disposable worktrees it was given, emptied
- *  once they're removed. */
-export type TestSessionInfo = { key: string; worktrees: string[]; kind: "test" | "review" };
+ *  once they're removed. `claimId`: a review session's reservation comment on the PR. */
+export type TestSessionInfo = {
+  key: string;
+  worktrees: string[];
+  kind: "test" | "review";
+  claimId?: number;
+};
 
 type SessionEntry = {
   nickname: string | null;
@@ -123,6 +128,7 @@ function normalizeTestInfo(raw: unknown): TestSessionInfo | null {
     worktrees: Array.isArray(raw.worktrees)
       ? raw.worktrees.filter((w): w is string => typeof w === "string" && !!w.trim())
       : [],
+    ...(typeof raw.claimId === "number" ? { claimId: raw.claimId } : {}),
   };
 }
 
@@ -438,8 +444,11 @@ export function markTestSession(
   key: string,
   worktrees: string[],
   kind: TestSessionInfo["kind"] = "test",
+  claimId?: number,
 ): Promise<void> {
-  return updateSession(id, { test: { key, worktrees, kind } });
+  return updateSession(id, {
+    test: { key, worktrees, kind, ...(claimId != null ? { claimId } : {}) },
+  });
 }
 
 /** The test worktrees still left to remove (the session stays marked as a test). */

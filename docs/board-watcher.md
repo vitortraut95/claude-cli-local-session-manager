@@ -96,6 +96,15 @@ uses of what changed), and runs the code review skill chosen in Skills (`taskRev
 context (diff, ticket, related PRs); without one the entry fails to launch. The prompt only has the
 skill with the PR link, the user's lessons from earlier reviews and the URL to send the result to.
 
+Before the session starts, the app reserves the PR with a comment that starts with the AI review
+marker (`🤖 **Review por IA** · em andamento`), so a teammate's automation, old versions included,
+skips the PR instead of reviewing it at the same time. When two automations reserve at once, the
+older comment wins and the other deletes its own and doesn't launch. The final review replaces the
+reservation; a launch or a result that fails before posting deletes it, and a reservation older
+than 2h (a session that died) is ignored. The skill can ask `GET /sessions/:id/review-result`
+first (`shouldReview: false` when the PR closed, was reviewed or is reserved by someone else) and
+stop without spending a review.
+
 The session never posts: it sends its result (a verdict and findings, each with severity, file,
 line and `topic`) to `POST /sessions/:id/review-result`, and the app posts it like any automated
 review: questions for PO/design/content (`product`) and `minor` findings are never posted (they

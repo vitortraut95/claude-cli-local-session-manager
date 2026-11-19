@@ -45,6 +45,9 @@ export type PullRequest = {
   /** The destination branch's head, short (as Bitbucket gives it). */
   destinationHash?: string;
   sourceHash?: string;
+  /** The comment reserving the PR for the queued review session posting on it, which the final
+   *  review replaces (`claimAiReview`). */
+  aiReviewClaimId?: number;
 };
 
 /** Only `blocking` stops the approval; `minor` (style, nitpicks) is never posted. A `product`
