@@ -1,5 +1,5 @@
 import { localRepoPaths, sprintRepos } from "./sprintRepos.js";
-import { appendFile, readFile } from "node:fs/promises";
+import { appendFile, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { WatcherActionEntry } from "../../../shared/boardWatcher.js";
 import { REPO_ROOT } from "../../utils/repoRoot.js";
@@ -51,6 +51,25 @@ export async function recordAction(
     `${JSON.stringify({ ts: now.toISOString(), ...entry })}\n`,
     "utf8",
   );
+}
+
+/** Deletes the failed tests and reviews recorded for `subject`, so the task stops needing you
+ *  (the user dismissed it); returns how many lines went away. */
+export async function dismissFailedActions(subject: string): Promise<number> {
+  const raw = await readFile(ACTIONS_FILE, "utf8").catch(() => "");
+  const lines = raw.split("\n").filter(Boolean);
+  const kept = lines.filter((line) => {
+    const entry = JSON.parse(line) as ActionEntry;
+    return !(
+      entry.subject === subject &&
+      (entry.action === "test-failed" || entry.action === "review-failed")
+    );
+  });
+  if (kept.length === lines.length) return 0;
+  const tmp = `${ACTIONS_FILE}.tmp`;
+  await writeFile(tmp, kept.map((line) => `${line}\n`).join(""), "utf8");
+  await rename(tmp, ACTIONS_FILE);
+  return lines.length - kept.length;
 }
 
 /** Bug-like tickets get a fix branch, the rest the first configured branch type. */
