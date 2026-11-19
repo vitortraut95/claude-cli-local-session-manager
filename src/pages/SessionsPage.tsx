@@ -34,6 +34,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import type { SessionHandlers } from "../hooks/useSessionActions";
 import type { QuickFilter, useSessions } from "../hooks/useSessions";
 import { useShell } from "../hooks/useShell";
+import { dismissWatcherFailures } from "../services/boardWatcherApi";
 import { useUrlParam } from "../hooks/useUrlState";
 import type { Session } from "../../shared/session";
 import { DEFAULT_BRANCHES } from "../utils/branches";
@@ -602,6 +603,22 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
                         ? t("sessions.taskOnly.queue")
                         : t("sessions.taskOnly.board")}
                     </Button>
+                    {reason.kind !== "launchError" && (
+                      <Tooltip content={t("sessions.taskOnly.dismissHint")}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={<X className="h-3.5 w-3.5" />}
+                          onClick={() =>
+                            void dismissWatcherFailures(key).then(shell.taskSignalsChanged, () =>
+                              undefined,
+                            )
+                          }
+                        >
+                          {t("sessions.taskOnly.dismiss")}
+                        </Button>
+                      </Tooltip>
+                    )}
                   </li>
                 ))}
               </ul>

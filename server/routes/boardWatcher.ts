@@ -6,7 +6,7 @@ import {
   saveAutomationSettings,
 } from "../services/boardWatcher/settings.js";
 import { listFeedback, saveFeedback } from "../services/boardWatcher/feedback.js";
-import { readActions } from "../services/boardWatcher/boardDeps.js";
+import { dismissFailedActions, readActions } from "../services/boardWatcher/boardDeps.js";
 import { historyPage } from "../services/boardWatcher/history.js";
 import { HISTORY_FILTERS } from "../../shared/boardWatcher.js";
 import { BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
@@ -193,6 +193,12 @@ boardWatcherRouter.get("/actions", async (req, res) => {
   const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 1000);
   const actions = await readActions(new Date(0));
   res.json(actions.slice(-limit).reverse());
+});
+
+/** Dismisses a task's failed test or review: its failure records are deleted. */
+boardWatcherRouter.delete("/actions/failures/:subject", async (req, res) => {
+  const removed = await dismissFailedActions(req.params.subject);
+  res.json({ removed });
 });
 
 /** The history grouped per ticket/PR, a page at a time (`?filter=&q=&cursor=&limit=`). */

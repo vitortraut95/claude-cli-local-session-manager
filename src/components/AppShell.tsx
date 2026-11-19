@@ -190,6 +190,7 @@ export function AppShell() {
       resumingOpen,
       gridLayout,
       sessionsChanged: refreshSoon,
+      taskSignalsChanged: signals.reload,
     }),
     [
       view,
@@ -201,6 +202,7 @@ export function AppShell() {
       resumingOpen,
       gridLayout,
       refreshSoon,
+      signals.reload,
     ],
   );
 

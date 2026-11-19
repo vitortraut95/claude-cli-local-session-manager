@@ -145,6 +145,14 @@ export async function fetchWatcherActions(limit = 200): Promise<WatcherActionEnt
   return data;
 }
 
+/** Deletes the failed tests and reviews recorded for a ticket/PR (dismissed by the user). */
+export async function dismissWatcherFailures(subject: string): Promise<void> {
+  if (isBoardDemo()) return;
+  await withServerErrorMessage(() =>
+    client.delete(`/actions/failures/${encodeURIComponent(subject)}`),
+  );
+}
+
 /** One page of the history, grouped per ticket/PR (most recently active first). */
 export async function fetchWatcherHistory(params: {
   filter: HistoryFilter;

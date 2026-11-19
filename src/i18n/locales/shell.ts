@@ -111,6 +111,11 @@ export const shell = {
   "sessions.taskOnly.filter": dict("See {key}", "Ver {key}"),
   "sessions.taskOnly.queue": dict("Open the queue", "Abrir a fila"),
   "sessions.taskOnly.board": dict("Open the Board", "Abrir o Board"),
+  "sessions.taskOnly.dismiss": dict("Dismiss", "Dispensar"),
+  "sessions.taskOnly.dismissHint": dict(
+    "Deletes the failure's record; the task leaves this list.",
+    "Apaga o registro da falha; a tarefa sai desta lista.",
+  ),
   "sessions.empty.title": dict("No sessions yet", "Nenhuma sessão ainda"),
   "sessions.empty.body": dict(
     "Claude CLI sessions show up here as soon as you use claude in any project. Start from a Jira task.",

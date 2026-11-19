@@ -29,6 +29,8 @@ export type ShellActions = {
   gridLayout: boolean;
   /** The list should reload soon (a session was created or changed elsewhere). */
   sessionsChanged: () => void;
+  /** The queue's and the watcher's problems should be re-read (one was dismissed, for instance). */
+  taskSignalsChanged: () => void;
 };
 
 export const ShellContext = createContext<ShellActions | null>(null);
