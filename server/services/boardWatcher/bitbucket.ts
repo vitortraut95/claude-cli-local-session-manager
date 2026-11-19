@@ -54,10 +54,11 @@ async function request(
   credentials: BitbucketCredentials,
   url: string,
   body?: unknown,
+  method: "GET" | "POST" | "PUT" | "DELETE" = body === undefined ? "GET" : "POST",
 ): Promise<Response> {
   const auth = Buffer.from(`${credentials.email}:${credentials.token}`).toString("base64");
   const response = await apiFetch("bitbucket", url, {
-    method: body === undefined ? "GET" : "POST",
+    method,
     headers: {
       Authorization: `Basic ${auth}`,
       Accept: "application/json",
@@ -184,35 +185,134 @@ const SEVERITY_PT: Record<ReviewFinding["severity"], string> = {
 /** PRs known to carry the AI review comment; once there, it stays. */
 const aiReviewed = new Set<string>();
 
-/** Whether anyone already posted the AI review comment on the PR. */
-export async function hasAiReviewComment(
+/** The comment that reserves a PR while its review session runs. It starts with the marker, so
+ *  every teammate's automation (old versions included) skips the PR as already reviewed; the
+ *  final review replaces it, and a failed session deletes it. */
+export const AI_REVIEW_CLAIM = `${AI_REVIEW_MARKER} · em andamento`;
+
+/** A reservation older than this is from a session that died: newer versions ignore it. */
+export const AI_REVIEW_CLAIM_TTL_MS = 2 * 60 * 60 * 1000;
+
+type MarkerComment = { id: number; claim: boolean; createdOn: string };
+
+/** The PR's comments carrying the marker (reviews and reservations), oldest first. */
+async function markerComments(
   credentials: BitbucketCredentials,
   pr: PullRequest,
-): Promise<boolean> {
-  const key = `${pr.repo}#${pr.id}`;
-  if (aiReviewed.has(key)) return true;
+): Promise<MarkerComment[]> {
   const query = encodeURIComponent(`content.raw ~ "Review por IA"`);
   const { values = [] } = await get<{
-    values?: { deleted?: boolean; content?: { raw?: string } }[];
+    values?: { id?: number; created_on?: string; deleted?: boolean; content?: { raw?: string } }[];
   }>(
     credentials,
     `${pullRequestUrl(credentials, pr)}/comments?q=${query}&pagelen=50` +
-      "&fields=values.deleted,values.content.raw",
+      "&fields=values.id,values.created_on,values.deleted,values.content.raw",
   );
-  const found = values.some((c) => !c.deleted && c.content?.raw?.includes(AI_REVIEW_MARKER));
-  if (found) aiReviewed.add(key);
-  return found;
+  return values
+    .filter((c) => !c.deleted && c.content?.raw?.includes(AI_REVIEW_MARKER))
+    .map((c) => ({
+      id: c.id ?? 0,
+      claim: c.content?.raw?.trim().startsWith(AI_REVIEW_CLAIM) ?? false,
+      createdOn: c.created_on ?? "",
+    }))
+    .sort((a, b) => a.id - b.id);
 }
 
-/** Posts the AI review comment (a general one, not inline). */
+/** Whether `comment` blocks another review: a posted review always does; a reservation does
+ *  while it's fresh and isn't `ownClaimId`. */
+export function blocksReview(
+  comment: MarkerComment,
+  ownClaimId: number | null = null,
+  now = Date.now(),
+): boolean {
+  if (!comment.claim) return true;
+  if (comment.id === ownClaimId) return false;
+  const created = Date.parse(comment.createdOn);
+  return Number.isNaN(created) || now - created < AI_REVIEW_CLAIM_TTL_MS;
+}
+
+/** Whether anyone already posted the AI review comment on the PR, or reserved it for a review
+ *  still running. `ownClaimId` is this session's own reservation, which doesn't count. */
+export async function hasAiReviewComment(
+  credentials: BitbucketCredentials,
+  pr: PullRequest,
+  ownClaimId: number | null = null,
+): Promise<boolean> {
+  const key = `${pr.repo}#${pr.id}`;
+  if (aiReviewed.has(key)) return true;
+  const comments = await markerComments(credentials, pr);
+  // Only a posted review is final; a reservation can still go away.
+  if (comments.some((c) => !c.claim)) aiReviewed.add(key);
+  return comments.some((c) => blocksReview(c, ownClaimId));
+}
+
+/**
+ * Reserves the PR's AI review for this session: posts the reservation comment and returns its
+ * id, or null when someone else got there first (a review or a fresh reservation). When two
+ * automations reserve at once, the older comment wins and the other deletes its own.
+ */
+export async function claimAiReview(
+  credentials: BitbucketCredentials,
+  pr: PullRequest,
+): Promise<number | null> {
+  if (await hasAiReviewComment(credentials, pr)) return null;
+  const response = await request(credentials, `${pullRequestUrl(credentials, pr)}/comments`, {
+    content: {
+      raw: `${AI_REVIEW_CLAIM}\n\n_Uma automação está revisando este PR; as outras não vão revisá-lo de novo._`,
+    },
+  });
+  const { id } = (await response.json()) as { id?: number };
+  if (!id) return null;
+  const earlier = (await markerComments(credentials, pr)).find(
+    (c) => c.id < id && blocksReview(c, id),
+  );
+  if (earlier) {
+    await releaseAiReviewClaim(credentials, pr, id);
+    return null;
+  }
+  return id;
+}
+
+/** Deletes this session's reservation (a review that failed or won't be posted). */
+export async function releaseAiReviewClaim(
+  credentials: BitbucketCredentials,
+  pr: PullRequest,
+  claimId: number,
+): Promise<void> {
+  await request(
+    credentials,
+    `${pullRequestUrl(credentials, pr)}/comments/${claimId}`,
+    undefined,
+    "DELETE",
+  ).catch((err: unknown) => {
+    console.warn(
+      `[board-watcher] Couldn't delete the review reservation on ${pr.repo}#${pr.id}:`,
+      err,
+    );
+  });
+}
+
+/** Posts the AI review comment (a general one, not inline). With a reservation
+ *  (`pr.aiReviewClaimId`), the review replaces it, so the PR keeps one marker comment. */
 export async function postAiReviewComment(
   credentials: BitbucketCredentials,
   pr: PullRequest,
   review: AiReview,
 ): Promise<void> {
-  await request(credentials, `${pullRequestUrl(credentials, pr)}/comments`, {
-    content: { raw: aiReviewComment(pr, review) },
-  });
+  const content = { content: { raw: aiReviewComment(pr, review) } };
+  const comments = `${pullRequestUrl(credentials, pr)}/comments`;
+  const replaced =
+    pr.aiReviewClaimId != null &&
+    (await request(credentials, `${comments}/${pr.aiReviewClaimId}`, content, "PUT").then(
+      () => true,
+      () => false,
+    ));
+  if (!replaced) {
+    await request(credentials, comments, content);
+    if (pr.aiReviewClaimId != null) {
+      await releaseAiReviewClaim(credentials, pr, pr.aiReviewClaimId);
+    }
+  }
   aiReviewed.add(`${pr.repo}#${pr.id}`);
 }
 

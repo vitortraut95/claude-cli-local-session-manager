@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import {
   bitbucketCredentialsFromEnv,
+  claimAiReview,
   hasAiReviewComment,
   listOpenPullRequests,
+  releaseAiReviewClaim,
   type BitbucketCredentials,
 } from "./boardWatcher/bitbucket.js";
 import { prepareReviewWorktree } from "./boardWatcher/claudeReviewer.js";
@@ -123,7 +125,22 @@ export async function launchReviewEntry(
       `No local clone of ${pr.repo} in the workspace folders.`,
     );
   }
-  const worktree = await prepareReviewWorktree(pr, repoPath);
+  // Reserved on the PR before the session starts, so a teammate's automation doesn't review it
+  // at the same time; the result replaces the reservation, a failure deletes it.
+  const claimId = await claimAiReview(credentials, pr);
+  if (claimId == null) {
+    throw new ConflictError(
+      "REVIEW_ALREADY_DONE",
+      `${entry.key} already has its AI review, or another automation is reviewing it.`,
+    );
+  }
+  let worktree: string;
+  try {
+    worktree = await prepareReviewWorktree(pr, repoPath);
+  } catch (err) {
+    await releaseAiReviewClaim(credentials, pr, claimId);
+    throw err;
+  }
 
   const text = PROMPT_TEXT[prefs.language ?? "en"];
   const link = entry.link ?? prUrl(config, pr) ?? entry.key;
@@ -136,7 +153,7 @@ export async function launchReviewEntry(
   ].join("\n\n");
 
   // Marked before the terminal opens, so a session that dies right away is still cleaned up.
-  await markTestSession(sessionId, entry.key, [worktree], "review");
+  await markTestSession(sessionId, entry.key, [worktree], "review", claimId);
   try {
     await markWorktreeTrustAccepted(worktree);
     await launchTaskTerminal({
@@ -152,6 +169,7 @@ export async function launchReviewEntry(
   } catch (err) {
     await forceRemoveWorktree(worktree).catch(() => undefined);
     await setTestWorktrees(sessionId, []);
+    await releaseAiReviewClaim(credentials, pr, claimId);
     throw err;
   }
   await setSessionStatus(sessionId, "in_progress", "scheduler");

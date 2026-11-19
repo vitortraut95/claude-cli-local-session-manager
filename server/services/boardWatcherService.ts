@@ -56,6 +56,7 @@ import {
   findPullRequestsForKey,
   hasAiReviewComment,
   pullRequestNews,
+  releaseAiReviewClaim,
 } from "./boardWatcher/bitbucket.js";
 import { parseReviewOutput } from "./boardWatcher/claudeReviewer.js";
 import {
@@ -990,6 +991,28 @@ async function drainJobs(): Promise<void> {
 }
 
 /**
+ * Whether a queued review session should still review (`GET /sessions/:id/review-result`), asked
+ * by the review skill before it starts: false once anyone posted the PR's AI review or another
+ * automation reserved it (the session's own reservation doesn't count), or the PR closed.
+ */
+export async function reviewResultStatus(
+  sessionId: string,
+): Promise<{ subject: string; shouldReview: boolean; reason?: string }> {
+  const queued = (await getTaskStore()).sessions[sessionId]?.test;
+  if (queued?.kind !== "review") {
+    throw new NotFoundError("REVIEW_SESSION_NOT_FOUND", `${sessionId} isn't a review session.`);
+  }
+  const subject = queued.key;
+  const { credentials } = await reviewBoardSetup();
+  const pr = await findOpenPullRequest(credentials, subject).catch(() => null);
+  if (!pr) return { subject, shouldReview: false, reason: "REVIEW_PR_NOT_OPEN" };
+  if (await hasAiReviewComment(credentials, pr, queued.claimId ?? null)) {
+    return { subject, shouldReview: false, reason: "REVIEW_ALREADY_DONE" };
+  }
+  return { subject, shouldReview: true };
+}
+
+/**
  * The result a queued review session sent (`POST /sessions/:id/review-result`), posted on the PR
  * like any automated review (`applyReview`: the board's limits, approval and the AI review
  * comment) and the session marked done. The PR must still be open at the reviewed commit and
@@ -1005,6 +1028,10 @@ export async function submitReviewResult(
   }
   const output = parseReviewOutput(body);
   const subject = queued.key;
+  const claimId = queued.claimId ?? null;
+  // Until `applyReview` starts, nothing was posted: a failure gives the reservation back so the
+  // PR can be reviewed again (after a push, by anyone's automation).
+  let release: (() => Promise<void>) | null = null;
   try {
     if (!(await automationsOn())) {
       throw new ConflictError(
@@ -1019,9 +1046,14 @@ export async function submitReviewResult(
       ? await tryGit(["rev-parse", "HEAD"], queued.worktrees[0])
       : null;
     if (reviewed) pr.sourceHash = reviewed;
-    if (await hasAiReviewComment(credentials, pr)) {
+    if (claimId != null) {
+      pr.aiReviewClaimId = claimId;
+      release = () => releaseAiReviewClaim(credentials, pr, claimId);
+    }
+    if (await hasAiReviewComment(credentials, pr, claimId)) {
       throw new ConflictError("REVIEW_ALREADY_DONE", `${subject} already has its AI review.`);
     }
+    release = null;
     const applied = await serial(async () => {
       const state = await loadState();
       await recordAction({
@@ -1048,6 +1080,7 @@ export async function submitReviewResult(
     recordEvent("boardWatcher.review", { subject, outcome: applied.outcome.kind });
     return { outcome: applied.outcome.kind, posted: applied.posted };
   } catch (err) {
+    if (release) await release();
     const message = err instanceof Error ? err.message : String(err);
     noteActivity("reviewFailed", subject, message);
     await updateQueueEntry(subject, { error: message }).catch(() => undefined);

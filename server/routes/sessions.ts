@@ -25,7 +25,7 @@ import {
   stopSiblingAndResume,
 } from "../services/sessionService.js";
 import { getSessionTask, setSessionTask } from "../services/taskGroupService.js";
-import { submitReviewResult } from "../services/boardWatcherService.js";
+import { reviewResultStatus, submitReviewResult } from "../services/boardWatcherService.js";
 import { extractLayoutField, extractStringField, parseWorkStatus } from "../utils/httpBody.js";
 import { sendErrorResponse } from "../utils/httpError.js";
 
@@ -80,6 +80,11 @@ sessionsRouter.patch("/:id/nickname", async (req, res) => {
 sessionsRouter.patch("/:id/status", async (req, res) => {
   await setSessionWorkStatus(req.params.id, parseWorkStatus(req.body));
   res.json({ success: true });
+});
+
+/** Whether a queued review session should still review its PR (asked before it starts). */
+sessionsRouter.get("/:id/review-result", async (req, res) => {
+  res.json(await reviewResultStatus(req.params.id));
 });
 
 /** A queued review session's result: posted on the PR within the board's limits. */
