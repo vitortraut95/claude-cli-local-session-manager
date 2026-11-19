@@ -1,4 +1,7 @@
 import { execFile } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { promisify } from "node:util";
 import { AppError, errorMessage } from "../utils/httpError.js";
 import { sanitizedSpawnEnv } from "../utils/spawnEnv.js";
@@ -6,17 +9,21 @@ import type { ClaudeCliStatus } from "../../shared/system.js";
 
 /**
  * The installed Claude CLI against the newest on npm. `claude update` updates either install
- * (native or a global npm package), so the app never needs to know which one it is.
+ * (native or a global npm package), so the app never needs to know which one it is. The newest
+ * version is the npm dist-tag of the CLI's update channel (`autoUpdatesChannel` in
+ * `~/.claude/settings.json`, "latest" by default): `claude update` only moves to that one.
  */
 
 const execFileAsync = promisify(execFile);
 
-const REGISTRY_URL = "https://registry.npmjs.org/@anthropic-ai/claude-code/latest";
+const REGISTRY_URL = "https://registry.npmjs.org/@anthropic-ai/claude-code";
+const CHANNELS = ["latest", "stable"] as const;
+type Channel = (typeof CHANNELS)[number];
 const LATEST_CACHE_MS = 60 * 60 * 1000;
 const UPDATE_TIMEOUT_MS = 5 * 60 * 1000;
 export const CLAUDE_UPDATE_COMMAND = "claude update";
 
-let latestCache: { version: string | null; at: number } | null = null;
+let latestCache: { channel: Channel; version: string | null; at: number } | null = null;
 
 function compareVersions(a: string, b: string): number {
   const pa = a.split(".").map(Number);
@@ -40,11 +47,24 @@ async function installedVersion(): Promise<string | null> {
   }
 }
 
+async function updateChannel(): Promise<Channel> {
+  try {
+    const raw = await readFile(path.join(os.homedir(), ".claude", "settings.json"), "utf8");
+    const channel = (JSON.parse(raw) as { autoUpdatesChannel?: unknown }).autoUpdatesChannel;
+    return CHANNELS.find((c) => c === channel) ?? "latest";
+  } catch {
+    return "latest";
+  }
+}
+
 async function latestVersion(): Promise<string | null> {
-  if (latestCache && Date.now() - latestCache.at < LATEST_CACHE_MS) return latestCache.version;
+  const channel = await updateChannel();
+  if (latestCache?.channel === channel && Date.now() - latestCache.at < LATEST_CACHE_MS) {
+    return latestCache.version;
+  }
   let version: string | null = null;
   try {
-    const response = await fetch(REGISTRY_URL, { signal: AbortSignal.timeout(10_000) });
+    const response = await fetch(`${REGISTRY_URL}/${channel}`, { signal: AbortSignal.timeout(10_000) });
     if (response.ok) {
       const data = (await response.json()) as { version?: unknown };
       if (typeof data.version === "string") version = data.version;
@@ -52,7 +72,7 @@ async function latestVersion(): Promise<string | null> {
   } catch {
     // Offline: no "latest", so no update shown.
   }
-  latestCache = { version, at: Date.now() };
+  latestCache = { channel, version, at: Date.now() };
   return version;
 }
 
