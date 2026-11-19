@@ -1,5 +1,5 @@
 import { Loader2, Save } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
@@ -83,7 +83,10 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
   const { showToast } = useToast();
   const { projects } = useProjectFolders(true);
   const [entries, setEntries] = useState<DraftEntry[]>([]);
-  const [savedSnapshot, setSavedSnapshot] = useState(() => editSnapshot([]));
+  // The queue as last saved, with the scheduler's launches merged in like `entries`: a launch
+  // takes an entry out of both snapshots, so it doesn't count as an unsaved edit.
+  const [saved, setSaved] = useState<DraftEntry[]>([]);
+  const savedSnapshot = useMemo(() => editSnapshot(saved), [saved]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -106,7 +109,7 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
       .then((list) => {
         const drafts = list.map(toDraft);
         setEntries(drafts);
-        setSavedSnapshot(editSnapshot(drafts));
+        setSaved(drafts);
       })
       .catch(() => setLoadFailed(true))
       .finally(() => setLoading(false));
@@ -141,7 +144,7 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
         if (cancelled) return;
         const drafts = list.map(toDraft);
         setEntries(drafts);
-        setSavedSnapshot(editSnapshot(drafts));
+        setSaved(drafts);
       })
       .catch(() => {
         if (!cancelled) setLoadFailed(true);
@@ -192,6 +195,12 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
           };
         }),
       );
+      setSaved((current) =>
+        current.map((entry) => {
+          const launchedAt = byKey.get(entry.key)?.launchedAt;
+          return launchedAt && !entry.launchedAt ? { ...entry, launchedAt } : entry;
+        }),
+      );
       if (launched) onChanged();
     },
     [onChanged],
@@ -234,7 +243,7 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
     retriedRef.current.clear();
     const drafts = stored.map(toDraft);
     setEntries(drafts);
-    setSavedSnapshot(editSnapshot(drafts));
+    setSaved(drafts);
     onChanged();
   };
 
@@ -283,7 +292,7 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
       const stored = await tasksApi.saveTaskQueue(
         toStored(saved.filter((entry) => !entry.launchedAt)),
       );
-      setSavedSnapshot(editSnapshot(stored.map(toDraft)));
+      setSaved(stored.map(toDraft));
       onChanged();
     } catch (err) {
       const message = resolveApiErrorMessage(err, t, "newTaskModal.unexpectedFailure");
