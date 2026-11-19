@@ -23,6 +23,11 @@ function findingTitle(finding: CleanupFinding, t: ReturnType<typeof useLanguage>
   if (finding.kind === "prune-worktrees") {
     return t("cleanupModal.finding.prune.title", { project });
   }
+  if (finding.kind === "remove-task-files") {
+    return t(`cleanupModal.finding.taskFiles.title.${finding.fileGroup ?? "checklists"}`, {
+      count: finding.staleFiles?.length ?? 0,
+    });
+  }
   if (finding.kind === "prune-old-sessions") {
     return t("cleanupModal.finding.oldSessions.title", {
       count: finding.staleSessions.length,
@@ -48,6 +53,18 @@ function findingDescription(
       branches: finding.staleBranches.join(", "),
     });
   }
+  if (finding.kind === "remove-task-files") {
+    const files = finding.staleFiles ?? [];
+    const freed = formatBytes(files.reduce((sum, f) => sum + f.sizeBytes, 0));
+    if (finding.fileGroup === "figma-cache") {
+      return t("cleanupModal.finding.taskFiles.cacheDescription", { dir: finding.repoRoot, freed });
+    }
+    return t("cleanupModal.finding.taskFiles.description", {
+      dir: finding.repoRoot,
+      tickets: new Set(files.map((f) => f.taskKey)).size,
+      freed,
+    });
+  }
   if (finding.kind === "prune-old-sessions") {
     const freedBytes = finding.staleSessions.reduce((sum, s) => sum + s.sizeBytes, 0);
     return t("cleanupModal.finding.oldSessions.description", {
@@ -71,7 +88,7 @@ function findingDescription(
 /** Lists local, one-click-safe cleanup findings and lets each be fixed independently. */
 export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalProps) {
   const { showToast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [findings, setFindings] = useState<CleanupFinding[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,6 +172,10 @@ export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalP
             <strong>{t("cleanupModal.finding.oldSessions.label")}</strong>{" "}
             {t("cleanupModal.finding.oldSessions.body")}
           </li>
+          <li>
+            <strong>{t("cleanupModal.finding.taskFiles.label")}</strong>{" "}
+            {t("cleanupModal.finding.taskFiles.body")}
+          </li>
         </ul>
       </div>
 
@@ -195,12 +216,30 @@ export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalP
                           {session.title}
                         </span>
                         <span className="shrink-0 text-gray-400 dark:text-gray-500">
-                          {formatUpdatedAt(session.updatedAt)} · {formatBytes(session.sizeBytes)}
+                          {formatUpdatedAt(session.updatedAt, language)} · {formatBytes(session.sizeBytes)}
                         </span>
                       </li>
                     ))}
                   </ul>
                 </>
+              )}
+              {finding.kind === "remove-task-files" && (
+                <ul className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-800">
+                  {(finding.staleFiles ?? []).map((file) => (
+                    <li
+                      key={file.path}
+                      className="flex items-center justify-between gap-2 border-b border-gray-100 px-2 py-1 text-xs last:border-b-0 dark:border-gray-800/60"
+                    >
+                      <span className="truncate font-mono text-gray-700 dark:text-gray-300">
+                        {file.path.slice(finding.repoRoot.length + 1)}
+                      </span>
+                      <span className="shrink-0 text-gray-500 dark:text-gray-400">
+                        {t(`cleanupModal.finding.taskFiles.reason.${file.reason}`)} ·{" "}
+                        {formatUpdatedAt(file.updatedAt, language)} · {formatBytes(file.sizeBytes)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               )}
               <div className="mt-3 flex items-center gap-2">
                 <Button
