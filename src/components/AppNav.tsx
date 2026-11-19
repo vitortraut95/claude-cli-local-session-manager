@@ -21,6 +21,8 @@ import type { Theme } from "../hooks/useTheme";
 import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
 import type { SkillsHubStatus } from "../services/skillsHubApi";
 import type { ClaudeUsageStatus, UpdateStatus } from "../services/systemApi";
+import type { CleanupBacklog } from "../hooks/useCleanupBacklog";
+import { formatBytes } from "../utils/sessionSize";
 import { BetaBadge } from "./BetaBadge";
 import { ClaudeCliUpdateButton } from "./ClaudeCliUpdateButton";
 import { Modal } from "./Modal";
@@ -38,6 +40,8 @@ export type AppNavProps = {
   attentionCount: number;
   /** Queue entries still waiting for their session. */
   queueCount: number;
+  /** What the Cleanup panel would offer; highlighted only when `heavy`. */
+  cleanupBacklog: CleanupBacklog | null;
   automationsOn: boolean;
   skills: { status: SkillsHubStatus | null; failed: boolean };
   usage: {
@@ -108,6 +112,7 @@ export function AppNav(props: AppNavProps) {
   const { t } = useLanguage();
   const [moreOpen, setMoreOpen] = useState(false);
   const skills = skillsState(props.skills);
+  const cleanupHeavy = Boolean(props.cleanupBacklog?.heavy);
 
   const pages: {
     view: AppView;
@@ -298,8 +303,29 @@ export function AppNav(props: AppNavProps) {
         }}
         className={itemClass(false)}
       >
-        <Sparkles className="h-[18px] w-[18px]" />
+        <Sparkles
+          className={`h-[18px] w-[18px] ${cleanupHeavy ? "text-amber-600 dark:text-amber-400" : ""}`}
+        />
         <span className="truncate">{t("nav.cleanup")}</span>
+        {cleanupHeavy && props.cleanupBacklog && (
+          <Tooltip
+            content={t("nav.cleanup.heavy", {
+              count: props.cleanupBacklog.items,
+              size: formatBytes(props.cleanupBacklog.bytes),
+            })}
+          >
+            <span className="ml-auto">
+              <Count
+                value={props.cleanupBacklog.items}
+                tone="amber"
+                label={t("nav.cleanup.heavy", {
+                  count: props.cleanupBacklog.items,
+                  size: formatBytes(props.cleanupBacklog.bytes),
+                })}
+              />
+            </span>
+          </Tooltip>
+        )}
       </button>
       <button
         type="button"
@@ -418,7 +444,7 @@ export function AppNav(props: AppNavProps) {
           onClick={() => setMoreOpen(true)}
           aria-haspopup="dialog"
           aria-current={props.view === "guide" ? "page" : undefined}
-          className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
+          className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
             props.view === "guide"
               ? "text-violet-700 dark:text-violet-300"
               : "text-gray-500 dark:text-gray-400"
@@ -426,6 +452,12 @@ export function AppNav(props: AppNavProps) {
         >
           <Menu className="h-[18px] w-[18px]" />
           {t("nav.more")}
+          {cleanupHeavy && (
+            <span
+              aria-hidden="true"
+              className="absolute top-2 right-[calc(50%-16px)] h-2 w-2 rounded-full bg-amber-500"
+            />
+          )}
         </button>
       </nav>
       <Modal

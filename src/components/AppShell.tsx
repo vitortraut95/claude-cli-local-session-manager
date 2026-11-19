@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppView, type AppView } from "../hooks/useAppView";
+import { useCleanupBacklog } from "../hooks/useCleanupBacklog";
 import { useLanguage } from "../hooks/useLanguage";
 import { useSessions } from "../hooks/useSessions";
 import { ShellContext, type ShellActions } from "../hooks/useShell";
@@ -59,6 +60,7 @@ export function AppShell() {
   const { showToast } = useToast();
   const [view, setView] = useAppView();
   const signals = useTaskSignals();
+  const cleanup = useCleanupBacklog();
   const sessions = useSessions(signals.problems);
   const {
     status: updateStatus,
@@ -218,6 +220,7 @@ export function AppShell() {
 
   const closePanel = () => {
     if (panel === "automation") setAutomationRevision((revision) => revision + 1);
+    if (panel === "cleanup") cleanup.recheck();
     setPanel(null);
   };
   const reloadSignals = signals.reload;
@@ -246,6 +249,7 @@ export function AppShell() {
           sessionCount={notDoneCount}
           attentionCount={attentionCount}
           queueCount={signals.pendingQueueCount}
+          cleanupBacklog={cleanup.backlog}
           automationsOn={automationsOn}
           skills={{ status: skillsHub.status, failed: skillsHub.failed }}
           usage={{

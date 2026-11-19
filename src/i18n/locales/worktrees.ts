@@ -5,8 +5,8 @@ export const worktrees = {
   "cleanupModal.close": dict("Close", "Fechar"),
   "cleanupModal.howItWorks.label": dict("How it works:", "Como funciona:"),
   "cleanupModal.howItWorks.body": dict(
-    "locally checks the worktrees of every project known to the app for these situations:",
-    "verifica localmente os worktrees de todos os projetos conhecidos pelo app para estas situações:",
+    "locally checks the worktrees and sessions of every project known to the app, and the files the task skills leave on this machine, for these situations:",
+    "verifica localmente os worktrees e sessões de todos os projetos conhecidos pelo app, e os arquivos que as skills de tarefa deixam na máquina, para estas situações:",
   ),
   "cleanupModal.finding.manualDelete.label": dict(
     "Worktree deleted manually",
@@ -70,6 +70,43 @@ export const worktrees = {
     "This permanently deletes the session transcript(s) listed below. This cannot be undone.",
     "Isso exclui permanentemente a(s) transcrição(ões) de sessão listada(s) abaixo. Isso não pode ser desfeito.",
   ),
+  "cleanupModal.finding.taskFiles.label": dict(
+    "Leftovers of finished tasks",
+    "Resquícios de tarefas finalizadas",
+  ),
+  "cleanupModal.finding.taskFiles.body": dict(
+    "checklists, handoffs, Jira/PR texts and test evidence the task skills keep per ticket " +
+      '(TASK_CHECKLIST_DIR, QA_EVIDENCE_DIR) once the task is marked "Done" — or, for a ticket ' +
+      "the app doesn't track, after 14 days untouched — and Figma cache older than its TTL. " +
+      "What was published is already on the ticket/PR. Never while a session of that ticket is active.",
+    "checklists, handoffs, textos de Jira/PR e evidências de teste que as skills de tarefa " +
+      'guardam por ticket (TASK_CHECKLIST_DIR, QA_EVIDENCE_DIR) depois que a tarefa fica "Concluída" ' +
+      "— ou, pra ticket que o app não acompanha, depois de 14 dias sem mexer — e cache do Figma " +
+      "vencido. O que foi publicado já está no ticket/PR. Nunca com sessão ativa daquele ticket.",
+  ),
+  "cleanupModal.finding.taskFiles.title.checklists": dict(
+    "{count} checklist/handoff file(s) of finished tasks",
+    "{count} arquivo(s) de checklist/handoff de tarefas finalizadas",
+  ),
+  "cleanupModal.finding.taskFiles.title.evidence": dict(
+    "{count} test evidence folder(s) of finished tasks",
+    "{count} pasta(s) de evidências de teste de tarefas finalizadas",
+  ),
+  "cleanupModal.finding.taskFiles.title.figma-cache": dict(
+    "{count} expired Figma cache entry(ies)",
+    "{count} entrada(s) vencida(s) do cache do Figma",
+  ),
+  "cleanupModal.finding.taskFiles.description": dict(
+    'In "{dir}". {tickets} ticket(s), freeing about {freed}. Deleted for good — no trash.',
+    'Em "{dir}". {tickets} ticket(s), liberando cerca de {freed}. Apaga de vez — sem lixeira.',
+  ),
+  "cleanupModal.finding.taskFiles.cacheDescription": dict(
+    'In "{dir}". Older than the cache TTL, so the skill would fetch it again anyway. Frees about {freed}.',
+    'Em "{dir}". Mais velho que o TTL do cache, então a skill buscaria de novo de qualquer jeito. Libera cerca de {freed}.',
+  ),
+  "cleanupModal.finding.taskFiles.reason.done": dict("done", "concluída"),
+  "cleanupModal.finding.taskFiles.reason.stale": dict("untouched", "parada"),
+  "cleanupModal.finding.taskFiles.reason.expired": dict("expired", "vencido"),
   "cleanupModal.finding.prune.title": dict(
     'Worktrees deleted manually in "{project}"',
     'Worktrees excluídos manualmente em "{project}"',

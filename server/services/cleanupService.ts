@@ -19,6 +19,7 @@ import {
   removeWorktreeKeepBranch,
   type WorktreeEntry,
 } from "../utils/git.js";
+import { executeTaskFilesFinding, scanForTaskFileFindings } from "./taskFilesCleanupService.js";
 import { AppError } from "../utils/httpError.js";
 import { inferTaskKey } from "../utils/taskKeys.js";
 import { getTaskStore, linkRepoBranchToTask, type TaskStore } from "../utils/taskStore.js";
@@ -39,6 +40,8 @@ export type { CleanupFinding } from "../../shared/cleanup.js";
  *    marked "done", not merged yet, with no uncommitted changes, no active session and every
  *    commit already on `origin/<branch>`. Only the worktree goes: the branch stays until merged.
  * 5. `prune-old-sessions` — see `scanForOldSessionFindings`.
+ * 6. `remove-task-files` — checklists, test evidence and cache the task skills left behind; see
+ *    `scanForTaskFileFindings`.
  *
  * Every finding is re-validated in `executeCleanupFinding` before acting.
  */
@@ -117,6 +120,7 @@ async function runCleanupScan(): Promise<CleanupFinding[]> {
   }
 
   findings.push(...(await scanForOldSessionFindings(projectFolders, sessions)));
+  findings.push(...(await scanForTaskFileFindings(sessions, store)));
 
   return findings;
 }
@@ -340,6 +344,12 @@ export async function executeCleanupFinding(finding: CleanupFinding): Promise<vo
         // Not a real failure, keep going.
       }
     }
+    return;
+  }
+
+  if (finding.kind === "remove-task-files") {
+    const [sessions, store] = await Promise.all([listSessions(), getTaskStore()]);
+    await executeTaskFilesFinding(finding, sessions, store);
     return;
   }
 

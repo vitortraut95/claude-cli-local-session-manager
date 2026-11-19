@@ -15,6 +15,10 @@ export const shell = {
   "nav.queue.hint": dict("New tasks go here", "Novas tarefas entram aqui"),
   "nav.queue.count": dict("{count} waiting in line", "{count} esperando na fila"),
   "nav.cleanup": dict("Cleanup", "Limpeza"),
+  "nav.cleanup.heavy": dict(
+    "Lots to clean: {count} item(s), about {size}",
+    "Muita coisa pra limpar: {count} item(ns), cerca de {size}",
+  ),
   "nav.skills": dict("Skills", "Skills"),
   "nav.skills.hint": dict("Skill management", "Gerenciamento de skills"),
   "nav.guide": dict("Guide", "Guia"),
