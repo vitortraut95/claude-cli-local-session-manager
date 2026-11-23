@@ -4,6 +4,10 @@ import { dict } from "../dict";
 export const shell = {
   // Navigation
   "nav.label": dict("Main", "Principal"),
+  "shell.vpnDisconnected": dict(
+    "VPN disconnected: nothing new starts (tasks, tests, code reviews) until you connect it.",
+    "VPN desconectada: nada novo começa (tarefas, testes, code reviews) até você conectar.",
+  ),
   "nav.appName": dict("Session Manager", "Session Manager"),
   "nav.appTagline": dict("Claude CLI · local", "Claude CLI · local"),
   "nav.sessions": dict("Sessions", "Sessões"),

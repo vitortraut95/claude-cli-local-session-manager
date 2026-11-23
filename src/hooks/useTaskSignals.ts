@@ -9,13 +9,14 @@ import { buildTaskProblems } from "../utils/sessionGroups";
 const REFRESH_MS = 30_000;
 
 /**
- * The task queue and the Board watcher's latest actions, re-read in the background: they put
- * sessions in "needs you" (a launch error, a failed test or review) and give the navigation its
- * queue count. A failed read keeps the last good data.
+ * The task queue, the Board watcher's latest actions and whether the VPN is up, re-read in the
+ * background: they put sessions in "needs you" (a launch error, a failed test or review), give the
+ * navigation its queue count and the shell its VPN warning. A failed read keeps the last good data.
  */
 export function useTaskSignals() {
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [actions, setActions] = useState<WatcherActionEntry[]>([]);
+  const [vpnConnected, setVpnConnected] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -24,10 +25,12 @@ export function useTaskSignals() {
       void Promise.all([
         tasksApi.fetchTaskQueue().catch(() => null),
         boardWatcherApi.fetchWatcherActions(200).catch(() => null),
-      ]).then(([nextQueue, nextActions]) => {
+        tasksApi.fetchSchedulerStatus().catch(() => null),
+      ]).then(([nextQueue, nextActions, scheduler]) => {
         if (cancelled) return;
         if (nextQueue) setQueue(nextQueue);
         if (nextActions) setActions(nextActions);
+        if (scheduler) setVpnConnected(scheduler.vpnConnected !== false);
       });
     };
     load();
@@ -48,6 +51,8 @@ export function useTaskSignals() {
     actions,
     problems,
     pendingQueueCount,
+    /** False while the VPN the queue requires (`orchestrator.vpnInterface`) is down. */
+    vpnConnected,
     /** Re-reads now (after the queue was saved, for instance). */
     reload,
   };

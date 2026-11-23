@@ -14,6 +14,7 @@ import { SettingRow } from "./SettingRow";
 
 const BLOCK_KEYS: Record<SchedulerBlock, TranslationKey> = {
   paused: "scheduler.blocked.paused",
+  vpn_disconnected: "scheduler.blocked.vpnDisconnected",
   max_sessions: "scheduler.blocked.maxSessions",
   recent_launch: "scheduler.blocked.recentLaunch",
   low_memory: "scheduler.blocked.lowMemory",
@@ -22,7 +23,10 @@ const BLOCK_KEYS: Record<SchedulerBlock, TranslationKey> = {
 };
 
 /** Same bounds the server accepts (`isOrchestratorPreferences`). */
-const LIMITS: Record<Exclude<keyof OrchestratorPreferences, "enabled">, [number, number]> = {
+const LIMITS: Record<
+  Exclude<keyof OrchestratorPreferences, "enabled" | "vpnInterface">,
+  [number, number]
+> = {
   maxSessions: [1, 50],
   minFreeMemoryPercent: [0, 90],
   maxUsagePercent: [1, 100],
@@ -49,6 +53,7 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
   const [settings, setSettings] = useState<OrchestratorPreferences | null>(null);
   // Typed text per field, committed on blur.
   const [drafts, setDrafts] = useState<Partial<Record<keyof typeof LIMITS, string>>>({});
+  const [vpnDraft, setVpnDraft] = useState<string | null>(null);
   const [hook, setHook] = useState<HeavyRunHookStatus | null>(null);
   const [savingHook, setSavingHook] = useState(false);
 
@@ -95,6 +100,15 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
     if (!Number.isFinite(parsed) || raw.trim() === "") return;
     const value = Math.min(max, Math.max(min, parsed));
     if (value !== settings[field]) void save({ ...settings, [field]: value });
+  };
+
+  const commitVpn = () => {
+    if (!settings || vpnDraft === null) return;
+    const value = vpnDraft.trim();
+    setVpnDraft(null);
+    // Same rule the server accepts: an interface name as `ip link` shows it.
+    if (!/^[\w.-]{0,32}$/.test(value) || value === (settings.vpnInterface ?? "")) return;
+    void save({ ...settings, vpnInterface: value });
   };
 
   const numberField = (
@@ -229,7 +243,10 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
         </div>
       )}
 
-      <details ref={detailsRef} className="group border-t border-gray-100 pt-3 dark:border-gray-800">
+      <details
+        ref={detailsRef}
+        className="group border-t border-gray-100 pt-3 dark:border-gray-800"
+      >
         <summary className="flex cursor-pointer list-none items-center gap-1 text-sm font-medium text-gray-700 3xl:pointer-events-none dark:text-gray-300">
           <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90 3xl:hidden" />
           {t("scheduler.settings.title")}
@@ -259,6 +276,24 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
               "scheduler.setting.launchSpacing",
               "scheduler.setting.launchSpacing.hint",
             )}
+            <SettingRow
+              label={t("scheduler.setting.vpnInterface")}
+              description={t("scheduler.setting.vpnInterface.hint")}
+              control={
+                <Input
+                  value={vpnDraft ?? settings?.vpnInterface ?? ""}
+                  disabled={!settings}
+                  placeholder="tun0"
+                  aria-label={t("scheduler.setting.vpnInterface")}
+                  onChange={(event) => setVpnDraft(event.target.value)}
+                  onBlur={commitVpn}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") commitVpn();
+                  }}
+                  className="py-1"
+                />
+              }
+            />
           </div>
 
           <div className="flex flex-col gap-2.5">

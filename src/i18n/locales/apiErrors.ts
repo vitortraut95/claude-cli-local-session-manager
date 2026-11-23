@@ -7,6 +7,10 @@ export const apiErrors = {
     "Use o site do Jira, por exemplo empresa.atlassian.net.",
   ),
   "apiError.setupMissingEmail": dict("Fill in your e-mail.", "Preencha o seu e-mail."),
+  "apiError.vpnDisconnected": dict(
+    "Connect the VPN before starting a task.",
+    "Conecte a VPN antes de começar uma tarefa.",
+  ),
   "apiError.setupUnreachable": dict(
     "Couldn't reach the service. Check the address and your network.",
     "Não deu pra falar com o serviço. Confira o endereço e a sua rede.",

@@ -17,6 +17,7 @@ export const history = {
     "Enquanto estava na fila, o agendador esperou por: {blocks}",
   ),
   "history.reason.paused": dict("paused queue", "fila pausada"),
+  "history.reason.vpnDisconnected": dict("VPN disconnected", "VPN desconectada"),
   "history.reason.maxSessions": dict("session limit", "limite de sessões"),
   "history.reason.recentLaunch": dict("spacing between launches", "intervalo entre aberturas"),
   "history.reason.lowMemory": dict("free RAM", "RAM livre"),
