@@ -13,7 +13,7 @@ export type NetworkRequirements = { vpnInterface?: string; ipv6Disabled?: boolea
 
 const IFF_UP = 0x1;
 
-async function interfaceUp(name: string): Promise<boolean> {
+export async function interfaceUp(name: string): Promise<boolean> {
   const flags = await readFile(`/sys/class/net/${name}/flags`, "utf8").catch(() => null);
   return flags !== null && (Number.parseInt(flags.trim(), 16) & IFF_UP) !== 0;
 }

@@ -15,6 +15,7 @@ import {
   type TestLaunchOutcome,
 } from "./taskTestService.js";
 import { getMaxUsagePercent } from "./usageService.js";
+import { interfaceUp } from "./boardWatcher/network.js";
 import { firstWorkspaceDir, otherWorkspaceDirs } from "./workspaceService.js";
 import { API_PORT } from "../utils/apiPort.js";
 import { recordEvent } from "../utils/history.js";
@@ -95,10 +96,12 @@ export async function getSchedulerStatus(): Promise<SchedulerStatus> {
   const usagePercent = await getMaxUsagePercent(waiting > 0);
   const { enabled, maxSessions, minFreeMemoryPercent, maxUsagePercent, launchSpacingMinutes } =
     prefs.orchestrator;
+  const vpnConnected = await isVpnConnected(prefs);
 
   // Unreadable values never block: the app still works on a box without PSI.
   let blockedBy: SchedulerBlock | null = null;
   if (!enabled) blockedBy = "paused";
+  else if (!vpnConnected) blockedBy = "vpn_disconnected";
   else if (activeSessions >= maxSessions) blockedBy = "max_sessions";
   else if (Date.now() - lastLaunchAt < launchSpacingMinutes * 60_000) blockedBy = "recent_launch";
   else if (freeMemoryPercent !== null && freeMemoryPercent < minFreeMemoryPercent)
@@ -118,9 +121,16 @@ export async function getSchedulerStatus(): Promise<SchedulerStatus> {
     maxUsagePercent,
     waiting,
     blockedBy,
+    vpnConnected,
     launching: launchingKeys.values().next().value ?? null,
     launchingKeys: [...launchingKeys],
   };
+}
+
+/** True when no VPN is required (`orchestrator.vpnInterface` empty) or its interface is up. */
+async function isVpnConnected(prefs: UserPreferences): Promise<boolean> {
+  const { vpnInterface } = prefs.orchestrator;
+  return !vpnInterface || interfaceUp(vpnInterface);
 }
 
 function errorMessage(err: unknown): string {
@@ -655,6 +665,9 @@ export async function launchQueueEntryNow(key: string): Promise<LaunchOutcome | 
   }
   if (entry.sessionId && (await getActiveResumeSessionIds()).has(entry.sessionId)) {
     throw new ConflictError("QUEUE_ENTRY_RUNNING", `${key}'s session is already running.`);
+  }
+  if (!(await isVpnConnected(prefs))) {
+    throw new ConflictError("VPN_DISCONNECTED", "Connect the VPN before starting a task.");
   }
   const fresh = { ...entry, launchedAt: null, error: null };
   if (!isReady(fresh)) {

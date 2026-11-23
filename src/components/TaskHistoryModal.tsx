@@ -29,6 +29,7 @@ function formatTime(iso: string): string {
 
 const BLOCK_REASON_KEYS: Record<string, TranslationKey> = {
   paused: "history.reason.paused",
+  vpn_disconnected: "history.reason.vpnDisconnected",
   max_sessions: "history.reason.maxSessions",
   recent_launch: "history.reason.recentLaunch",
   low_memory: "history.reason.lowMemory",

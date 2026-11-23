@@ -55,6 +55,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     previewSlots: 5,
     previewMemoryMaxGb: 4,
     launchSpacingMinutes: 5,
+    vpnInterface: "",
   },
   worktreeSetup: {},
   terminalLayout: "tabs",
@@ -140,7 +141,13 @@ function parseOrchestrator(value: unknown): OrchestratorPreferences {
     launchSpacingMinutes: isIntInRange(raw.launchSpacingMinutes, 0, 60)
       ? raw.launchSpacingMinutes
       : fallback.launchSpacingMinutes,
+    vpnInterface: isInterfaceName(raw.vpnInterface) ? raw.vpnInterface : fallback.vpnInterface,
   };
+}
+
+/** A network interface name as `/sys/class/net` has it, or "" (none). */
+function isInterfaceName(value: unknown): value is string {
+  return typeof value === "string" && /^[\w.-]{0,32}$/.test(value);
 }
 
 export function isOrchestratorPreferences(value: unknown): value is OrchestratorPreferences {
@@ -157,7 +164,8 @@ export function isOrchestratorPreferences(value: unknown): value is Orchestrator
     (raw.testCpuPercent === undefined || isIntInRange(raw.testCpuPercent, 50, 6400)) &&
     (raw.previewSlots === undefined || isIntInRange(raw.previewSlots, 1, 16)) &&
     (raw.previewMemoryMaxGb === undefined || isIntInRange(raw.previewMemoryMaxGb, 1, 64)) &&
-    (raw.launchSpacingMinutes === undefined || isIntInRange(raw.launchSpacingMinutes, 0, 60))
+    (raw.launchSpacingMinutes === undefined || isIntInRange(raw.launchSpacingMinutes, 0, 60)) &&
+    (raw.vpnInterface === undefined || isInterfaceName(raw.vpnInterface))
   );
 }
 

@@ -28,6 +28,7 @@ export async function withServerErrorMessage<T>(request: () => Promise<T>): Prom
 /** Server `AppError` code → translation key. An unmapped code shows the server's English message. */
 const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   SETUP_MISSING_TOKEN: "apiError.setupMissingToken",
+  VPN_DISCONNECTED: "apiError.vpnDisconnected",
   SETUP_BAD_SITE: "apiError.setupBadSite",
   SETUP_MISSING_EMAIL: "apiError.setupMissingEmail",
   SETUP_UNREACHABLE: "apiError.setupUnreachable",

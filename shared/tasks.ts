@@ -141,7 +141,13 @@ export type QueueEntryInput = Pick<
 >;
 
 export type SchedulerBlock =
-  "paused" | "max_sessions" | "recent_launch" | "low_memory" | "memory_pressure" | "usage_limit";
+  | "paused"
+  | "vpn_disconnected"
+  | "max_sessions"
+  | "recent_launch"
+  | "low_memory"
+  | "memory_pressure"
+  | "usage_limit";
 
 export type SchedulerStatus = {
   enabled: boolean;
@@ -157,6 +163,9 @@ export type SchedulerStatus = {
   waiting: number;
   /** Why nothing would launch right now; null = there's room. */
   blockedBy: SchedulerBlock | null;
+  /** False while the VPN set in `orchestrator.vpnInterface` is down. Optional: an older server
+   *  doesn't send it. */
+  vpnConnected?: boolean;
   /** An entry being launched at this moment, if any. */
   launching: string | null;
   /** Every entry being launched (the tick's and any "Start now"). */

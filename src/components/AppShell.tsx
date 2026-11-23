@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { WifiOff } from "lucide-react";
 import { useAppView, type AppView } from "../hooks/useAppView";
 import { useCleanupBacklog } from "../hooks/useCleanupBacklog";
 import { useLanguage } from "../hooks/useLanguage";
@@ -276,6 +277,15 @@ export function AppShell() {
           onOpenSettings={() => setPanel("settings")}
         />
         <div className="min-w-0 flex-1 pb-16 lg:pb-0">
+          {!signals.vpnConnected && (
+            <div
+              role="alert"
+              className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              <WifiOff className="h-4 w-4 shrink-0" />
+              {t("shell.vpnDisconnected")}
+            </div>
+          )}
           {view === "sessions" && <SessionsPage sessions={sessions} problems={signals.problems} />}
           {view === "board" && <BoardPage />}
           {/* Kept mounted once opened, so unsaved queue edits survive a visit to another page. */}

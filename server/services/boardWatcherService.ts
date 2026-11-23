@@ -93,7 +93,11 @@ import {
   prUrl,
 } from "./boardWatcher/instantNotices.js";
 import { ARCHIVE_FILE, rotateActions } from "./boardWatcher/history.js";
-import { networkProblem, remindOnDesktop } from "./boardWatcher/network.js";
+import {
+  networkProblem,
+  remindOnDesktop,
+  type NetworkRequirements,
+} from "./boardWatcher/network.js";
 import { isTestReport, testPlanStatus } from "./boardWatcher/testPlan.js";
 import { applyReview, runTick } from "./boardWatcher/tick.js";
 import {
@@ -919,7 +923,7 @@ async function drainJobs(): Promise<void> {
       jobsBlockedBy = null;
       if (!pr) {
         if (!test) return;
-        const network = await networkProblem(config.test?.requires);
+        const network = await networkProblem(await testNetworkRequirements(config));
         if (network) {
           jobsBlockedBy = `tests waiting: ${network}`;
           noteBlocked(jobsBlockedBy);
@@ -1348,8 +1352,17 @@ async function remindNetworkAtStart(): Promise<void> {
   const config = await loadBoardWatcherConfig().catch(() => null);
   if (!config?.enabled || config.test?.enabled === false || !(await automationsOn())) return;
   if (!isBusinessTime(new Date(), config.businessHours)) return;
-  const problem = await networkProblem(config.test?.requires);
+  const problem = await networkProblem(await testNetworkRequirements(config));
   if (problem) remindOnDesktop(problem);
+}
+
+/** `test.requires`, with the queue's VPN (`orchestrator.vpnInterface`) when it names none. */
+async function testNetworkRequirements(
+  config: BoardWatcherConfig,
+): Promise<NetworkRequirements | undefined> {
+  const own = config.test?.requires;
+  const { vpnInterface } = (await getUserPreferences()).orchestrator;
+  return own?.vpnInterface || !vpnInterface ? own : { ...own, vpnInterface };
 }
 
 /** A look right now, instead of waiting for the next one. */

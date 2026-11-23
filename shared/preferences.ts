@@ -38,6 +38,10 @@ export type OrchestratorPreferences = {
   /** Minutes between two launches, so a session's memory shows up before the next one starts
    *  (0 = no spacing). */
   launchSpacingMinutes: number;
+  /** Network interface that must be up before anything launches (the VPN's, e.g. `tun0`), since
+   *  the git host and the test environments are only reachable through it; "" = not checked.
+   *  Optional: older files lack it. */
+  vpnInterface: string;
 };
 
 export type TerminalLayout = "tabs" | "limux-grid";

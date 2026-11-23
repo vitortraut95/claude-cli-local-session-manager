@@ -277,6 +277,15 @@ export const taskQueue = {
     "Waiting: the machine is under memory pressure right now.",
     "Aguardando: a máquina está sob pressão de memória agora.",
   ),
+  "scheduler.blocked.vpnDisconnected": dict(
+    "Waiting: the VPN is disconnected.",
+    "Aguardando: a VPN está desconectada.",
+  ),
+  "scheduler.setting.vpnInterface": dict("VPN interface", "Interface da VPN"),
+  "scheduler.setting.vpnInterface.hint": dict(
+    "Nothing starts while it's down (see ip link, e.g. tun0). Empty = not checked.",
+    "Nada começa com ela fora do ar (veja em ip link, ex.: tun0). Vazio = não confere.",
+  ),
   "scheduler.blocked.usageLimit": dict(
     "Waiting: the Claude plan usage is above the limit.",
     "Aguardando: o uso do plano Claude está acima do limite.",
