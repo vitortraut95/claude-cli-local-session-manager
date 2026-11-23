@@ -67,30 +67,16 @@ async function request(
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
-    throw Object.assign(
-      new Error(`Bitbucket ${new URL(url).pathname} answered ${response.status}.`),
-      { status: response.status },
+    // Bitbucket says why (e.g. "an admin must whitelist your IP" when off the VPN).
+    const reason = await response
+      .json()
+      .then((body) => (body as { error?: { message?: string } }).error?.message)
+      .catch(() => undefined);
+    throw new Error(
+      `Bitbucket ${new URL(url).pathname} answered ${response.status}${reason ? `: ${reason}` : "."}`,
     );
   }
   return response;
-}
-
-const warnedRepos = new Set<string>();
-
-/** Runs `read` for one repo; a repo the token can't see (403/404, e.g. a sprint task with a PR in
- *  another team's repo) gives `empty` instead of failing the whole listing. */
-async function readRepo<T>(repo: string, empty: T, read: () => Promise<T>): Promise<T> {
-  try {
-    return await read();
-  } catch (err) {
-    const status = (err as { status?: number }).status;
-    if (status !== 403 && status !== 404) throw err;
-    if (!warnedRepos.has(repo)) {
-      warnedRepos.add(repo);
-      console.warn(`[board-watcher] Skipping Bitbucket repo ${repo}: answered ${status}.`);
-    }
-    return empty;
-  }
 }
 
 async function get<T>(credentials: BitbucketCredentials, url: string): Promise<T> {
@@ -517,27 +503,25 @@ export async function pullRequestsTouchedBy(
   const query = encodeURIComponent(`updated_on > ${since}`);
   const pages = await Promise.all(
     repos.map(async (repo) => {
-      const page = await readRepo(repo, {}, () =>
-        get<{
-          values?: {
-            id: number;
-            title: string;
-            created_on: string;
-            author?: { account_id?: string };
-            participants?: {
-              state?: string | null;
-              participated_on?: string | null;
-              user?: { account_id?: string };
-            }[];
+      const page = await get<{
+        values?: {
+          id: number;
+          title: string;
+          created_on: string;
+          author?: { account_id?: string };
+          participants?: {
+            state?: string | null;
+            participated_on?: string | null;
+            user?: { account_id?: string };
           }[];
-        }>(
-          credentials,
-          `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}/pullrequests` +
-            `?q=${query}&state=OPEN&state=MERGED&state=DECLINED&pagelen=50` +
-            "&fields=values.id,values.title,values.created_on,values.author.account_id," +
-            "values.participants.state,values.participants.participated_on," +
-            "values.participants.user.account_id",
-        ),
+        }[];
+      }>(
+        credentials,
+        `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}/pullrequests` +
+          `?q=${query}&state=OPEN&state=MERGED&state=DECLINED&pagelen=50` +
+          "&fields=values.id,values.title,values.created_on,values.author.account_id," +
+          "values.participants.state,values.participants.participated_on," +
+          "values.participants.user.account_id",
       );
       return (page.values ?? []).map((pr) => ({ repo, ...pr }));
     }),
@@ -617,13 +601,11 @@ async function searchPullRequestsForKey(
   const query = `title ~ "${key}" OR source.branch.name ~ "${key}"`;
   const found = await Promise.all(
     repos.map(async (repo) => {
-      const page = await readRepo(repo, {}, () =>
-        get<{ values?: { source?: { branch?: { name?: string } } }[] }>(
-          credentials,
-          `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}/pullrequests` +
-            `?q=${encodeURIComponent(query)}&state=OPEN&state=MERGED&sort=-updated_on&pagelen=5` +
-            `&fields=values.source.branch.name`,
-        ),
+      const page = await get<{ values?: { source?: { branch?: { name?: string } } }[] }>(
+        credentials,
+        `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}/pullrequests` +
+          `?q=${encodeURIComponent(query)}&state=OPEN&state=MERGED&sort=-updated_on&pagelen=5` +
+          `&fields=values.source.branch.name`,
       );
       return (page.values ?? [])
         .map((pr) => pr.source?.branch?.name ?? "")
@@ -641,22 +623,16 @@ export async function listOpenPullRequests(
 ): Promise<PullRequest[]> {
   const prs: PullRequest[] = [];
   for (const repo of repos) {
-    prs.push(
-      ...(await readRepo(repo, [], async () => {
-        const found: PullRequest[] = [];
-        let url: string | undefined =
-          `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}/pullrequests` +
-          `?state=OPEN&pagelen=50&fields=${PR_FIELDS}`;
-        while (url) {
-          const page: { values: RawPullRequest[]; next?: string } = await get(credentials, url);
-          found.push(
-            ...(await Promise.all(page.values.map((raw) => toPullRequest(credentials, repo, raw)))),
-          );
-          url = page.next;
-        }
-        return found;
-      })),
-    );
+    let url: string | undefined =
+      `https://api.bitbucket.org/2.0/repositories/${credentials.workspace}/${repo}/pullrequests` +
+      `?state=OPEN&pagelen=50&fields=${PR_FIELDS}`;
+    while (url) {
+      const page: { values: RawPullRequest[]; next?: string } = await get(credentials, url);
+      prs.push(
+        ...(await Promise.all(page.values.map((raw) => toPullRequest(credentials, repo, raw)))),
+      );
+      url = page.next;
+    }
   }
   return prs;
 }
