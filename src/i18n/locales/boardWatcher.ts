@@ -26,8 +26,8 @@ export const boardWatcher = {
     "Olhar o board a cada (minutos)",
   ),
   "automation.limit.lookIntervalMinutes.description": dict(
-    "Minutes between two looks at the board in business hours (e.g. 10, 30, 60, 120). The digest still goes out on time. \"Look now\" on the Board doesn't wait.",
-    "Minutos entre uma olhada e outra no board no horário comercial (ex.: 10, 30, 60, 120). O resumo continua saindo na hora certa. O \"Olhar agora\" do Board não espera.",
+    'Minutes between two looks at the board in business hours (e.g. 10, 30, 60, 120). The digest still goes out on time. "Look now" on the Board doesn\'t wait.',
+    'Minutos entre uma olhada e outra no board no horário comercial (ex.: 10, 30, 60, 120). O resumo continua saindo na hora certa. O "Olhar agora" do Board não espera.',
   ),
   "automation.limit.waitTestGraceMinutes": dict(
     "Wait Test grace minutes",
@@ -47,6 +47,10 @@ export const boardWatcher = {
   "automation.limit.descriptionMinScore": dict(
     "Minimum description score (0-5)",
     "Nota mínima da descrição (0 a 5)",
+  ),
+  "automation.limit.launchSpacing.description": dict(
+    "Wait between two sessions opening (tests, reviews and the task queue's), so the last one's memory use shows up first. 0 = no wait. Same setting as the task queue's.",
+    "Espera entre a abertura de duas sessões (testes, reviews e as da fila de tarefas), pro uso de memória da última aparecer antes. 0 = sem espera. É a mesma configuração da fila de tarefas.",
   ),
   "automation.limit.waitTestGraceMinutes.description": dict(
     "Business minutes a task sits in Wait Test before it's picked up, so whoever is free takes it first.",

@@ -56,14 +56,20 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
         if (!cancelled) setHook(result);
       })
       .catch(() => undefined);
-    preferencesApi
-      .fetchPreferences()
-      .then((prefs) => {
-        if (!cancelled && prefs.orchestrator) setSettings(prefs.orchestrator);
-      })
-      .catch(() => undefined);
+    // Re-read when another screen saves (the Board's limits edit the launch spacing too).
+    const load = () => {
+      preferencesApi
+        .fetchPreferences()
+        .then((prefs) => {
+          if (!cancelled && prefs.orchestrator) setSettings(prefs.orchestrator);
+        })
+        .catch(() => undefined);
+    };
+    load();
+    window.addEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, load);
     return () => {
       cancelled = true;
+      window.removeEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, load);
     };
   }, []);
 
