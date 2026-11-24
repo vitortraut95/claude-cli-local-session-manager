@@ -116,9 +116,21 @@ export const skillsHub = {
     "Claude loads skills when a session starts — sessions already open only see new skills after a restart.",
     "O Claude carrega as skills quando a sessão começa — sessões já abertas só veem skills novas depois de reiniciar.",
   ),
-  "skillsHub.manage.notDefaultBranch": dict(
-    "The clone is not on {defaultBranch}: you get this branch's skills, and updates follow its own upstream.",
-    "O clone não está na {defaultBranch}: você usa as skills desta branch, e as atualizações seguem o upstream dela.",
+  "skillsHub.manage.offDefault.title": dict(
+    "The clone is on branch {branch}, not {defaultBranch}",
+    "O clone está na branch {branch}, não na {defaultBranch}",
+  ),
+  "skillsHub.manage.offDefault.body": dict(
+    "You use this branch's skills, and \"Update now\" only brings what lands on {upstream}: what lands on {defaultBranch} doesn't reach you.",
+    'Você usa as skills desta branch, e "Atualizar agora" só traz o que entra em {upstream}: o que entra na {defaultBranch} não chega aqui.',
+  ),
+  "skillsHub.manage.offDefault.noUpstream": dict(
+    'You use this branch\'s skills, and it has no upstream: "Update now" brings nothing, not even what lands on {defaultBranch}.',
+    'Você usa as skills desta branch, e ela não tem upstream: "Atualizar agora" não traz nada, nem o que entra na {defaultBranch}.',
+  ),
+  "skillsHub.manage.offDefault.hint": dict(
+    "To go back: git checkout {defaultBranch} in the clone (commit or stash your changes first).",
+    "Pra voltar: git checkout {defaultBranch} no clone (antes faça commit ou stash das mudanças).",
   ),
   "skillsHub.manage.syncNow": dict("Update now", "Atualizar agora"),
   "skillsHub.modal.title": dict("Skills", "Skills"),
@@ -163,19 +175,45 @@ export const skillsHub = {
   ),
   "skillsHub.sync.linked": dict("linked: {names}", "linkadas: {names}"),
   "skillsHub.sync.pulled": dict("updated (+{count} commit(s))", "atualizado (+{count} commit(s))"),
+  "skillsHub.sync.pulledOffDefault": dict(
+    "{branch} updated from {upstream} (+{count} commit(s)) — not {defaultBranch}",
+    "{branch} atualizada com {upstream} (+{count} commit(s)) — não é a {defaultBranch}",
+  ),
+  "skillsHub.sync.notUpdatedTitle": dict("Skills not updated", "Skills não atualizadas"),
   "skillsHub.sync.skippedDirty": dict(
-    "update available but not applied: the clone has local changes",
-    "atualização disponível mas não aplicada: o clone tem mudanças locais",
+    "The remote has {count} new commit(s), but the clone has uncommitted changes, so nothing was applied. Changed files:",
+    "O remoto tem {count} commit(s) novo(s), mas o clone tem mudanças não commitadas, então nada foi aplicado. Arquivos alterados:",
+  ),
+  "skillsHub.sync.skippedDirtyHint": dict(
+    'Commit, stash or discard these changes in the clone, then click "Update now" again.',
+    'Faça commit, stash ou descarte essas mudanças no clone e clique em "Atualizar agora" de novo.',
   ),
   "skillsHub.sync.skippedDiverged": dict(
-    "update available but not applied: the branch has local commits (diverged)",
-    "atualização disponível mas não aplicada: a branch tem commits locais (divergiu)",
+    "The remote has {count} new commit(s), but {branch} has {ahead} local commit(s) that aren't on the remote, so nothing was applied (only fast-forwards are done).",
+    "O remoto tem {count} commit(s) novo(s), mas a {branch} tem {ahead} commit(s) local(is) que não estão no remoto, então nada foi aplicado (só é feito fast-forward).",
+  ),
+  "skillsHub.sync.skippedDivergedHint": dict(
+    'Pull with rebase (or push) the branch in the clone, then click "Update now" again.',
+    'Faça pull com rebase (ou push) da branch no clone e clique em "Atualizar agora" de novo.',
   ),
   "skillsHub.sync.skippedFailed": dict(
-    "update available but the fast-forward failed",
-    "atualização disponível mas o fast-forward falhou",
+    "The remote has {count} new commit(s), but git couldn't fast-forward the clone:",
+    "O remoto tem {count} commit(s) novo(s), mas o git não conseguiu avançar o clone:",
   ),
+  "skillsHub.sync.skippedFailedHint": dict(
+    'Fix it in the clone (e.g. move away untracked files that the update brings), then click "Update now" again.',
+    'Resolva no clone (ex.: tire do caminho arquivos não versionados que a atualização traz) e clique em "Atualizar agora" de novo.',
+  ),
+  "skillsHub.sync.moreFiles": dict("+{count} more", "+{count} outro(s)"),
   "skillsHub.sync.upToDate": dict("already up to date", "já atualizado"),
+  "skillsHub.sync.upToDateOffDefault": dict(
+    "{branch} already matches {upstream} — {defaultBranch} isn't checked",
+    "{branch} já está igual a {upstream} — a {defaultBranch} não é verificada",
+  ),
+  "skillsHub.sync.noUpstreamOffDefault": dict(
+    "{branch} has no upstream — nothing was updated, not even {defaultBranch}",
+    "{branch} não tem upstream — nada foi atualizado, nem a {defaultBranch}",
+  ),
   "skillsHub.usePath": dict("Use this folder", "Usar esta pasta"),
   "skillsHub.repoUrl.title": dict("Skills hub repo", "Repo do hub de skills"),
   "skillsHub.repoUrl.body": dict(

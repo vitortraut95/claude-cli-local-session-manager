@@ -24,6 +24,10 @@ export type SkillsHubSyncResult = {
   fetchError: string | null;
   pulledCommits: number;
   pullSkippedReason: "dirty" | "diverged" | "failed" | null;
+  /** Tracked files with uncommitted changes, when skipped as "dirty". */
+  localChanges?: string[];
+  /** Git's error, when the fast-forward failed. */
+  pullError?: string | null;
   links: SkillsLinkResult;
 };
 

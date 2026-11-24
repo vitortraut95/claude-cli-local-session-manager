@@ -1,5 +1,5 @@
 import type { SkillsHubStatus, SkillsSelection } from "../../../shared/skillsHub.js";
-import { runGit } from "../../utils/git.js";
+import { runGit, tryGit } from "../../utils/git.js";
 import { AppError, errorMessage } from "../../utils/httpError.js";
 import { getUserPreferences } from "../preferencesService.js";
 import { listCatalogs } from "./catalog.js";
@@ -16,6 +16,10 @@ type SyncResult = {
   pulledCommits: number;
   /** Why an available update wasn't applied, when one was available but skipped. */
   pullSkippedReason: "dirty" | "diverged" | "failed" | null;
+  /** Tracked files with uncommitted changes, when the update was skipped as "dirty". */
+  localChanges: string[];
+  /** Git's error, when the fast-forward itself failed. */
+  pullError: string | null;
   links: LinkResult;
 };
 
@@ -48,18 +52,23 @@ async function runSync(): Promise<SyncResult> {
 
   let pulledCommits = 0;
   let pullSkippedReason: SyncResult["pullSkippedReason"] = null;
+  let localChanges: string[] = [];
+  let pullError: string | null = null;
   const state = await readGitState(hubPath);
   if (state.upstream && (state.behind ?? 0) > 0) {
     if (state.dirty) {
       pullSkippedReason = "dirty";
+      const changed = await tryGit(["diff", "--name-only", "HEAD"], hubPath, HUB_GIT);
+      localChanges = (changed ?? "").split("\n").filter((line) => line.length > 0);
     } else if ((state.ahead ?? 0) > 0) {
       pullSkippedReason = "diverged";
     } else {
       try {
         await runGit(["merge", "--ff-only", "@{u}"], hubPath, HUB_GIT);
         pulledCommits = state.behind ?? 0;
-      } catch {
+      } catch (err) {
         pullSkippedReason = "failed";
+        pullError = errorMessage(err);
       }
     }
   }
@@ -74,6 +83,8 @@ async function runSync(): Promise<SyncResult> {
     fetchError,
     pulledCommits,
     pullSkippedReason,
+    localChanges,
+    pullError,
     links,
   };
 }

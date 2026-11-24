@@ -1,10 +1,10 @@
-import { AlertTriangle, FolderGit2, Loader2, RefreshCw, Settings } from "lucide-react";
+import { AlertTriangle, FolderGit2, GitBranch, Loader2, RefreshCw, Settings } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import * as skillsHubApi from "../services/skillsHubApi";
 import type { SkillsHubStatus } from "../services/skillsHubApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
-import { describeSync } from "../utils/skillsHub";
+import { describeSync, type SyncSummary } from "../utils/skillsHub";
 import { Button } from "./Button";
 import { SkillsOpenFolderMenu } from "./SkillsOpenFolderMenu";
 
@@ -18,7 +18,7 @@ export function SkillsHubCloneStatus({
 }) {
   const { t } = useLanguage();
   const [syncing, setSyncing] = useState(false);
-  const [lastSync, setLastSync] = useState<{ warning: boolean; text: string } | null>(null);
+  const [lastSync, setLastSync] = useState<SyncSummary | null>(null);
   const [showPath, setShowPath] = useState(false);
 
   const syncNow = async () => {
@@ -29,7 +29,11 @@ export function SkillsHubCloneStatus({
       skillsHubApi.notifySkillsHubChanged();
       await onChanged();
     } catch (err) {
-      setLastSync({ warning: true, text: resolveApiErrorMessage(err, t, "skillsHub.syncError") });
+      setLastSync({
+        warning: true,
+        text: resolveApiErrorMessage(err, t, "skillsHub.syncError"),
+        notUpdated: null,
+      });
     } finally {
       setSyncing(false);
     }
@@ -58,12 +62,6 @@ export function SkillsHubCloneStatus({
             )}
             {status.dirty && <> · {t("skillsHub.manage.dirty")}</>}
           </p>
-          {!onDefaultBranch && status.defaultBranch && (
-            <p className="mt-1 flex items-start gap-1 text-xs text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-              {t("skillsHub.manage.notDefaultBranch", { defaultBranch: status.defaultBranch })}
-            </p>
-          )}
         </div>
         <div className="flex shrink-0 gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowPath((v) => !v)}>
@@ -87,13 +85,41 @@ export function SkillsHubCloneStatus({
           </Button>
         </div>
       </div>
+      {!onDefaultBranch && status.defaultBranch && (
+        <div
+          role="status"
+          className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+        >
+          <p className="flex items-center gap-1.5 font-medium">
+            <GitBranch className="h-3.5 w-3.5 shrink-0" />
+            {t("skillsHub.manage.offDefault.title", {
+              branch: status.branch ?? t("skillsHub.manage.detached"),
+              defaultBranch: status.defaultBranch,
+            })}
+          </p>
+          <p className="mt-1">
+            {status.upstream
+              ? t("skillsHub.manage.offDefault.body", {
+                  upstream: status.upstream,
+                  defaultBranch: status.defaultBranch,
+                })
+              : t("skillsHub.manage.offDefault.noUpstream", {
+                  defaultBranch: status.defaultBranch,
+                })}
+          </p>
+          <p className="mt-1">
+            {t("skillsHub.manage.offDefault.hint", { defaultBranch: status.defaultBranch })}
+          </p>
+        </div>
+      )}
       {showPath && (
         <p className="mt-3 flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300">
           <Settings className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           {t("skillsHub.manage.changePathHint")}
         </p>
       )}
-      {lastSync && (
+      {lastSync?.notUpdated && <NotUpdatedNotice notice={lastSync.notUpdated} />}
+      {lastSync && lastSync.text.length > 0 && (
         <p
           className={`mt-2 text-xs ${lastSync.warning ? "text-amber-700 dark:text-amber-400" : "text-green-700 dark:text-green-400"}`}
         >
@@ -104,5 +130,38 @@ export function SkillsHubCloneStatus({
         {t("skillsHub.manage.syncHelp", { dir: status.userSkillsDir })}
       </p>
     </section>
+  );
+}
+
+const MAX_FILES_SHOWN = 8;
+
+/** Why the remote's commits weren't applied, the files in the way and how to unblock it. */
+function NotUpdatedNotice({ notice }: { notice: NonNullable<SyncSummary["notUpdated"]> }) {
+  const { t } = useLanguage();
+  const shown = notice.files.slice(0, MAX_FILES_SHOWN);
+  const hidden = notice.files.length - shown.length;
+  return (
+    <div
+      role="alert"
+      className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+    >
+      <p className="flex items-center gap-1.5 font-medium">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+        {t("skillsHub.sync.notUpdatedTitle")}
+      </p>
+      <p className="mt-1">{notice.reason}</p>
+      {shown.length > 0 && (
+        <ul className="mt-1 list-disc pl-5 font-mono break-all">
+          {shown.map((file) => (
+            <li key={file}>{file}</li>
+          ))}
+          {hidden > 0 && (
+            <li className="list-none">{t("skillsHub.sync.moreFiles", { count: hidden })}</li>
+          )}
+        </ul>
+      )}
+      {notice.error && <p className="mt-1 font-mono break-all">{notice.error}</p>}
+      <p className="mt-2">{notice.hint}</p>
+    </div>
   );
 }
