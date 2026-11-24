@@ -4,6 +4,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
 import * as boardWatcherApi from "../services/boardWatcherApi";
+import * as preferencesApi from "../services/preferencesApi";
 import type {
   AutomationLimits,
   AutomationSettings,
@@ -40,6 +41,9 @@ const LIMIT_DESCRIPTIONS: Record<keyof AutomationLimits, TranslationKey> = {
   descriptionMinScore: "automation.limit.descriptionMinScore.description",
 };
 
+/** Same bounds the server accepts for `orchestrator.launchSpacingMinutes`. */
+const LAUNCH_SPACING_BOUNDS = [0, 60] as const;
+
 /** Monday first; the values are the server's weekday numbers (0 = Sunday). */
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 
@@ -72,8 +76,24 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
   const [setupOpen, setSetupOpen] = useState(false);
   // Typed text per number/time field, committed on blur (or Enter) like SchedulerPanel.
   const [drafts, setDrafts] = useState<
-    Partial<Record<keyof AutomationLimits | "start" | "end", string>>
+    Partial<Record<keyof AutomationLimits | "start" | "end" | "launchSpacing", string>>
   >({});
+  // The task queue's spacing between launches (`orchestrator`), which also paces the Board's
+  // tests and reviews: every session opens through the queue.
+  const [launchSpacing, setLaunchSpacing] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    preferencesApi
+      .fetchPreferences()
+      .then((prefs) => {
+        if (!cancelled) setLaunchSpacing(prefs.orchestrator.launchSpacingMinutes);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Re-read when the setup panel closes: it may have just written the file.
   useEffect(() => {
@@ -114,6 +134,29 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
     const [min, max] = LIMIT_BOUNDS[field];
     const value = Math.min(max, Math.max(min, parsed));
     if (value !== settings.limits[field]) void save({ limits: { [field]: value } });
+  };
+
+  const commitLaunchSpacing = async () => {
+    const raw = drafts.launchSpacing;
+    setDrafts((current) => ({ ...current, launchSpacing: undefined }));
+    if (raw === undefined || raw.trim() === "" || launchSpacing === null) return;
+    const parsed = Math.round(Number(raw));
+    if (!Number.isFinite(parsed)) return;
+    const [min, max] = LAUNCH_SPACING_BOUNDS;
+    const value = Math.min(max, Math.max(min, parsed));
+    if (value === launchSpacing) return;
+    const previous = launchSpacing;
+    setLaunchSpacing(value);
+    try {
+      const { orchestrator } = await preferencesApi.fetchPreferences();
+      await preferencesApi.updatePreferences({
+        orchestrator: { ...orchestrator, launchSpacingMinutes: value },
+      });
+      preferencesApi.notifyPreferencesChanged();
+    } catch (err) {
+      setLaunchSpacing(previous);
+      showToast(resolveApiErrorMessage(err, t, "automation.saveError"), "error");
+    }
   };
 
   const commitHour = (field: "start" | "end") => {
@@ -284,6 +327,33 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
                         }
                       />
                     ))}
+                    {launchSpacing !== null && (
+                      <SettingRow
+                        label={t("scheduler.setting.launchSpacing")}
+                        description={t("automation.limit.launchSpacing.description")}
+                        controlWidth="w-24"
+                        control={
+                          <Input
+                            type="number"
+                            min={LAUNCH_SPACING_BOUNDS[0]}
+                            max={LAUNCH_SPACING_BOUNDS[1]}
+                            value={drafts.launchSpacing ?? String(launchSpacing)}
+                            aria-label={t("scheduler.setting.launchSpacing")}
+                            onChange={(event) =>
+                              setDrafts((current) => ({
+                                ...current,
+                                launchSpacing: event.target.value,
+                              }))
+                            }
+                            onBlur={() => void commitLaunchSpacing()}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") void commitLaunchSpacing();
+                            }}
+                            className="py-1"
+                          />
+                        }
+                      />
+                    )}
                   </section>
                 </div>
               </div>
