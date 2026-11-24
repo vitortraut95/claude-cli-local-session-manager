@@ -163,6 +163,9 @@ export type SchedulerStatus = {
   waiting: number;
   /** Why nothing would launch right now; null = there's room. */
   blockedBy: SchedulerBlock | null;
+  /** With `recent_launch`: when the spacing between launches ends (ISO). Optional: an older
+   *  server doesn't send it. */
+  launchSpacingEndsAt?: string | null;
   /** False while the VPN set in `orchestrator.vpnInterface` is down. Optional: an older server
    *  doesn't send it. */
   vpnConnected?: boolean;

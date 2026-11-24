@@ -97,13 +97,14 @@ export async function getSchedulerStatus(): Promise<SchedulerStatus> {
   const { enabled, maxSessions, minFreeMemoryPercent, maxUsagePercent, launchSpacingMinutes } =
     prefs.orchestrator;
   const vpnConnected = await isVpnConnected(prefs);
+  const spacingEndsAt = lastLaunchAt + launchSpacingMinutes * 60_000;
 
   // Unreadable values never block: the app still works on a box without PSI.
   let blockedBy: SchedulerBlock | null = null;
   if (!enabled) blockedBy = "paused";
   else if (!vpnConnected) blockedBy = "vpn_disconnected";
   else if (activeSessions >= maxSessions) blockedBy = "max_sessions";
-  else if (Date.now() - lastLaunchAt < launchSpacingMinutes * 60_000) blockedBy = "recent_launch";
+  else if (Date.now() < spacingEndsAt) blockedBy = "recent_launch";
   else if (freeMemoryPercent !== null && freeMemoryPercent < minFreeMemoryPercent)
     blockedBy = "low_memory";
   else if (memoryPressure !== null && memoryPressure > MAX_MEMORY_PRESSURE)
@@ -121,6 +122,8 @@ export async function getSchedulerStatus(): Promise<SchedulerStatus> {
     maxUsagePercent,
     waiting,
     blockedBy,
+    launchSpacingEndsAt:
+      blockedBy === "recent_launch" ? new Date(spacingEndsAt).toISOString() : null,
     vpnConnected,
     launching: launchingKeys.values().next().value ?? null,
     launchingKeys: [...launchingKeys],

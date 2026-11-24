@@ -240,14 +240,13 @@ export const taskQueue = {
   "taskQueueModal.state.launching": dict("Opening…", "Abrindo…"),
   "taskQueueModal.state.launched": dict("Launched {time}", "Lançada {time}"),
   "taskQueueModal.state.failed": dict("Failed", "Falhou"),
-  "taskQueueModal.waitReason.label": dict("Why it's waiting", "Por que está esperando"),
   "taskQueueModal.waitReason.next": dict(
-    "next to open, on the scheduler's next check.",
-    "é a próxima a abrir, na próxima conferida do agendador.",
+    "Next to open, on the scheduler's next check (every 10 s).",
+    "É a próxima a abrir, na próxima conferida do agendador (a cada 10 s).",
   ),
   "taskQueueModal.waitReason.behind": dict(
-    "{key} is ahead in line and opens first (one at a time, in list order).",
-    "{key} está na frente e abre antes (uma por vez, na ordem da lista).",
+    "Waiting: {key} is ahead in line and opens first (one at a time, in list order).",
+    "Aguardando: {key} está na frente e abre antes (uma por vez, na ordem da lista).",
   ),
   "taskQueueModal.retry": dict("Try again", "Tentar de novo"),
   "taskQueueModal.extraRepoFailed": dict(
@@ -277,6 +276,22 @@ export const taskQueue = {
   "scheduler.blocked.recentLaunch": dict(
     "Waiting: a task opened a moment ago (spacing between launches) — its memory use shows up before the next one starts.",
     "Aguardando: uma tarefa acabou de abrir (intervalo entre aberturas) — o uso de memória dela aparece antes da próxima começar.",
+  ),
+  "scheduler.blocked.recentLaunchAt": dict(
+    "Waiting: a task opened a moment ago — the next one opens at {time} (spacing between launches, so its memory use shows up first).",
+    "Aguardando: uma tarefa acabou de abrir — a próxima abre às {time} (intervalo entre aberturas, pro uso de memória dela aparecer antes).",
+  ),
+  "scheduler.blocked.maxSessionsCount": dict(
+    "Waiting: {active} of {max} sessions open — opens when one closes (close a finished one to free a slot).",
+    "Aguardando: {active} de {max} sessões abertas — abre quando uma fechar (feche uma terminada pra liberar vaga).",
+  ),
+  "scheduler.blocked.lowMemoryPercent": dict(
+    "Waiting: free RAM is {free}%, below the {min}% minimum.",
+    "Aguardando: RAM livre em {free}%, abaixo do mínimo de {min}%.",
+  ),
+  "scheduler.blocked.usageLimitPercent": dict(
+    "Waiting: the Claude plan usage is at {usage}%, at or above the {max}% limit.",
+    "Aguardando: uso do plano Claude em {usage}%, no limite de {max}% ou acima.",
   ),
   "scheduler.blocked.lowMemory": dict(
     "Waiting: free RAM is below the minimum.",
