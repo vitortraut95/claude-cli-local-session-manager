@@ -99,7 +99,8 @@ export function BoardQueue({
 }: {
   status: BoardWatcherStatus;
   items: QueueItem[];
-  /** "Start now" on an item on hold; resolves once the look it triggers is done. */
+  /** "Start now" on any item not running, whatever holds it; resolves once the look it
+   *  triggers is done. */
   onStartNow: (subject: string) => Promise<void>;
   /** The queue's new order, top first (what's running isn't part of it). */
   onReorder: (subjects: string[]) => void;
@@ -228,7 +229,7 @@ export function BoardQueue({
                     </p>
                     {item.reason && (
                       <p className="text-xs text-gray-500">
-                        {translateServerText(item.reason, language)}
+                        {t("board.queue.reason")}: {translateServerText(item.reason, language)}
                       </p>
                     )}
                     {item.decision?.build && (
@@ -254,10 +255,12 @@ export function BoardQueue({
                     {t(
                       item.state === "waiting" && item.reason?.includes(USER_DEVELOPED_IT)
                         ? "board.queue.state.waitingOtherDev"
-                        : STATE_LABEL[item.state],
+                        : item.decision?.action === "skip"
+                          ? "board.queue.state.skipped"
+                          : STATE_LABEL[item.state],
                     )}
                   </span>
-                  {item.decision?.canStart && (
+                  {item.state !== "running" && (
                     <Tooltip content={t("board.queue.startNow.tooltip")}>
                       <button
                         type="button"

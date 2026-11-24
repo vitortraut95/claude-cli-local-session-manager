@@ -42,7 +42,7 @@ export type Decision = {
    *  description fingerprint. */
   ref?: string;
   context?: DecisionContext;
-  /** A wait the user can skip with "Start now" (`state.forced`). */
+  /** A wait or skip the user can override with "Start now" (`state.forced`). */
   canStart?: boolean;
   /** The build that failed, for a "CI failed". */
   failedBuild?: { url: string; name: string };
@@ -134,26 +134,24 @@ export function decideIssues(
   let claimedToday = state.testClaims.day === today ? state.testClaims.count : 0;
   for (const issue of testsInOrder) {
     const subject = issue.key;
-    if (issue.assigneeId === config.me) {
-      decisions.push({ subject, action: "skip", reason: "the user developed it" });
-      continue;
-    }
+    const byHand = forced.has(subject);
     const plan = testPlanStatus(issue.comments);
-    if (plan.state === "none") {
-      decisions.push({ subject, action: "skip", reason: "no test plan in the comments" });
+    // Started by hand: tested whatever it was skipped for, with or without a plan.
+    const skipReason = (): string | null => {
+      if (issue.assigneeId === config.me) return "the user developed it";
+      if (plan.state === "none") return "no test plan in the comments";
+      if (plan.state === "tested") return "already tested since the last plan";
+      const problem = testabilityProblem(issue, plan.plan);
+      return problem ? `left for a person: ${problem}` : null;
+    };
+    const planId = plan.state === "none" ? "" : plan.plan.id;
+    if (!byHand && planId && state.handled[`test:${subject}`] === planId) continue;
+    const skip = byHand ? null : skipReason();
+    if (skip) {
+      decisions.push({ subject, action: "skip", reason: skip, canStart: true });
       continue;
     }
-    if (plan.state === "tested") {
-      decisions.push({ subject, action: "skip", reason: "already tested since the last plan" });
-      continue;
-    }
-    if (state.handled[`test:${subject}`] === plan.plan.id) continue;
-    const problem = testabilityProblem(issue, plan.plan);
-    if (problem) {
-      decisions.push({ subject, action: "skip", reason: `left for a person: ${problem}` });
-      continue;
-    }
-    const wait = forced.has(subject) ? null : testWait(issue, now, config, claimed, claimedToday);
+    const wait = byHand ? null : testWait(issue, now, config, claimed, claimedToday);
     if (wait) {
       decisions.push(startable(subject, wait));
       continue;
@@ -163,8 +161,8 @@ export function decideIssues(
     decisions.push({
       subject,
       action: "claim-test",
-      reason: forced.has(subject) ? BY_HAND : `test plan in comment ${plan.plan.id}`,
-      ref: plan.plan.id,
+      reason: byHand ? BY_HAND : `test plan in comment ${planId}`,
+      ref: planId,
     });
   }
   return decisions.map((d, index) => ({
@@ -230,12 +228,12 @@ export function decideRetests(
       .sort()
       .at(-1);
     const subject = issue.key;
-    if (!fixPush) {
-      decisions.push({ subject, action: "wait", reason: "test failed; waiting for a fix push" });
+    const byHand = state.forced.includes(subject);
+    if (!fixPush && !byHand) {
+      decisions.push(startable(subject, "test failed; waiting for a fix push"));
       continue;
     }
-    if (state.handled[`retest:${subject}`] === fixPush) continue;
-    const byHand = state.forced.includes(subject);
+    if (!byHand && state.handled[`retest:${subject}`] === fixPush) continue;
     if (!byHand && !businessTime) {
       decisions.push(startable(subject, "outside business hours"));
       continue;
@@ -249,7 +247,7 @@ export function decideRetests(
       subject,
       action: "retest",
       reason: byHand ? BY_HAND : `fix pushed after the failed test (${report.id})`,
-      ref: fixPush,
+      ref: fixPush ?? report.id,
     });
   }
   return decisions;
@@ -345,7 +343,9 @@ export function decidePullRequests(
     if (state.handled[`ai-reviewed:${subject}`] !== undefined) continue;
     if (pr.reviewers.some((r) => r.id === config.me && r.state === "approved")) continue;
     // Queued, or its session failed on this push: a new push tries again.
-    if (queued.has(subject) || state.handled[`review:${subject}`] === pr.lastPushAt) continue;
+    const byHand = state.forced.includes(subject);
+    if (queued.has(subject)) continue;
+    if (!byHand && state.handled[`review:${subject}`] === pr.lastPushAt) continue;
 
     const keys = ticketKeysOf(pr);
     const unapprovedDeploying =
@@ -354,10 +354,11 @@ export function decidePullRequests(
     const extra: Partial<Decision> = pastCodeReview
       ? { context: { kind: "unapproved-deploying", keys, lastPushAt: pr.lastPushAt } }
       : {};
+    // Started by hand: whatever it waits for or was skipped for, it's reviewed now.
     const skip = (reason: string, more: Partial<Decision> = {}) =>
-      decisions.push({ subject, action: "skip", reason, ...extra, ...more });
-    const byHand = state.forced.includes(subject);
-    // Started by hand: what it waits for is skipped (a skip, e.g. a draft, still holds).
+      byHand
+        ? decisions.push({ subject, action: "review", reason: BY_HAND, ...extra })
+        : decisions.push({ subject, action: "skip", reason, canStart: true, ...extra, ...more });
     const wait = (reason: string) =>
       byHand
         ? decisions.push({ subject, action: "review", reason: BY_HAND, ...extra })

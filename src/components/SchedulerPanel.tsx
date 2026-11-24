@@ -6,21 +6,12 @@ import type { TranslationKey } from "../i18n/translations";
 import * as preferencesApi from "../services/preferencesApi";
 import type { OrchestratorPreferences } from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
-import type { HeavyRunHookStatus, SchedulerBlock, SchedulerStatus } from "../services/tasksApi";
+import type { HeavyRunHookStatus, SchedulerStatus } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import { BLOCK_KEYS } from "../utils/schedulerBlocks";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { SettingRow } from "./SettingRow";
-
-const BLOCK_KEYS: Record<SchedulerBlock, TranslationKey> = {
-  paused: "scheduler.blocked.paused",
-  vpn_disconnected: "scheduler.blocked.vpnDisconnected",
-  max_sessions: "scheduler.blocked.maxSessions",
-  recent_launch: "scheduler.blocked.recentLaunch",
-  low_memory: "scheduler.blocked.lowMemory",
-  memory_pressure: "scheduler.blocked.memoryPressure",
-  usage_limit: "scheduler.blocked.usageLimit",
-};
 
 /** Same bounds the server accepts (`isOrchestratorPreferences`). */
 const LIMITS: Record<

@@ -434,8 +434,13 @@ async function lookLocked(): Promise<void> {
               state.pendingTests.push({ issue, planId: report?.id ?? "", retest: true });
               return;
             }
+            // Started by hand: tested even with no plan or one already tested.
             const plan = testPlanStatus(issue.comments);
-            if (plan.state === "pending") state.pendingTests.push({ issue, planId: plan.plan.id });
+            if (plan.state === "none") {
+              if (state.forced.includes(issue.key)) state.pendingTests.push({ issue, planId: "" });
+            } else if (plan.state === "pending" || state.forced.includes(issue.key)) {
+              state.pendingTests.push({ issue, planId: plan.plan.id });
+            }
           }
         : undefined;
     await rotateActionsDaily(now);
@@ -846,16 +851,19 @@ async function unforce(subject: string): Promise<void> {
   });
 }
 
-/** "Start now" on the Board: what the ticket or PR waits for is skipped, and a look runs now.
- *  A skip (draft, conflicts, no test plan…) still holds. */
+/** "Start now" on the Board: whatever the ticket or PR waits for or was skipped for (limits,
+ *  business hours, draft, no test plan…) is ignored, it goes to the top of the queue and a look
+ *  runs now. */
 export async function startBoardWatcherItemNow(subject: string): Promise<BoardWatcherStatus> {
   await serial(async () => {
     const state = await loadState();
     if (!state.forced.includes(subject)) state.forced.push(subject);
+    state.priority = [subject, ...state.priority.filter((s) => s !== subject)];
     await saveState(state);
   });
   recordEvent("boardWatcher.startNow", { subject });
   await look();
+  void drainJobs();
   return getBoardWatcherStatus();
 }
 

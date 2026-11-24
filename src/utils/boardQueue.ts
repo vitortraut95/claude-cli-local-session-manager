@@ -43,8 +43,14 @@ export function queueItems(
   if (current?.subject && (current.kind === "review" || current.kind === "test")) {
     add({ subject: current.subject, state: "running", work: current.kind });
   }
-  for (const subject of status.pendingReviews) add({ subject, state: "queued", work: "review" });
-  for (const subject of status.pendingTests) add({ subject, state: "queued", work: "test" });
+  // Sessions start one at a time; what holds them (preview building, VPN…) when there's a hold.
+  const queuedReason = status.jobsBlockedBy ?? "one session at a time: waits for its turn";
+  for (const subject of status.pendingReviews) {
+    add({ subject, state: "queued", work: "review", reason: queuedReason });
+  }
+  for (const subject of status.pendingTests) {
+    add({ subject, state: "queued", work: "test", reason: queuedReason });
+  }
   for (const decision of status.lastDecisions) {
     if (WILL_DO.has(decision.action)) {
       add({

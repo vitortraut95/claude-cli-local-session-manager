@@ -41,6 +41,8 @@ type TaskQueueRowProps = {
   projects: ProjectFolderOption[];
   branchTypes: string[];
   saving: boolean;
+  /** Why it hasn't opened yet, shown while it waits in line. */
+  waitReason: string;
   /** Entries this one can take in (not launched, not launching). */
   groupCandidates: DraftEntry[];
   onUpdate: (patch: Partial<DraftEntry>) => void;
@@ -81,6 +83,7 @@ export function TaskQueueRow({
   projects,
   branchTypes,
   saving,
+  waitReason,
   groupCandidates,
   onUpdate,
   onGroup,
@@ -193,6 +196,12 @@ export function TaskQueueRow({
           />
         </div>
       </div>
+
+      {!locked && !entry.error && !isMissingSetup(entry) && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {t("taskQueueModal.waitReason.label")}: {waitReason}
+        </p>
+      )}
 
       {summary ? (
         !entry.noRepo &&

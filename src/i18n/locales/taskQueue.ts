@@ -240,6 +240,15 @@ export const taskQueue = {
   "taskQueueModal.state.launching": dict("Opening…", "Abrindo…"),
   "taskQueueModal.state.launched": dict("Launched {time}", "Lançada {time}"),
   "taskQueueModal.state.failed": dict("Failed", "Falhou"),
+  "taskQueueModal.waitReason.label": dict("Why it's waiting", "Por que está esperando"),
+  "taskQueueModal.waitReason.next": dict(
+    "next to open, on the scheduler's next check.",
+    "é a próxima a abrir, na próxima conferida do agendador.",
+  ),
+  "taskQueueModal.waitReason.behind": dict(
+    "{key} is ahead in line and opens first (one at a time, in list order).",
+    "{key} está na frente e abre antes (uma por vez, na ordem da lista).",
+  ),
   "taskQueueModal.retry": dict("Try again", "Tentar de novo"),
   "taskQueueModal.extraRepoFailed": dict(
     "Launched without an extra repo: {message}",

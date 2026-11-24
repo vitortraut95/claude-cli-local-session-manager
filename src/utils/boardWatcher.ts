@@ -36,7 +36,11 @@ const SERVER_TEXT_PT: [RegExp, string][] = [
   [/no screenshot or Figma/, "sem print ou Figma"],
   [/visual change without Figma/, "mudança visual sem Figma"],
   [/the user developed it/, "você é o dev"],
-  [/no test plan in the comments/, "sem plano de teste nos comentários"],
+  [
+    /no test plan in the comments/,
+    "sem plano de teste nos comentários — a automação só pega teste com plano",
+  ],
+  [/one session at a time: waits for its turn/, "uma sessão por vez: espera a vez dela"],
   [/test failed; waiting for a fix push/, "teste reprovou; esperando push com a correção"],
   [/fix pushed after the failed test \(\S+\)/, "correção subiu depois do teste reprovado"],
   [/already tested since the last plan/, "já testada depois do último plano"],

@@ -83,6 +83,9 @@ The watcher is a safety net, not a competitor: it only takes tickets nobody pick
   own, and not already approved by them. No review on a draft, red CI, conflicts or another
   reviewer's "changes requested"; never "request changes" or decline. Any size is approved when
   nothing blocking is found.
+- "Start now" on a Board queue item (`state.forced`) overrides every wait and skip of that item
+  (limits, business hours, grace period, draft, conflicts, no test plan, the user's own ticket)
+  and puts it first in the queue; only the daily approval cap still pauses.
 - Jira: never assigns itself, never touches anyone else's ticket. The only status change is Wait
   Test → Testing when it claims a test, which is what tells others it's being tested.
 

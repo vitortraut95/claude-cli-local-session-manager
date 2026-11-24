@@ -283,8 +283,8 @@ export const guide = {
   "guide.board.attention.where": dict("Board › Needs you", "Board › Precisa de você"),
   "guide.board.live.title": dict("Eye's queue and live feed", "Fila do olho e ao vivo"),
   "guide.board.live.what": dict(
-    "What it will look at next, tagged by kind of work: drag (or use the arrow keys) to set the priority, or “Start now” to skip what an item waits for. And what it's doing right now, with a timer.",
-    "O que ele vai olhar a seguir, marcado pelo tipo de trabalho: arraste (ou use as setas) para definir a prioridade, ou “Começar agora” para pular o que um item espera. E o que está fazendo agora, com cronômetro.",
+    "What it will look at next, tagged by kind of work, each with why it waits or was left out: drag (or use the arrow keys) to set the priority, or “Start now” on any item to start it first, whatever holds it (limits, hours, draft, no test plan). And what it's doing right now, with a timer.",
+    "O que ele vai olhar a seguir, marcado pelo tipo de trabalho, cada um com o motivo de esperar ou ter ficado de fora: arraste (ou use as setas) para definir a prioridade, ou “Começar agora” em qualquer item para começá-lo na frente, passando por cima do que segura (limites, horário, draft, falta de plano de teste). E o que está fazendo agora, com cronômetro.",
   ),
   "guide.board.live.where": dict("Board › Queue and Live", "Board › Na fila e Ao vivo"),
   "guide.board.history.title": dict("History and feedback", "Histórico e feedback"),
