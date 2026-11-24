@@ -14,6 +14,7 @@ import * as preferencesApi from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import type { QueueEntry, QueueKind, SchedulerStatus } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
+import { describeSchedulerBlock } from "../utils/schedulerBlocks";
 import { type DraftEntry, entryKeys, previewDevPrompt, toDraft } from "../utils/taskQueue";
 
 /** While shown, the scheduler's progress (launches, errors, room left) is re-read this often. */
@@ -394,7 +395,7 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
             projects={projects}
             branchTypes={branchTypes}
             saving={saving}
-            blockedBy={status?.waiting ? status.blockedBy : null}
+            blockedReason={status?.waiting ? describeSchedulerBlock(status, t) : null}
             onStartNow={(key) => void handleStartNow(key)}
             onRemoveLaunched={() => void handleRemoveLaunched()}
             onRetry={(key) => {

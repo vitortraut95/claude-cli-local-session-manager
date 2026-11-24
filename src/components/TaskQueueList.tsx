@@ -1,9 +1,8 @@
 import { Loader2 } from "lucide-react";
 import { type Dispatch, type SetStateAction, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
-import type { ProjectFolderOption, SchedulerBlock } from "../services/tasksApi";
+import type { ProjectFolderOption } from "../services/tasksApi";
 import { type DraftEntry, isMissingSetup } from "../utils/taskQueue";
-import { BLOCK_KEYS } from "../utils/schedulerBlocks";
 import { Button } from "./Button";
 import { TaskQueueRow } from "./TaskQueueRow";
 
@@ -17,8 +16,8 @@ type TaskQueueListProps = {
   projects: ProjectFolderOption[];
   branchTypes: string[];
   saving: boolean;
-  /** What holds the whole queue right now (null = nothing), shown on each waiting entry. */
-  blockedBy: SchedulerBlock | null;
+  /** What holds the whole queue right now, in words (null = nothing), shown on each waiting entry. */
+  blockedReason: string | null;
   onStartNow: (key: string) => void;
   onRetry: (key: string) => void;
   /** Shows what a development entry's session will be sent. */
@@ -37,7 +36,7 @@ export function TaskQueueList({
   projects,
   branchTypes,
   saving,
-  blockedBy,
+  blockedReason,
   onStartNow,
   onRetry,
   onPreviewPrompt,
@@ -50,11 +49,10 @@ export function TaskQueueList({
     (e) => !e.launchedAt && !e.error && !isLaunching(e.key) && !isMissingSetup(e),
   )?.key;
   const waitReason = (key: string): string =>
-    blockedBy
-      ? t(BLOCK_KEYS[blockedBy])
-      : key === firstReady || !firstReady
-        ? t("taskQueueModal.waitReason.next")
-        : t("taskQueueModal.waitReason.behind", { key: firstReady });
+    blockedReason ??
+    (key === firstReady || !firstReady
+      ? t("taskQueueModal.waitReason.next")
+      : t("taskQueueModal.waitReason.behind", { key: firstReady }));
 
   const updateEntry = (key: string, patch: Partial<DraftEntry>) =>
     setEntries((current) => current.map((e) => (e.key === key ? { ...e, ...patch } : e)));

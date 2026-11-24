@@ -8,7 +8,7 @@ import type { OrchestratorPreferences } from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import type { HeavyRunHookStatus, SchedulerStatus } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
-import { BLOCK_KEYS } from "../utils/schedulerBlocks";
+import { describeSchedulerBlock } from "../utils/schedulerBlocks";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { SettingRow } from "./SettingRow";
@@ -166,7 +166,7 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
   }, []);
 
   const enabled = settings?.enabled ?? status?.enabled ?? true;
-  const blockedBy = status?.blockedBy ?? null;
+  const blockedReason = describeSchedulerBlock(status, t);
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
@@ -178,11 +178,10 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {status?.launching
               ? t("scheduler.launching", { key: status.launching })
-              : blockedBy
-                ? t(BLOCK_KEYS[blockedBy])
-                : status && status.waiting > 0
+              : (blockedReason ??
+                (status && status.waiting > 0
                   ? t("scheduler.ready", { count: status.waiting })
-                  : t("scheduler.idle")}
+                  : t("scheduler.idle")))}
           </p>
         </div>
         <div className="flex gap-2">

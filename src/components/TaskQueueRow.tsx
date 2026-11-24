@@ -199,7 +199,7 @@ export function TaskQueueRow({
 
       {!locked && !entry.error && !isMissingSetup(entry) && (
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          {t("taskQueueModal.waitReason.label")}: {waitReason}
+          {waitReason}
         </p>
       )}
 
