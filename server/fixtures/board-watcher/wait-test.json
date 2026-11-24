@@ -1165,6 +1165,32 @@
     }
   },
   {
+    "name": "started by hand: a ticket with no test plan is claimed anyway",
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "issues": [
+          {
+            "key": "DEMO-43",
+            "statusId": "wait-test",
+            "assigneeId": "ana",
+            "statusSince": "2026-10-28T09:00:00-03:00",
+            "comments": []
+          }
+        ],
+        "expect": {
+          "effects": ["transition DEMO-43 -> testing", "enqueue test DEMO-43"],
+          "decisions": {
+            "DEMO-43": "claim-test"
+          }
+        }
+      }
+    ],
+    "state": {
+      "forced": ["DEMO-43"]
+    }
+  },
+  {
     "name": "a ticket dragged to the top of the Board's queue is claimed before older ones",
     "ticks": [
       {

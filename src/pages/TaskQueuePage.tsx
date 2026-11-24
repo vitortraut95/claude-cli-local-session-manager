@@ -394,6 +394,7 @@ export function TaskQueuePage({ active, onChanged, newTaskRequest }: TaskQueuePa
             projects={projects}
             branchTypes={branchTypes}
             saving={saving}
+            blockedBy={status?.waiting ? status.blockedBy : null}
             onStartNow={(key) => void handleStartNow(key)}
             onRemoveLaunched={() => void handleRemoveLaunched()}
             onRetry={(key) => {

@@ -98,6 +98,8 @@ export const boardWatcher = {
   "board.queue.state.next": dict("Will do", "Vai fazer"),
   "board.queue.state.waiting": dict("On hold", "Esperando"),
   "board.queue.state.waitingOtherDev": dict("Waiting for another dev", "Esperando outro dev"),
+  "board.queue.state.skipped": dict("Not automatic", "Fora da automação"),
+  "board.queue.reason": dict("Why", "Motivo"),
   "board.queue.calls": dict("API calls of the last look", "Chamadas da última olhada"),
   "board.queue.work.review": dict("Code review", "Code review"),
   "board.queue.work.dev": dict("Implementation", "Implementação"),
@@ -107,8 +109,8 @@ export const boardWatcher = {
   "board.queue.build": dict("Failed build: {name}", "Build que falhou: {name}"),
   "board.queue.startNow": dict("Start now", "Começar agora"),
   "board.queue.startNow.tooltip": dict(
-    "Skips what it's waiting for (business hours, grace period, limits, Code Review, CI) and starts it now. Drafts, conflicts and failed CI still hold it.",
-    "Pula o que ela está esperando (horário, carência, limites, Code Review, CI) e começa agora. Draft, conflito e CI falhando continuam segurando.",
+    "Starts it now, first in line, whatever holds it: business hours, grace period, limits, Code Review, CI, draft, conflicts, no test plan.",
+    "Começa agora, na frente da fila, passando por cima do que segura: horário, carência, limites, Code Review, CI, draft, conflito, falta de plano de teste.",
   ),
   "board.queue.startNow.started": dict("{subject} started.", "{subject} iniciada."),
   "board.queue.startNow.stillWaiting": dict(

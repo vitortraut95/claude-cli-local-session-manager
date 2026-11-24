@@ -769,7 +769,7 @@
     }
   },
   {
-    "name": "started by hand: a draft is still skipped",
+    "name": "started by hand: even a draft is reviewed",
     "state": {
       "forced": ["web#20"]
     },
@@ -786,9 +786,9 @@
           }
         ],
         "expect": {
-          "effects": [],
+          "effects": ["approve web#20", "ai-review web#20 approved"],
           "decisions": {
-            "web#20": "skip"
+            "web#20": "review"
           }
         }
       }
