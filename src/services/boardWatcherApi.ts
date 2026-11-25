@@ -31,6 +31,8 @@ export type {
   WatcherScoreboard,
   AutomationFeatures,
   AutomationLimits,
+  AutomationRule,
+  AutomationRules,
   AutomationSettings,
   AutomationSettingsInput,
   BoardWatcherStatus,

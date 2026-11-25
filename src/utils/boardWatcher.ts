@@ -16,7 +16,21 @@ export const LIMIT_BOUNDS: Record<keyof AutomationLimits, [number, number]> = {
   maxApprovesPerDay: [1, 100],
   maxCommentsPerPr: [0, 20],
   descriptionMinScore: [0, 5],
+  buildStartGraceMinutes: [0, 240],
+  digestBeforeEndMinutes: [0, 120],
+  errorAlertEveryMinutes: [10, 1440],
+  waitingNoticeEveryMinutes: [0, 1440],
+  networkNoticeEveryMinutes: [10, 1440],
 };
+
+/** The limits shown under "Times" instead of "Limits". */
+export const TIMING_FIELDS: (keyof AutomationLimits)[] = [
+  "buildStartGraceMinutes",
+  "digestBeforeEndMinutes",
+  "errorAlertEveryMinutes",
+  "waitingNoticeEveryMinutes",
+  "networkNoticeEveryMinutes",
+];
 
 /** Same format the server accepts for business hours. */
 export const HHMM_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;

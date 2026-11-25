@@ -11,7 +11,7 @@ import type {
   AutomationSettingsInput,
 } from "../services/boardWatcherApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
-import { HHMM_PATTERN, LIMIT_BOUNDS } from "../utils/boardWatcher";
+import { HHMM_PATTERN, LIMIT_BOUNDS, TIMING_FIELDS } from "../utils/boardWatcher";
 import { Input } from "./Input";
 import { AutomationModesEditor, type AutomationFocus } from "./AutomationModesEditor";
 import { AutomationSetupModal } from "./AutomationSetupModal";
@@ -28,6 +28,11 @@ const LIMIT_LABELS: Record<keyof AutomationLimits, TranslationKey> = {
   maxApprovesPerDay: "automation.limit.maxApprovesPerDay",
   maxCommentsPerPr: "automation.limit.maxCommentsPerPr",
   descriptionMinScore: "automation.limit.descriptionMinScore",
+  buildStartGraceMinutes: "automation.limit.buildStartGraceMinutes",
+  digestBeforeEndMinutes: "automation.limit.digestBeforeEndMinutes",
+  errorAlertEveryMinutes: "automation.limit.errorAlertEveryMinutes",
+  waitingNoticeEveryMinutes: "automation.limit.waitingNoticeEveryMinutes",
+  networkNoticeEveryMinutes: "automation.limit.networkNoticeEveryMinutes",
 };
 
 const LIMIT_DESCRIPTIONS: Record<keyof AutomationLimits, TranslationKey> = {
@@ -39,7 +44,16 @@ const LIMIT_DESCRIPTIONS: Record<keyof AutomationLimits, TranslationKey> = {
   maxApprovesPerDay: "automation.limit.maxApprovesPerDay.description",
   maxCommentsPerPr: "automation.limit.maxCommentsPerPr.description",
   descriptionMinScore: "automation.limit.descriptionMinScore.description",
+  buildStartGraceMinutes: "automation.limit.buildStartGraceMinutes.description",
+  digestBeforeEndMinutes: "automation.limit.digestBeforeEndMinutes.description",
+  errorAlertEveryMinutes: "automation.limit.errorAlertEveryMinutes.description",
+  waitingNoticeEveryMinutes: "automation.limit.waitingNoticeEveryMinutes.description",
+  networkNoticeEveryMinutes: "automation.limit.networkNoticeEveryMinutes.description",
 };
+
+const LIMIT_FIELDS = (Object.keys(LIMIT_BOUNDS) as (keyof AutomationLimits)[]).filter(
+  (field) => !TIMING_FIELDS.includes(field),
+);
 
 /** Same bounds the server accepts for `orchestrator.launchSpacingMinutes`. */
 const LAUNCH_SPACING_BOUNDS = [0, 60] as const;
@@ -57,6 +71,7 @@ function applyInput(
     enabled: input.enabled ?? current.enabled,
     features: { ...current.features, ...input.features },
     limits: { ...current.limits, ...input.limits },
+    rules: current.rules && { ...current.rules, ...input.rules },
     businessHours: { ...current.businessHours, ...input.businessHours },
   };
 }
@@ -67,7 +82,8 @@ type AutomationModalProps = {
   focus?: AutomationFocus;
 };
 
-/** The automation switches, limits and business hours. Every change is saved right away. */
+/** The automation switches, their rules (what holds each back), limits, times and business hours.
+ *  Every change is saved right away. */
 export function AutomationModal({ onClose, focus }: AutomationModalProps) {
   const { t } = useLanguage();
   const { showToast } = useToast();
@@ -238,6 +254,8 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
                     features={settings.features}
                     onChange={(features) => void save({ features })}
                     focus={focus}
+                    rules={settings.rules}
+                    onRulesChange={(rules) => void save({ rules })}
                   />
                 </section>
                 <div className="flex flex-col gap-6">
@@ -302,7 +320,7 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                       {t("automation.limits")}
                     </h3>
-                    {(Object.keys(LIMIT_BOUNDS) as (keyof AutomationLimits)[]).map((field) => (
+                    {LIMIT_FIELDS.map((field) => (
                       <SettingRow
                         key={field}
                         label={t(LIMIT_LABELS[field])}
@@ -355,6 +373,41 @@ export function AutomationModal({ onClose, focus }: AutomationModalProps) {
                       />
                     )}
                   </section>
+                  {TIMING_FIELDS.some((field) => settings.limits[field] !== undefined) && (
+                    <section className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {t("automation.times")}
+                      </h3>
+                      {TIMING_FIELDS.map((field) => (
+                        <SettingRow
+                          key={field}
+                          label={t(LIMIT_LABELS[field])}
+                          description={t(LIMIT_DESCRIPTIONS[field])}
+                          controlWidth="w-24"
+                          control={
+                            <Input
+                              type="number"
+                              min={LIMIT_BOUNDS[field][0]}
+                              max={LIMIT_BOUNDS[field][1]}
+                              value={drafts[field] ?? String(settings.limits[field] ?? "")}
+                              aria-label={t(LIMIT_LABELS[field])}
+                              onChange={(event) =>
+                                setDrafts((current) => ({
+                                  ...current,
+                                  [field]: event.target.value,
+                                }))
+                              }
+                              onBlur={() => commitLimit(field)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") commitLimit(field);
+                              }}
+                              className="py-1"
+                            />
+                          }
+                        />
+                      ))}
+                    </section>
+                  )}
                 </div>
               </div>
             </>

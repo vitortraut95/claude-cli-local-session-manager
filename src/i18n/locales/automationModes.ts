@@ -82,7 +82,126 @@ export const automationModes = {
     "Teste terminado, review sem aprovação, falhas, pausa.",
   ),
   "automationModes.notices.digest": dict(
-    "Digest when business hours start and 10 minutes before they end",
-    "Resumo no começo do horário e 10 minutos antes de ele acabar",
+    "Digest when business hours start and shortly before they end (see Times)",
+    "Resumo no começo do horário e pouco antes de ele acabar (ver Tempos)",
+  ),
+
+  "automationModes.rules": dict(
+    "What holds it back (uncheck to drop the wait)",
+    "O que segura (desmarque para tirar a espera)",
+  ),
+  "automationModes.rule.reviewWaitsForCodeReviewColumn": dict(
+    "Only once the task is in Code Review",
+    "Só quando a tarefa estiver em Code Review",
+  ),
+  "automationModes.rule.reviewWaitsForCodeReviewColumn.help": dict(
+    "Off: every colleague's PR is reviewed as soon as it shows up, whatever column its task is in.",
+    "Desligado: todo PR de colega é revisado assim que aparece, em qualquer coluna da tarefa.",
+  ),
+  "automationModes.rule.reviewWaitsForCi": dict("Wait for CI to finish", "Esperar o CI terminar"),
+  "automationModes.rule.reviewWaitsForCi.help": dict(
+    "Off: the review starts while CI is still running.",
+    "Desligado: o review começa com o CI ainda rodando.",
+  ),
+  "automationModes.rule.reviewSkipsFailedCi": dict(
+    "Skip PRs with failed CI",
+    "Pular PR com CI falhando",
+  ),
+  "automationModes.rule.reviewSkipsFailedCi.help": dict(
+    "Off: PRs with a red CI are reviewed too.",
+    "Desligado: PR com CI vermelho também é revisado.",
+  ),
+  "automationModes.rule.reviewSkipsDrafts": dict("Skip drafts", "Pular rascunhos"),
+  "automationModes.rule.reviewSkipsDrafts.help": dict(
+    "Off: draft PRs are reviewed too.",
+    "Desligado: PR em rascunho também é revisado.",
+  ),
+  "automationModes.rule.reviewSkipsConflicts": dict(
+    "Skip PRs with conflicts",
+    "Pular PR com conflitos",
+  ),
+  "automationModes.rule.reviewSkipsConflicts.help": dict(
+    "Off: PRs with merge conflicts are reviewed too.",
+    "Desligado: PR com conflito de merge também é revisado.",
+  ),
+  "automationModes.rule.reviewSkipsChangesRequested": dict(
+    "Skip when another reviewer requested changes",
+    "Pular quando outro revisor pediu mudanças",
+  ),
+  "automationModes.rule.reviewSkipsChangesRequested.help": dict(
+    'Off: reviewed even with someone else\'s "changes requested".',
+    'Desligado: revisa mesmo com "mudanças solicitadas" de outra pessoa.',
+  ),
+  "automationModes.rule.reviewBusinessHoursOnly": dict(
+    "Only in business hours",
+    "Só no horário comercial",
+  ),
+  "automationModes.rule.reviewBusinessHoursOnly.help": dict(
+    "Off: reviews (comments and approvals included) also run outside business hours; the board is looked at then too.",
+    "Desligado: reviews (com comentários e aprovações) rodam também fora do horário; o board passa a ser olhado nesse período.",
+  ),
+  "automationModes.rule.devBusinessHoursOnly": dict(
+    "Only in business hours",
+    "Só no horário comercial",
+  ),
+  "automationModes.rule.devBusinessHoursOnly.help": dict(
+    "Off: your To Do tasks go to the queue and to In Progress outside business hours too.",
+    "Desligado: suas tarefas de To Do entram na fila e vão pra In Progress também fora do horário.",
+  ),
+  "automationModes.rule.devOneInProgress": dict(
+    "Only one task In Progress at a time",
+    "Só uma tarefa em In Progress por vez",
+  ),
+  "automationModes.rule.devOneInProgress.help": dict(
+    "Off: every task you started is moved to In Progress, one per look.",
+    "Desligado: toda tarefa que você começou vai pra In Progress, uma por olhada.",
+  ),
+  "automationModes.rule.testBusinessHoursOnly": dict(
+    "Only in business hours",
+    "Só no horário comercial",
+  ),
+  "automationModes.rule.testBusinessHoursOnly.help": dict(
+    "Off: tests are picked up and run outside business hours too.",
+    "Desligado: testes são pegos e rodam também fora do horário.",
+  ),
+  "automationModes.rule.testSkipsOwnTickets": dict(
+    "Skip tasks you developed",
+    "Pular tarefas que você desenvolveu",
+  ),
+  "automationModes.rule.testSkipsOwnTickets.help": dict(
+    "Off: your own tasks in Wait Test are tested too.",
+    "Desligado: suas próprias tarefas em Wait Test também são testadas.",
+  ),
+  "automationModes.rule.testRequiresPlan": dict(
+    "Needs a test plan in the comments",
+    "Exigir plano de teste nos comentários",
+  ),
+  "automationModes.rule.testRequiresPlan.help": dict(
+    "Off: tasks without a plan are tested from the description.",
+    "Desligado: tarefa sem plano é testada pela descrição.",
+  ),
+  "automationModes.rule.testSkipsUntestable": dict(
+    "Leave hard plans to a person",
+    "Deixar plano difícil para uma pessoa",
+  ),
+  "automationModes.rule.testSkipsUntestable.help": dict(
+    "Plans with commands, a release tag, admin access, a real purchase or no link. Off: tried anyway.",
+    "Plano com comando, tag de release, acesso de admin, compra real ou sem link. Desligado: tenta mesmo assim.",
+  ),
+  "automationModes.rule.testWaitsForPreview": dict(
+    "Wait for the preview build",
+    "Esperar o build do preview",
+  ),
+  "automationModes.rule.testWaitsForPreview.help": dict(
+    "Doesn't test while the task's env/ preview is building, failed or hasn't started. Off: tests right away.",
+    "Não testa enquanto o preview env/ da tarefa está buildando, falhou ou não começou. Desligado: testa na hora.",
+  ),
+  "automationModes.rule.retestAfterFix": dict(
+    "Test again after a fix push",
+    "Testar de novo depois do push de correção",
+  ),
+  "automationModes.rule.retestAfterFix.help": dict(
+    "A task whose test failed is tested again once its PR gets a new push.",
+    "Tarefa com teste reprovado é testada de novo quando o PR recebe push novo.",
   ),
 };

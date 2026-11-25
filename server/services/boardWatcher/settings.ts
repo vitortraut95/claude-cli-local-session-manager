@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import type {
   AutomationFeatures,
   AutomationLimits,
+  AutomationRule,
   AutomationSettings,
   AutomationSettingsInput,
 } from "../../../shared/boardWatcher.js";
@@ -14,12 +15,13 @@ import {
   DEFAULT_LIMITS,
   dropSimulation,
   loadBoardWatcherConfig,
+  rulesOf,
   saveRawConfig,
   type BoardWatcherConfig,
 } from "./config.js";
 
 /**
- * The automation switches and limits the app's "Automation" modal edits, mapped onto
+ * The automation switches, rules, limits and times the app's "Automation" modal edits, mapped onto
  * `boardWatcher.json`. Saving rewrites only those keys, so the board ids and the rest of the file
  * stay as they are.
  */
@@ -33,6 +35,11 @@ const LIMIT_RANGES: Record<keyof AutomationLimits, [number, number]> = {
   maxApprovesPerDay: [1, 100],
   maxCommentsPerPr: [0, 20],
   descriptionMinScore: [0, 5],
+  buildStartGraceMinutes: [0, 240],
+  digestBeforeEndMinutes: [0, 120],
+  errorAlertEveryMinutes: [10, 1440],
+  waitingNoticeEveryMinutes: [0, 1440],
+  networkNoticeEveryMinutes: [10, 1440],
 };
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -95,6 +102,7 @@ export async function getAutomationSettings(): Promise<AutomationSettings> {
     enabled: Boolean(config?.enabled),
     features: featuresOf(config),
     limits,
+    rules: rulesOf(config),
     businessHours: {
       start: hours.start,
       end: hours.end,
@@ -143,6 +151,16 @@ export async function saveAutomationSettings(body: unknown): Promise<AutomationS
   }
   await assertReviewSkillFor(input.features);
   writeSwitches(raw, input.features);
+  const known = rulesOf(null);
+  for (const [rule, value] of Object.entries(input.rules ?? {})) {
+    if (!(rule in known) || typeof value !== "boolean") {
+      throw new BadRequestError("BAD_SETTING", `"${rule}" isn't an automation rule.`);
+    }
+    // On is the default: only what's off is written.
+    const rules = section(raw, "rules");
+    if (value) delete rules[rule as AutomationRule];
+    else rules[rule] = false;
+  }
   for (const [limit, value] of Object.entries(input.limits ?? {})) {
     const range = LIMIT_RANGES[limit as keyof AutomationLimits];
     if (!range || typeof value !== "number" || !Number.isFinite(value)) {

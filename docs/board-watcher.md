@@ -68,6 +68,24 @@ The watcher is a safety net, not a competitor: it only takes tickets nobody pick
 | Approvals per day     | 8, then the watcher pauses and alerts                                 | that many in a day means something's off  |
 | Tests claimed at once | 2, and 4 a day                                                        | doesn't hog the column                    |
 
+## Rules
+
+Every wait and skip of the automations is a rule in `boardWatcher.json` → `rules`, all on unless
+`false`, edited as checkboxes in each automation's card of the Automation modal (`AUTOMATION_RULES`
+in `shared/boardWatcher.ts`, read through `rulesOf`):
+
+- Code review: waits for the Code Review column, waits for CI, skips red CI, drafts, conflicts and
+  another reviewer's "changes requested", business hours only.
+- To Do: business hours only, one task In Progress at a time.
+- Tests: business hours only, skips the user's own tickets, needs a test plan, leaves hard plans to
+  a person, waits for the preview build, retests after a fix push.
+
+With a business-hours rule off for an automation that is on, the board is also looked at outside
+business hours (every `lookIntervalMinutes`). The times behind the notices and the preview wait
+(`buildStartGraceMinutes`, `digestBeforeEndMinutes`, `errorAlertEveryMinutes`,
+`waitingNoticeEveryMinutes`, `networkNoticeEveryMinutes`) are limits like the others, under "Times
+and notices" in the modal.
+
 ## Playing nice
 
 - PRs: each gets one AI review and one human review. The AI review runs as soon as the PR's ticket

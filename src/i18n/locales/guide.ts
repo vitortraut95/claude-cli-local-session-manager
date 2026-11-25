@@ -256,8 +256,8 @@ export const guide = {
   "guide.board.eye.where": dict("Navigation › Board", "Navegação › Board"),
   "guide.board.modes.title": dict("Automation modes", "Modos das automações"),
   "guide.board.modes.what": dict(
-    "Code review (one AI review per colleague's PR, with the code review skill chosen right in its card), To Do, Tests, Rebuild and Teams notices, each on or off, plus business hours and limits (including the minutes between two sessions opening, shared with the task queue).",
-    "Code review (uma review por IA por PR de colega, com a skill de code review escolhida no próprio card), A fazer, Testes, Rebuild e avisos no Teams, cada um ligado ou desligado, além do horário e dos limites (inclusive os minutos entre a abertura de duas sessões, o mesmo da fila de tarefas).",
+    "Code review (one AI review per colleague's PR, with the code review skill chosen right in its card), To Do, Tests, Rebuild and Teams notices, each on or off, with what holds each one back (CI running, drafts, conflicts, Code Review column, business hours, test plan, preview build…) as checkboxes in its card, plus business hours, limits and times (including the minutes between two sessions opening, shared with the task queue).",
+    "Code review (uma review por IA por PR de colega, com a skill de code review escolhida no próprio card), A fazer, Testes, Rebuild e avisos no Teams, cada um ligado ou desligado, com o que segura cada um (CI rodando, rascunho, conflitos, coluna de Code Review, horário, plano de teste, build do preview…) em caixas de marcar no próprio card, além do horário, dos limites e dos tempos (inclusive os minutos entre a abertura de duas sessões, o mesmo da fila de tarefas).",
   ),
   "guide.board.modes.where": dict(
     "Board › a mode chip (opens that automation highlighted)",

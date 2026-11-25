@@ -27,6 +27,45 @@ export type AutomationFeatures = {
 export const AUTOMATIONS = ["codeReview", "devQueue", "testQueue", "rebuild"] as const;
 export type Automation = (typeof AUTOMATIONS)[number];
 
+/**
+ * What holds each automation back, every one on unless false (`boardWatcher.json` → `rules`).
+ * Off = that wait or skip doesn't happen any more.
+ */
+export const AUTOMATION_RULES = {
+  codeReview: [
+    /** Only once the PR's ticket is in the Code Review column. */
+    "reviewWaitsForCodeReviewColumn",
+    /** Waits for the PR's CI to finish. */
+    "reviewWaitsForCi",
+    "reviewSkipsFailedCi",
+    "reviewSkipsDrafts",
+    "reviewSkipsConflicts",
+    /** Skips a PR another reviewer requested changes on. */
+    "reviewSkipsChangesRequested",
+    "reviewBusinessHoursOnly",
+  ],
+  devQueue: [
+    "devBusinessHoursOnly",
+    /** Only one of the user's tasks In Progress on the board at a time. */
+    "devOneInProgress",
+  ],
+  testQueue: [
+    "testBusinessHoursOnly",
+    /** Never tests a ticket the user developed. */
+    "testSkipsOwnTickets",
+    /** Needs a test plan in the comments. */
+    "testRequiresPlan",
+    /** Leaves to a person a plan a browser session can't carry out alone. */
+    "testSkipsUntestable",
+    /** Waits for the ticket's preview builds to be ready. */
+    "testWaitsForPreview",
+    /** A failed test is tested again after a fix push. */
+    "retestAfterFix",
+  ],
+} as const satisfies Partial<Record<Automation, readonly string[]>>;
+export type AutomationRule = (typeof AUTOMATION_RULES)[keyof typeof AUTOMATION_RULES][number];
+export type AutomationRules = Record<AutomationRule, boolean>;
+
 export type AutomationLimits = {
   /** Minutes between two looks at the board in business hours. */
   lookIntervalMinutes?: number;
@@ -37,6 +76,17 @@ export type AutomationLimits = {
   maxApprovesPerDay: number;
   maxCommentsPerPr: number;
   descriptionMinScore: number;
+  // Times and notice intervals, optional: an older backend omits them.
+  /** A preview build this young without any status yet is taken as not started. */
+  buildStartGraceMinutes?: number;
+  /** The evening digest goes out this long before business hours end. */
+  digestBeforeEndMinutes?: number;
+  /** The same failure is alerted at most this often. */
+  errorAlertEveryMinutes?: number;
+  /** The same task's "waiting for you" isn't repeated within this window. */
+  waitingNoticeEveryMinutes?: number;
+  /** "Tests waiting for the network" goes out at most this often. */
+  networkNoticeEveryMinutes?: number;
 };
 
 export type AutomationSettings = {
@@ -45,6 +95,8 @@ export type AutomationSettings = {
   enabled: boolean;
   features: AutomationFeatures;
   limits: AutomationLimits;
+  /** Optional: an older backend omits it. */
+  rules?: AutomationRules;
   businessHours: { start: string; end: string; days: number[]; timezone: string };
 };
 
@@ -52,6 +104,7 @@ export type AutomationSettingsInput = {
   enabled?: boolean;
   features?: Partial<AutomationFeatures>;
   limits?: Partial<AutomationLimits>;
+  rules?: Partial<AutomationRules>;
   businessHours?: Partial<Pick<AutomationSettings["businessHours"], "start" | "end" | "days">>;
 };
 

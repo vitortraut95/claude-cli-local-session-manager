@@ -1,6 +1,6 @@
 import { businessMinutesBetween, isBusinessTime, localDay } from "./businessTime.js";
 import type { DecisionContext, WatcherWork } from "../../../shared/boardWatcher.js";
-import type { BoardWatcherConfig } from "./config.js";
+import { rulesOf, type BoardWatcherConfig } from "./config.js";
 import { gradeDescription } from "./descriptionGate.js";
 import {
   isFailedTestReport,
@@ -20,7 +20,8 @@ import {
  * Pure decisions for one look at the board: what to queue, claim or review, and why the rest is
  * skipped or waiting. No I/O here; `tick.ts` carries them out. Issues the user has no part in
  * (unassigned, someone else's) and PRs off the board get no decision at all. Every PR of someone
- * else is the user's to review, whoever is listed as a reviewer.
+ * else is the user's to review, whoever is listed as a reviewer. Each wait and skip below can be
+ * turned off by its rule (`rulesOf`).
  */
 
 export type DecisionAction =
@@ -74,7 +75,8 @@ export function decideIssues(
       .map((i) => i.key),
   );
   let claimed = state.claimedTests.filter((key) => stillTesting.has(key)).length;
-  const businessTime = isBusinessTime(now, config.businessHours);
+  const rules = rulesOf(config);
+  const devHours = !rules.devBusinessHoursOnly || isBusinessTime(now, config.businessHours);
   const waitingTests: BoardIssue[] = [];
   // My tasks it queued whose ticket is still being developed hold the dev slots.
   const developing = new Set([...config.columns.todo, ...(config.columns.inProgress ?? [])]);
@@ -101,7 +103,7 @@ export function decideIssues(
           reason: `description scored ${verdict.score}/5: ${verdict.missing.join(", ")}`,
           ref: fingerprint(issue.description),
         });
-      } else if (!forced.has(subject) && !businessTime) {
+      } else if (!forced.has(subject) && !devHours) {
         decisions.push(startable(subject, "outside business hours"));
       } else if (!forced.has(subject) && devTasks >= config.maxDevTasks) {
         decisions.push(startable(subject, `${devTasks} of my tasks already in development`));
@@ -138,14 +140,21 @@ export function decideIssues(
     const plan = testPlanStatus(issue.comments);
     // Started by hand: tested whatever it was skipped for, with or without a plan.
     const skipReason = (): string | null => {
-      if (issue.assigneeId === config.me) return "the user developed it";
-      if (plan.state === "none") return "no test plan in the comments";
+      if (rules.testSkipsOwnTickets && issue.assigneeId === config.me) {
+        return "the user developed it";
+      }
+      if (plan.state === "none") {
+        return rules.testRequiresPlan ? "no test plan in the comments" : null;
+      }
       if (plan.state === "tested") return "already tested since the last plan";
-      const problem = testabilityProblem(issue, plan.plan);
+      const problem = rules.testSkipsUntestable ? testabilityProblem(issue, plan.plan) : null;
       return problem ? `left for a person: ${problem}` : null;
     };
     const planId = plan.state === "none" ? "" : plan.plan.id;
-    if (!byHand && planId && state.handled[`test:${subject}`] === planId) continue;
+    const taken = state.handled[`test:${subject}`];
+    if (!byHand && taken !== undefined && taken === planId && (planId || !rules.testRequiresPlan)) {
+      continue;
+    }
     const skip = byHand ? null : skipReason();
     if (skip) {
       decisions.push({ subject, action: "skip", reason: skip, canStart: true });
@@ -179,7 +188,9 @@ function testWait(
   claimed: number,
   claimedToday: number,
 ): string | null {
-  if (!isBusinessTime(now, config.businessHours)) return "outside business hours";
+  if (rulesOf(config).testBusinessHoursOnly && !isBusinessTime(now, config.businessHours)) {
+    return "outside business hours";
+  }
   const waited = businessMinutesBetween(
     new Date(issue.statusSince),
     now,
@@ -208,9 +219,10 @@ export function decideRetests(
   /** Claims already decided in this look (`decideIssues`), which count toward the daily limit. */
   claimedThisLook = 0,
 ): Decision[] {
-  if (config.test?.enabled === false) return [];
+  const rules = rulesOf(config);
+  if (config.test?.enabled === false || !rules.retestAfterFix) return [];
   const decisions: Decision[] = [];
-  const businessTime = isBusinessTime(now, config.businessHours);
+  const businessTime = !rules.testBusinessHoursOnly || isBusinessTime(now, config.businessHours);
   const today = localDay(now, config.businessHours);
   let claimedToday =
     (state.testClaims.day === today ? state.testClaims.count : 0) + claimedThisLook;
@@ -278,8 +290,11 @@ export function decideProgress(
     .find((i) => i && config.columns.todo.includes(i.statusId));
   if (!next) return [];
   const byHand = forced.includes(next.key);
-  if (!byHand && current) return [startable(next.key, `${current.key} is In Progress`)];
-  if (!byHand && !isBusinessTime(now, config.businessHours)) {
+  const rules = rulesOf(config);
+  if (!byHand && current && rules.devOneInProgress) {
+    return [startable(next.key, `${current.key} is In Progress`)];
+  }
+  if (!byHand && rules.devBusinessHoursOnly && !isBusinessTime(now, config.businessHours)) {
     return [startable(next.key, "outside business hours")];
   }
   return [
@@ -314,8 +329,11 @@ export function decidePullRequests(
 ): Decision[] {
   const decisions: Decision[] = [];
   if (config.codeReview?.enabled === false) return decisions;
-  const businessTime = isBusinessTime(now, config.businessHours);
-  const codeReviewColumn = config.columns.codeReview;
+  const rules = rulesOf(config);
+  const businessTime = !rules.reviewBusinessHoursOnly || isBusinessTime(now, config.businessHours);
+  const codeReviewColumn = rules.reviewWaitsForCodeReviewColumn
+    ? config.columns.codeReview
+    : undefined;
   const inCodeReview = new Set(
     issues.filter((i) => codeReviewColumn?.includes(i.statusId)).map((i) => i.key),
   );
@@ -372,13 +390,16 @@ export function decidePullRequests(
       if (keys.some((key) => beforeCodeReview.has(key))) {
         wait(`ticket ${keys.join(", ")} isn't in Code Review yet`);
       }
-    } else if (pr.draft) skip("draft");
-    else if (pr.hasConflicts) skip("has conflicts");
-    else if (pr.ci === "failed")
+    } else if (rules.reviewSkipsDrafts && pr.draft) skip("draft");
+    else if (rules.reviewSkipsConflicts && pr.hasConflicts) skip("has conflicts");
+    else if (rules.reviewSkipsFailedCi && pr.ci === "failed")
       skip("CI failed", pr.failedBuild ? { failedBuild: pr.failedBuild } : {});
-    else if (pr.reviewers.some((r) => r.id !== config.me && r.state === "changes_requested")) {
+    else if (
+      rules.reviewSkipsChangesRequested &&
+      pr.reviewers.some((r) => r.id !== config.me && r.state === "changes_requested")
+    ) {
       skip("another reviewer requested changes");
-    } else if (pr.ci === "running") wait("CI running");
+    } else if (rules.reviewWaitsForCi && pr.ci === "running") wait("CI running");
     else if (!businessTime) wait("outside business hours");
     else {
       decisions.push({

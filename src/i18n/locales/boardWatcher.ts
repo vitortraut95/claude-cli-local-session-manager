@@ -80,6 +80,47 @@ export const boardWatcher = {
     "Score one of your tasks' description needs to go to the development queue on its own. One point each: detailed text, steps or acceptance criteria, expected result, page or URL, screenshot or Figma; minus one for a visual change with no Figma.",
     "Nota que a descrição de uma tarefa sua precisa ter para entrar sozinha na fila de desenvolvimento. Vale 1 ponto cada: texto detalhado, passos ou critérios de aceite, resultado esperado, página ou URL, print ou Figma; perde 1 ponto mudança visual sem Figma.",
   ),
+  "automation.times": dict("Times and notices", "Tempos e avisos"),
+  "automation.limit.buildStartGraceMinutes": dict(
+    "Preview build start grace (minutes)",
+    "Carência pro build do preview começar (minutos)",
+  ),
+  "automation.limit.buildStartGraceMinutes.description": dict(
+    "A preview build this young with no status yet counts as not started, and the test waits for it.",
+    "Um build de preview mais novo que isso e ainda sem status conta como não iniciado, e o teste espera por ele.",
+  ),
+  "automation.limit.digestBeforeEndMinutes": dict(
+    "Evening digest before the end (minutes)",
+    "Resumo da tarde antes do fim (minutos)",
+  ),
+  "automation.limit.digestBeforeEndMinutes.description": dict(
+    "How long before business hours end the second digest goes to Teams.",
+    "Quanto tempo antes do fim do horário comercial o segundo resumo vai pro Teams.",
+  ),
+  "automation.limit.errorAlertEveryMinutes": dict(
+    "Repeat an error alert every (minutes)",
+    "Repetir alerta de erro a cada (minutos)",
+  ),
+  "automation.limit.errorAlertEveryMinutes.description": dict(
+    "The same failure of a look at the board is alerted in Teams at most this often.",
+    "A mesma falha ao olhar o board é avisada no Teams no máximo nesse intervalo.",
+  ),
+  "automation.limit.waitingNoticeEveryMinutes": dict(
+    '"Waiting for you" again after (minutes)',
+    '"Esperando você" de novo depois de (minutos)',
+  ),
+  "automation.limit.waitingNoticeEveryMinutes.description": dict(
+    "The same task's \"waiting for you\" isn't repeated in Teams within this window. 0 = always.",
+    'O "esperando você" da mesma tarefa não se repete no Teams dentro desse intervalo. 0 = sempre.',
+  ),
+  "automation.limit.networkNoticeEveryMinutes": dict(
+    "Network notice every (minutes)",
+    "Aviso de rede a cada (minutos)",
+  ),
+  "automation.limit.networkNoticeEveryMinutes.description": dict(
+    '"Tests waiting for the network" (VPN, IPv6) goes to Teams at most this often.',
+    'O "testes esperando a rede" (VPN, IPv6) vai pro Teams no máximo nesse intervalo.',
+  ),
   "automation.hours": dict("Business hours", "Horário comercial"),
   "automation.hours.start": dict("Start", "Início"),
   "automation.hours.end": dict("End", "Fim"),

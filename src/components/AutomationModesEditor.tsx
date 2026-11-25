@@ -4,8 +4,8 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useReviewSkill } from "../hooks/useReviewSkill";
 import { SkillPreferenceSelect } from "./SkillPreferenceSelect";
 import type { TranslationKey } from "../i18n/translations";
-import type { AutomationFeatures } from "../services/boardWatcherApi";
-import type { Automation } from "../../shared/boardWatcher";
+import type { AutomationFeatures, AutomationRules } from "../services/boardWatcherApi";
+import { AUTOMATION_RULES, type Automation } from "../../shared/boardWatcher";
 
 /** A card of the editor: one automation, or the Teams notices. */
 export type AutomationFocus = Automation | "notices";
@@ -18,6 +18,9 @@ type ModesEditorProps = {
   disabled?: boolean;
   /** The card to scroll to and outline for a moment. */
   focus?: AutomationFocus;
+  /** What holds each automation back, listed in its card when on (the Automation modal only). */
+  rules?: AutomationRules;
+  onRulesChange?: (rules: Partial<AutomationRules>) => void;
 };
 
 type OnOffOption = { on: boolean; label: TranslationKey; selectedClass: string };
@@ -159,6 +162,39 @@ function Note({ children }: { children: ReactNode }) {
   return <p className="text-xs text-gray-600 dark:text-gray-400">{children}</p>;
 }
 
+/** The waits and skips of one automation, each a checkbox (on = it holds back). */
+function RuleOptions({
+  automation,
+  rules,
+  disabled,
+  onChange,
+}: {
+  automation: keyof typeof AUTOMATION_RULES;
+  rules?: AutomationRules;
+  disabled: boolean;
+  onChange?: (rules: Partial<AutomationRules>) => void;
+}) {
+  const { t } = useLanguage();
+  if (!rules || !onChange) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+        {t("automationModes.rules")}
+      </span>
+      {AUTOMATION_RULES[automation].map((rule) => (
+        <Option
+          key={rule}
+          checked={rules[rule]}
+          disabled={disabled}
+          label={t(`automationModes.rule.${rule}` as TranslationKey)}
+          help={t(`automationModes.rule.${rule}.help` as TranslationKey)}
+          onChange={(value) => onChange({ [rule]: value })}
+        />
+      ))}
+    </div>
+  );
+}
+
 /** The code review skill the reviews run, chosen right in the card; without it code review
  *  can't be turned on. */
 function ReviewSkillField({ reviewSkill }: { reviewSkill: ReturnType<typeof useReviewSkill> }) {
@@ -197,6 +233,8 @@ export function AutomationModesEditor({
   unavailable = {},
   disabled = false,
   focus,
+  rules,
+  onRulesChange,
 }: ModesEditorProps) {
   const { t } = useLanguage();
   const setFeature = (key: keyof AutomationFeatures, value: boolean) => onChange({ [key]: value });
@@ -245,6 +283,12 @@ export function AutomationModesEditor({
               help={t("automationModes.codeReview.unapproved.help")}
               onChange={(value) => setFeature("reviewUnapprovedDeploying", value)}
             />
+            <RuleOptions
+              automation="codeReview"
+              rules={rules}
+              disabled={disabled}
+              onChange={onRulesChange}
+            />
           </>
         )}
       </Card>
@@ -256,7 +300,17 @@ export function AutomationModesEditor({
         unavailable={unavailable.devQueue}
         focused={focus === "devQueue"}
       >
-        {devQueue && <Note>{t("automationModes.devQueue.note")}</Note>}
+        {devQueue && (
+          <>
+            <Note>{t("automationModes.devQueue.note")}</Note>
+            <RuleOptions
+              automation="devQueue"
+              rules={rules}
+              disabled={disabled}
+              onChange={onRulesChange}
+            />
+          </>
+        )}
       </Card>
 
       <Card
@@ -266,7 +320,17 @@ export function AutomationModesEditor({
         unavailable={unavailable.testQueue}
         focused={focus === "testQueue"}
       >
-        {testQueue && <Note>{t("automationModes.testQueue.note")}</Note>}
+        {testQueue && (
+          <>
+            <Note>{t("automationModes.testQueue.note")}</Note>
+            <RuleOptions
+              automation="testQueue"
+              rules={rules}
+              disabled={disabled}
+              onChange={onRulesChange}
+            />
+          </>
+        )}
       </Card>
 
       <Card

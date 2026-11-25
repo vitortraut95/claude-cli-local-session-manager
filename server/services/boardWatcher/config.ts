@@ -1,5 +1,10 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  AUTOMATION_RULES,
+  type AutomationRule,
+  type AutomationRules,
+} from "../../../shared/boardWatcher.js";
 import { REPO_ROOT } from "../../utils/repoRoot.js";
 import type { NetworkRequirements } from "./network.js";
 
@@ -34,6 +39,16 @@ export type BoardWatcherLimits = {
   waitTestGraceMinutes: number;
   /** Out of 5, see `descriptionGate.ts`. */
   descriptionMinScore: number;
+  /** A preview build this young without any status yet is taken as not started. */
+  buildStartGraceMinutes: number;
+  /** The evening digest goes out this long before business hours end. */
+  digestBeforeEndMinutes: number;
+  /** The same failure is alerted at most this often. */
+  errorAlertEveryMinutes: number;
+  /** The same task's "waiting for you" isn't repeated within this window (statuses can flap). */
+  waitingNoticeEveryMinutes: number;
+  /** "Tests waiting for the network" goes out at most this often. */
+  networkNoticeEveryMinutes: number;
 };
 
 export type BoardWatcherConfig = BoardWatcherLimits & {
@@ -56,7 +71,10 @@ export type BoardWatcherConfig = BoardWatcherLimits & {
   testingStatusId: string;
   /** Where the user's started task is moved to, one at a time (`decideProgress`). */
   inProgressStatusId?: string;
-  /** Visible actions (comment, approve, claim) only happen inside these. */
+  /** What holds each automation back (`AUTOMATION_RULES`), each on unless false. */
+  rules?: Partial<AutomationRules>;
+  /** Visible actions (comment, approve, claim) only happen inside these, unless a
+   *  `*BusinessHoursOnly` rule is off. */
   businessHours: BusinessHours;
   /** Where the board lives. Only the active sprint's issues are considered; `scopeJql` narrows
    *  searches to the team's issues. */
@@ -104,7 +122,33 @@ export const DEFAULT_LIMITS: BoardWatcherLimits = {
   maxDevTasks: 1,
   waitTestGraceMinutes: 60,
   descriptionMinScore: 3,
+  buildStartGraceMinutes: 45,
+  digestBeforeEndMinutes: 10,
+  errorAlertEveryMinutes: 120,
+  waitingNoticeEveryMinutes: 30,
+  networkNoticeEveryMinutes: 120,
 };
+
+const ALL_RULES: AutomationRule[] = Object.values(AUTOMATION_RULES).flat();
+
+/** Every rule, on unless the file turned it off. */
+export function rulesOf(
+  config: Pick<BoardWatcherConfig, "rules"> | null | undefined,
+): AutomationRules {
+  return Object.fromEntries(
+    ALL_RULES.map((rule) => [rule, config?.rules?.[rule] !== false]),
+  ) as AutomationRules;
+}
+
+/** True when some automation acts outside business hours, so the board is looked at then too. */
+export function worksOffHours(config: BoardWatcherConfig): boolean {
+  const rules = rulesOf(config);
+  return (
+    (config.codeReview?.enabled !== false && !rules.reviewBusinessHoursOnly) ||
+    (config.todo?.enabled !== false && !rules.devBusinessHoursOnly) ||
+    (config.test?.enabled !== false && !rules.testBusinessHoursOnly)
+  );
+}
 
 export const DEFAULT_BUSINESS_HOURS: BusinessHours = {
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,

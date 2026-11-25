@@ -46,7 +46,13 @@ import {
   type BuildDiagnosis,
   type RebuildOutcome,
 } from "./boardWatcher/buildDiagnosis.js";
-import { loadBoardWatcherConfig, type BoardWatcherConfig } from "./boardWatcher/config.js";
+import {
+  DEFAULT_LIMITS,
+  loadBoardWatcherConfig,
+  rulesOf,
+  worksOffHours,
+  type BoardWatcherConfig,
+} from "./boardWatcher/config.js";
 import type { Decision } from "./boardWatcher/decide.js";
 import { buildActionsDigest } from "./boardWatcher/digest.js";
 import { getLessons, getScoreboard } from "./boardWatcher/feedback.js";
@@ -140,19 +146,14 @@ const STATE_FILE = path.join(REPO_ROOT, "boardWatcher-state.json");
 /** The actions only simulated back when there was a simulation mode, out of the history. */
 const SIMULATED_FILE = path.join(REPO_ROOT, "boardWatcher-actions-simulated.jsonl");
 const OFF_HOURS_INTERVAL_MS = 60 * 60_000;
-/** Local times the digest goes out, on business days. */
-/** When the digest goes out: at the start of business hours and DIGEST_BEFORE_END_MIN before
- *  they end (nothing is sent once they're over). */
-const DIGEST_BEFORE_END_MIN = 10;
-
+/** When the digest goes out, on business days: at the start of business hours and
+ *  `digestBeforeEndMinutes` before they end (nothing is sent once they're over). */
 function digestTimes(config: BoardWatcherConfig): string[] {
   const { start, end } = config.businessHours;
-  const evening = Math.max(toMinutes(start), toMinutes(end) - DIGEST_BEFORE_END_MIN);
+  const evening = Math.max(toMinutes(start), toMinutes(end) - config.digestBeforeEndMinutes);
   const hhmm = `${String(Math.floor(evening / 60)).padStart(2, "0")}:${String(evening % 60).padStart(2, "0")}`;
   return [start, hhmm];
 }
-/** The same failure is alerted at most this often. */
-const ERROR_ALERT_EVERY_MS = 2 * 60 * 60_000;
 
 type PersistedState = WatcherState & {
   lastTickAt: string | null;
@@ -386,11 +387,17 @@ async function sendDailyIfDue(
   }
 }
 
-function alertError(state: PersistedState, message: string, now: Date): void {
+function alertError(
+  state: PersistedState,
+  config: BoardWatcherConfig | null,
+  message: string,
+  now: Date,
+): void {
   const previous = state.lastError;
   const alertedAt = previous?.message === message && previous.alertedAt ? previous.alertedAt : null;
   state.lastError = { message, at: now.toISOString(), alertedAt };
-  if (alertedAt && now.getTime() - Date.parse(alertedAt) < ERROR_ALERT_EVERY_MS) return;
+  const every = (config?.errorAlertEveryMinutes ?? DEFAULT_LIMITS.errorAlertEveryMinutes) * 60_000;
+  if (alertedAt && now.getTime() - Date.parse(alertedAt) < every) return;
   if (!process.env.TEAMS_WEBHOOK_URL) return;
   noticeWatcherError(message);
   state.lastError.alertedAt = now.toISOString();
@@ -417,8 +424,14 @@ async function lookLocked(): Promise<void> {
   try {
     if (!config?.enabled || !(await automationsOn())) return;
     // Eye closed: nothing at all until business hours start again, unless the user started
-    // something by hand.
-    if (!isBusinessTime(now, config.businessHours) && state.forced.length === 0) return;
+    // something by hand or an automation works off hours too.
+    if (
+      !isBusinessTime(now, config.businessHours) &&
+      state.forced.length === 0 &&
+      !worksOffHours(config)
+    ) {
+      return;
+    }
     endLook = startActivity("look");
     const onReview = (pr: WatcherState["pendingReviews"][number]) => {
       if (!state.pendingReviews.some((p) => prSubject(p) === prSubject(pr))) {
@@ -434,10 +447,12 @@ async function lookLocked(): Promise<void> {
               state.pendingTests.push({ issue, planId: report?.id ?? "", retest: true });
               return;
             }
-            // Started by hand: tested even with no plan or one already tested.
+            // Started by hand (or no plan needed): tested even with no plan or one already tested.
             const plan = testPlanStatus(issue.comments);
             if (plan.state === "none") {
-              if (state.forced.includes(issue.key)) state.pendingTests.push({ issue, planId: "" });
+              if (state.forced.includes(issue.key) || !rulesOf(config).testRequiresPlan) {
+                state.pendingTests.push({ issue, planId: "" });
+              }
             } else if (plan.state === "pending" || state.forced.includes(issue.key)) {
               state.pendingTests.push({ issue, planId: plan.plan.id });
             }
@@ -515,7 +530,7 @@ async function lookLocked(): Promise<void> {
     console.warn("[board-watcher] Look failed:", message);
     noteActivity("lookFailed", undefined, message);
     recordEvent("boardWatcher.error", { message });
-    alertError(state, message, now);
+    alertError(state, config, message, now);
   } finally {
     if (endLook) {
       endLook();
@@ -821,7 +836,7 @@ function schedule(config: BoardWatcherConfig | null): void {
   const now = new Date();
   const businessTime = config ? isBusinessTime(now, config.businessHours) : false;
   let delay: number;
-  if (config && businessTime) {
+  if (config && (businessTime || worksOffHours(config))) {
     // A long interval is cut short so a look lands in the digest's slot before hours end.
     delay = config.lookIntervalMinutes * 60_000;
     const nextDigest = digestSlots(now, config).find((slot) => slot.getTime() > now.getTime());
@@ -898,19 +913,22 @@ async function drainJobs(): Promise<void> {
       const state = await loadState();
       if (!config?.enabled || !config.bitbucket || !(await automationsOn())) return;
       // Eye closed: no session starts (queued ones wait for the morning), except the ones the
-      // user started by hand. In the order the user dragged them to on the Board.
+      // user started by hand or whose automation works off hours. In the order the user dragged
+      // them to on the Board.
       const open = isBusinessTime(new Date(), config.businessHours);
-      const allowed = (subject: string) => open || state.forced.includes(subject);
+      const rules = rulesOf(config);
+      const allowed = (subject: string, hoursOnly: boolean) =>
+        open || !hoursOnly || state.forced.includes(subject);
       const reviews =
         config.codeReview?.enabled !== false
           ? byPriority(state.pendingReviews, prSubject, state.priority).filter((p) =>
-              allowed(prSubject(p)),
+              allowed(prSubject(p), rules.reviewBusinessHoursOnly),
             )
           : [];
       const tests =
         config.test?.enabled !== false
           ? byPriority(state.pendingTests, (t) => t.issue.key, state.priority).filter((t) =>
-              allowed(t.issue.key),
+              allowed(t.issue.key, rules.testBusinessHoursOnly),
             )
           : [];
       if (reviews.length === 0 && tests.length === 0) return;
@@ -935,7 +953,7 @@ async function drainJobs(): Promise<void> {
         if (network) {
           jobsBlockedBy = `tests waiting: ${network}`;
           noteBlocked(jobsBlockedBy);
-          noticeNetworkBlocked(network);
+          noticeNetworkBlocked(network, config);
           return;
         }
         // A test against a preview still building (or whose build failed) would check old code:
@@ -943,7 +961,9 @@ async function drainJobs(): Promise<void> {
         const waits: string[] = [];
         let ready: typeof test | undefined;
         for (const candidate of tests) {
-          const wait = await previewWait(candidate.issue, config);
+          const wait = rules.testWaitsForPreview
+            ? await previewWait(candidate.issue, config)
+            : null;
           if (!wait) {
             ready = candidate;
             break;
@@ -1126,9 +1146,6 @@ async function ticketPullRequests(
   });
 }
 
-/** A preview build younger than this without any status yet is taken as not started. */
-const BUILD_START_GRACE_MS = 45 * 60_000;
-
 /** Why the ticket's `env/` previews aren't ready to test (building, failed, not started), or null.
  *  Branches without a preview job or gone after the merge don't hold it. Best-effort: when
  *  Bitbucket can't be read, the test goes ahead. */
@@ -1144,7 +1161,8 @@ async function previewWait(issue: BoardIssue, config: BoardWatcherConfig): Promi
     if (build.ci === "running") return `preview building (${repo} ${branch})`;
     // Told about (with why) by `watchPreviewBuilds`.
     if (build.ci === "failed") return `preview build failed (${repo} ${branch})`;
-    if (build.ci === "none" && Date.now() - Date.parse(build.date) < BUILD_START_GRACE_MS) {
+    const grace = config.buildStartGraceMinutes * 60_000;
+    if (build.ci === "none" && Date.now() - Date.parse(build.date) < grace) {
       return `preview build not started (${repo} ${branch})`;
     }
   }
@@ -1268,18 +1286,16 @@ async function finishTestJob(key: string, outcome: string, started: number): Pro
   recordEvent("boardWatcher.test", { key, outcome, durationMs: Date.now() - started });
 }
 
-/** "Tests waiting for the network" goes out at most this often. */
-const NETWORK_NOTICE_EVERY_MS = 2 * 60 * 60_000;
 let lastNetworkNotice = 0;
 
-function noticeNetworkBlocked(problem: string): void {
-  if (Date.now() - lastNetworkNotice < NETWORK_NOTICE_EVERY_MS) return;
+/** "Tests waiting for the network", at most every `networkNoticeEveryMinutes`. */
+function noticeNetworkBlocked(problem: string, config: BoardWatcherConfig): void {
+  if (Date.now() - lastNetworkNotice < config.networkNoticeEveryMinutes * 60_000) return;
   lastNetworkNotice = Date.now();
   noticeTestsNeedNetwork(problem);
 }
 
-/** The same task's "waiting for you" isn't repeated within this window (statuses can flap). */
-const WAITING_NOTICE_EVERY_MS = 30 * 60_000;
+/** Per task, when its last "waiting for you" went out (`waitingNoticeEveryMinutes`). */
 const lastWaitingNotice = new Map<string, number>();
 
 /** Teams notices for the user's own sessions: one stopped to wait for them, or a queued task
@@ -1300,7 +1316,7 @@ async function noticeStoreChange(change: StoreChange): Promise<void> {
   const name = session?.nickname ?? (key ? "" : (change.sessionId ?? ""));
   const id = key ?? change.sessionId ?? "";
   const last = lastWaitingNotice.get(id) ?? 0;
-  if (Date.now() - last < WAITING_NOTICE_EVERY_MS) return;
+  if (Date.now() - last < config.waitingNoticeEveryMinutes * 60_000) return;
   lastWaitingNotice.set(id, Date.now());
   const remoteUrl = await findRemoteSessionUrl(change.sessionId, key).catch(() => null);
   await noticeWaitingForYou(key, name, remoteUrl);

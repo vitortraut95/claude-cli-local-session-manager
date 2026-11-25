@@ -249,6 +249,67 @@
     ]
   },
   {
+    "name": "with the rules off, running CI, drafts and conflicts don't hold the review",
+    "config": {
+      "rules": {
+        "reviewWaitsForCi": false,
+        "reviewSkipsDrafts": false,
+        "reviewSkipsConflicts": false
+      }
+    },
+    "ticks": [
+      {
+        "now": "2026-10-28T14:00:00-03:00",
+        "prs": [
+          {
+            "id": "30",
+            "repo": "web",
+            "title": "PR 30",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "ci": "running"
+          },
+          {
+            "id": "31",
+            "repo": "web",
+            "title": "PR 31",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "draft": true
+          },
+          {
+            "id": "32",
+            "repo": "web",
+            "title": "PR 32",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "hasConflicts": true
+          },
+          {
+            "id": "33",
+            "repo": "web",
+            "title": "PR 33",
+            "lastPushAt": "2026-10-28T09:00:00-03:00",
+            "ci": "failed"
+          }
+        ],
+        "expect": {
+          "effects": [
+            "approve web#30",
+            "ai-review web#30 approved",
+            "approve web#31",
+            "ai-review web#31 approved",
+            "approve web#32",
+            "ai-review web#32 approved"
+          ],
+          "decisions": {
+            "web#30": "review",
+            "web#31": "review",
+            "web#32": "review",
+            "web#33": "skip"
+          }
+        }
+      }
+    ]
+  },
+  {
     "name": "my own PRs are left alone; someone else's is reviewed whoever is listed as reviewer",
     "ticks": [
       {
