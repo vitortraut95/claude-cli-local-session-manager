@@ -5,7 +5,8 @@ import type { Session } from "../../shared/session.js";
 import type { CleanupFinding, StaleTaskFile, TaskFileGroup } from "../../shared/cleanup.js";
 import type { TaskStore } from "../utils/taskStore.js";
 
-/** A task this app doesn't track counts as finished once nothing of it changed for this long. */
+/** A ticket's files stay until none of them changed for this long, so a recently finished task
+ *  keeps its history around. */
 const STALE_TASK_DAYS = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TASK_KEY_PATTERN = /\b([A-Z][A-Z0-9]+-\d+)\b/;
@@ -24,8 +25,8 @@ type Candidate = StaleTaskFile & { group: TaskFileGroup };
  * - `figma-cache` — `FIGMA_CACHE_DIR` (`~/.cache/figma-mcp`): `<fileKey>/<nodeId>/` older than
  *   `FIGMA_CACHE_TTL_HOURS` (24), which the skill fetches again instead of reading.
  *
- * A ticket's files go when its task is marked done, or — for a ticket this app doesn't track —
- * when none of its files changed in `STALE_TASK_DAYS`. Never while a session for it is active.
+ * A ticket's files go once none of them changed in `STALE_TASK_DAYS` and its task is marked done
+ * (or the app doesn't track the ticket). Never while a session for it is active.
  */
 export async function scanForTaskFileFindings(
   sessions: Session[],
@@ -106,14 +107,10 @@ async function findCandidates(
   const candidates: Candidate[] = [];
   for (const entry of keyed) {
     if (activeKeys.has(entry.taskKey)) continue;
+    if ((newestByKey.get(entry.taskKey) ?? Infinity) >= staleBefore) continue;
     const task = store.tasks[entry.taskKey];
-    let reason: StaleTaskFile["reason"] | null = null;
-    if (task) {
-      if (task.status === "done") reason = "done";
-    } else if ((newestByKey.get(entry.taskKey) ?? Infinity) < staleBefore) {
-      reason = "stale";
-    }
-    if (reason) candidates.push(toCandidate(entry, entry.group, entry.taskKey, reason));
+    if (task && task.status !== "done") continue;
+    candidates.push(toCandidate(entry, entry.group, entry.taskKey, task ? "done" : "stale"));
   }
 
   const ttlHours = Number(env("FIGMA_CACHE_TTL_HOURS")) || 24;

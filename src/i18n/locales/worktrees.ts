@@ -76,13 +76,13 @@ export const worktrees = {
   ),
   "cleanupModal.finding.taskFiles.body": dict(
     "checklists, handoffs, Jira/PR texts and test evidence the task skills keep per ticket " +
-      '(TASK_CHECKLIST_DIR, QA_EVIDENCE_DIR) once the task is marked "Done" — or, for a ticket ' +
-      "the app doesn't track, after 14 days untouched — and Figma cache older than its TTL. " +
+      '(TASK_CHECKLIST_DIR, QA_EVIDENCE_DIR) after 14 days untouched, if the task is marked "Done" ' +
+      "or the app doesn't track the ticket — and Figma cache older than its TTL. " +
       "What was published is already on the ticket/PR. Never while a session of that ticket is active.",
     "checklists, handoffs, textos de Jira/PR e evidências de teste que as skills de tarefa " +
-      'guardam por ticket (TASK_CHECKLIST_DIR, QA_EVIDENCE_DIR) depois que a tarefa fica "Concluída" ' +
-      "— ou, pra ticket que o app não acompanha, depois de 14 dias sem mexer — e cache do Figma " +
-      "vencido. O que foi publicado já está no ticket/PR. Nunca com sessão ativa daquele ticket.",
+      'guardam por ticket (TASK_CHECKLIST_DIR, QA_EVIDENCE_DIR) depois de 14 dias sem mexer, se a ' +
+      'tarefa está "Concluída" ou o app não acompanha o ticket — e cache do Figma vencido. ' +
+      "O que foi publicado já está no ticket/PR. Nunca com sessão ativa daquele ticket.",
   ),
   "cleanupModal.finding.taskFiles.title.checklists": dict(
     "{count} checklist/handoff file(s) of finished tasks",
