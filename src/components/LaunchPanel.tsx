@@ -4,6 +4,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useQueueLaunches } from "../hooks/useQueueLaunches";
 import type { TranslationKey } from "../i18n/translations";
 import type { QueueLaunch, QueueLaunchStep } from "../services/tasksApi";
+import { translateServerText } from "../utils/boardWatcher";
 import type { Step } from "../utils/steps";
 import { Button } from "./Button";
 import { StepList } from "./StepList";
@@ -20,6 +21,8 @@ const STEP_LABELS: Record<string, TranslationKey> = {
   prepare: "launchPanel.step.prepare",
   terminal: "launchPanel.step.terminal",
   session: "launchPanel.step.session",
+  board: "launchPanel.step.board",
+  queue: "launchPanel.step.queue",
 };
 
 function readCollapsed(): boolean {
@@ -150,7 +153,7 @@ export function LaunchPanel({ onOpenQueue }: LaunchPanelProps) {
 }
 
 function LaunchCard({ launch, onOpenQueue }: { launch: QueueLaunch; onOpenQueue: () => void }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const label = (step: QueueLaunchStep) =>
     step.key.startsWith("extra:")
       ? t("launchPanel.step.extra", { repo: step.label ?? step.key.slice("extra:".length) })
@@ -159,7 +162,8 @@ function LaunchCard({ launch, onOpenQueue }: { launch: QueueLaunch; onOpenQueue:
     key: step.key,
     label: label(step),
     status: step.status,
-    error: step.error,
+    // What still holds a Board "Start now" comes in the server's words.
+    error: step.error && translateServerText(step.error, language),
   }));
   const keys = launch.keys.join(" + ");
 

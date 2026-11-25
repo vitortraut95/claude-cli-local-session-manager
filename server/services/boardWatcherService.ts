@@ -12,6 +12,7 @@ import { takeCallCounts } from "./boardWatcher/http.js";
 import { backupWatcherFiles, restoreMissingWatcherFiles } from "./boardWatcher/backup.js";
 import { recordEvent } from "../utils/history.js";
 import {
+  getQueue,
   getTaskStore,
   onStoreChange,
   setSessionStatus,
@@ -23,7 +24,7 @@ import { getUserPreferences } from "./preferencesService.js";
 import { getMaxUsagePercent } from "./usageService.js";
 import { findRemoteSessionUrl } from "./session/remoteUrl.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
-import { BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
+import { AppError, BadRequestError, ConflictError, NotFoundError } from "../utils/httpError.js";
 import { buildResult, HomologPatchError, replayToHomolog } from "./boardWatcher/homologReplay.js";
 import {
   isBusinessDay,
@@ -111,7 +112,19 @@ import {
   addTestEntryIfAbsent,
   requeueTestEntry,
 } from "./taskQueueService.js";
-import { findOpenPullRequest, reviewBoardSetup, reviewRepoPath } from "./taskReviewService.js";
+import {
+  findOpenPullRequest,
+  PR_SUBJECT,
+  reviewBoardSetup,
+  reviewRepoPath,
+} from "./taskReviewService.js";
+import {
+  beginEarlyLaunch,
+  dropEarlyLaunch,
+  failEarlyLaunch,
+  launchQueueEntryNow,
+  type EarlyLaunch,
+} from "./taskSchedulerService.js";
 import {
   automationSignal,
   automationsOn,
@@ -868,8 +881,10 @@ async function unforce(subject: string): Promise<void> {
 
 /** "Start now" on the Board: whatever the ticket or PR waits for or was skipped for (limits,
  *  business hours, draft, no test plan…) is ignored, it goes to the top of the queue and a look
- *  runs now. */
+ *  runs now. One that becomes a task queue session is shown in the launches panel from the click
+ *  on and launched past the queue's limits too. */
 export async function startBoardWatcherItemNow(subject: string): Promise<BoardWatcherStatus> {
+  const early = await beginStartNowLaunch(subject);
   await serial(async () => {
     const state = await loadState();
     if (!state.forced.includes(subject)) state.forced.push(subject);
@@ -877,9 +892,55 @@ export async function startBoardWatcherItemNow(subject: string): Promise<BoardWa
     await saveState(state);
   });
   recordEvent("boardWatcher.startNow", { subject });
-  await look();
-  void drainJobs();
+  if (!early) {
+    await look();
+    void drainJobs();
+    return getBoardWatcherStatus();
+  }
+  await early.tracker.run("board", look);
+  void launchStartedNow(subject, early);
   return getBoardWatcherStatus();
+}
+
+/** The launch shown for a "Start now", when its session goes through the task queue (a headless
+ *  test doesn't). Its kind is the last look's guess, fixed once the entry is in the queue. */
+async function beginStartNowLaunch(subject: string): Promise<EarlyLaunch | null> {
+  const work = lastDecisions.find((d) => d.subject === subject && d.work)?.work;
+  if (work === "progress") return null;
+  const kind =
+    work === "review" || (!work && PR_SUBJECT.test(subject))
+      ? "review"
+      : work === "dev"
+        ? "dev"
+        : "test";
+  const config = await loadBoardWatcherConfig().catch(() => null);
+  if (kind === "test" && config?.test?.runner === "headless") return null;
+  return beginEarlyLaunch(subject, kind, ["board", "queue"]);
+}
+
+/** After the look: the entry joins the task queue (`drainJobs`) and is launched right away; what
+ *  still holds it shows on the launch. */
+async function launchStartedNow(subject: string, early: EarlyLaunch): Promise<void> {
+  try {
+    await early.tracker.run("queue", async () => {
+      const queued = async () => (await getQueue()).some((e) => e.key === subject);
+      // A pass already under way may have read the state before the subject was forced.
+      for (let pass = 0; pass < 2 && !(await queued()); pass++) await drainJobs();
+      if (await queued()) return;
+      const held = lastDecisions.find(
+        (d) => d.subject === subject && (d.action === "wait" || d.action === "skip"),
+      );
+      throw new Error(held?.reason ?? jobsBlockedBy ?? `${subject} didn't enter the task queue.`);
+    });
+    await launchQueueEntryNow(subject, early);
+  } catch (err) {
+    // The scheduler got to it first: its own launch is the one shown.
+    if (err instanceof AppError && err.code === "QUEUE_ENTRY_LAUNCHING") {
+      dropEarlyLaunch(early);
+      return;
+    }
+    failEarlyLaunch(early, err instanceof Error ? err.message : String(err));
+  }
 }
 
 /** The Board's queue in the order the user dragged it to. */
@@ -901,10 +962,20 @@ function noteBlocked(reason: string): void {
   noteActivity("blocked", undefined, reason);
 }
 
+/** The pass under way: a call meanwhile waits for it (it re-reads the state on every turn). */
+let draining: Promise<void> | null = null;
+
 /** Hands the pending reviews and tests on, one at a time (reviews first): a review goes to the task
  *  queue (its result comes back through `submitReviewResult`), a test to the queue or to a
  *  headless session whose verdict and report are recorded with what would be done with them. */
-async function drainJobs(): Promise<void> {
+function drainJobs(): Promise<void> {
+  draining ??= drainJobsNow().finally(() => {
+    draining = null;
+  });
+  return draining;
+}
+
+async function drainJobsNow(): Promise<void> {
   if (reviewing) return;
   reviewing = true;
   try {

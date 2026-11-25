@@ -22,6 +22,7 @@ import { useShell } from "../hooks/useShell";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
 import * as boardWatcherApi from "../services/boardWatcherApi";
+import * as tasksApi from "../services/tasksApi";
 import type {
   AutomationSettings,
   BoardWatcherStatus,
@@ -163,6 +164,8 @@ function BoardWatcher() {
 
   const startItemNow = async (subject: string) => {
     try {
+      // Its launch shows in the launches panel from the click on.
+      tasksApi.notifyQueueLaunchStarted();
       const result = await boardWatcherApi.startBoardWatcherItemNow(subject);
       setStatus(result);
       const still = result.lastDecisions.find(

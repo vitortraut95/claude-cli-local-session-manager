@@ -103,7 +103,10 @@ and notices" in the modal.
   nothing blocking is found.
 - "Start now" on a Board queue item (`state.forced`) overrides every wait and skip of that item
   (limits, business hours, grace period, draft, conflicts, no test plan, the user's own ticket)
-  and puts it first in the queue; only the daily approval cap still pauses.
+  and puts it first in the queue; only the daily approval cap still pauses. One that becomes a
+  task queue session also skips the queue's limits (`launchQueueEntryNow`) and shows in the
+  launches panel from the click on: look at the board → enter the task queue → the launch's
+  steps, or the reason it's still held on the step it stopped at.
 - Jira: never assigns itself, never touches anyone else's ticket. The only status change is Wait
   Test → Testing when it claims a test, which is what tells others it's being tested.
 

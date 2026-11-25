@@ -71,6 +71,8 @@ export const taskQueue = {
   "launchPanel.step.prepare": dict("Prepare and open the terminal", "Preparar e abrir o terminal"),
   "launchPanel.step.terminal": dict("Open the terminal", "Abrir o terminal"),
   "launchPanel.step.session": dict("Wait for Claude to start", "Esperar o Claude iniciar"),
+  "launchPanel.step.board": dict("Look at the board", "Olhar o board"),
+  "launchPanel.step.queue": dict("Enter the task queue", "Entrar na fila de tarefas"),
   "queuePrompt.title": dict(
     "What each development session gets",
     "O que cada sessão de desenvolvimento recebe",

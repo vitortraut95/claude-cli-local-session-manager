@@ -31,6 +31,7 @@ import {
   type QueueEntry,
 } from "../utils/taskStore.js";
 import type {
+  QueueKind,
   QueueLaunch,
   QueueLaunchStep,
   SchedulerBlock,
@@ -315,42 +316,93 @@ function plannedSteps(entry: QueueEntry): QueueLaunchStep[] {
   ];
 }
 
-function startLaunchTracking(entry: QueueEntry): { launch: QueueLaunch; tracker: LaunchTracker } {
-  const startedAt = new Date().toISOString();
-  const launch: QueueLaunch = {
-    id: `${entry.key}@${startedAt}`,
-    key: entry.key,
-    keys: queueEntryTasks(entry).map((task) => task.key),
-    link: entry.link,
-    kind: entry.kind,
-    startedAt,
-    finishedAt: null,
-    error: null,
-    steps: plannedSteps(entry),
-  };
-  launches.set(launch.id, launch);
+/** Marks one step of `launch` as it goes. */
+function trackerFor(launch: QueueLaunch): LaunchTracker {
   const set = (key: string, status: QueueLaunchStep["status"], error?: string) => {
     launch.steps = launch.steps.map((step) =>
       step.key === key ? { ...step, status, ...(error ? { error } : {}) } : step,
     );
   };
   return {
-    launch,
-    tracker: {
-      run: async (key, work) => {
-        set(key, "doing");
-        try {
-          const result = await work();
-          set(key, "done");
-          return result;
-        } catch (err) {
-          set(key, "error", errorMessage(err));
-          throw err;
-        }
-      },
-      done: (key) => set(key, "done"),
+    run: async (key, work) => {
+      set(key, "doing");
+      try {
+        const result = await work();
+        set(key, "done");
+        return result;
+      } catch (err) {
+        set(key, "error", errorMessage(err));
+        throw err;
+      }
     },
+    done: (key) => set(key, "done"),
   };
+}
+
+/** A new launch of `entry`, or the rest of one already shown (`earlier`, the Board's "Start
+ *  now"): the entry's steps come after the ones it had. */
+function startLaunchTracking(
+  entry: QueueEntry,
+  earlier?: QueueLaunch,
+): { launch: QueueLaunch; tracker: LaunchTracker } {
+  const startedAt = new Date().toISOString();
+  const launch: QueueLaunch = earlier ?? {
+    id: `${entry.key}@${startedAt}`,
+    key: entry.key,
+    keys: [],
+    link: null,
+    kind: entry.kind,
+    startedAt,
+    finishedAt: null,
+    error: null,
+    steps: [],
+  };
+  launch.keys = queueEntryTasks(entry).map((task) => task.key);
+  launch.link = entry.link;
+  launch.kind = entry.kind;
+  launch.steps = [...launch.steps, ...plannedSteps(entry)];
+  launches.set(launch.id, launch);
+  return { launch, tracker: trackerFor(launch) };
+}
+
+/** A launch shown from the Board's "Start now" click on, before its entry is in the task queue:
+ *  the look at the board and the entry joining the queue, then `launchQueueEntryNow(key, it)`. */
+export type EarlyLaunch = { launch: QueueLaunch; tracker: LaunchTracker };
+
+export function beginEarlyLaunch(key: string, kind: QueueKind, steps: string[]): EarlyLaunch {
+  const startedAt = new Date().toISOString();
+  const launch: QueueLaunch = {
+    id: `${key}@${startedAt}`,
+    key,
+    keys: [key],
+    link: null,
+    kind,
+    startedAt,
+    finishedAt: null,
+    error: null,
+    steps: steps.map((step) => ({ key: step, status: "pending" })),
+  };
+  launches.set(launch.id, launch);
+  return { launch, tracker: trackerFor(launch) };
+}
+
+/** Ends an early launch that didn't make it: the error goes on the step it stopped at. */
+export function failEarlyLaunch({ launch }: EarlyLaunch, error: string): void {
+  if (launch.finishedAt) return;
+  const stopped =
+    launch.steps.find((step) => step.status === "error") ??
+    launch.steps.find((step) => step.status !== "done") ??
+    launch.steps.at(-1);
+  launch.steps = launch.steps.map((step) =>
+    step === stopped ? { ...step, status: "error", error: step.error ?? error } : step,
+  );
+  launch.error = error;
+  launch.finishedAt = new Date().toISOString();
+}
+
+/** Forgets an early launch another one took over (the scheduler was already launching it). */
+export function dropEarlyLaunch({ launch }: EarlyLaunch): void {
+  launches.delete(launch.id);
 }
 
 /** The launches still going plus the ones finished in the last couple of minutes. */
@@ -610,9 +662,10 @@ async function launchTracked(
   entry: QueueEntry,
   prefs: UserPreferences,
   now: boolean,
+  early?: EarlyLaunch,
 ): Promise<LaunchOutcome | null> {
   launchingKeys.add(entry.key);
-  const { launch, tracker } = startLaunchTracking(entry);
+  const { launch, tracker } = startLaunchTracking(entry, early?.launch);
   const startedAt = Date.now();
   lastLaunchAt = startedAt;
   const extra = now ? { now: true } : {};
@@ -658,8 +711,12 @@ async function launchTracked(
  * "Start now": launches a saved queue entry right away, whatever its place in line and whether
  * the scheduler is paused or out of room (sessions, RAM, plan usage, spacing). Also for one marked
  * launched whose session never started (reuses its worktree, see `findExistingTaskWorktree`).
+ * `early` = the launch the Board's "Start now" already shows, continued here.
  */
-export async function launchQueueEntryNow(key: string): Promise<LaunchOutcome | null> {
+export async function launchQueueEntryNow(
+  key: string,
+  early?: EarlyLaunch,
+): Promise<LaunchOutcome | null> {
   const [prefs, queue] = await Promise.all([getUserPreferences(), getQueue()]);
   const entry = queue.find((e) => e.key === key);
   if (!entry) throw new NotFoundError("QUEUE_ENTRY_NOT_FOUND", `${key} isn't in the queue.`);
@@ -679,7 +736,7 @@ export async function launchQueueEntryNow(key: string): Promise<LaunchOutcome | 
       `${key} still needs a repo (or "no repo")${entry.kind === "dev" ? " and a branch prefix" : ""}.`,
     );
   }
-  return launchTracked(fresh, prefs, true);
+  return launchTracked(fresh, prefs, true, early);
 }
 
 export function startTaskScheduler(): void {
