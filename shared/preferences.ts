@@ -42,7 +42,14 @@ export type OrchestratorPreferences = {
    *  the git host and the test environments are only reachable through it; "" = not checked.
    *  Optional: older files lack it. */
   vpnInterface: string;
+  /** How heavy-run sizes its limits: "auto" derives the slots, RAM/CPU caps and previews from this
+   *  machine's RAM and cores and from what each kind of command used before; "manual" uses the
+   *  testSlots/testMemoryMaxGb/testCpuPercent/previewSlots/previewMemoryMaxGb above. Optional: older
+   *  files lack it (default "auto"). */
+  heavyLimits: HeavyLimitsMode;
 };
+
+export type HeavyLimitsMode = "auto" | "manual";
 
 export type TerminalLayout = "tabs" | "limux-grid";
 

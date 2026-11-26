@@ -4,18 +4,19 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
 import * as preferencesApi from "../services/preferencesApi";
-import type { OrchestratorPreferences } from "../services/preferencesApi";
+import type { HeavyLimitsMode, OrchestratorPreferences } from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import type { HeavyRunHookStatus, SchedulerStatus } from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { describeSchedulerBlock } from "../utils/schedulerBlocks";
 import { Button } from "./Button";
 import { Input } from "./Input";
+import { Select } from "./Select";
 import { SettingRow } from "./SettingRow";
 
 /** Same bounds the server accepts (`isOrchestratorPreferences`). */
 const LIMITS: Record<
-  Exclude<keyof OrchestratorPreferences, "enabled" | "vpnInterface">,
+  Exclude<keyof OrchestratorPreferences, "enabled" | "vpnInterface" | "heavyLimits">,
   [number, number]
 > = {
   maxSessions: [1, 50],
@@ -136,6 +137,10 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
       }
     />
   );
+
+  const setHeavyLimits = (mode: HeavyLimitsMode) => {
+    if (settings && mode !== settings.heavyLimits) void save({ ...settings, heavyLimits: mode });
+  };
 
   const toggleHook = async () => {
     if (!hook) return;
@@ -321,30 +326,54 @@ export function SchedulerPanel({ status, onRefresh, onRunNow, running }: Schedul
                 {hook?.installed ? t("scheduler.tests.remove") : t("scheduler.tests.install")}
               </Button>
             </div>
-            {numberField(
-              "testSlots",
-              "scheduler.setting.testSlots",
-              "scheduler.setting.testSlots.hint",
-            )}
-            {numberField(
-              "testMemoryMaxGb",
-              "scheduler.setting.testMemory",
-              "scheduler.setting.testMemory.hint",
-            )}
-            {numberField(
-              "testCpuPercent",
-              "scheduler.setting.testCpu",
-              "scheduler.setting.testCpu.hint",
-            )}
-            {numberField(
-              "previewSlots",
-              "scheduler.setting.previewSlots",
-              "scheduler.setting.previewSlots.hint",
-            )}
-            {numberField(
-              "previewMemoryMaxGb",
-              "scheduler.setting.previewMemory",
-              "scheduler.setting.previewMemory.hint",
+            <SettingRow
+              label={t("scheduler.setting.heavyLimits")}
+              description={t("scheduler.setting.heavyLimits.hint")}
+              control={
+                <Select
+                  value={settings?.heavyLimits ?? "auto"}
+                  disabled={!settings}
+                  aria-label={t("scheduler.setting.heavyLimits")}
+                  onChange={(event) => setHeavyLimits(event.target.value as HeavyLimitsMode)}
+                  className="w-40 py-1"
+                >
+                  <option value="auto">{t("scheduler.setting.heavyLimits.auto")}</option>
+                  <option value="manual">{t("scheduler.setting.heavyLimits.manual")}</option>
+                </Select>
+              }
+            />
+            {settings?.heavyLimits === "manual" ? (
+              <>
+                {numberField(
+                  "testSlots",
+                  "scheduler.setting.testSlots",
+                  "scheduler.setting.testSlots.hint",
+                )}
+                {numberField(
+                  "testMemoryMaxGb",
+                  "scheduler.setting.testMemory",
+                  "scheduler.setting.testMemory.hint",
+                )}
+                {numberField(
+                  "testCpuPercent",
+                  "scheduler.setting.testCpu",
+                  "scheduler.setting.testCpu.hint",
+                )}
+                {numberField(
+                  "previewSlots",
+                  "scheduler.setting.previewSlots",
+                  "scheduler.setting.previewSlots.hint",
+                )}
+                {numberField(
+                  "previewMemoryMaxGb",
+                  "scheduler.setting.previewMemory",
+                  "scheduler.setting.previewMemory.hint",
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t("scheduler.limits.autoHint")}
+              </p>
             )}
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {t("scheduler.tests.explanation", {

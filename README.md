@@ -115,9 +115,9 @@ opens the browser. Stop the app by closing that terminal.
 - **Heavy commands** — optional (Task queue page → "Turn on"): a PreToolUse hook in
   `~/.claude/settings.json` blocks tests, typecheck, lint, builds, installs and `git commit`/`push`
   (their hooks) run directly and has Claude rerun them through `scripts/heavy-run`, which waits for a
-  free slot across every session (default 1 at a time) and for that much free RAM — except light
-  commands (`git commit`/`push`, lint of explicit files, tests of explicit files or folders), which
-  skip the slot queue and only wait for 2 GB free, so a quick commit never waits behind a long
+  free slot across every session and for free RAM (see Limits) — except light commands (`git
+  commit`/`push`, lint of explicit files, tests of explicit files or folders), which skip the slot
+  queue and only wait for up to 2 GB free, so a quick commit never waits behind a long
   build. The hook lets through, without heavy-run, a `git commit`/`push` whose repo has no hook to
   run and eslint on up to 20 explicit files. Every heavy-run command runs
   in its own cgroup with a RAM/CPU cap (`systemd-run --user --scope`) at low CPU/IO priority, and
@@ -125,10 +125,23 @@ opens the browser. Stop the app by closing that terminal.
   heap cap) instead of freezing the machine. It also refuses to start (exit 75) when the temp dir can't fit 512 MB — `/tmp` is often a tmpfs with a per-user quota, and builds writing there die halfway. Dev-server containers (`docker run … next dev`,
   `yarn dev`, vite, storybook) are blocked too and started as `heavy-run --preview docker run …`
   (a detached `heavy-run docker run -d …` of a dev server counts as a preview even without the flag):
-  at most N previews at once across sessions (default 5, counted by a container label), each with
-  a RAM cap (default 4 GB) and 2 CPUs. Each task keeps one preview running for you to validate
+  at most N previews at once across sessions (counted by a container label), each with a RAM cap
+  and 2 CPUs (see Limits). Each task keeps one preview running for you to validate
   its worktree. A run or preview that waits over 15 min gives up (exit 75,
   nothing ran) instead of hanging the session
+- **Heavy-command limits** (`orchestrator.heavyLimits`, Task queue window): `auto` (the default,
+  also when the file has no such field) derives the slots, RAM and CPU caps from this machine's RAM
+  and cores and from what each kind of command used before. Every run records its peak memory
+  (`memory.peak` of its own cgroup, as `peakMb` in `history.jsonl`, with `key` = `<repo>:<kind>`;
+  a worktree under `<repo>/.claude/worktrees/` counts as its main repo). Kinds: build, install,
+  typecheck, test-full, test-files, lint, git, docker, other. A heavy run waits for 1.2× the
+  largest of its last 10 peaks to be free (default per kind until one has run, never more than half
+  the RAM); its RAM cap is 2× that, between 4 GB and half the RAM; the slots are only an upper bound
+  (cores / 4). A run counts as taking its RAM for 60 s after it starts, so the next one doesn't see
+  that RAM as free. Each preview gets 20% of the RAM (4–8 GB) and previews together at most 40%.
+  `manual` uses the numbers in the Task queue window (test/preview slots, RAM and CPU per run). A
+  run's peak is only learned where the kernel exposes `memory.peak` and the command ran in the
+  scope (not `docker run`)
 - **Task worktree setup** — per repo (Settings → "Task worktree setup"), a new task worktree gets
   a symlink to each of the main checkout's `node_modules` (root and workspaces) and a copy of its
   gitignored `.env*` files, since git only checks out tracked files. The link is added to the repo's

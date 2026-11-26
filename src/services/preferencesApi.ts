@@ -6,6 +6,7 @@ import type {
   WorkspaceDirSuggestion,
 } from "../../shared/preferences";
 export type {
+  HeavyLimitsMode,
   Language,
   OrchestratorPreferences,
   SkillsHubPreferences,

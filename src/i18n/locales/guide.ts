@@ -233,8 +233,8 @@ export const guide = {
   ),
   "guide.queue.scheduler.title": dict("Scheduler and limits", "Agendador e limites"),
   "guide.queue.scheduler.what": dict(
-    "Why it's waiting (VPN, sessions, memory, plan usage, interval), Check now and Pause. Its settings: sessions at once, free RAM, plan usage, minutes between launches, the VPN interface (nothing starts while it's down, and every page warns), and the heavy-command hook that keeps tests and builds from freezing the machine.",
-    "Por que está esperando (VPN, sessões, memória, uso do plano, intervalo), Checar agora e Pausar. As configurações: sessões ao mesmo tempo, RAM livre, uso do plano, minutos entre lançamentos, a interface da VPN (nada começa com ela fora do ar, e toda página avisa) e o hook de comandos pesados que impede testes e builds de travar a máquina.",
+    "Why it's waiting (VPN, sessions, memory, plan usage, interval), Check now and Pause. Its settings: sessions at once, free RAM, plan usage, minutes between launches, the VPN interface (nothing starts while it's down, and every page warns), and the heavy-command hook that keeps tests and builds from freezing the machine, with its limits (automatic or manual).",
+    "Por que está esperando (VPN, sessões, memória, uso do plano, intervalo), Checar agora e Pausar. As configurações: sessões ao mesmo tempo, RAM livre, uso do plano, minutos entre lançamentos, a interface da VPN (nada começa com ela fora do ar, e toda página avisa) e o hook de comandos pesados que impede testes e builds de travar a máquina, com os limites dele (automáticos ou manuais).",
   ),
   "guide.queue.scheduler.where": dict(
     "Task queue › scheduler panel › Queue settings",

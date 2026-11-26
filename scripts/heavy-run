@@ -18,13 +18,16 @@
 #     half-done cleanups behind. It stops right away (exit 75, nothing ran) and says what to free.
 # Light commands (git commit/push, lint/format of explicit files, tests of explicit files — see
 # heavy-run-lane.mjs) skip the slot queue, so a quick commit never waits behind a long build; they
-# still wait for LIGHT_MEMORY_GB free and get the same caps and priority.
+# still wait for a small amount of free RAM and get the same caps and priority.
 # With --preview it starts a dev-server container instead: at most N previews running across every
 # session (counted by the label it adds), each with a RAM/CPU cap and low CPU weight. A detached
 # `docker run -d … <dev server>` without the flag is treated as a preview too, so a long-lived dev
 # server never ends up with a one-off run's cap.
 # Waiting gives up after MAX_WAIT_S (exit 75, nothing ran) so a session never hangs on it.
-# Limits come from `orchestrator` in this app's userPreferences.json (Task queue window).
+# Limits: `orchestrator.heavyLimits` in this app's userPreferences.json (Task queue window). "manual"
+# uses the numbers there; "auto" (default) derives them from RAM, cores and the peak memory earlier
+# runs of the same kind in the same repo used (history.jsonl, see heavy-run-auto.mjs). Each run's
+# peak is recorded in its heavy.run event (peakMb) from the cgroup's memory.peak.
 # Required by the PreToolUse hook `heavy-run-hook.mjs` for those commands.
 set -u
 
@@ -71,6 +74,10 @@ PREFS_FILE="$SCRIPT_DIR/../userPreferences.json"
 # For the app's history (server/utils/history.ts).
 HISTORY_FILE="$SCRIPT_DIR/../history.jsonl"
 COMMAND_TEXT="$*"
+LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/claude-heavy-run"
+mkdir -p "$LOCK_DIR"
+# This run's reservation and peak files go away with it.
+trap 'rm -f "$LOCK_DIR/reserve-$$" "$LOCK_DIR/peak-$$"' EXIT
 
 # record <type> [HR_F_<field>=<value>...] — one event; all-digit values are stored as numbers.
 record() {
@@ -93,23 +100,69 @@ record() {
 
 # Defaults when the file or a field is missing. Plain write (never console.log: under FORCE_COLOR it
 # prints numbers as ANSI-colored text).
-read -r SLOTS MEMORY_GB CPU_PERCENT PREVIEW_SLOTS PREVIEW_MEMORY_GB < <(
+read -r LIMITS_MODE SLOTS MEMORY_GB CPU_PERCENT PREVIEW_SLOTS PREVIEW_MEMORY_GB < <(
   NO_COLOR=1 FORCE_COLOR=0 node -e '
     let o = {};
     try { o = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).orchestrator ?? {}; } catch {}
     const n = (v, d) => (Number.isInteger(v) && v > 0 ? v : d);
     process.stdout.write([
+      o.heavyLimits === "manual" ? "manual" : "auto",
       n(o.testSlots, 1), n(o.testMemoryMaxGb, 6), n(o.testCpuPercent, 400),
       n(o.previewSlots, 5), n(o.previewMemoryMaxGb, 4),
     ].join(" ") + "\n");
   ' "$PREFS_FILE" 2>/dev/null
 )
 positive_int() { [[ "${1:-}" =~ ^[1-9][0-9]*$ ]] && echo "$1" || echo "$2"; }
+[ "$LIMITS_MODE" = manual ] || LIMITS_MODE=auto
 SLOTS=$(positive_int "${SLOTS:-}" 1)
 MEMORY_GB=$(positive_int "${MEMORY_GB:-}" 6)
 CPU_PERCENT=$(positive_int "${CPU_PERCENT:-}" 400)
 PREVIEW_SLOTS=$(positive_int "${PREVIEW_SLOTS:-}" 5)
 PREVIEW_MEMORY_GB=$(positive_int "${PREVIEW_MEMORY_GB:-}" 4)
+
+# apply_limits [key] — sets this run's limits. manual: the numbers above, and a heavy run waits for
+# its RAM cap. auto: heavy-run-auto.mjs derives them (RAM, cores, the key's learned peak or the
+# default need); the numbers above are the fallback if it fails. WAIT_GB = free RAM a heavy run
+# waits for before it starts.
+apply_limits() {
+  local auto=
+  if [ "$LIMITS_MODE" = auto ]; then
+    auto=$(node "$SCRIPT_DIR/heavy-run-auto.mjs" "${1:-}" 2>/dev/null) || auto=
+  fi
+  if [ -z "$auto" ]; then
+    WAIT_GB=$MEMORY_GB
+    NEED_NOTE="manual limit"
+    return
+  fi
+  local need_source
+  read -r WAIT_GB need_source MEMORY_GB CPU_PERCENT PREVIEW_MEMORY_GB PREVIEW_SLOTS SLOTS _ _ \
+    <<<"$auto"
+  if [ "$need_source" = learned ]; then
+    NEED_NOTE="need learned from earlier runs of $1"
+  else
+    NEED_NOTE="default need for $1"
+  fi
+}
+
+# Repo of a run for its history key: the main repo's folder name, also for a worktree under
+# <repo>/.claude/worktrees/<name> (the parent of the common git dir); else the top-level folder.
+repo_name() {
+  local top common
+  if ! top=$(git rev-parse --show-toplevel 2>/dev/null); then
+    basename "$PWD"
+    return
+  fi
+  case "$top" in
+    */.claude/worktrees/*)
+      common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+      if [ -n "$common" ]; then
+        basename "$(dirname "$common")"
+        return
+      fi
+      ;;
+  esac
+  basename "$top"
+}
 
 requested_at=$(date +%s)
 waiting_recorded=false
@@ -132,20 +185,46 @@ note_wait() {
   sleep 5
 }
 
-# Waits until <gb> GB are free and nothing is stalling on memory — another app (browser, dev
-# server) may be using it.
+# Memory (kB) other runs reserved when they started (`reserve-<pid>`, "<MB> <epoch>"). A reservation
+# counts for 60 s while its run is alive, until that run's own memory shows up in MemAvailable.
+reserved_memory_kb() {
+  local file pid mb started now total=0
+  now=$(date +%s)
+  for file in "$LOCK_DIR"/reserve-*; do
+    [ -f "$file" ] || continue
+    pid=${file##*reserve-}
+    [ "$pid" = "$$" ] && continue
+    read -r mb started < "$file" 2>/dev/null || continue
+    [[ "$mb" =~ ^[0-9]+$ && "$started" =~ ^[0-9]+$ ]] || continue
+    if [ $((now - started)) -lt 60 ] && kill -0 "$pid" 2>/dev/null; then
+      total=$((total + mb * 1024))
+    fi
+  done
+  echo "$total"
+}
+
+# Records that this run took <gb> GB, so runs starting right after don't count that RAM as free.
+reserve_resources() {
+  echo "$(($1 * 1024)) $(date +%s)" > "$LOCK_DIR/reserve-$$"
+}
+
+# Waits until <gb> GB are free (less what other runs just reserved, in auto) and nothing is stalling
+# on memory — another app (browser, dev server) may be using it.
 wait_for_resources() {
-  local need_kb=$(($1 * 1024 * 1024)) available_kb memory_pressure
+  local need_kb=$(($1 * 1024 * 1024)) available_kb memory_pressure reserved_kb free_kb
   while :; do
     available_kb=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null)
     memory_pressure=$(awk -F'[ =]' '/^some/ {print int($3)}' /proc/pressure/memory 2>/dev/null)
     available_kb=${available_kb:-$need_kb}
-    if [ "$available_kb" -ge "$need_kb" ] &&
+    reserved_kb=0
+    if [ "$LIMITS_MODE" = auto ]; then reserved_kb=$(reserved_memory_kb); fi
+    free_kb=$((available_kb - reserved_kb))
+    if [ "$free_kb" -ge "$need_kb" ] &&
       [ "${memory_pressure:-0}" -lt "$MAX_MEMORY_PRESSURE" ]; then
       return
     fi
-    note_wait resources "waiting for $1 GB of free RAM (now $((available_kb / 1024 / 1024)) GB," \
-      "memory pressure ${memory_pressure:-0}%)..."
+    note_wait resources "waiting for $1 GB of free RAM (now $(((free_kb > 0 ? free_kb : 0) / 1024 / 1024)) GB," \
+      "memory pressure ${memory_pressure:-0}%; ${NEED_NOTE:-manual limit})..."
   done
 }
 
@@ -171,6 +250,7 @@ check_tmp_space() {
 check_tmp_space
 
 if [ "$mode" = preview ]; then
+  apply_limits ""
   while :; do
     running=$(docker ps -q --filter "label=$PREVIEW_LABEL" 2>/dev/null | wc -l)
     [ "$running" -lt "$PREVIEW_SLOTS" ] && break
@@ -179,6 +259,7 @@ if [ "$mode" = preview ]; then
   done
   slot_at=$(date +%s)
   wait_for_resources "$PREVIEW_MEMORY_GB"
+  reserve_resources "$PREVIEW_MEMORY_GB"
   started_at=$(date +%s)
   shift 2
   # Right after `run`, so an explicit flag later in the command still wins.
@@ -193,9 +274,10 @@ fi
 
 lane=$(node "$SCRIPT_DIR/heavy-run-lane.mjs" "$@" 2>/dev/null)
 [ "$lane" = light ] || lane=heavy
+kind=$(node "$SCRIPT_DIR/heavy-run-lane.mjs" --kind "$@" 2>/dev/null)
+key="$(repo_name):${kind:-other}"
+apply_limits "$key"
 
-LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/claude-heavy-run"
-mkdir -p "$LOCK_DIR"
 exec {slot_fd}>/dev/null
 if [ "$lane" = heavy ]; then
   exec {slot_fd}>&-
@@ -212,10 +294,12 @@ if [ "$lane" = heavy ]; then
 fi
 slot_at=$(date +%s)
 if [ "$lane" = heavy ]; then
-  wait_for_resources "$MEMORY_GB"
+  need_gb=$WAIT_GB
 else
-  wait_for_resources "$((LIGHT_MEMORY_GB < MEMORY_GB ? LIGHT_MEMORY_GB : MEMORY_GB))"
+  need_gb=$((WAIT_GB < LIGHT_MEMORY_GB ? WAIT_GB : LIGHT_MEMORY_GB))
 fi
+wait_for_resources "$need_gb"
+reserve_resources "$need_gb"
 $waiting_recorded && echo "heavy-run: starting." >&2
 started_at=$(date +%s)
 
@@ -232,8 +316,10 @@ fi
 export NODE_OPTIONS="$node_options"
 
 # A container runs in dockerd's cgroup, outside the scope below: the caps go on `docker run` itself,
-# right after `run` so an explicit flag later in the command still wins.
+# right after `run` so an explicit flag later in the command still wins. Its peak isn't measured.
+measure_peak=true
 if [ "${1:-}" = docker ] && [ "${2:-}" = run ]; then
+  measure_peak=false
   shift 2
   set -- docker run --memory="${MEMORY_GB}g" --memory-swap="${MEMORY_GB}g" \
     --cpus="$((CPU_PERCENT / 100)).$((CPU_PERCENT % 100 / 10))" --cpu-shares=256 \
@@ -243,13 +329,31 @@ fi
 low_priority=(nice -n 10)
 command -v ionice >/dev/null 2>&1 && low_priority+=(ionice -c 2 -n 7)
 
+# Runs inside the scope: the command's exit status is passed on unchanged, and the scope's own peak
+# memory (cgroup v2 memory.peak, bytes) is written to $1 for heavy-run to read once it has exited.
+# Without that file (old kernel) nothing is recorded.
+PEAK_WRAPPER='
+  peak_file=$1
+  shift
+  "$@"
+  status=$?
+  cgroup=$(sed -n "s/^0:://p" /proc/self/cgroup 2>/dev/null)
+  cat "/sys/fs/cgroup$cgroup/memory.peak" 2>/dev/null > "$peak_file"
+  exit "$status"
+'
+
 # The command doesn't get the slot's fd: a daemon it leaves behind would hold the slot forever.
+peak_file="$LOCK_DIR/peak-$$"
+scope_args=(--user --scope --quiet -p "MemoryMax=${MEMORY_GB}G" -p MemorySwapMax=0
+  -p "CPUQuota=${CPU_PERCENT}%" -p CPUWeight=20 -p IOWeight=20)
 if command -v systemd-run >/dev/null 2>&1 &&
   systemd-run --user --scope --quiet true >/dev/null 2>&1; then
-  systemd-run --user --scope --quiet \
-    -p "MemoryMax=${MEMORY_GB}G" -p MemorySwapMax=0 -p "CPUQuota=${CPU_PERCENT}%" \
-    -p CPUWeight=20 -p IOWeight=20 \
-    -- "${low_priority[@]}" "$@" {slot_fd}>&-
+  if $measure_peak; then
+    systemd-run "${scope_args[@]}" \
+      -- bash -c "$PEAK_WRAPPER" heavy-run "$peak_file" "${low_priority[@]}" "$@" {slot_fd}>&-
+  else
+    systemd-run "${scope_args[@]}" -- "${low_priority[@]}" "$@" {slot_fd}>&-
+  fi
   status=$?
 else
   echo "heavy-run: systemd-run unavailable — running without a memory/CPU cap." >&2
@@ -257,9 +361,15 @@ else
   status=$?
 fi
 
-record heavy.run HR_F_status="$status" HR_F_slotWaitS=$((slot_at - requested_at)) \
+peak_mb=
+peak_bytes=$(cat "$peak_file" 2>/dev/null)
+if [[ "$peak_bytes" =~ ^[0-9]+$ ]]; then peak_mb=$((peak_bytes / 1048576)); fi
+rm -f "$peak_file"
+
+record heavy.run HR_F_status="$status" HR_F_key="$key" HR_F_slotWaitS=$((slot_at - requested_at)) \
   HR_F_memoryWaitS=$((started_at - slot_at)) HR_F_durationS=$(($(date +%s) - started_at)) \
-  HR_F_memoryCapGb="$MEMORY_GB" HR_F_slots="$SLOTS" HR_F_lane="$lane"
+  HR_F_memoryCapGb="$MEMORY_GB" HR_F_slots="$SLOTS" HR_F_lane="$lane" \
+  ${peak_mb:+HR_F_peakMb="$peak_mb"}
 
 if [ "$status" -eq 137 ]; then
   echo "heavy-run: killed for going over the ${MEMORY_GB} GB memory cap. Run fewer workers" \

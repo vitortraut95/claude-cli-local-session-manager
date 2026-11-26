@@ -389,9 +389,20 @@ export const taskQueue = {
   "scheduler.setting.launchSpacing": dict("Minutes between launches", "Minutos entre aberturas"),
   "scheduler.setting.previewSlots": dict("Previews at once", "Previews simultâneos"),
   "scheduler.setting.previewMemory": dict("RAM per preview (GB)", "RAM por preview (GB)"),
+  "scheduler.setting.heavyLimits": dict("Heavy-command limits", "Limites dos comandos pesados"),
+  "scheduler.setting.heavyLimits.hint": dict(
+    "Auto: from this machine's RAM and cores and from the peak memory each command used before. Manual: the numbers below.",
+    "Auto: pela RAM e pelos núcleos desta máquina e pelo pico de memória que cada comando usou antes. Manual: os números abaixo.",
+  ),
+  "scheduler.setting.heavyLimits.auto": dict("Auto", "Automático"),
+  "scheduler.setting.heavyLimits.manual": dict("Manual", "Manual"),
+  "scheduler.limits.autoHint": dict(
+    "Slots and RAM/CPU caps are set automatically from this machine's RAM and cores and from the peak memory each command used before.",
+    "Vagas e limites de RAM/CPU são definidos automaticamente pela RAM e pelos núcleos desta máquina e pelo pico de memória que cada comando usou antes.",
+  ),
   "scheduler.tests.explanation": dict(
-    "A PreToolUse hook in {settings} makes heavy commands (tests, typecheck, lint, builds, installs, git commit/push) and dev-server containers run through {path}: each waits for a free slot across every session (commits and lint/tests of explicit files only wait for free RAM) and runs in its own cgroup with these caps. One waiting over 15 min gives up (exit 75).",
-    "Um hook PreToolUse em {settings} faz comandos pesados (testes, typecheck, lint, builds, installs, git commit/push) e containers de dev server rodarem por {path}: cada um espera uma vaga entre todas as sessões (commits e lint/testes de arquivos específicos só esperam RAM livre) e roda num cgroup próprio com estes limites. Quem espera mais de 15 min desiste (saída 75).",
+    "A PreToolUse hook in {settings} makes heavy commands (tests, typecheck, lint, builds, installs, git commit/push) and dev-server containers run through {path}: each waits for a free slot across every session (commits and lint/tests of explicit files only wait for free RAM) and runs in its own cgroup with these caps. One waiting over 15 min gives up (exit 75). Auto derives the caps from this machine and each command's earlier peak memory; manual uses the numbers you set.",
+    "Um hook PreToolUse em {settings} faz comandos pesados (testes, typecheck, lint, builds, installs, git commit/push) e containers de dev server rodarem por {path}: cada um espera uma vaga entre todas as sessões (commits e lint/testes de arquivos específicos só esperam RAM livre) e roda num cgroup próprio com estes limites. Quem espera mais de 15 min desiste (saída 75). Automático calcula os limites pela máquina e pelo pico de memória anterior de cada comando; manual usa os números que você define.",
   ),
   "scheduler.saveError": dict(
     "Couldn't save the scheduler settings.",

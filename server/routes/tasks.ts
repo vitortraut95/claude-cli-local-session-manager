@@ -152,7 +152,7 @@ tasksRouter.put("/preferences", async (req, res) => {
         "taskRefinementSkill?: string, " +
         "taskTestPermissionModeAuto?: boolean, remoteControl?: boolean, " +
         'theme?: "light"|"dark"|null, orchestrator?: { enabled, maxSessions, ' +
-        "minFreeMemoryPercent, maxUsagePercent }, worktreeSetup?: { [project]: " +
+        'minFreeMemoryPercent, maxUsagePercent, heavyLimits?: "auto"|"manual" }, worktreeSetup?: { [project]: ' +
         '{ linkNodeModules, copyEnvFiles } }, terminalLayout?: "tabs"|"limux-grid" }.',
     );
   }

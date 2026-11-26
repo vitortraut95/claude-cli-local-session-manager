@@ -17,6 +17,7 @@ import {
   stopPreviewById,
 } from "../services/previewService.js";
 import { extractBooleanField } from "../utils/httpBody.js";
+import { previewSlotsFor } from "../utils/heavyLimits.js";
 import { AppError, NotFoundError } from "../utils/httpError.js";
 
 export const systemRouter = Router();
@@ -86,7 +87,7 @@ systemRouter.post("/previews/:id/remove", async (req, res) => {
 /** The card's restart button on a task worktree's stopped preview container. */
 systemRouter.post("/previews/:id/start", async (req, res) => {
   const { orchestrator } = await getUserPreferences();
-  await startPreviewById(req.params.id, orchestrator.previewSlots);
+  await startPreviewById(req.params.id, previewSlotsFor(orchestrator));
   res.json({ success: true });
 });
 

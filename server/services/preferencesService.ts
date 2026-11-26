@@ -4,6 +4,7 @@ import { BadRequestError } from "../utils/httpError.js";
 import { REPO_ROOT } from "../utils/repoRoot.js";
 import type {
   EnvPreviews,
+  HeavyLimitsMode,
   Language,
   OrchestratorPreferences,
   SkillsHubPreferences,
@@ -56,6 +57,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     previewMemoryMaxGb: 4,
     launchSpacingMinutes: 5,
     vpnInterface: "",
+    heavyLimits: "auto",
   },
   worktreeSetup: {},
   terminalLayout: "tabs",
@@ -142,12 +144,17 @@ function parseOrchestrator(value: unknown): OrchestratorPreferences {
       ? raw.launchSpacingMinutes
       : fallback.launchSpacingMinutes,
     vpnInterface: isInterfaceName(raw.vpnInterface) ? raw.vpnInterface : fallback.vpnInterface,
+    heavyLimits: isHeavyLimitsMode(raw.heavyLimits) ? raw.heavyLimits : fallback.heavyLimits,
   };
 }
 
 /** A network interface name as `/sys/class/net` has it, or "" (none). */
 function isInterfaceName(value: unknown): value is string {
   return typeof value === "string" && /^[\w.-]{0,32}$/.test(value);
+}
+
+function isHeavyLimitsMode(value: unknown): value is HeavyLimitsMode {
+  return value === "auto" || value === "manual";
 }
 
 export function isOrchestratorPreferences(value: unknown): value is OrchestratorPreferences {
@@ -165,7 +172,8 @@ export function isOrchestratorPreferences(value: unknown): value is Orchestrator
     (raw.previewSlots === undefined || isIntInRange(raw.previewSlots, 1, 16)) &&
     (raw.previewMemoryMaxGb === undefined || isIntInRange(raw.previewMemoryMaxGb, 1, 64)) &&
     (raw.launchSpacingMinutes === undefined || isIntInRange(raw.launchSpacingMinutes, 0, 60)) &&
-    (raw.vpnInterface === undefined || isInterfaceName(raw.vpnInterface))
+    (raw.vpnInterface === undefined || isInterfaceName(raw.vpnInterface)) &&
+    (raw.heavyLimits === undefined || isHeavyLimitsMode(raw.heavyLimits))
   );
 }
 
