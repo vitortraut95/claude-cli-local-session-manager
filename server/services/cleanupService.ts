@@ -20,6 +20,7 @@ import {
   type WorktreeEntry,
 } from "../utils/git.js";
 import { executeTaskFilesFinding, scanForTaskFileFindings } from "./taskFilesCleanupService.js";
+import { listStoppedTaskContainers, removeStoppedContainer } from "./previewService.js";
 import { AppError } from "../utils/httpError.js";
 import { inferTaskKey } from "../utils/taskKeys.js";
 import { getTaskStore, linkRepoBranchToTask, type TaskStore } from "../utils/taskStore.js";
@@ -42,6 +43,8 @@ export type { CleanupFinding } from "../../shared/cleanup.js";
  * 5. `prune-old-sessions` — see `scanForOldSessionFindings`.
  * 6. `remove-task-files` — checklists, test evidence and cache the task skills left behind; see
  *    `scanForTaskFileFindings`.
+ * 7. `remove-stopped-containers` — stopped Docker containers of a task's worktree whose task is
+ *    done or no longer tracked; see `listStoppedTaskContainers`.
  *
  * Every finding is re-validated in `executeCleanupFinding` before acting.
  */
@@ -121,8 +124,29 @@ async function runCleanupScan(): Promise<CleanupFinding[]> {
 
   findings.push(...(await scanForOldSessionFindings(projectFolders, sessions)));
   findings.push(...(await scanForTaskFileFindings(sessions, store)));
+  findings.push(...(await scanForStoppedContainerFindings(store)));
 
   return findings;
+}
+
+async function scanForStoppedContainerFindings(store: TaskStore): Promise<CleanupFinding[]> {
+  const staleContainers = await listStoppedTaskContainers(store.tasks);
+  if (staleContainers.length === 0) return [];
+  return [
+    {
+      id: "stopped-containers",
+      kind: "remove-stopped-containers",
+      command: `docker rm ${staleContainers.map((c) => c.name).join(" ")}`,
+      repoRoot: "",
+      staleBranches: [],
+      worktreePath: null,
+      branch: null,
+      defaultBranch: null,
+      staleSessions: [],
+      keepCount: 0,
+      staleContainers,
+    },
+  ];
 }
 
 const FINDING_ID_PREFIX = {
@@ -350,6 +374,29 @@ export async function executeCleanupFinding(finding: CleanupFinding): Promise<vo
   if (finding.kind === "remove-task-files") {
     const [sessions, store] = await Promise.all([listSessions(), getTaskStore()]);
     await executeTaskFilesFinding(finding, sessions, store);
+    return;
+  }
+
+  if (finding.kind === "remove-stopped-containers") {
+    // Only the listed containers that still qualify; `docker rm` itself refuses a running one.
+    const still = new Map(
+      (await listStoppedTaskContainers((await getTaskStore()).tasks)).map((c) => [c.name, c]),
+    );
+    const failed: string[] = [];
+    for (const { name } of finding.staleContainers ?? []) {
+      if (!still.has(name)) continue;
+      try {
+        await removeStoppedContainer(name);
+      } catch {
+        failed.push(name);
+      }
+    }
+    if (failed.length > 0) {
+      throw new AppError(
+        "CLEANUP_CONTAINER_FAILED",
+        `Could not remove ${failed.join(", ")} — it may be running again.`,
+      );
+    }
     return;
   }
 

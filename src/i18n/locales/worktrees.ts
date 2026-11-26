@@ -80,7 +80,7 @@ export const worktrees = {
       "or the app doesn't track the ticket — and Figma cache older than its TTL. " +
       "What was published is already on the ticket/PR. Never while a session of that ticket is active.",
     "checklists, handoffs, textos de Jira/PR e evidências de teste que as skills de tarefa " +
-      'guardam por ticket (TASK_CHECKLIST_DIR, QA_EVIDENCE_DIR) depois de 14 dias sem mexer, se a ' +
+      "guardam por ticket (TASK_CHECKLIST_DIR, QA_EVIDENCE_DIR) depois de 14 dias sem mexer, se a " +
       'tarefa está "Concluída" ou o app não acompanha o ticket — e cache do Figma vencido. ' +
       "O que foi publicado já está no ticket/PR. Nunca com sessão ativa daquele ticket.",
   ),
@@ -107,6 +107,23 @@ export const worktrees = {
   "cleanupModal.finding.taskFiles.reason.done": dict("done", "concluída"),
   "cleanupModal.finding.taskFiles.reason.stale": dict("untouched", "parada"),
   "cleanupModal.finding.taskFiles.reason.expired": dict("expired", "vencido"),
+  "cleanupModal.finding.stoppedContainers.label": dict(
+    "Stopped containers of finished tasks",
+    "Containers parados de tarefas finalizadas",
+  ),
+  "cleanupModal.finding.stoppedContainers.body": dict(
+    'Docker containers of a task worktree that are stopped (exited or created, never running) while the task is marked "Done" or no longer tracked in the app. Removed with docker rm: no force, volumes and images stay.',
+    'Containers Docker de um worktree de tarefa parados (saídos ou criados, nunca rodando) enquanto a tarefa está marcada como "Concluída" ou não é mais acompanhada pelo app. Removidos com docker rm: sem forçar, volumes e imagens ficam.',
+  ),
+  "cleanupModal.finding.stoppedContainers.title": dict(
+    "{count} stopped container(s) of finished tasks",
+    "{count} container(s) parado(s) de tarefas finalizadas",
+  ),
+  "cleanupModal.finding.stoppedContainers.description": dict(
+    "Stopped containers of {tasks} task(s). Each is removed on its own with docker rm, so a container that started again in the meantime is left alone.",
+    "Containers parados de {tasks} tarefa(s). Cada um é removido sozinho com docker rm, então um container que voltou a rodar nesse meio-tempo fica de fora.",
+  ),
+  "cleanupModal.finding.stoppedContainers.stoppedAt": dict("stopped {when}", "parado {when}"),
   "cleanupModal.finding.prune.title": dict(
     'Worktrees deleted manually in "{project}"',
     'Worktrees excluídos manualmente em "{project}"',

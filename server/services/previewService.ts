@@ -5,7 +5,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { recordEvent } from "../utils/history.js";
 import { ConflictError, NotFoundError } from "../utils/httpError.js";
-import { getTaskStore } from "../utils/taskStore.js";
+import { getTaskStore, type TaskStore } from "../utils/taskStore.js";
+import type { StaleContainer } from "../../shared/cleanup.js";
 
 /**
  * Local preview servers ("which port is each task on?"), found without any config:
@@ -49,12 +50,18 @@ function isInside(dir: string, root: string): boolean {
   return resolved === base || resolved.startsWith(`${base}${path.sep}`);
 }
 
-type DockerInspect = {
+export type DockerInspect = {
   Name: string;
-  Config: { Env?: string[] | null; Cmd?: string[] | null; Labels?: Record<string, string> | null };
+  Created?: string;
+  Config: {
+    Image?: string;
+    Env?: string[] | null;
+    Cmd?: string[] | null;
+    Labels?: Record<string, string> | null;
+  };
   Mounts?: { Type: string; Source: string }[] | null;
   NetworkSettings?: { Ports?: Record<string, { HostPort: string }[] | null> | null } | null;
-  State?: { Running?: boolean } | null;
+  State?: { Running?: boolean; Status?: string; FinishedAt?: string } | null;
 };
 
 const PORT_FLAG = /(?:^|\s)(?:-p|--port)[\s=](\d{2,5})(?!\S)/;
@@ -97,28 +104,100 @@ function dockerPreview(container: DockerInspect): PreviewServer | null {
   return { kind: "docker", id: name, name, port, url, dirs, running };
 }
 
-async function dockerPreviews(): Promise<PreviewServer[]> {
+/** Inspects the containers matching `filters` (`docker ps -a --filter …`); none when docker is
+ *  missing or not accessible. */
+async function inspectContainers(filters: string[]): Promise<DockerInspect[]> {
   try {
-    const { stdout: ids } = await execFileAsync("docker", [
-      "ps",
-      "-aq",
-      "--filter",
-      "status=running",
-      "--filter",
-      "status=exited",
-    ]);
+    const { stdout: ids } = await execFileAsync("docker", ["ps", "-aq", ...filters]);
     const list = ids.split("\n").filter(Boolean);
     if (list.length === 0) return [];
     const { stdout } = await execFileAsync("docker", ["inspect", ...list], {
       maxBuffer: 32 * 1024 * 1024,
     });
-    return (JSON.parse(stdout) as DockerInspect[])
-      .map(dockerPreview)
-      .filter((p): p is PreviewServer => p !== null);
+    return JSON.parse(stdout) as DockerInspect[];
   } catch {
     // No docker, or no access to it.
     return [];
   }
+}
+
+async function dockerPreviews(): Promise<PreviewServer[]> {
+  const containers = await inspectContainers([
+    "--filter",
+    "status=running",
+    "--filter",
+    "status=exited",
+  ]);
+  return containers.map(dockerPreview).filter((p): p is PreviewServer => p !== null);
+}
+
+/**
+ * The task key a container belongs to, from its name: the team's run-local names a task's
+ * container `<name>-<key without hyphen, lowercase>` (`shop-proj456` → PROJ-456). A key
+ * the app still tracks is matched exactly; one it no longer tracks is rebuilt from the name.
+ * Null when the name doesn't end that way, or when two tracked keys would match it.
+ */
+export function taskKeyFromContainerName(name: string, trackedKeys: string[]): string | null {
+  const parsed = /-([a-z][a-z0-9]*?)(\d+)$/.exec(name);
+  if (!parsed) return null;
+  const compact = `${parsed[1]}${parsed[2]}`;
+  const tracked = trackedKeys.filter((key) => key.toLowerCase().replace("-", "") === compact);
+  if (tracked.length > 1) return null;
+  if (tracked.length === 1) return tracked[0] ?? null;
+  return `${parsed[1]!.toUpperCase()}-${parsed[2]}`;
+}
+
+/**
+ * The stopped (exited or created, never running or paused) containers of a task's worktree whose
+ * task is done or no longer in the store. Needs both signals: the name carries the key, and a bind
+ * mount sits under `.claude/worktrees/` (the worktree a task's preview serves), so a stopped
+ * container of an unrelated project is never listed.
+ */
+export function stoppedTaskContainersFrom(
+  containers: DockerInspect[],
+  tasks: TaskStore["tasks"],
+): StaleContainer[] {
+  const trackedKeys = Object.keys(tasks);
+  const found: StaleContainer[] = [];
+  for (const container of containers) {
+    const status = container.State?.Status;
+    if (status !== "exited" && status !== "created") continue;
+    const hasWorktreeMount = (container.Mounts ?? []).some(
+      (m) => m.Type === "bind" && isTaskWorktree(m.Source),
+    );
+    if (!hasWorktreeMount) continue;
+
+    const name = container.Name.replace(/^\//, "");
+    const taskKey = taskKeyFromContainerName(name, trackedKeys);
+    if (!taskKey) continue;
+    if (tasks[taskKey] && tasks[taskKey].status !== "done") continue;
+
+    const finished = container.State?.FinishedAt;
+    const stoppedAt =
+      status === "exited" && finished && !finished.startsWith("0001-")
+        ? finished
+        : (container.Created ?? new Date(0).toISOString());
+    found.push({ name, image: container.Config.Image ?? "", taskKey, stoppedAt });
+  }
+  return found.sort((a, b) => b.stoppedAt.localeCompare(a.stoppedAt));
+}
+
+/** The stopped task containers `remove-stopped-containers` offers, from the live docker state. */
+export async function listStoppedTaskContainers(
+  tasks: TaskStore["tasks"],
+): Promise<StaleContainer[]> {
+  const containers = await inspectContainers([
+    "--filter",
+    "status=exited",
+    "--filter",
+    "status=created",
+  ]);
+  return stoppedTaskContainersFrom(containers, tasks);
+}
+
+/** `docker rm <name>`: never forced, never with volumes; refuses a container that is running. */
+export async function removeStoppedContainer(name: string): Promise<void> {
+  await execFileAsync("docker", ["rm", name]);
 }
 
 /** `ss -ltnpH` → listening ports of our own processes, with their working directory. */

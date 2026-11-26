@@ -28,6 +28,11 @@ function findingTitle(finding: CleanupFinding, t: ReturnType<typeof useLanguage>
       count: finding.staleFiles?.length ?? 0,
     });
   }
+  if (finding.kind === "remove-stopped-containers") {
+    return t("cleanupModal.finding.stoppedContainers.title", {
+      count: finding.staleContainers?.length ?? 0,
+    });
+  }
   if (finding.kind === "prune-old-sessions") {
     return t("cleanupModal.finding.oldSessions.title", {
       count: finding.staleSessions.length,
@@ -63,6 +68,12 @@ function findingDescription(
       dir: finding.repoRoot,
       tickets: new Set(files.map((f) => f.taskKey)).size,
       freed,
+    });
+  }
+  if (finding.kind === "remove-stopped-containers") {
+    const containers = finding.staleContainers ?? [];
+    return t("cleanupModal.finding.stoppedContainers.description", {
+      tasks: new Set(containers.map((c) => c.taskKey)).size,
     });
   }
   if (finding.kind === "prune-old-sessions") {
@@ -176,6 +187,10 @@ export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalP
             <strong>{t("cleanupModal.finding.taskFiles.label")}</strong>{" "}
             {t("cleanupModal.finding.taskFiles.body")}
           </li>
+          <li>
+            <strong>{t("cleanupModal.finding.stoppedContainers.label")}</strong>{" "}
+            {t("cleanupModal.finding.stoppedContainers.body")}
+          </li>
         </ul>
       </div>
 
@@ -216,7 +231,8 @@ export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalP
                           {session.title}
                         </span>
                         <span className="shrink-0 text-gray-400 dark:text-gray-500">
-                          {formatUpdatedAt(session.updatedAt, language)} · {formatBytes(session.sizeBytes)}
+                          {formatUpdatedAt(session.updatedAt, language)} ·{" "}
+                          {formatBytes(session.sizeBytes)}
                         </span>
                       </li>
                     ))}
@@ -236,6 +252,26 @@ export function CleanupModal({ open, onClose, onFindingExecuted }: CleanupModalP
                       <span className="shrink-0 text-gray-500 dark:text-gray-400">
                         {t(`cleanupModal.finding.taskFiles.reason.${file.reason}`)} ·{" "}
                         {formatUpdatedAt(file.updatedAt, language)} · {formatBytes(file.sizeBytes)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {finding.kind === "remove-stopped-containers" && (
+                <ul className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-800">
+                  {(finding.staleContainers ?? []).map((container) => (
+                    <li
+                      key={container.name}
+                      className="flex items-center justify-between gap-2 border-b border-gray-100 px-2 py-1 text-xs last:border-b-0 dark:border-gray-800/60"
+                    >
+                      <span className="truncate font-mono text-gray-700 dark:text-gray-300">
+                        {container.name}
+                      </span>
+                      <span className="shrink-0 text-gray-500 dark:text-gray-400">
+                        {container.taskKey} · {container.image} ·{" "}
+                        {t("cleanupModal.finding.stoppedContainers.stoppedAt", {
+                          when: formatUpdatedAt(container.stoppedAt, language),
+                        })}
                       </span>
                     </li>
                   ))}

@@ -303,8 +303,8 @@ export const guide = {
   // Maintenance, team and app
   "guide.tools.cleanup.title": dict("Cleanup", "Limpeza"),
   "guide.tools.cleanup.what": dict(
-    "Finds stale, merged and abandoned worktrees, done tasks' worktrees, old sessions, and the checklists, handoffs, test evidence and expired cache the task skills left on this machine; you run each fix on its own. The item turns amber with a count when there's a lot to clean.",
-    "Encontra worktrees órfãos, mesclados e abandonados, worktrees de tarefas concluídas, sessões antigas e os checklists, handoffs, evidências de teste e cache vencido que as skills de tarefa deixaram na máquina; você roda cada correção separadamente. O item fica âmbar com a contagem quando tem muita coisa pra limpar.",
+    "Finds stale, merged and abandoned worktrees, done tasks' worktrees, old sessions, the checklists, handoffs, test evidence and expired cache the task skills left on this machine, and stopped containers of finished tasks' worktrees (removed with docker rm, never forced); you run each fix on its own. The item turns amber with a count when there's a lot to clean.",
+    "Encontra worktrees órfãos, mesclados e abandonados, worktrees de tarefas concluídas, sessões antigas, os checklists, handoffs, evidências de teste e cache vencido que as skills de tarefa deixaram na máquina, e containers parados dos worktrees de tarefas finalizadas (removidos com docker rm, nunca forçado); você roda cada correção separadamente. O item fica âmbar com a contagem quando tem muita coisa pra limpar.",
   ),
   "guide.tools.cleanup.where": dict("Navigation › Cleanup", "Navegação › Limpeza"),
   "guide.tools.skills.title": dict("Team skills", "Skills do time"),

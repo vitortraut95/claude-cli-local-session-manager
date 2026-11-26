@@ -32,7 +32,8 @@ cleanupRouter.post("/findings/execute", async (req, res) => {
       finding.kind !== "remove-abandoned-worktree" &&
       finding.kind !== "remove-done-task-worktree" &&
       finding.kind !== "prune-old-sessions" &&
-      finding.kind !== "remove-task-files") ||
+      finding.kind !== "remove-task-files" &&
+      finding.kind !== "remove-stopped-containers") ||
     typeof finding.repoRoot !== "string"
   ) {
     throw new BadRequestError("MALFORMED_CLEANUP_FINDING", "Malformed cleanup finding.");
@@ -43,6 +44,7 @@ cleanupRouter.post("/findings/execute", async (req, res) => {
     worktreePath: finding.worktreePath,
     branch: finding.branch,
     fileCount: finding.staleFiles?.length,
+    containerCount: finding.staleContainers?.length,
   };
   try {
     await executeCleanupFinding(finding);

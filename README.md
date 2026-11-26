@@ -76,7 +76,10 @@ opens the browser. Stop the app by closing that terminal.
   their bind mounts or compose dir — e.g. a worktree's own `mainsite<country>-<task>` container)
   and processes listening from inside the folder. A task worktree's container can be stopped
   (frees its memory, stays on the card), started again or removed from the card; otherwise it keeps
-  running until the task is marked done, which removes it
+  running until the task is marked done, which removes it. Cleanup also lists the stopped
+  containers of finished tasks' worktrees (a container named `<name>-<task key without hyphen>`,
+  mounting a `.claude/worktrees/` folder, whose task is done or no longer tracked) and removes
+  them with `docker rm` when confirmed; without docker the section just doesn't appear
 - **History** — every step of the task flow is appended to the local, gitignored `history.jsonl`
   (one JSON event per line: queue added/updated/removed/retried, scheduler blocked/unblocked and
   why, launch started/launched/failed with durations, status changes and who made them, root
