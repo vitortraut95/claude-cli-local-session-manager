@@ -16,8 +16,13 @@
 #   - never with the temp dir full: /tmp is often a tmpfs (RAM, with a per-user quota `df` doesn't
 #     show), and a build that can't write its temp files or logs there dies halfway, leaving
 #     half-done cleanups behind. It stops right away (exit 75, nothing ran) and says what to free.
+# Light commands (git commit/push, lint/format of explicit files, tests of explicit files — see
+# heavy-run-lane.mjs) skip the slot queue, so a quick commit never waits behind a long build; they
+# still wait for LIGHT_MEMORY_GB free and get the same caps and priority.
 # With --preview it starts a dev-server container instead: at most N previews running across every
-# session (counted by the label it adds), each with a RAM/CPU cap and low CPU weight.
+# session (counted by the label it adds), each with a RAM/CPU cap and low CPU weight. A detached
+# `docker run -d … <dev server>` without the flag is treated as a preview too, so a long-lived dev
+# server never ends up with a one-off run's cap.
 # Waiting gives up after MAX_WAIT_S (exit 75, nothing ran) so a session never hangs on it.
 # Limits come from `orchestrator` in this app's userPreferences.json (Task queue window).
 # Required by the PreToolUse hook `heavy-run-hook.mjs` for those commands.
@@ -27,6 +32,8 @@ MAX_WAIT_S=900
 # PSI memory `some avg10` (% of the last 10s something stalled on memory) at or above which
 # nothing starts.
 MAX_MEMORY_PRESSURE=10
+# Free RAM (GB) a light command waits for (capped at the test cap).
+LIGHT_MEMORY_GB=2
 # Free space (MB) the temp dir must really have — probed by allocating it, so a tmpfs user quota
 # counts too.
 MIN_TMP_FREE_MB=512
@@ -45,6 +52,18 @@ fi
 if [ "$#" -eq 0 ]; then
   echo "usage: heavy-run <command> [args...]" >&2
   exit 64
+fi
+
+# A detached dev-server container is a preview, flag or not.
+if [ "$mode" = test ] && [ "${1:-}" = docker ] && [ "${2:-}" = run ]; then
+  detached=false
+  for arg in "${@:3}"; do
+    # -d, --detach, or combined short flags such as -itd
+    if [ "$arg" = --detach ] || [[ "$arg" =~ ^-[a-zA-Z]*d[a-zA-Z]*$ ]]; then detached=true; fi
+  done
+  if $detached && [[ "$*" =~ next[[:space:]]+dev|(yarn|npm|pnpm)[[:space:]]+(run[[:space:]]+)?dev|vite|storybook ]]; then
+    mode=preview
+  fi
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -172,20 +191,31 @@ if [ "$mode" = preview ]; then
   exit "$status"
 fi
 
+lane=$(node "$SCRIPT_DIR/heavy-run-lane.mjs" "$@" 2>/dev/null)
+[ "$lane" = light ] || lane=heavy
+
 LOCK_DIR="${XDG_RUNTIME_DIR:-/tmp}/claude-heavy-run"
 mkdir -p "$LOCK_DIR"
-while :; do
-  for i in $(seq 1 "$SLOTS"); do
-    exec {slot_fd}>"$LOCK_DIR/slot$i"
-    if flock -n "$slot_fd"; then
-      break 2
-    fi
-    exec {slot_fd}>&-
+exec {slot_fd}>/dev/null
+if [ "$lane" = heavy ]; then
+  exec {slot_fd}>&-
+  while :; do
+    for i in $(seq 1 "$SLOTS"); do
+      exec {slot_fd}>"$LOCK_DIR/slot$i"
+      if flock -n "$slot_fd"; then
+        break 2
+      fi
+      exec {slot_fd}>&-
+    done
+    note_wait slot "all $SLOTS test slot(s) are busy in other sessions — waiting for one..."
   done
-  note_wait slot "all $SLOTS test slot(s) are busy in other sessions — waiting for one..."
-done
+fi
 slot_at=$(date +%s)
-wait_for_resources "$MEMORY_GB"
+if [ "$lane" = heavy ]; then
+  wait_for_resources "$MEMORY_GB"
+else
+  wait_for_resources "$((LIGHT_MEMORY_GB < MEMORY_GB ? LIGHT_MEMORY_GB : MEMORY_GB))"
+fi
 $waiting_recorded && echo "heavy-run: starting." >&2
 started_at=$(date +%s)
 
@@ -229,7 +259,7 @@ fi
 
 record heavy.run HR_F_status="$status" HR_F_slotWaitS=$((slot_at - requested_at)) \
   HR_F_memoryWaitS=$((started_at - slot_at)) HR_F_durationS=$(($(date +%s) - started_at)) \
-  HR_F_memoryCapGb="$MEMORY_GB" HR_F_slots="$SLOTS"
+  HR_F_memoryCapGb="$MEMORY_GB" HR_F_slots="$SLOTS" HR_F_lane="$lane"
 
 if [ "$status" -eq 137 ]; then
   echo "heavy-run: killed for going over the ${MEMORY_GB} GB memory cap. Run fewer workers" \

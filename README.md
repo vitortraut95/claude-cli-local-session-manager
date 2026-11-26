@@ -115,11 +115,16 @@ opens the browser. Stop the app by closing that terminal.
 - **Heavy commands** — optional (Task queue page → "Turn on"): a PreToolUse hook in
   `~/.claude/settings.json` blocks tests, typecheck, lint, builds, installs and `git commit`/`push`
   (their hooks) run directly and has Claude rerun them through `scripts/heavy-run`, which waits for a
-  free slot across every session (default 1 at a time) and for that much free RAM, runs each one
+  free slot across every session (default 1 at a time) and for that much free RAM — except light
+  commands (`git commit`/`push`, lint of explicit files, tests of explicit files or folders), which
+  skip the slot queue and only wait for 2 GB free, so a quick commit never waits behind a long
+  build. The hook lets through, without heavy-run, a `git commit`/`push` whose repo has no hook to
+  run and eslint on up to 20 explicit files. Every heavy-run command runs
   in its own cgroup with a RAM/CPU cap (`systemd-run --user --scope`) at low CPU/IO priority, and
   caps Node's heap at ~85% of the RAM cap (a `docker run` gets the same caps as flags) — so a runaway run fails alone (137 = RAM cap, 134 =
   heap cap) instead of freezing the machine. It also refuses to start (exit 75) when the temp dir can't fit 512 MB — `/tmp` is often a tmpfs with a per-user quota, and builds writing there die halfway. Dev-server containers (`docker run … next dev`,
-  `yarn dev`, vite, storybook) are blocked too and started as `heavy-run --preview docker run …`:
+  `yarn dev`, vite, storybook) are blocked too and started as `heavy-run --preview docker run …`
+  (a detached `heavy-run docker run -d …` of a dev server counts as a preview even without the flag):
   at most N previews at once across sessions (default 5, counted by a container label), each with
   a RAM cap (default 4 GB) and 2 CPUs. Each task keeps one preview running for you to validate
   its worktree. A run or preview that waits over 15 min gives up (exit 75,

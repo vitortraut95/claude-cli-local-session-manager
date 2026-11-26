@@ -347,8 +347,8 @@ export const taskQueue = {
     "A memória de uma sessão (testes, previews) só aparece minutos depois de abrir.",
   ),
   "scheduler.setting.testSlots.hint": dict(
-    "Test runs at once, across every session.",
-    "Testes rodando ao mesmo tempo, somando todas as sessões.",
+    "Heavy runs at once, across every session. Commits and lint/tests of explicit files don't take a slot.",
+    "Comandos pesados ao mesmo tempo, somando todas as sessões. Commits e lint/testes de arquivos específicos não ocupam vaga.",
   ),
   "scheduler.setting.testMemory.hint": dict(
     "Going over it ends just that run (exit 137).",
@@ -390,8 +390,8 @@ export const taskQueue = {
   "scheduler.setting.previewSlots": dict("Previews at once", "Previews simultâneos"),
   "scheduler.setting.previewMemory": dict("RAM per preview (GB)", "RAM por preview (GB)"),
   "scheduler.tests.explanation": dict(
-    "A PreToolUse hook in {settings} makes heavy commands (tests, typecheck, lint, builds, installs, git commit/push) and dev-server containers run through {path}: each waits for a free slot across every session and runs in its own cgroup with these caps. One waiting over 15 min gives up (exit 75).",
-    "Um hook PreToolUse em {settings} faz comandos pesados (testes, typecheck, lint, builds, installs, git commit/push) e containers de dev server rodarem por {path}: cada um espera uma vaga entre todas as sessões e roda num cgroup próprio com estes limites. Quem espera mais de 15 min desiste (saída 75).",
+    "A PreToolUse hook in {settings} makes heavy commands (tests, typecheck, lint, builds, installs, git commit/push) and dev-server containers run through {path}: each waits for a free slot across every session (commits and lint/tests of explicit files only wait for free RAM) and runs in its own cgroup with these caps. One waiting over 15 min gives up (exit 75).",
+    "Um hook PreToolUse em {settings} faz comandos pesados (testes, typecheck, lint, builds, installs, git commit/push) e containers de dev server rodarem por {path}: cada um espera uma vaga entre todas as sessões (commits e lint/testes de arquivos específicos só esperam RAM livre) e roda num cgroup próprio com estes limites. Quem espera mais de 15 min desiste (saída 75).",
   ),
   "scheduler.saveError": dict(
     "Couldn't save the scheduler settings.",

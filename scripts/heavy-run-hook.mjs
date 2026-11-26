@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { appendFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { accessSync, appendFileSync, constants } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -31,7 +32,7 @@ const HEAVY_COMMAND = new RegExp(
   COMMAND_START +
     "(?:" +
     String.raw`(?:npx\s+|yarn\s+(?:run\s+)?|pnpm\s+(?:exec\s+|run\s+)?)?(?:\S*/)?(?:${HEAVY_BINARIES.join("|")})(?![\w.-])` +
-    String.raw`|(?:yarn|npm|pnpm)\s+(?:run\s+)?(?:${HEAVY_SCRIPTS.join("|")})(?::[\w-]+)?(?![\w-])` +
+    String.raw`|(?:yarn|npm|pnpm)\s+(?:-\S+\s+)*(?:run\s+)?(?:${HEAVY_SCRIPTS.join("|")})(?::[\w-]+)?(?![\w-])` +
     String.raw`|(?:npx\s+)?next\s+build\b` +
     String.raw`|(?:yarn|npm|pnpm)\s+(?:install|ci|i)\b|yarn\s*(?:$|[;&|)\n])` +
     String.raw`|git\s+(?:-C\s+\S+\s+)?(?:commit|push)\b(?!.*--no-verify)` +
@@ -60,9 +61,64 @@ try {
   process.exit(0);
 }
 
+/** Whether `git <verb>` in `dir` runs a client hook (pre-commit/commit-msg, pre-push). */
+const runsGitHook = (dir, verb) => {
+  const hooks = verb === "push" ? ["pre-push"] : ["pre-commit", "commit-msg"];
+  return hooks.some((hook) => {
+    try {
+      const file = execFileSync(
+        "git",
+        ["-C", dir, "rev-parse", "--path-format=absolute", "--git-path", `hooks/${hook}`],
+        {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+          timeout: 2000,
+        },
+      ).trim();
+      accessSync(file, constants.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+};
+
+/**
+ * Light enough to run directly: every heavy part is a `git commit`/`git push` whose repo has no hook
+ * to run (in the command's `git -C`/`cd` folder, else the session's), or eslint on up to
+ * LINT_FILES_MAX explicit files.
+ */
+const LINT_FILES_MAX = 20;
+const isLight = (cmd, cwd) => {
+  const segments = cmd.replace(QUOTED, '""').split(/&&|\|\||[;|\n]/);
+  let dir = cwd;
+  let heavySeen = false;
+  for (const raw of segments) {
+    const segment = raw.trim();
+    const cd = segment.match(/^cd\s+(\S+)/);
+    if (cd) dir = path.resolve(dir, cd[1].replace(/^~(?=\/|$)/, process.env.HOME ?? "~"));
+    if (!HEAVY_COMMAND.test(segment)) continue;
+    heavySeen = true;
+    const git = segment.match(/git\s+(?:-C\s+(\S+)\s+)?(commit|push)\b/);
+    if (git) {
+      if (runsGitHook(git[1] ? path.resolve(dir, git[1]) : dir, git[2])) return false;
+      continue;
+    }
+    const eslint = segment.match(/(?:^|\s|\/)eslint\s+(.*)$/);
+    if (eslint) {
+      const files = eslint[1].split(/\s+/).filter((arg) => arg && !arg.startsWith("-"));
+      const explicit = files.every((file) => /\.\w+$/.test(file) && !/[*?]/.test(file));
+      if (files.length && files.length <= LINT_FILES_MAX && explicit) continue;
+    }
+    return false;
+  }
+  return heavySeen;
+};
+
 if (typeof command !== "string" || command.includes("heavy-run")) process.exit(0);
 const isPreview = PREVIEW_COMMAND.test(command);
 if (!isPreview && !HEAVY_COMMAND.test(command.replace(QUOTED, '""'))) process.exit(0);
+if (!isPreview && isLight(command, hookInput.cwd ?? process.cwd())) process.exit(0);
 
 // For the app's history (server/utils/history.ts); best-effort.
 try {
