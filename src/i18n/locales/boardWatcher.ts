@@ -337,7 +337,7 @@ export const boardWatcher = {
   "board.decision.openJenkins": dict("Open in Jenkins", "Abrir no Jenkins"),
   "board.homolog.title": dict("Point to homolog", "Apontar pra homolog"),
   "board.homolog.keyLabel": dict("Ticket", "Tarefa"),
-  "board.homolog.keyPlaceholder": dict("PROJ-12345", "PROJ-12345"),
+  "board.homolog.keyPlaceholder": dict("PROJ-123", "PROJ-123"),
   "board.homolog.search": dict("Find branches", "Buscar branches"),
   "board.homolog.searching": dict("Looking…", "Buscando…"),
   "board.homolog.none": dict(
