@@ -2,7 +2,6 @@ import {
   CalendarDays,
   CheckCheck,
   Clock,
-  ListOrdered,
   FlaskConical,
   Sparkles,
   Target,
@@ -574,7 +573,7 @@ function BoardWatcher() {
         )}
 
         {status && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
             <StatTile
               icon={<CheckCheck className="h-4 w-4" />}
               label={t("board.tile.approvals")}
@@ -606,15 +605,6 @@ function BoardWatcher() {
                     60_000 /
                     Math.max(1, (status.today?.reviews ?? 0) + (status.today?.tests ?? 0)),
                 ),
-              })}
-            />
-            <StatTile
-              icon={<ListOrdered className="h-4 w-4" />}
-              label={t("board.tile.queue")}
-              value={String(queue.length)}
-              detail={t("board.tile.queueDetail", {
-                running: queue.filter((item) => item.state === "running").length,
-                waiting: queue.filter((item) => item.state === "waiting").length,
               })}
             />
             <StatTile
