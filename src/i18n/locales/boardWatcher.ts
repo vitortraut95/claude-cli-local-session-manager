@@ -197,8 +197,8 @@ export const boardWatcher = {
   "board.tile.tests": dict("Tests claimed today", "Testes pegos hoje"),
   "board.tile.sessions": dict("Sessions today", "Sessões hoje"),
   "board.tile.sessionsDetail": dict("{reviews} reviews · {tests} tests", "{reviews} reviews · {tests} testes"),
-  "board.tile.time": dict("Time and cost today", "Tempo e custo hoje"),
-  "board.tile.timeDetail": dict("~US$ {cost} estimated", "~US$ {cost} estimado"),
+  "board.tile.time": dict("Session time today", "Tempo de sessão hoje"),
+  "board.tile.timeDetail": dict("~{minutes} min per session", "~{minutes} min por sessão"),
   "board.tile.queue": dict("In the queue", "Na fila"),
   "board.tile.queueDetail": dict(
     "{running} running · {waiting} waiting",

@@ -601,7 +601,11 @@ function BoardWatcher() {
               label={t("board.tile.time")}
               value={`${Math.round((status.today?.durationMs ?? 0) / 60_000)} min`}
               detail={t("board.tile.timeDetail", {
-                cost: (status.today?.costUsd ?? 0).toFixed(2),
+                minutes: Math.round(
+                  (status.today?.durationMs ?? 0) /
+                    60_000 /
+                    Math.max(1, (status.today?.reviews ?? 0) + (status.today?.tests ?? 0)),
+                ),
               })}
             />
             <StatTile
