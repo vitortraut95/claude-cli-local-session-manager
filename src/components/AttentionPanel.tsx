@@ -12,10 +12,31 @@ import { SubjectIcon, SubjectLinks } from "./BoardSubject";
 const WINDOW_MS = 24 * 60 * 60_000;
 const DISMISSED_KEY = "board.attention.dismissed";
 
+type Kind =
+  | "error"
+  | "paused"
+  | "blocked"
+  | "weak"
+  | "buildFailed"
+  | "reviewFailed"
+  | "testFailed"
+  | "testRejected";
+
+const KIND_LABEL: Record<Kind, TranslationKey> = {
+  error: "board.attention.kind.error",
+  paused: "board.attention.kind.paused",
+  blocked: "board.attention.kind.blocked",
+  weak: "board.attention.kind.weak",
+  buildFailed: "board.attention.kind.buildFailed",
+  reviewFailed: "board.attention.kind.reviewFailed",
+  testFailed: "board.attention.kind.testFailed",
+  testRejected: "board.attention.kind.testRejected",
+};
+
 type Item = {
   id: string;
   tone: "red" | "amber";
-  text: TranslationKey;
+  kind: Kind;
   subject?: string;
   detail?: string;
   at?: string;
@@ -52,7 +73,7 @@ function fromActions(actions: WatcherActionEntry[], since: number): Item[] {
           {
             id,
             tone: "red",
-            text: "board.attention.buildFailed",
+            kind: "buildFailed",
             subject: entry.subject,
             at: entry.ts,
           },
@@ -63,7 +84,7 @@ function fromActions(actions: WatcherActionEntry[], since: number): Item[] {
           {
             id,
             tone: "red",
-            text: "board.attention.reviewFailed",
+            kind: "reviewFailed",
             subject: entry.subject,
             at: entry.ts,
           },
@@ -74,7 +95,7 @@ function fromActions(actions: WatcherActionEntry[], since: number): Item[] {
           {
             id,
             tone: "red",
-            text: "board.attention.testFailed",
+            kind: "testFailed",
             subject: entry.subject,
             at: entry.ts,
           },
@@ -85,7 +106,7 @@ function fromActions(actions: WatcherActionEntry[], since: number): Item[] {
           {
             id,
             tone: "amber",
-            text: "board.attention.testRejected",
+            kind: "testRejected",
             subject: entry.subject,
             detail: entry.detail.split(/[.,]/)[0],
             at: entry.ts,
@@ -132,7 +153,7 @@ export function AttentionPanel({
       list.push({
         id: `error:${status.lastError.at}`,
         tone: "red",
-        text: "board.attention.error",
+        kind: "error",
         detail: status.lastError.message,
         at: status.lastError.at,
       });
@@ -141,7 +162,7 @@ export function AttentionPanel({
       list.push({
         id: `paused:${status.pausedReason}`,
         tone: "amber",
-        text: "board.attention.paused",
+        kind: "paused",
         detail: status.pausedReason,
       });
     }
@@ -149,7 +170,7 @@ export function AttentionPanel({
       list.push({
         id: `blocked:${status.jobsBlockedBy}`,
         tone: "amber",
-        text: "board.attention.blocked",
+        kind: "blocked",
         detail: status.jobsBlockedBy,
       });
     }
@@ -158,13 +179,16 @@ export function AttentionPanel({
       list.push({
         id: `weak:${decision.subject}:${decision.reason}`,
         tone: "amber",
-        text: "board.attention.weak",
+        kind: "weak",
         subject: decision.subject,
         detail: decision.reason,
       });
     }
     list.push(...fromActions(actions, since).reverse());
-    return list.filter((item) => !dismissed.has(item.id));
+    // Errors first; the order within each tone is kept.
+    return list
+      .filter((item) => !dismissed.has(item.id))
+      .sort((a, b) => Number(b.tone === "red") - Number(a.tone === "red"));
   }, [status, actions, since, dismissed]);
 
   const dismiss = (id: string) => {
@@ -211,42 +235,63 @@ export function AttentionPanel({
           {t("board.attention.allClear")}
         </p>
       ) : (
-        <ul className="flex max-h-60 flex-col gap-1.5 overflow-y-auto pr-1">
-          {items.map((item) => (
-            <li key={item.id} className="flex items-start gap-2 text-sm">
-              {item.subject ? (
-                <SubjectIcon subject={item.subject} />
-              ) : (
-                <span
-                  className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                    item.tone === "red" ? "bg-red-500" : "bg-amber-500"
-                  }`}
-                  aria-hidden="true"
-                />
-              )}
-              <span className="min-w-0 flex-1 break-words text-gray-800 dark:text-gray-200">
-                {t(item.text, {
-                  subject: item.subject ?? "",
-                  detail: item.detail ? translateServerText(item.detail, language) : "",
-                })}
-                {item.at && (
-                  <span className="ml-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {formatUpdatedAt(item.at)}
-                  </span>
-                )}
-              </span>
-              {item.subject && <SubjectLinks subject={item.subject} bases={status.linkBases} />}
-              <button
-                type="button"
-                onClick={() => dismiss(item.id)}
-                aria-label={t("board.attention.dismiss")}
-                title={t("board.attention.dismiss")}
-                className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-black/5 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 dark:hover:bg-white/10 dark:hover:text-gray-200"
+        <ul className="flex max-h-[26rem] flex-col gap-2 overflow-y-auto pr-1">
+          {items.map((item) => {
+            const red = item.tone === "red";
+            const detail = item.detail ? translateServerText(item.detail, language) : null;
+            return (
+              <li
+                key={item.id}
+                className={`flex items-start gap-2.5 rounded-lg border border-l-4 bg-white px-3 py-2 dark:bg-gray-950/40 ${
+                  red
+                    ? "border-red-200 border-l-red-500 dark:border-red-500/20 dark:border-l-red-500"
+                    : "border-amber-200 border-l-amber-500 dark:border-amber-500/20 dark:border-l-amber-400"
+                }`}
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </li>
-          ))}
+                {item.subject && <SubjectIcon subject={item.subject} />}
+                <div className="min-w-0 flex-1">
+                  <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span
+                      className={`text-sm font-semibold ${
+                        red ? "text-red-700 dark:text-red-300" : "text-amber-800 dark:text-amber-300"
+                      }`}
+                    >
+                      {t(KIND_LABEL[item.kind])}
+                    </span>
+                    {item.subject && (
+                      <span className="font-mono text-xs text-gray-800 dark:text-gray-200">
+                        {item.subject}
+                      </span>
+                    )}
+                    {item.at && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatUpdatedAt(item.at, language)}
+                      </span>
+                    )}
+                  </p>
+                  {detail && (
+                    <p className="mt-0.5 text-xs break-words text-gray-600 dark:text-gray-400">
+                      {detail}
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  {item.subject && (
+                    <SubjectLinks subject={item.subject} bases={status.linkBases} />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => dismiss(item.id)}
+                    aria-label={t("board.attention.dismiss")}
+                    title={t("board.attention.dismiss")}
+                    className="rounded p-1 text-gray-400 hover:bg-black/5 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 dark:hover:bg-white/10 dark:hover:text-gray-200"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

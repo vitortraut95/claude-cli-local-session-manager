@@ -196,9 +196,13 @@ export const boardWatcher = {
   "board.tile.approvals": dict("Approvals today", "Aprovações hoje"),
   "board.tile.tests": dict("Tests claimed today", "Testes pegos hoje"),
   "board.tile.sessions": dict("Sessions today", "Sessões hoje"),
-  "board.tile.sessionsDetail": dict(
-    "{reviews} reviews · {tests} tests · {minutes} min · ~US$ {cost}",
-    "{reviews} reviews · {tests} testes · {minutes} min · ~US$ {cost}",
+  "board.tile.sessionsDetail": dict("{reviews} reviews · {tests} tests", "{reviews} reviews · {tests} testes"),
+  "board.tile.time": dict("Time and cost today", "Tempo e custo hoje"),
+  "board.tile.timeDetail": dict("~US$ {cost} estimated", "~US$ {cost} estimado"),
+  "board.tile.queue": dict("In the queue", "Na fila"),
+  "board.tile.queueDetail": dict(
+    "{running} running · {waiting} waiting",
+    "{running} rodando · {waiting} esperando",
   ),
   "board.tile.accuracy": dict("Hit rate ({days} days)", "Acerto ({days} dias)"),
   "board.tile.accuracyDetail": dict(
@@ -211,23 +215,14 @@ export const boardWatcher = {
     "Tudo certo: nada precisa de você agora.",
   ),
   "board.attention.dismiss": dict("Dismiss", "Dispensar"),
-  "board.attention.error": dict(
-    "The last look failed: {detail}",
-    "A última olhada falhou: {detail}",
-  ),
-  "board.attention.paused": dict("Paused: {detail}", "Pausado: {detail}"),
-  "board.attention.blocked": dict("On hold: {detail}", "Em espera: {detail}"),
-  "board.attention.weak": dict(
-    "{subject}: weak description ({detail})",
-    "{subject}: descrição fraca ({detail})",
-  ),
-  "board.attention.buildFailed": dict("Build of {subject} failed", "Build de {subject} falhou"),
-  "board.attention.reviewFailed": dict("Review of {subject} failed", "Review de {subject} falhou"),
-  "board.attention.testFailed": dict("Test of {subject} failed", "Teste de {subject} falhou"),
-  "board.attention.testRejected": dict(
-    "Test of {subject}: {detail}",
-    "Teste de {subject}: {detail}",
-  ),
+  "board.attention.kind.error": dict("The last look failed", "A última olhada falhou"),
+  "board.attention.kind.paused": dict("Paused", "Pausado"),
+  "board.attention.kind.blocked": dict("On hold", "Em espera"),
+  "board.attention.kind.weak": dict("Weak description", "Descrição fraca"),
+  "board.attention.kind.buildFailed": dict("Build failed", "Build falhou"),
+  "board.attention.kind.reviewFailed": dict("Review failed", "Review falhou"),
+  "board.attention.kind.testFailed": dict("Test failed", "Teste falhou"),
+  "board.attention.kind.testRejected": dict("Test rejected", "Teste reprovado"),
   "board.queue.title": dict("Queue", "Fila"),
   "board.queue.empty": dict("Nothing in the queue.", "Nada na fila."),
   "board.live.lookGroup": dict(

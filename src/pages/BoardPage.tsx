@@ -1,6 +1,8 @@
 import {
   CalendarDays,
   CheckCheck,
+  Clock,
+  ListOrdered,
   FlaskConical,
   Sparkles,
   Target,
@@ -572,7 +574,7 @@ function BoardWatcher() {
         )}
 
         {status && (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
             <StatTile
               icon={<CheckCheck className="h-4 w-4" />}
               label={t("board.tile.approvals")}
@@ -592,8 +594,23 @@ function BoardWatcher() {
               detail={t("board.tile.sessionsDetail", {
                 reviews: status.today?.reviews ?? 0,
                 tests: status.today?.tests ?? 0,
-                minutes: Math.round((status.today?.durationMs ?? 0) / 60_000),
+              })}
+            />
+            <StatTile
+              icon={<Clock className="h-4 w-4" />}
+              label={t("board.tile.time")}
+              value={`${Math.round((status.today?.durationMs ?? 0) / 60_000)} min`}
+              detail={t("board.tile.timeDetail", {
                 cost: (status.today?.costUsd ?? 0).toFixed(2),
+              })}
+            />
+            <StatTile
+              icon={<ListOrdered className="h-4 w-4" />}
+              label={t("board.tile.queue")}
+              value={String(queue.length)}
+              detail={t("board.tile.queueDetail", {
+                running: queue.filter((item) => item.state === "running").length,
+                waiting: queue.filter((item) => item.state === "waiting").length,
               })}
             />
             <StatTile
@@ -690,20 +707,20 @@ function StatTile({
 }) {
   const filled = ratio === null || ratio === undefined ? null : Math.min(1, Math.max(0, ratio));
   return (
-    <div className="relative flex flex-col gap-1.5 overflow-hidden rounded-xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.03]">
+    <div className="relative flex min-w-0 flex-col gap-1 overflow-hidden rounded-xl border border-gray-200 bg-white px-3.5 py-3 dark:border-white/10 dark:bg-white/[0.03]">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-0.5 bg-violet-500 opacity-70" />
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{label}</p>
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/15 to-cyan-400/15 text-violet-600 dark:from-violet-400/20 dark:to-cyan-400/10 dark:text-violet-300">
+        <p className="truncate text-xs font-medium text-gray-600 dark:text-gray-400">{label}</p>
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-violet-500/15 to-cyan-400/15 text-violet-600 dark:from-violet-400/20 dark:to-cyan-400/10 dark:text-violet-300">
           {icon}
         </span>
       </div>
-      <p className="text-3xl font-semibold tracking-tight text-gray-900 tabular-nums dark:text-white">
+      <p className="text-xl font-semibold tracking-tight text-gray-900 tabular-nums dark:text-white">
         {value}
       </p>
       {filled !== null && (
         <div
-          className="h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+          className="mt-0.5 h-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
           aria-hidden="true"
         >
           <div
@@ -718,7 +735,11 @@ function StatTile({
           />
         </div>
       )}
-      {detail && <p className="text-xs text-gray-500 dark:text-gray-400">{detail}</p>}
+      {detail && (
+        <p className="truncate text-xs text-gray-500 dark:text-gray-400" title={detail}>
+          {detail}
+        </p>
+      )}
     </div>
   );
 }
