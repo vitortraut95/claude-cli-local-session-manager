@@ -22,3 +22,14 @@ export async function updateSkillsHubPreferences(
     skillsHub: { ...prefs.skillsHub, ...partial },
   }));
 }
+
+let syncRunning = false;
+
+/** Whether a hub sync is running right now (see `SkillsHubStatus.syncing`). */
+export function isSyncRunning(): boolean {
+  return syncRunning;
+}
+
+export function setSyncRunning(running: boolean): void {
+  syncRunning = running;
+}

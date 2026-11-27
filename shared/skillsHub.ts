@@ -95,6 +95,9 @@ export type SkillsHubStatus = {
   /** What needs the user's action (see `SkillsHubIssue`); empty without a clone. Optional: an
    *  older backend omits it. */
   issues?: SkillsHubIssue[];
+  /** A hub sync (the one on server start, or "Update now") is still running: links and issues
+   *  may change when it ends, so the UI checks again. Optional: an older backend omits it. */
+  syncing?: boolean;
 };
 
 export type SkillDetails = {

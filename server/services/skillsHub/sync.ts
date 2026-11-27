@@ -3,7 +3,7 @@ import { runGit } from "../../utils/git.js";
 import { AppError, errorMessage } from "../../utils/httpError.js";
 import { getUserPreferences } from "../preferencesService.js";
 import { listCatalogs } from "./catalog.js";
-import { HUB_GIT, updateSkillsHubPreferences } from "./common.js";
+import { HUB_GIT, setSyncRunning, updateSkillsHubPreferences } from "./common.js";
 import { applyLinks, normalizeSelection, resolveSelection, type LinkResult } from "./links.js";
 import { getSkillsHubStatus, readGitState } from "./status.js";
 
@@ -24,9 +24,13 @@ let syncInFlight: Promise<SyncResult> | null = null;
 /** Fetch, fast-forward the current branch when that's safe, then refresh links. Concurrent calls
  *  share one run instead of racing on the same clone. */
 export function syncSkillsHub(): Promise<SyncResult> {
-  syncInFlight ??= runSync().finally(() => {
-    syncInFlight = null;
-  });
+  if (!syncInFlight) {
+    setSyncRunning(true);
+    syncInFlight = runSync().finally(() => {
+      syncInFlight = null;
+      setSyncRunning(false);
+    });
+  }
   return syncInFlight;
 }
 
@@ -69,7 +73,8 @@ async function runSync(): Promise<SyncResult> {
   const links = await applyLinks(hubPath, catalogs, selection, false);
 
   return {
-    status: await getSkillsHubStatus(),
+    // Read before the run is marked as over: this is already the final state.
+    status: { ...(await getSkillsHubStatus()), syncing: false },
     fetched,
     fetchError,
     pulledCommits,

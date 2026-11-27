@@ -3,7 +3,7 @@ import { tryGit } from "../../utils/git.js";
 import { getUserPreferences } from "../preferencesService.js";
 import { expandHome } from "../workspaceService.js";
 import { listCatalogs, listInstalledSkills, withUpdatedAt } from "./catalog.js";
-import { getUserSkillsDir, HUB_GIT } from "./common.js";
+import { getUserSkillsDir, HUB_GIT, isSyncRunning } from "./common.js";
 import { computeSkillsHubIssues } from "./issues.js";
 import { computeSkillStatuses, resolveSelection } from "./links.js";
 import {
@@ -58,6 +58,7 @@ export async function getSkillsHubStatus(): Promise<SkillsHubStatus> {
     cloneParentDirs: await getCloneParentDirs(),
     installedSkills: await listInstalledSkills(),
     configuredPathInvalid: prefs.path !== null && hubPath !== expandHome(prefs.path),
+    syncing: isSyncRunning(),
   };
   if (!hubPath) {
     return {
