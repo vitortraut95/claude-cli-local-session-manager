@@ -92,6 +92,9 @@ export type SkillsHubStatus = {
   /** Every skill Claude would load on this machine (folders and links in `userSkillsDir` with a
    *  SKILL.md), hub or not — the options for `taskTestSkill`. */
   installedSkills: InstalledSkill[];
+  /** What needs the user's action (see `SkillsHubIssue`); empty without a clone. Optional: an
+   *  older backend omits it. */
+  issues?: SkillsHubIssue[];
 };
 
 export type SkillDetails = {
@@ -114,3 +117,196 @@ export type SkillDetails = {
   /** Absolute path of the skill folder in the clone. */
   dir: string;
 };
+
+/** Preferences holding the name of an installed skill. */
+export const SKILL_PREFERENCES = [
+  "taskTestSkill",
+  "taskReviewSkill",
+  "taskRefinementSkill",
+] as const;
+export type SkillPreference = (typeof SKILL_PREFERENCES)[number];
+
+/**
+ * What the skills modal asks the user to act on. `unlinked` is fixed by applying the saved
+ * selection; `preferenceSkillMissing` by installing `hubSkill` (when the hub has it); the others
+ * need a hand outside the app. Skills are `<catalog>/<skill>`.
+ */
+export type SkillsHubIssue =
+  | { kind: "unlinked"; skills: string[] }
+  | { kind: "unknownDependency"; skill: string; dependency: string }
+  | { kind: "dependencyConflict"; skill: string; dependency: string; conflictWith: string }
+  | {
+      kind: "preferenceSkillMissing";
+      preference: SkillPreference;
+      skill: string;
+      hubSkill: string | null;
+    };
+
+export function skillId(catalog: string, skill: string): string {
+  return `${catalog}/${skill}`;
+}
+
+/** A `requires-skills` entry (`[<catalog>/]<skill>[@<range>]`, maybe with a `# comment`) as
+ *  `<catalog>/<skill>`; no catalog = the declaring one. The range isn't checked: the clone holds
+ *  one version of each skill. */
+export function parseSkillRef(raw: string, defaultCatalog: string): string {
+  const id = raw
+    .replace(/\s+#.*$/, "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .split("@")[0]!
+    .trim();
+  return id.includes("/") ? id : `${defaultCatalog}/${id}`;
+}
+
+/**
+ * Every skill to keep linked, as `<catalog>/<skill>` → who pulled it in: `[]` when picked (or in a
+ * whole picked catalog), otherwise the selected skills/catalogs that depend on it — `requires-skills`
+ * of each linked skill (transitively) and `requires-skills` of each whole picked catalog. Refs to
+ * skills the hub doesn't have are skipped.
+ */
+export function expandSelection(
+  catalogs: HubCatalog[],
+  selection: SkillsSelection,
+): Map<string, string[]> {
+  const skills = new Map<string, { catalog: string; requires: string[] }>();
+  for (const catalog of catalogs) {
+    for (const skill of catalog.skills) {
+      skills.set(skillId(catalog.name, skill.name), {
+        catalog: catalog.name,
+        requires: skill.requires ?? [],
+      });
+    }
+  }
+
+  const result = new Map<string, string[]>();
+  const queue: string[] = [];
+  const add = (id: string, by: string | null) => {
+    if (!skills.has(id)) return;
+    const current = result.get(id);
+    if (current === undefined) {
+      result.set(id, by === null ? [] : [by]);
+      queue.push(id);
+    } else if (by !== null && current.length > 0 && !current.includes(by)) {
+      current.push(by);
+    }
+  };
+
+  for (const catalog of catalogs) {
+    for (const skill of catalog.skills) {
+      const id = skillId(catalog.name, skill.name);
+      if (selection.catalogs.includes(catalog.name) || selection.skills.includes(id)) add(id, null);
+    }
+  }
+  for (const catalog of catalogs.filter((c) => selection.catalogs.includes(c.name))) {
+    for (const ref of catalog.requires ?? []) add(parseSkillRef(ref, catalog.name), catalog.name);
+  }
+  for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+    const skill = skills.get(id)!;
+    for (const ref of skill.requires) add(parseSkillRef(ref, skill.catalog), id);
+  }
+  return result;
+}
+
+/** Skills picked by the user (a whole picked catalog counts), as `<catalog>/<skill>`. */
+export function pickedSkillIds(catalogs: HubCatalog[], selection: SkillsSelection): Set<string> {
+  const ids = new Set<string>();
+  for (const catalog of catalogs) {
+    for (const skill of catalog.skills) {
+      const id = skillId(catalog.name, skill.name);
+      if (selection.catalogs.includes(catalog.name) || selection.skills.includes(id)) ids.add(id);
+    }
+  }
+  return ids;
+}
+
+/** Adds individual picks (skipping ones a whole picked catalog already covers). */
+export function withPicks(selection: SkillsSelection, ids: string[]): SkillsSelection {
+  const extra = ids.filter(
+    (id) => !selection.skills.includes(id) && !selection.catalogs.includes(id.split("/")[0] ?? ""),
+  );
+  return { catalogs: selection.catalogs, skills: [...selection.skills, ...new Set(extra)] };
+}
+
+/** Removes picks: a `<catalog>/<skill>` or a whole `<catalog>`. Removing one skill of a whole
+ *  picked catalog turns the catalog into individual picks of its other skills. */
+export function withoutPicks(
+  catalogs: HubCatalog[],
+  selection: SkillsSelection,
+  ids: string[],
+): SkillsSelection {
+  const removed = new Set(ids);
+  const catalogsOut: string[] = [];
+  const skills = selection.skills.filter((id) => !removed.has(id));
+  for (const name of selection.catalogs) {
+    if (removed.has(name)) continue;
+    const catalog = catalogs.find((c) => c.name === name);
+    const members = catalog?.skills.map((k) => skillId(name, k.name)) ?? [];
+    if (members.some((id) => removed.has(id))) {
+      skills.push(...members.filter((id) => !removed.has(id)));
+    } else {
+      catalogsOut.push(name);
+    }
+  }
+  return { catalogs: catalogsOut, skills };
+}
+
+/** Dependencies `next` would link without the user having picked them, and that `current` didn't
+ *  already link: what a new pick drags in. */
+export function newDependencies(
+  catalogs: HubCatalog[],
+  current: SkillsSelection,
+  next: SkillsSelection,
+): string[] {
+  const before = expandSelection(catalogs, current);
+  const picked = pickedSkillIds(catalogs, next);
+  return [...expandSelection(catalogs, next).keys()].filter(
+    (id) => !picked.has(id) && !before.has(id),
+  );
+}
+
+/**
+ * What removing `removed` from `selection` implies: `dependents` = picked skills/catalogs that
+ * (transitively) need one of them — they'd keep it linked, so they must go too; `orphans` = picked
+ * skills only the removed ones (and their dependents) needed.
+ */
+export function removalImpact(
+  catalogs: HubCatalog[],
+  selection: SkillsSelection,
+  removed: string[],
+): { dependents: string[]; orphans: string[] } {
+  const gone = new Set(removed);
+  // A removed catalog takes its skills with it: who needs those counts too.
+  for (const catalog of catalogs.filter((c) => gone.has(c.name))) {
+    for (const skill of catalog.skills) gone.add(skillId(catalog.name, skill.name));
+  }
+  const dependents: string[] = [];
+  for (;;) {
+    const wanted = expandSelection(catalogs, withoutPicks(catalogs, selection, [...gone]));
+    const blockers = [...gone].flatMap((id) => wanted.get(id) ?? []).filter((id) => !gone.has(id));
+    if (blockers.length === 0) break;
+    for (const id of new Set(blockers)) {
+      gone.add(id);
+      dependents.push(id);
+      const catalog = catalogs.find((c) => c.name === id);
+      for (const skill of catalog?.skills ?? []) gone.add(skillId(id, skill.name));
+    }
+  }
+  const remaining = withoutPicks(catalogs, selection, [...gone]);
+  const removedSkills = [...gone].filter(
+    (id) => id.includes("/") && pickedSkillIds(catalogs, selection).has(id),
+  );
+  const removedCatalogs = [...gone].filter((id) => !id.includes("/"));
+  const theirDeps = expandSelection(catalogs, { catalogs: removedCatalogs, skills: removedSkills });
+  const candidates = [...pickedSkillIds(catalogs, remaining)].filter(
+    (id) =>
+      theirDeps.has(id) && !gone.has(id) && !remaining.catalogs.includes(id.split("/")[0] ?? ""),
+  );
+  const stillWanted = expandSelection(catalogs, withoutPicks(catalogs, remaining, candidates));
+  // A dependent only linked as someone else's dependency goes away on its own: list the picks.
+  const picked = pickedSkillIds(catalogs, selection);
+  return {
+    dependents: dependents.filter((id) => !id.includes("/") || picked.has(id)),
+    orphans: candidates.filter((id) => !stillWanted.has(id)),
+  };
+}

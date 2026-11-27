@@ -4,6 +4,7 @@ import { getUserPreferences } from "../preferencesService.js";
 import { expandHome } from "../workspaceService.js";
 import { listCatalogs, listInstalledSkills, withUpdatedAt } from "./catalog.js";
 import { getUserSkillsDir, HUB_GIT } from "./common.js";
+import { computeSkillsHubIssues } from "./issues.js";
 import { computeSkillStatuses, resolveSelection } from "./links.js";
 import {
   getCloneParentDirs,
@@ -43,7 +44,8 @@ export async function readGitState(hubPath: string) {
 }
 
 export async function getSkillsHubStatus(): Promise<SkillsHubStatus> {
-  const prefs = (await getUserPreferences()).skillsHub;
+  const allPrefs = await getUserPreferences();
+  const prefs = allPrefs.skillsHub;
   const repoUrl = await resolveRepoUrl(prefs);
   const hubPath = await locateHub(prefs, repoUrl);
   const common = {
@@ -73,10 +75,12 @@ export async function getSkillsHubStatus(): Promise<SkillsHubStatus> {
       selectedSkills: [],
       catalogsChosen: prefs.catalogs !== null,
       skills: [],
+      issues: [],
     };
   }
   const catalogs = await listCatalogs(hubPath);
   const selection = await resolveSelection(catalogs, prefs);
+  const skills = await computeSkillStatuses(hubPath, catalogs, selection);
   return {
     ...common,
     found: true,
@@ -86,6 +90,7 @@ export async function getSkillsHubStatus(): Promise<SkillsHubStatus> {
     selectedCatalogs: selection.catalogs,
     selectedSkills: selection.skills,
     catalogsChosen: prefs.catalogs !== null,
-    skills: await computeSkillStatuses(hubPath, catalogs, selection),
+    skills,
+    issues: computeSkillsHubIssues(catalogs, selection, skills, common.installedSkills, allPrefs),
   };
 }

@@ -7,6 +7,7 @@ import { Modal } from "./Modal";
 import { SkillPreviewModal } from "./SkillPreviewModal";
 import { SkillsCatalogPicker } from "./SkillsCatalogPicker";
 import { SkillsHubCloneStatus } from "./SkillsHubCloneStatus";
+import { SkillsHubIssues } from "./SkillsHubIssues";
 import { SkillsHubInstallSection } from "./SkillsHubInstallSection";
 import { SkillsHubRepoUrlSection } from "./SkillsHubRepoUrlSection";
 import { SkillPreferenceSelect, type SkillPreference } from "./SkillPreferenceSelect";
@@ -96,6 +97,8 @@ function ManageSection({
       <p className="text-gray-600 dark:text-gray-400">
         {t("skillsHub.manage.intro", { dir: status.userSkillsDir })}
       </p>
+
+      <SkillsHubIssues status={status} onChanged={onChanged} />
 
       <SkillsHubCloneStatus status={status} onChanged={onChanged} />
 

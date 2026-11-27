@@ -1,5 +1,6 @@
 import { AlertTriangle, Check, Info, Link2, Loader2, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useDependencyNote } from "../hooks/useDependencyNote";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
@@ -11,10 +12,18 @@ import type {
   SkillsHubStatus,
   SkillsSelection,
 } from "../services/skillsHubApi";
+import {
+  expandSelection,
+  newDependencies,
+  removalImpact,
+  withoutPicks,
+  withPicks,
+} from "../../shared/skillsHub";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { formatUpdatedAt } from "../utils/formatDate";
 import { Button } from "./Button";
 import { Select } from "./Select";
+import { SkillsChangeDialog, type SkillsChangeRequest } from "./SkillsChangeDialog";
 import { Tooltip } from "./Tooltip";
 
 type SkillSort = "recent" | "name";
@@ -100,37 +109,95 @@ export function SkillsCatalogPicker({
   const isPicked = (catalog: string, skill: string) =>
     isWhole(catalog) || draft.skills.includes(`${catalog}/${skill}`);
 
+  const [dialog, setDialog] = useState<SkillsChangeRequest | null>(null);
+  const dependencyNote = useDependencyNote(status.catalogs);
+
+  /** Picking something that needs skills not selected yet asks to select them too. */
+  const requestAdd = (next: SkillsSelection, subject: string) => {
+    const deps = newDependencies(status.catalogs, draft, next);
+    if (deps.length === 0) {
+      setDraft(next);
+      return;
+    }
+    setDialog({
+      title: t("skillsHub.deps.addTitle"),
+      message: t("skillsHub.deps.addMessage", { subject }),
+      groups: [
+        {
+          label: t("skillsHub.deps.addGroup"),
+          tone: "add",
+          items: deps.map((id) => ({ name: id, note: dependencyNote(next, id) })),
+        },
+      ],
+      confirmLabel: t("skillsHub.deps.addConfirm"),
+      onConfirm: () => {
+        setDraft(withPicks(next, deps));
+        setDialog(null);
+      },
+    });
+  };
+
+  /** Removing something others need asks to remove them too; then, if that leaves picked
+   *  dependencies nobody uses, asks whether those go as well. */
+  const requestRemoval = (removed: string[], subject: string) => {
+    const { dependents, orphans } = removalImpact(status.catalogs, draft, removed);
+    if (dependents.length > 0) {
+      setDialog({
+        title: t("skillsHub.deps.dependentsTitle"),
+        message: t("skillsHub.deps.dependentsMessage", { subject }),
+        groups: [
+          { label: t("skillsHub.deps.dependentsGroup"), tone: "remove", items: named(dependents) },
+        ],
+        confirmLabel: t("skillsHub.deps.dependentsConfirm"),
+        onConfirm: () => {
+          setDialog(null);
+          requestRemoval([...removed, ...dependents], subject);
+        },
+      });
+      return;
+    }
+    if (orphans.length > 0) {
+      setDialog({
+        title: t("skillsHub.deps.orphansTitle"),
+        message: t("skillsHub.deps.orphansMessage", { subject }),
+        groups: [
+          { label: t("skillsHub.deps.orphansGroup"), tone: "remove", items: named(orphans) },
+        ],
+        confirmLabel: t("skillsHub.deps.orphansConfirm"),
+        onConfirm: () => {
+          setDraft(withoutPicks(status.catalogs, draft, [...removed, ...orphans]));
+          setDialog(null);
+        },
+        secondaryLabel: t("skillsHub.deps.orphansKeep"),
+        onSecondary: () => {
+          setDraft(withoutPicks(status.catalogs, draft, removed));
+          setDialog(null);
+        },
+      });
+      return;
+    }
+    setDraft(withoutPicks(status.catalogs, draft, removed));
+  };
+
   // Whole catalog ⇄ nothing; a catalog picked only partially becomes whole on click.
   const toggleCatalog = (catalog: HubCatalog) => {
-    setDraft((current) =>
-      current.catalogs.includes(catalog.name)
-        ? { ...current, catalogs: current.catalogs.filter((name) => name !== catalog.name) }
-        : {
-            catalogs: [...current.catalogs, catalog.name],
-            skills: current.skills.filter((id) => !id.startsWith(`${catalog.name}/`)),
-          },
+    if (draft.catalogs.includes(catalog.name)) {
+      requestRemoval([catalog.name], catalog.name);
+      return;
+    }
+    requestAdd(
+      {
+        catalogs: [...draft.catalogs, catalog.name],
+        skills: draft.skills.filter((id) => !id.startsWith(`${catalog.name}/`)),
+      },
+      catalog.name,
     );
   };
 
-  // Unpicking one skill of a whole catalog turns it into individual picks of all the others.
   const toggleSkill = (catalog: HubCatalog, skill: string) => {
     const id = `${catalog.name}/${skill}`;
-    setDraft((current) => {
-      if (current.catalogs.includes(catalog.name)) {
-        return {
-          catalogs: current.catalogs.filter((name) => name !== catalog.name),
-          skills: [
-            ...current.skills,
-            ...catalog.skills
-              .filter((k) => k.name !== skill)
-              .map((k) => `${catalog.name}/${k.name}`),
-          ],
-        };
-      }
-      return current.skills.includes(id)
-        ? { ...current, skills: current.skills.filter((item) => item !== id) }
-        : { ...current, skills: [...current.skills, id] };
-    });
+    if (isPicked(catalog.name, skill)) requestRemoval([id], skill);
+    else requestAdd(withPicks(draft, [id]), skill);
   };
   const skillsByCatalog = useMemo(() => {
     const map = new Map<string, Map<string, SkillLinkState>>();
@@ -181,7 +248,34 @@ export function SkillsCatalogPicker({
       showToast(resolveApiErrorMessage(err, t, "skillsHub.catalogsApplyError"), "error");
     } finally {
       setApplying(false);
+      setDialog(null);
     }
+  };
+
+  /** Shows what applying links and removes before doing it. */
+  const requestApply = () => {
+    const before = expandSelection(status.catalogs, saved);
+    const after = expandSelection(status.catalogs, draft);
+    const link = [...after.keys()].filter((id) => !before.has(id));
+    const unlink = [...before.keys()].filter((id) => !after.has(id));
+    if (link.length === 0 && unlink.length === 0) {
+      void apply();
+      return;
+    }
+    setDialog({
+      title: t("skillsHub.plan.title"),
+      message: t("skillsHub.plan.message", { dir: status.userSkillsDir }),
+      groups: [
+        {
+          label: t("skillsHub.plan.link"),
+          tone: "add",
+          items: link.map((id) => ({ name: id, note: dependencyNote(draft, id) })),
+        },
+        { label: t("skillsHub.plan.unlink"), tone: "remove", items: named(unlink) },
+      ],
+      confirmLabel: t("skillsHub.plan.confirm"),
+      onConfirm: apply,
+    });
   };
 
   return (
@@ -222,7 +316,7 @@ export function SkillsCatalogPicker({
           <Button
             className="ml-auto"
             size="sm"
-            onClick={() => void apply()}
+            onClick={requestApply}
             disabled={applying}
             icon={applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : undefined}
           >
@@ -349,8 +443,15 @@ export function SkillsCatalogPicker({
           {t("skillsHub.manage.duplicates", { names: duplicateNames.join(", ") })}
         </p>
       )}
+      {dialog && (
+        <SkillsChangeDialog request={dialog} busy={applying} onCancel={() => setDialog(null)} />
+      )}
     </section>
   );
+}
+
+function named(ids: string[]) {
+  return ids.map((name) => ({ name }));
 }
 
 function sameSet(a: string[], b: string[]): boolean {

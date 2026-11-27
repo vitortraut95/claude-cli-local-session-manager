@@ -7,9 +7,12 @@ import * as skillsHubApi from "../services/skillsHubApi";
 import type { SkillsHubStatus } from "../services/skillsHubApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Select } from "./Select";
+import { SkillsChangeDialog, type SkillsChangeRequest } from "./SkillsChangeDialog";
 
-/** Preferences holding the name of an installed skill. */
-export type SkillPreference = "taskTestSkill" | "taskReviewSkill" | "taskRefinementSkill";
+import { newDependencies, withPicks, type SkillPreference } from "../../shared/skillsHub";
+import { useDependencyNote } from "../hooks/useDependencyNote";
+
+export type { SkillPreference };
 
 type SkillPreferenceSelectProps = {
   preference: SkillPreference;
@@ -125,13 +128,20 @@ export function SkillPreferenceSelect({
     };
   }, [preference]);
 
-  /** Links `<catalog>/<name>` from the hub; throws when it didn't end up installed (a conflict). */
-  const install = async (id: string) => {
+  const [dialog, setDialog] = useState<SkillsChangeRequest | null>(null);
+  const dependencyNote = useDependencyNote(skillsHub.catalogs);
+  const savedSelection = {
+    catalogs: skillsHub.selectedCatalogs,
+    skills: skillsHub.selectedSkills,
+  };
+
+  /** Links `<catalog>/<name>` and `deps` from the hub; throws when it didn't end up installed (a
+   *  conflict). */
+  const install = async (id: string, deps: string[]) => {
     const name = id.slice(id.indexOf("/") + 1);
-    const result = await skillsHubApi.setSkillsHubSelection({
-      catalogs: skillsHub.selectedCatalogs,
-      skills: [...skillsHub.selectedSkills, id],
-    });
+    const result = await skillsHubApi.setSkillsHubSelection(
+      withPicks(savedSelection, [id, ...deps]),
+    );
     skillsHubApi.notifySkillsHubChanged();
     const status = await skillsHubApi.fetchSkillsHubStatus();
     if (!status.installedSkills.some((skill) => skill.name === name)) {
@@ -142,13 +152,11 @@ export function SkillPreferenceSelect({
     return name;
   };
 
-  const change = async (next: string) => {
+  const save = async (resolve: () => Promise<string>) => {
     const previous = value;
     setSaving(true);
     try {
-      const skill = next.startsWith(INSTALL_PREFIX)
-        ? await install(next.slice(INSTALL_PREFIX.length))
-        : next;
+      const skill = await resolve();
       setValue(skill);
       await preferencesApi.updatePreferences({ [preference]: skill });
       preferencesApi.notifyPreferencesChanged();
@@ -158,7 +166,33 @@ export function SkillPreferenceSelect({
       showToast(resolveApiErrorMessage(err, t, "settings.saveError"), "error");
     } finally {
       setSaving(false);
+      setDialog(null);
     }
+  };
+
+  // A hub skill not installed yet is only linked after the user sees what goes with it.
+  const change = (next: string) => {
+    if (!next.startsWith(INSTALL_PREFIX)) {
+      void save(() => Promise.resolve(next));
+      return;
+    }
+    const id = next.slice(INSTALL_PREFIX.length);
+    const target = withPicks(savedSelection, [id]);
+    const deps = newDependencies(skillsHub.catalogs, savedSelection, target);
+    const all = withPicks(target, deps);
+    setDialog({
+      title: t("skillsHub.issues.installTitle", { skill: id }),
+      message: t("skillsHub.plan.message", { dir: skillsHub.userSkillsDir }),
+      groups: [
+        {
+          label: t("skillsHub.plan.link"),
+          tone: "add",
+          items: [id, ...deps].map((item) => ({ name: item, note: dependencyNote(all, item) })),
+        },
+      ],
+      confirmLabel: t("skillsHub.issues.install"),
+      onConfirm: () => save(() => install(id, deps)),
+    });
   };
 
   const installedSkills = skillsHub.installedSkills;
@@ -176,7 +210,7 @@ export function SkillPreferenceSelect({
             icon={icon}
             value={value ?? ""}
             disabled={value === null || saving}
-            onChange={(event) => void change(event.target.value)}
+            onChange={(event) => change(event.target.value)}
             aria-label={label}
             className={missing ? "text-amber-700 dark:text-amber-400" : ""}
           >
@@ -201,6 +235,9 @@ export function SkillPreferenceSelect({
         <p className="line-clamp-2 max-w-xl text-xs text-gray-500 dark:text-gray-400">
           {selected.description}
         </p>
+      )}
+      {dialog && (
+        <SkillsChangeDialog request={dialog} busy={saving} onCancel={() => setDialog(null)} />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import type { HubCatalog, HubSkill, InstalledSkill } from "../../../shared/skillsHub.js";
+export { parseSkillRef } from "../../../shared/skillsHub.js";
 import { tryGit } from "../../utils/git.js";
 import { getUserSkillsDir } from "./common.js";
 
@@ -77,19 +78,6 @@ async function readSkillMeta(
 
 async function readSkillDescription(skillMdPath: string): Promise<string> {
   return (await readSkillMeta(skillMdPath)).description;
-}
-
-/** A `requires-skills` entry (`[<catalog>/]<skill>[@<range>]`, maybe with a `# comment`) as
- *  `<catalog>/<skill>`; no catalog = the declaring one. The range isn't checked: the clone holds
- *  one version of each skill. */
-export function parseSkillRef(raw: string, defaultCatalog: string): string {
-  const id = raw
-    .replace(/\s+#.*$/, "")
-    .trim()
-    .replace(/^["']|["']$/g, "")
-    .split("@")[0]!
-    .trim();
-  return id.includes("/") ? id : `${defaultCatalog}/${id}`;
 }
 
 /** `catalog/<name>/requires-skills`: one ref per line, `#` comments. */

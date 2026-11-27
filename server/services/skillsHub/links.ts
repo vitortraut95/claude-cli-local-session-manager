@@ -1,9 +1,9 @@
 import { lstat, mkdir, readdir, readlink, realpath, stat, symlink, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { HubCatalog, SkillStatus, SkillsSelection } from "../../../shared/skillsHub.js";
+import { expandSelection, skillId } from "../../../shared/skillsHub.js";
 import { AppError } from "../../utils/httpError.js";
 import type { SkillsHubPreferences } from "../preferencesService.js";
-import { parseSkillRef } from "./catalog.js";
 import { getUserSkillsDir, updateSkillsHubPreferences } from "./common.js";
 
 type LinkEntry =
@@ -46,59 +46,6 @@ async function reachesSkill(
 function isInside(child: string, parent: string): boolean {
   const relative = path.relative(parent, child);
   return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
-}
-
-function skillId(catalog: string, skill: string): string {
-  return `${catalog}/${skill}`;
-}
-
-/**
- * Every skill to keep linked, as `<catalog>/<skill>` → who pulled it in: `[]` when picked (or in a
- * whole picked catalog), otherwise the selected skills/catalogs that depend on it — `requires-skills`
- * of each linked skill (transitively) and `requires-skills` of each whole picked catalog. Refs to
- * skills the hub doesn't have are skipped.
- */
-export function expandSelection(
-  catalogs: HubCatalog[],
-  selection: SkillsSelection,
-): Map<string, string[]> {
-  const skills = new Map<string, { catalog: string; requires: string[] }>();
-  for (const catalog of catalogs) {
-    for (const skill of catalog.skills) {
-      skills.set(skillId(catalog.name, skill.name), {
-        catalog: catalog.name,
-        requires: skill.requires ?? [],
-      });
-    }
-  }
-
-  const result = new Map<string, string[]>();
-  const queue: string[] = [];
-  const add = (id: string, by: string | null) => {
-    if (!skills.has(id)) return;
-    const current = result.get(id);
-    if (current === undefined) {
-      result.set(id, by === null ? [] : [by]);
-      queue.push(id);
-    } else if (by !== null && current.length > 0 && !current.includes(by)) {
-      current.push(by);
-    }
-  };
-
-  for (const catalog of catalogs) {
-    for (const skill of catalog.skills) {
-      const id = skillId(catalog.name, skill.name);
-      if (selection.catalogs.includes(catalog.name) || selection.skills.includes(id)) add(id, null);
-    }
-  }
-  for (const catalog of catalogs.filter((c) => selection.catalogs.includes(c.name))) {
-    for (const ref of catalog.requires ?? []) add(parseSkillRef(ref, catalog.name), catalog.name);
-  }
-  for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
-    const skill = skills.get(id)!;
-    for (const ref of skill.requires) add(parseSkillRef(ref, skill.catalog), id);
-  }
-  return result;
 }
 
 /** Drops catalogs/skills that no longer exist in the hub, and individual picks already covered by

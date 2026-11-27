@@ -1,6 +1,71 @@
 import { dict } from "../dict";
 
 export const skillsHub = {
+  "skillsHub.deps.addTitle": dict(
+    "Select its dependencies too?",
+    "Selecionar as dependências também?",
+  ),
+  "skillsHub.deps.addMessage": dict(
+    "{subject} needs other skills to work. They'll be selected along with it.",
+    "{subject} precisa de outras skills para funcionar. Elas vão ser selecionadas junto.",
+  ),
+  "skillsHub.deps.addGroup": dict("Selected along", "Vão ser selecionadas junto"),
+  "skillsHub.deps.addConfirm": dict("Select all", "Selecionar todas"),
+  "skillsHub.deps.dependencyOf": dict("dependency of {names}", "dependência de {names}"),
+  "skillsHub.deps.dependentsTitle": dict(
+    "Other skills depend on it",
+    "Outras skills dependem dela",
+  ),
+  "skillsHub.deps.dependentsMessage": dict(
+    "Selected skills use {subject}. To remove it they have to go too — otherwise it stays linked as their dependency.",
+    "Skills selecionadas usam {subject}. Para removê-la elas também precisam sair — senão ela continua linkada como dependência delas.",
+  ),
+  "skillsHub.deps.dependentsGroup": dict("Removed too", "Também vão ser removidas"),
+  "skillsHub.deps.dependentsConfirm": dict("Remove all", "Remover todas"),
+  "skillsHub.deps.orphansTitle": dict(
+    "Remove the dependencies nothing else uses?",
+    "Remover as dependências que ficam sem uso?",
+  ),
+  "skillsHub.deps.orphansMessage": dict(
+    "{subject} used skills that no other selected skill needs.",
+    "{subject} usava skills que nenhuma outra skill selecionada usa.",
+  ),
+  "skillsHub.deps.orphansGroup": dict("No longer used", "Ficam sem uso"),
+  "skillsHub.deps.orphansConfirm": dict("Remove them too", "Remover também"),
+  "skillsHub.deps.orphansKeep": dict("Keep them", "Manter"),
+  "skillsHub.plan.title": dict("Apply the selection?", "Aplicar a seleção?"),
+  "skillsHub.plan.message": dict(
+    "These links change in {dir}. Nothing outside the hub is touched.",
+    "Estes links mudam em {dir}. Nada fora do hub é mexido.",
+  ),
+  "skillsHub.plan.link": dict("Linked", "Vão ser linkadas"),
+  "skillsHub.plan.unlink": dict("Removed", "Vão ser removidas"),
+  "skillsHub.plan.confirm": dict("Apply", "Aplicar"),
+  "skillsHub.issues.title": dict("Actions needed ({count})", "Ações necessárias ({count})"),
+  "skillsHub.issues.unlinked": dict(
+    "Selected but not linked yet: {names}.",
+    "Selecionadas mas ainda sem link: {names}.",
+  ),
+  "skillsHub.issues.linkNow": dict("Link now", "Linkar agora"),
+  "skillsHub.issues.linkTitle": dict("Link the selected skills?", "Linkar as skills selecionadas?"),
+  "skillsHub.issues.unknownDependency": dict(
+    "{skill} needs {dependency}, which the hub doesn't have — tell whoever maintains the skill.",
+    "{skill} precisa de {dependency}, que não existe no hub — avise quem mantém a skill.",
+  ),
+  "skillsHub.issues.dependencyConflict": dict(
+    "{skill} needs {dependency}, but {path} already takes that name — move or rename it so the hub's one can be linked.",
+    "{skill} precisa de {dependency}, mas {path} já ocupa esse nome — mova ou renomeie para a do hub entrar.",
+  ),
+  "skillsHub.issues.preferenceMissing": dict(
+    "{preference} uses {skill}, which isn't installed.",
+    "{preference} usa {skill}, que não está instalada.",
+  ),
+  "skillsHub.issues.preferenceMissingNoHub": dict(
+    "{preference} uses {skill}, which isn't installed and isn't in the hub — pick another one below.",
+    "{preference} usa {skill}, que não está instalada nem existe no hub — escolha outra abaixo.",
+  ),
+  "skillsHub.issues.install": dict("Install", "Instalar"),
+  "skillsHub.issues.installTitle": dict("Install {skill}?", "Instalar {skill}?"),
   "skillsHub.manage.openFolder": dict("Open skills in file manager", "Abrir skills no explorador"),
   "skillsHub.manage.openHub": dict(
     "Team skills repo (git clone)",
