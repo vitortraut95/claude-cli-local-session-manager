@@ -81,7 +81,8 @@ in `shared/boardWatcher.ts`, read through `rulesOf`):
   a person, waits for the preview build, retests after a fix push.
 
 With a business-hours rule off for an automation that is on, the board is also looked at outside
-business hours (every `lookIntervalMinutes`). The times behind the notices and the preview wait
+business hours (every `lookIntervalMinutes`). "Look now" always runs a look, eye closed or not;
+what it finds still follows the rules unless started with "Start now". The times behind the notices and the preview wait
 (`buildStartGraceMinutes`, `digestBeforeEndMinutes`, `errorAlertEveryMinutes`,
 `waitingNoticeEveryMinutes`, `networkNoticeEveryMinutes`) are limits like the others, under "Times
 and notices" in the modal.

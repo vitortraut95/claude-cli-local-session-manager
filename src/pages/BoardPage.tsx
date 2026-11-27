@@ -330,7 +330,7 @@ function BoardWatcher() {
                     <button
                       type="button"
                       role="menuitem"
-                      disabled={busy !== null || !status.businessTime}
+                      disabled={busy !== null}
                       onClick={() => {
                         close();
                         void runCommand("digest", boardWatcherApi.sendBoardWatcherDigestNow);

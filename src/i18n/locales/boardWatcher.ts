@@ -424,8 +424,8 @@ export const boardWatcher = {
     "O resumo do dia saiu 10 minutos antes do fim do horário",
   ),
   "board.action.run.closed": dict(
-    "The eye is closed: it opens {when}",
-    "O olho está fechado: abre {when}",
+    "The eye is closed (it opens {when}), but a look by hand runs anyway",
+    "O olho está fechado (abre {when}), mas olhar à mão roda mesmo assim",
   ),
   "board.never": dict("never", "nunca"),
   "board.feedback.up": dict("Right call", "Acertou"),

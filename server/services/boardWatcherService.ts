@@ -203,7 +203,6 @@ function callStats(): WatcherCalls | null {
     lastHour: { jira: sum("jira"), bitbucket: sum("bitbucket"), jenkins: sum("jenkins") },
   };
 }
-let lastConfig: BoardWatcherConfig | null = null;
 let reviewing = false;
 /** Why pending reviews/tests aren't starting, shown in the app; null while they can. */
 let jobsBlockedBy: string | null = null;
@@ -416,29 +415,30 @@ function alertError(
   state.lastError.alertedAt = now.toISOString();
 }
 
-async function look(): Promise<void> {
+/** `byHand` ("Look now"): runs even with the eye closed. */
+async function look(byHand = false): Promise<void> {
   if (running) return;
   running = true;
-  await serial(lookLocked);
+  await serial(() => lookLocked(byHand));
   void drainJobs();
 }
 
-async function lookLocked(): Promise<void> {
+async function lookLocked(byHand: boolean): Promise<void> {
   const started = Date.now();
   const now = new Date();
   const config = await loadBoardWatcherConfig().catch((err: unknown) => {
     console.warn("[board-watcher] Couldn't read boardWatcher.json:", err);
     return null;
   });
-  lastConfig = config;
   const state = await loadState();
   const signal = automationSignal();
   let endLook: (() => void) | null = null;
   try {
     if (!config?.enabled || !(await automationsOn())) return;
-    // Eye closed: nothing at all until business hours start again, unless the user started
-    // something by hand or an automation works off hours too.
+    // Eye closed: nothing at all until business hours start again, unless the user asked for
+    // this look, started something by hand or an automation works off hours too.
     if (
+      !byHand &&
       !isBusinessTime(now, config.businessHours) &&
       state.forced.length === 0 &&
       !worksOffHours(config)
@@ -1463,7 +1463,7 @@ async function testNetworkRequirements(
 /** A look right now, instead of waiting for the next one. */
 /** "Look now" (the Board); nothing outside business hours, like every other look. */
 export async function runBoardWatcherNow(): Promise<BoardWatcherStatus> {
-  await look();
+  await look(true);
   return getBoardWatcherStatus();
 }
 
@@ -1508,7 +1508,7 @@ async function todaysSessions(
 }
 
 export async function getBoardWatcherStatus(): Promise<BoardWatcherStatus> {
-  const config = lastConfig ?? (await loadBoardWatcherConfig().catch(() => null));
+  const config = await loadBoardWatcherConfig().catch(() => null);
   const state = await loadState();
   const today = config ? localDay(new Date(), config.businessHours) : "";
   return {
