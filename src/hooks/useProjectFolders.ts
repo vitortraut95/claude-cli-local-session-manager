@@ -6,7 +6,7 @@ import * as tasksApi from "../services/tasksApi";
 export const OTHER_FOLDER_VALUE = "__other__";
 
 /**
- * Project-folder picker state for the "New task" and "New session" modals: known folders plus
+ * Project-folder picker state for the task forms: known folders plus
  * the user's choice (a listed folder, or "Other" + a typed path). Re-fetched each time `open`
  * turns true, so a folder used since the last open shows up.
  */

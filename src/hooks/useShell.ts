@@ -9,7 +9,6 @@ export type ShellActions = {
   navigate: (view: AppView) => void;
   /** Goes to the task queue with its add form in focus: new tasks go through the queue. */
   openNewTask: () => void;
-  openNewSession: () => void;
   openRefinement: () => void;
   openCleanup: () => void;
   /** The skills panel; with a preference, its skill picker is highlighted and focused. */

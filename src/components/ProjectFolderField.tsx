@@ -12,7 +12,7 @@ type ProjectFolderFieldProps = {
   repoError?: string | null;
 };
 
-/** The "Project (folder)" field shared by the "New task" and "New session" modals. */
+/** The "Project (folder)" field used by the task forms. */
 export function ProjectFolderField({
   folders,
   inputName,

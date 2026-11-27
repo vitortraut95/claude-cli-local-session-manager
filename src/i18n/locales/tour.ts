@@ -36,7 +36,7 @@ export const tour = {
   ),
   "tour.tools.title": dict("Cleanup, skills and settings", "Limpeza, skills e configurações"),
   "tour.tools.body": dict(
-    "Skills sits with the pages: what Claude knows how to do on every session. Below: New session, Refine tasks and Cleanup; at the bottom, plan usage, updates and Settings.",
-    "Skills fica junto das páginas: o que o Claude sabe fazer em cada sessão. Abaixo: Nova sessão, Refinar tarefas e Limpeza; no rodapé, uso do plano, atualizações e Configurações.",
+    "Skills sits with the pages: what Claude knows how to do on every session. Below: Refine tasks and Cleanup; at the bottom, plan usage, updates and Settings.",
+    "Skills fica junto das páginas: o que o Claude sabe fazer em cada sessão. Abaixo: Refinar tarefas e Limpeza; no rodapé, uso do plano, atualizações e Configurações.",
   ),
 };

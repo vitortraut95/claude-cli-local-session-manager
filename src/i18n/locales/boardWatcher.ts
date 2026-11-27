@@ -1,7 +1,6 @@
 import { dict } from "../dict";
 
 export const boardWatcher = {
-  "header.board": dict("Board", "Board"),
 
   "automation.title": dict("Automation", "Automação"),
   "automation.setupUnfinished": dict(
@@ -230,9 +229,6 @@ export const boardWatcher = {
     "Teste de {subject}: {detail}",
   ),
   "board.queue.title": dict("Queue", "Fila"),
-  "board.queue.running": dict("Waiting for a session", "Esperando sessão"),
-  "board.queue.next": dict("Will do", "Vai fazer"),
-  "board.queue.waiting": dict("Waiting", "Esperando"),
   "board.queue.empty": dict("Nothing in the queue.", "Nada na fila."),
   "board.live.lookGroup": dict(
     "Look · {issues} tasks · {prs} PRs · {decisions} actions · {seconds}s",
@@ -338,27 +334,7 @@ export const boardWatcher = {
     "Couldn't read the board status.",
     "Não foi possível ler o estado do board.",
   ),
-  "board.decision.context.unapprovedDeploying": dict(
-    "{keys} is already in Validation/Wait Deploy and the PR has no approval (last commit {pushedAt}; a new push resets the approvals).",
-    "{keys} já está em Validation/Wait Deploy e o PR não tem nenhuma aprovação (último commit {pushedAt}; um push novo zera as aprovações).",
-  ),
-  "board.decision.context.pushedAfterApproval": dict(
-    "Pushed after your approval (last commit {pushedAt}): only what changed since gets reviewed.",
-    "Teve push depois do seu aprove (último commit {pushedAt}): só o que mudou desde então é revisado.",
-  ),
-  "board.decision.build.failed": dict("Failed build: {name}", "Build que falhou: {name}"),
-  "board.decision.build.infra": dict("infra (not the code)", "infra (não é o código)"),
-  "board.decision.build.code": dict("code", "código"),
-  "board.decision.build.unknown": dict("unclear", "causa incerta"),
-  "board.decision.build.reading": dict("Reading the Jenkins log…", "Lendo o log do Jenkins…"),
-  "board.decision.build.noLog": dict(
-    "Couldn't read the Jenkins log (token or Jenkins unavailable).",
-    "Não foi possível ler o log do Jenkins (token ou Jenkins indisponível).",
-  ),
-  "board.decision.build.fix": dict("What to do:", "O que fazer:"),
   "board.decision.openJenkins": dict("Open in Jenkins", "Abrir no Jenkins"),
-  "board.decision.openPr": dict("Open the PR", "Abrir o PR"),
-  "board.decision.openIssue": dict("Open the ticket", "Abrir a tarefa"),
   "board.homolog.title": dict("Point to homolog", "Apontar pra homolog"),
   "board.homolog.keyLabel": dict("Ticket", "Tarefa"),
   "board.homolog.keyPlaceholder": dict("PROJ-12345", "PROJ-12345"),
@@ -457,7 +433,6 @@ export const boardWatcher = {
     "Última olhada: {seconds}s, {jira} chamadas ao Jira, {bitbucket} ao Bitbucket e {jenkins} ao Jenkins · Bitbucket na última hora: {hour} de ~1000.",
   ),
   "board.now.retries": dict("({count} retried)", "({count} repetidas)"),
-  "board.now.none": dict("None", "Nenhum"),
   "board.decisionAction.enqueue-dev": dict("To queue", "Vai pra fila"),
   "board.decisionAction.weak-description": dict("Weak description", "Descrição fraca"),
   "board.decisionAction.claim-test": dict("Claim test", "Pegar teste"),
@@ -505,20 +480,7 @@ export const boardWatcher = {
   "board.kind.approve": dict("Approval", "Aprovação"),
   "board.kind.notify": dict("Notice", "Aviso"),
 
-  "taskSidebar.title": dict("Tasks", "Tarefas"),
-  "taskSidebar.toggle": dict("Tasks ({count})", "Tarefas ({count})"),
-  "taskSidebar.empty": dict("No open tasks.", "Nenhuma tarefa em aberto."),
-  "taskSidebar.collapse": dict("Collapse the task list", "Recolher a lista de tarefas"),
-  "taskSidebar.expand": dict("Open the task list", "Abrir a lista de tarefas"),
-  "taskSidebar.legend": dict("Legend", "Legenda"),
-  "taskSidebar.level.problem": dict("Problem", "Problema"),
-  "taskSidebar.level.waiting": dict("Waiting", "Aguardando"),
-  "taskSidebar.level.running": dict("In progress", "Em andamento"),
-  "taskSidebar.reason.running": dict("Running", "Rodando"),
-  "taskSidebar.reason.inProgress": dict("In progress", "Em andamento"),
   "taskSidebar.reason.waitingUser": dict("Waiting for you", "Esperando você"),
-  "taskSidebar.reason.todo": dict("To do", "A fazer"),
-  "taskSidebar.reason.queued": dict("Queued", "Na fila"),
   "taskSidebar.reason.launchError": dict(
     "Failed to launch: {message}",
     "Erro ao lançar: {message}",

@@ -27,8 +27,6 @@ export const shell = {
   "nav.skills.hint": dict("Skill management", "Gerenciamento de skills"),
   "nav.settings": dict("Settings", "Configurações"),
   "nav.more": dict("More", "Mais"),
-  "nav.close": dict("Close", "Fechar"),
-  "nav.preferences": dict("Language and theme", "Idioma e tema"),
   "updateButton.sidebar.available": dict("Update available", "Atualização disponível"),
   "updateButton.sidebar.upToDate": dict("App up to date", "App atualizado"),
   "claudeCli.available": dict(
@@ -55,10 +53,6 @@ export const shell = {
   "sessions.summary": dict(
     "{total} sessions · {running} running · {attention} need you",
     "{total} sessões · {running} rodando · {attention} precisam de você",
-  ),
-  "sessions.moreWays": dict(
-    "Other ways to start: new session, refine tasks",
-    "Outras formas de começar: nova sessão, refinar tarefas",
   ),
   "sessions.quick.label": dict("Show", "Mostrar"),
   "sessions.quick.all": dict("All", "Todas"),
@@ -111,7 +105,6 @@ export const shell = {
     "A conversa da sessão é apagada de vez. Esc cancela.",
   ),
   "sessions.taskOnly.title": dict("Tasks with no open session", "Tarefas sem sessão aberta"),
-  "sessions.taskOnly.filter": dict("See {key}", "Ver {key}"),
   "sessions.taskOnly.queue": dict("Open the queue", "Abrir a fila"),
   "sessions.taskOnly.board": dict("Open the Board", "Abrir o Board"),
   "sessions.taskOnly.dismiss": dict("Dismiss", "Dispensar"),
@@ -172,11 +165,6 @@ export const shell = {
   "detail.links": dict("Links", "Links"),
   "detail.filterByTask": dict("Every session of {key}", "Todas as sessões de {key}"),
   "detail.updated": dict("Updated {when}", "Atualizada {when}"),
-  "detail.conversation.open": dict("Open with replies", "Abrir com as respostas"),
-  "detail.history.none": dict(
-    "Nothing recorded for this task yet: the history starts when it goes through the queue or changes status.",
-    "Nada registrado para esta tarefa ainda: o histórico começa quando ela passa pela fila ou muda de situação.",
-  ),
 
   // Board page
   "boardPage.subtitle": dict(
@@ -234,7 +222,6 @@ export const shell = {
     "Alterações não salvas: a fila só roda o que está salvo.",
   ),
   "queuePage.discard": dict("Discard", "Descartar"),
-  "queuePage.saved": dict("Queue saved", "Fila salva"),
 
   // Keyboard
   "shortcuts.newTask": dict("New task (N)", "Nova tarefa (N)"),

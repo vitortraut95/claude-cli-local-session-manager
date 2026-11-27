@@ -2,9 +2,7 @@ import { dict } from "../dict";
 
 export const common = {
   "common.beta": dict("Beta", "Beta"),
-  "header.subtitle": dict("Manage your local sessions", "Gerencie suas sessões locais"),
   "header.newTask": dict("New task", "Nova tarefa"),
-  "header.skills": dict("Skills", "Skills"),
   "header.skills.active": dict(
     "{count} team skill(s) active on this machine",
     "{count} skill(s) do time ativa(s) nesta máquina",
@@ -17,12 +15,9 @@ export const common = {
     "Team skills repo configured but not cloned on this machine — click to install",
     "Repo de skills do time configurado mas não clonado nesta máquina — clique pra instalar",
   ),
-  "header.newSession": dict("New session", "Nova sessão"),
   "header.refineTasks": dict("Refine tasks", "Refinar tarefas"),
   "select.search": dict("Search…", "Buscar…"),
   "select.noResults": dict("Nothing found.", "Nada encontrado."),
-  "header.cleanup": dict("Cleanup", "Limpeza"),
-  "header.settings": dict("Settings", "Configurações"),
   "header.language": dict("Language", "Idioma"),
   "confirmDialog.confirm": dict("Confirm", "Confirmar"),
   "confirmDialog.cancel": dict("Cancel", "Cancelar"),
@@ -45,20 +40,6 @@ export const common = {
   "perPageSelect.ariaLabel": dict("Sessions per page", "Sessões por página"),
   "perPageSelect.all": dict("All", "Todas"),
   "perPageSelect.perPage": dict("{count} / page", "{count} / página"),
-  "emptyState.noResultsTitle": dict("No sessions found", "Nenhuma sessão encontrada"),
-  "emptyState.noSessionsTitle": dict(
-    "No Claude sessions found",
-    "Nenhuma sessão do Claude encontrada",
-  ),
-  "emptyState.noResultsMessage": dict(
-    "Try adjusting your search terms.",
-    "Tente ajustar os termos da sua busca.",
-  ),
-  "emptyState.noSessionsMessage": dict(
-    "No sessions recorded yet in ~/.claude/projects.",
-    "Ainda não há sessões registradas em ~/.claude/projects.",
-  ),
-  "errorState.title": dict("Error loading sessions", "Erro ao carregar sessões"),
   "errorState.retry": dict("Try again", "Tentar novamente"),
   "loadingState.message": dict("Loading sessions...", "Carregando sessões..."),
   "loadingState.scanning.title": dict(

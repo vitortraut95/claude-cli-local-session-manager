@@ -471,9 +471,6 @@ export function SessionsPage({ sessions: state, problems }: SessionsPageProps) {
           <Button onClick={shell.openNewTask} icon={<Plus className="h-4 w-4" />}>
             {t("header.newTask")}
           </Button>
-          <Button variant="outline" onClick={shell.openNewSession}>
-            {t("header.newSession")}
-          </Button>
         </EmptyBlock>
       );
     }

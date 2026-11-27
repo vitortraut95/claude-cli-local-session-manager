@@ -151,8 +151,8 @@ export const settings = {
   ),
   "settings.terminalLayout.title": dict("Where sessions open", "Onde as sessões abrem"),
   "settings.terminalLayout.description": dict(
-    'A terminal tab per session (Warp when installed), or all of them as panes of one Limux workspace ("Claude — tarefas") in its own window — each new session joins it, and its pane closes when Claude quits. Applies to New task, the queue, New session and Resume. Needs Limux (github.com/am-will/limux) — installed and updated from here, no sudo; without it, tabs are used. Closing the Limux window ends the sessions in it (they stay resumable).',
-    'Uma aba de terminal por sessão (Warp quando instalado), ou todas como painéis de um workspace do Limux ("Claude — tarefas") numa janela própria — cada sessão nova entra nele, e o painel fecha quando o Claude sai. Vale pra Nova tarefa, fila, Nova sessão e Retomar. Precisa do Limux (github.com/am-will/limux) — instalado e atualizado por aqui, sem sudo; sem ele, usa abas. Fechar a janela do Limux encerra as sessões dele (elas continuam retomáveis).',
+    'A terminal tab per session (Warp when installed), or all of them as panes of one Limux workspace ("Claude — tarefas") in its own window — each new session joins it, and its pane closes when Claude quits. Applies to the queue, Refine tasks and Resume. Needs Limux (github.com/am-will/limux) — installed and updated from here, no sudo; without it, tabs are used. Closing the Limux window ends the sessions in it (they stay resumable).',
+    'Uma aba de terminal por sessão (Warp quando instalado), ou todas como painéis de um workspace do Limux ("Claude — tarefas") numa janela própria — cada sessão nova entra nele, e o painel fecha quando o Claude sai. Vale pra fila, Refinar tarefas e Retomar. Precisa do Limux (github.com/am-will/limux) — instalado e atualizado por aqui, sem sudo; sem ele, usa abas. Fechar a janela do Limux encerra as sessões dele (elas continuam retomáveis).',
   ),
   "settings.terminalLayout.tabs": dict("A tab per session", "Uma aba por sessão"),
   "settings.terminalLayout.grid": dict("Limux grid", "Grade no Limux"),

@@ -3,7 +3,6 @@ import {
   Eye,
   ListTodo,
   Menu,
-  MessageSquarePlus,
   Moon,
   Plus,
   Scale,
@@ -59,7 +58,6 @@ export type AppNavProps = {
   onToggleTheme: () => void;
   /** The task queue's add form: new tasks go through the queue. */
   onNewTask: () => void;
-  onOpenNewSession: () => void;
   onOpenCleanup: () => void;
   onOpenRefinement: () => void;
   onOpenSkills: () => void;
@@ -269,18 +267,6 @@ export function AppNav(props: AppNavProps) {
 
   const toolItems = (onPick?: () => void) => (
     <>
-      <button
-        type="button"
-        data-tour="new-session"
-        onClick={() => {
-          onPick?.();
-          props.onOpenNewSession();
-        }}
-        className={itemClass(false)}
-      >
-        <MessageSquarePlus className="h-[18px] w-[18px]" />
-        <span className="truncate">{t("header.newSession")}</span>
-      </button>
       <button
         type="button"
         data-tour="refine"

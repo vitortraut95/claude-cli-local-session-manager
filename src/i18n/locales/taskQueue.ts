@@ -1,7 +1,6 @@
 import { dict } from "../dict";
 
 export const taskQueue = {
-  "header.taskQueue": dict("Task queue", "Fila de tarefas"),
   "header.grid": dict("Open grid", "Abrir grade"),
   "header.grid.tooltip": dict(
     'Brings up the Limux window (starting it if needed) on the "Claude — tarefas" workspace and resumes into it, one pane each, every task "In progress" or "Waiting user" that has nothing running — up to the session limit',

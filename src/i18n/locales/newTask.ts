@@ -2,7 +2,6 @@ import { dict } from "../dict";
 
 export const newTask = {
   "newTaskModal.cancel": dict("Cancel", "Cancelar"),
-  "newTaskModal.clear": dict("Clear", "Limpar"),
   "newTaskModal.step.repo": dict(
     "Confirm the folder is a git repository",
     "Confirmar que a pasta é um repositório git",
@@ -15,22 +14,6 @@ export const newTask = {
     "Create the branch and isolated worktree",
     "Criar a branch e o worktree isolado",
   ),
-  "newTaskModal.extraRepos.label": dict(
-    "Other repos of this task (optional)",
-    "Outros repos desta tarefa (opcional)",
-  ),
-  "newTaskModal.extraRepos.hint": dict(
-    "Each gets the same branch ({branch}), off the base you type (blank = the repo's default), and joins the session via --add-dir. You can also add repos later from the card.",
-    "Cada um recebe a mesma branch ({branch}), a partir da base indicada (vazio = padrão do repo), e entra na sessão via --add-dir. Também dá para adicionar depois, pelo card.",
-  ),
-  "newTaskModal.extraRepos.needsKey": dict(
-    "Needs a ticket key in the link (e.g. PROJ-123) to group the repos into one task.",
-    "Precisa de uma chave de ticket no link (ex.: PROJ-123) para agrupar os repos numa tarefa.",
-  ),
-  "newTaskModal.extraRepos.yes": dict("Yes", "Sim"),
-  "newTaskModal.extraRepos.no": dict("No", "Não"),
-  "newTaskModal.extraRepos.add": dict("+ Add a repo…", "+ Adicionar repo…"),
-  "newTaskModal.extraRepos.remove": dict("Remove", "Remover"),
   "newTaskModal.projectLabel": dict("Project (folder)", "Projeto (pasta)"),
   "newTaskModal.loadingProjects": dict("Loading projects…", "Carregando projetos…"),
   "newTaskModal.selectProject": dict("Select a project", "Selecione um projeto"),
@@ -48,18 +31,6 @@ export const newTask = {
     "Could not read this repository's information.",
     "Não foi possível ler as informações deste repositório.",
   ),
-  "newTaskModal.promptLabel": dict("Prompt", "Prompt"),
-  "newTaskModal.saving": dict("Saving…", "Salvando…"),
-  "newTaskModal.saveAsDefault": dict("Save as default", "Salvar como padrão"),
-  "newTaskModal.promptSaved": dict("Default prompt saved.", "Prompt padrão salvo."),
-  "newTaskModal.promptSaveError": dict(
-    "Could not save the default prompt.",
-    "Não foi possível salvar o prompt padrão.",
-  ),
-  "newTaskModal.loadingDefaultPrompt": dict(
-    "Loading default prompt…",
-    "Carregando o prompt padrão…",
-  ),
   "newTaskModal.baseBranchLabel": dict("Base branch", "Branch base"),
   "newTaskModal.useLocalBaseBranchLabel": dict(
     "Use the local branch instead of fetching the latest from the remote.",
@@ -70,34 +41,7 @@ export const newTask = {
     "Use an isolated worktree — instead of switching the branch directly in the project folder.",
     "Usar um worktree isolado — em vez de trocar a branch diretamente na pasta do projeto.",
   ),
-  "newTaskModal.terminalOpened": dict(
-    "Terminal opened. Check your taskbar if it didn't come to the front.",
-    "Terminal aberto. Verifique a barra de tarefas se ele não veio para a frente.",
-  ),
   "newTaskModal.unexpectedFailure": dict("Unexpected failure.", "Falha inesperada."),
-  "newSessionModal.title": dict("New session", "Nova sessão"),
-  "newSessionModal.intro": dict(
-    "Starts Claude straight in the project's folder, on whatever branch it's on — no Jira link, branch or worktree.",
-    "Inicia o Claude direto na pasta do projeto, na branch em que ela estiver — sem link do Jira, branch nem worktree.",
-  ),
-  "newSessionModal.confirm": dict("Start session", "Iniciar sessão"),
-  "newSessionModal.promptPlaceholder": dict(
-    "Instructions for Claude (optional — leave blank to just open Claude)…",
-    "Instruções para o Claude (opcional — deixe em branco para só abrir o Claude)…",
-  ),
-  "newSessionModal.launchFailed": dict(
-    "Failed to start the session: {message}",
-    "Falha ao iniciar a sessão: {message}",
-  ),
-  "newSessionModal.activeSessionTitle": dict(
-    "There's already a session in this repository",
-    "Já existe uma sessão neste repositório",
-  ),
-  "newSessionModal.activeSessionMessage": dict(
-    "A Claude session is already running in {folder}. Both sessions will work on the same files and branch at the same time. Start anyway?",
-    "Já há uma sessão do Claude rodando em {folder}. As duas sessões vão mexer nos mesmos arquivos e na mesma branch ao mesmo tempo. Iniciar mesmo assim?",
-  ),
-  "newSessionModal.activeSessionConfirm": dict("Start anyway", "Iniciar mesmo assim"),
   "taskTestSkill.title": dict("Task test skill", "Skill de teste da tarefa"),
   "taskTestSkill.description": dict(
     "The skill the task queue's test entries run with the task's link. None = \"Test the task <link>\".",

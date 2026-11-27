@@ -23,7 +23,6 @@ export const automationSetup = {
   "automationSetup.optional": dict("Optional", "Opcional"),
   "automationSetup.back": dict("Back", "Voltar"),
   "automationSetup.next": dict("Next", "Próxima"),
-  "automationSetup.skip": dict("Skip", "Pular"),
   "automationSetup.saveAndContinue": dict("Check and continue", "Conferir e continuar"),
   "automationSetup.close": dict("Close", "Fechar"),
   "automationSetup.secret.saved": dict(

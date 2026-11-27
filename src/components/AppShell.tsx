@@ -24,7 +24,6 @@ import { AutomationModal } from "./AutomationModal";
 import type { AutomationFocus } from "./AutomationModesEditor";
 import { CleanupModal } from "./CleanupModal";
 import { LaunchPanel } from "./LaunchPanel";
-import { NewSessionModal } from "./NewSessionModal";
 import { RefinementModal } from "./RefinementModal";
 import { SettingsModal } from "./SettingsModal";
 import { ReviewSkillModal } from "./ReviewSkillModal";
@@ -35,7 +34,7 @@ import { UpdateOverlay } from "./UpdateOverlay";
 import { WelcomeTour } from "./WelcomeTour";
 import { hasSeenTour, markTourSeen } from "../utils/tour";
 
-type Panel = "newSession" | "refinement" | "cleanup" | "skills" | "settings" | "automation";
+type Panel = "refinement" | "cleanup" | "skills" | "settings" | "automation";
 
 /** True while the focus is in a field, where single-key shortcuts must type instead. */
 function typingInField(target: EventTarget | null): boolean {
@@ -72,10 +71,10 @@ export function AppShell() {
     dismissAutoUpdateError,
   } = useUpdate();
   const usage = useUsageLimits();
-  // Also keeps the shared cached status warm for the New Session skills panel.
+  // Also keeps the shared cached status warm for the skills panels.
   const skillsHub = useSkillsHubStatus(true);
 
-  // New session / refinement stay mounted (toggled via `open`) so closing them by
+  // Refinement stays mounted (toggled via `open`) so closing them by
   // accident keeps what was typed; the rest mount only while open.
   const [panel, setPanel] = useState<Panel | null>(null);
   const [automationFocus, setAutomationFocus] = useState<AutomationFocus | undefined>();
@@ -168,7 +167,6 @@ export function AppShell() {
       view,
       navigate,
       openNewTask,
-      openNewSession: () => setPanel("newSession"),
       openRefinement: () => setPanel("refinement"),
       openCleanup: () => setPanel("cleanup"),
       openSkills: (focus?: SkillPreference) => {
@@ -265,7 +263,6 @@ export function AppShell() {
           theme={theme}
           onToggleTheme={toggleTheme}
           onNewTask={openNewTask}
-          onOpenNewSession={() => setPanel("newSession")}
           onOpenCleanup={() => setPanel("cleanup")}
           onOpenRefinement={() => setPanel("refinement")}
           onOpenSkills={() => setPanel("skills")}
@@ -292,11 +289,6 @@ export function AppShell() {
         </div>
       </div>
 
-      <NewSessionModal
-        open={panel === "newSession"}
-        onClose={closePanel}
-        onSessionCreated={refreshSoon}
-      />
       <RefinementModal
         open={panel === "refinement"}
         onClose={closePanel}

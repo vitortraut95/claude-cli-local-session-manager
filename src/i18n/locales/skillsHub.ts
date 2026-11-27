@@ -122,27 +122,6 @@ export const skillsHub = {
   ),
   "skillsHub.manage.syncNow": dict("Update now", "Atualizar agora"),
   "skillsHub.modal.title": dict("Skills", "Skills"),
-  "skillsHub.panel.choose": dict("Choose", "Escolher"),
-  "skillsHub.panel.chooseCatalogs": dict(
-    "Skills hub found — pick your team's catalog(s) or individual skills to use them in your tasks.",
-    "Hub de skills encontrado — escolha catálogo(s) do seu time ou skills soltas pra usar nas tarefas.",
-  ),
-  "skillsHub.panel.conflicts": dict("{count} name conflict(s)", "{count} conflito(s) de nome"),
-  "skillsHub.panel.inviteShort": dict(
-    "Clone your team's skills repo and pick which skills to use — the app creates a shortcut to each one in {dir}.",
-    "Clone o repo de skills do time e escolha quais skills usar — o app cria um atalho de cada uma em {dir}.",
-  ),
-  "skillsHub.panel.manage": dict("Manage", "Gerenciar"),
-  "skillsHub.panel.offDefault": dict("hub on {branch}", "hub na {branch}"),
-  "skillsHub.panel.pending": dict(
-    "{count} new to link — update in Manage",
-    "{count} nova(s) a linkar — atualize em Gerenciar",
-  ),
-  "skillsHub.panel.setup": dict("Set up", "Configurar"),
-  "skillsHub.panel.summary": dict(
-    "Skills: {count} linked ({catalogs})",
-    "Skills: {count} linkadas ({catalogs})",
-  ),
   "skillsHub.pathSaved": dict("Skills hub folder saved.", "Pasta do hub de skills salva."),
   "skillsHub.pathSaveError": dict("Couldn't use that folder.", "Não foi possível usar essa pasta."),
   "skillsHub.state.broken": dict("broken link", "link quebrado"),
@@ -195,10 +174,6 @@ export const skillsHub = {
   "skillsHub.manage.syncHelp": dict(
     '"Update now" runs git fetch, fast-forwards the clone when it\'s clean, and creates shortcuts in {dir} for new skills. It also runs on its own when the app starts, if enabled in Settings.',
     '"Atualizar agora" roda git fetch, avança o clone (fast-forward) quando está limpo e cria os atalhos das skills novas em {dir}. Também roda sozinho quando o app inicia, se estiver ligado na Configuração.',
-  ),
-  "skillsHub.panel.behind": dict(
-    "hub {count} commit(s) behind — update it in Manage",
-    "hub {count} commit(s) atrás — atualize em Gerenciar",
   ),
   "skillsHub.manage.wholeCatalog": dict(
     "whole catalog · {count} skill(s), new ones included",

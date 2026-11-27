@@ -42,7 +42,7 @@ opens the browser. Stop the app by closing that terminal.
 
 - **Layout** — a navigation sidebar (a bottom bar on phones) with the pages Sessions, Board and
   Task queue, then Cleanup and Team skills; plan usage, updates, Settings, theme and
-  language sit at its foot. New task (also the `N` key), New session, Refine tasks, Cleanup,
+  language sit at its foot. New task (also the `N` key), Refine tasks, Cleanup,
   Settings and the session's dialogs open as side panels, so the list stays in view. `/` jumps to
   the search, Esc closes panels and menus. Dark and light themes share the same tokens
   (`src/index.css`): violet is the brand, green = running, amber = waiting on you, red = errors only
@@ -59,8 +59,8 @@ opens the browser. Stop the app by closing that terminal.
 - **Session list** — title, project, branch, last-updated/active time, and a session-size meter
   (green → amber → red)
 - **Resume** any session in a new terminal (`claude --resume`), Warp preferred if installed
-- **Grid layout** — optional (Settings → "Where sessions open"): every session the app opens (New
-  task, the queue, New session, Resume) becomes a pane of one [Limux](https://github.com/am-will/limux)
+- **Grid layout** — optional (Settings → "Where sessions open"): every session the app opens (the
+  queue, Refine tasks, Resume) becomes a pane of one [Limux](https://github.com/am-will/limux)
   workspace, "Claude — tarefas", in its own window, instead of a tab of its own; a pane closes when
   Claude quits, and "Resume" on a session already there focuses its pane. Needs Limux 0.1.33+;
   closing the Limux window ends the sessions in it (they stay resumable). Reopened, Limux restores
@@ -94,12 +94,9 @@ opens the browser. Stop the app by closing that terminal.
   needed)
 - **New task** — paste a Jira link + instructions, pick a project, and it opens a terminal
   already running Claude with that prompt — optionally in an isolated git worktree
-- **New session** — the lightweight version: pick a project, the team skills and a prompt (its own
-  default, separate from New task's) and Claude starts right in the project folder — no Jira link,
-  branch or worktree; it only asks for confirmation if a session is already active there
 - **Team skills** — optional integration with your team's own skills repo (a git repo with a
   `catalog/<catalog>/` tree of skills; its URL is asked on first start and kept only in your local
-  `userPreferences.json`): the New task/New session modals invite you to clone it, you pick whole catalogs and/or single skills, and
+  `userPreferences.json`): the Skills panel invites you to clone it, you pick whole catalogs and/or single skills, and
   their skills get linked into `~/.claude/skills`, together with the skills they declare in
   `requires-skills` (and a catalog's own `catalog/<catalog>/requires-skills`); a picked skill that
   moves to another catalog is followed, and a skill shortcut naming a renamed skill finds it by
