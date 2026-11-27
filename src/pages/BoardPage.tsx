@@ -459,7 +459,7 @@ function BoardWatcher() {
         }
       />
 
-      <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-5 px-4 py-6 sm:px-7">
+      <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-5 px-4 py-6 sm:px-7 3xl:max-w-[140rem]">
         {statusError && (
           <div
             role="alert"
@@ -609,8 +609,9 @@ function BoardWatcher() {
         )}
 
         {status && (
-          <div className="grid gap-5 xl:grid-cols-5">
-            <div className="flex min-w-0 flex-col gap-5 xl:col-span-3">
+          // Ultrawide: what needs you, the queue and the live panel side by side.
+          <div className="grid gap-5 xl:grid-cols-5 3xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.25fr)] 3xl:items-start">
+            <div className="flex min-w-0 flex-col gap-5 xl:col-span-3 3xl:contents">
               <AttentionPanel status={status} refreshKey={historyRefreshKey} />
               <BoardQueue
                 status={status}
@@ -619,7 +620,7 @@ function BoardWatcher() {
                 onReorder={(subjects) => void reorderQueue(subjects)}
               />
             </div>
-            <div className="min-w-0 xl:col-span-2">
+            <div className="min-w-0 xl:col-span-2 3xl:col-span-1">
               <LiveActivityPanel
                 onCurrentChange={setLiveCurrent}
                 nextUp={nextUp}

@@ -162,7 +162,7 @@ export function BoardQueue({
           {order.length > 1 && (
             <p className="text-xs text-gray-500">{t("board.queue.reorderHint")}</p>
           )}
-          <ul className="flex max-h-[22rem] flex-col divide-y divide-gray-100 dark:divide-white/5 overflow-y-auto pr-1">
+          <ul className="flex max-h-[26rem] flex-col 3xl:max-h-[40rem] divide-y divide-gray-100 dark:divide-white/5 overflow-y-auto pr-1">
             {items.map((item) => {
               const title = status.titles[item.subject];
               const movable = item.state !== "running" && order.length > 1;
@@ -213,74 +213,74 @@ export function BoardQueue({
                   )}
                   <SubjectIcon subject={item.subject} />
                   <div className="min-w-0 flex-1">
-                    <p className="flex min-w-0 items-center gap-2">
-                      {item.work && <WorkBadge work={item.work} />}
-                      <span className="shrink-0 font-mono text-xs text-gray-800 dark:text-gray-200">
+                    {/* The title gets the whole first line (two before it's cut); the rest goes below. */}
+                    <p className="line-clamp-2 text-sm text-gray-700 dark:text-gray-300" title={title}>
+                      <span className="mr-2 font-mono text-xs text-gray-800 dark:text-gray-200">
                         {item.subject}
                       </span>
-                      {title && (
-                        <span
-                          className="min-w-0 truncate text-sm text-gray-700 dark:text-gray-300"
-                          title={title}
-                        >
-                          {title}
-                        </span>
-                      )}
+                      {title}
                     </p>
-                    {item.reason && (
-                      <p className="text-xs text-gray-500">
-                        {t("board.queue.reason")}: {translateServerText(item.reason, language)}
-                      </p>
-                    )}
-                    {item.decision?.build && (
-                      <a
-                        href={item.decision.build.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-fuchsia-700 dark:text-fuchsia-300 underline-offset-2 hover:underline"
-                      >
-                        {t("board.queue.build", { name: item.decision.build.name })}
-                      </a>
-                    )}
-                  </div>
-                  <span
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${STATE_TONE[item.state]}`}
-                  >
-                    {item.state === "running" && (
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+                      {item.work && <WorkBadge work={item.work} />}
                       <span
-                        className="h-1.5 w-1.5 rounded-full bg-violet-300 motion-safe:animate-pulse"
-                        aria-hidden="true"
-                      />
-                    )}
-                    {t(
-                      item.state === "waiting" && item.reason?.includes(USER_DEVELOPED_IT)
-                        ? "board.queue.state.waitingOtherDev"
-                        : item.decision?.action === "skip"
-                          ? "board.queue.state.skipped"
-                          : STATE_LABEL[item.state],
-                    )}
-                  </span>
-                  {item.state !== "running" && (
-                    <Tooltip content={t("board.queue.startNow.tooltip")}>
-                      <button
-                        type="button"
-                        disabled={starting !== null}
-                        onClick={() => start(item.subject)}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:text-violet-200 ring-1 ring-violet-400/40 ring-inset transition hover:bg-violet-500/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 disabled:cursor-not-allowed disabled:opacity-50"
+                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${STATE_TONE[item.state]}`}
                       >
-                        {starting === item.subject ? (
-                          <Loader2
-                            className="h-3 w-3 motion-safe:animate-spin"
+                        {item.state === "running" && (
+                          <span
+                            className="h-1.5 w-1.5 rounded-full bg-violet-300 motion-safe:animate-pulse"
                             aria-hidden="true"
                           />
-                        ) : (
-                          <Rocket className="h-3 w-3" aria-hidden="true" />
                         )}
-                        {t("board.queue.startNow")}
-                      </button>
-                    </Tooltip>
-                  )}
-                  <SubjectLinks subject={item.subject} bases={status.linkBases} />
+                        {t(
+                          item.state === "waiting" && item.reason?.includes(USER_DEVELOPED_IT)
+                            ? "board.queue.state.waitingOtherDev"
+                            : item.decision?.action === "skip"
+                              ? "board.queue.state.skipped"
+                              : STATE_LABEL[item.state],
+                        )}
+                      </span>
+                      {item.reason && (
+                        <span className="min-w-0">
+                          {t("board.queue.reason")}: {translateServerText(item.reason, language)}
+                        </span>
+                      )}
+                      {item.decision?.build && (
+                        <a
+                          href={item.decision.build.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-fuchsia-700 dark:text-fuchsia-300 underline-offset-2 hover:underline"
+                        >
+                          {t("board.queue.build", { name: item.decision.build.name })}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2 self-center">
+                    {item.state !== "running" && (
+                      <Tooltip content={t("board.queue.startNow.tooltip")}>
+                        <button
+                          type="button"
+                          disabled={starting !== null}
+                          onClick={() => start(item.subject)}
+                          aria-label={t("board.queue.startNow")}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-violet-700 dark:text-violet-200 ring-1 ring-violet-400/40 ring-inset transition hover:bg-violet-500/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {starting === item.subject ? (
+                            <Loader2
+                              className="h-3 w-3 motion-safe:animate-spin"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Rocket className="h-3 w-3" aria-hidden="true" />
+                          )}
+                          {/* Icon only on narrow screens: the title needs the room. */}
+                          <span className="hidden sm:inline">{t("board.queue.startNow")}</span>
+                        </button>
+                      </Tooltip>
+                    )}
+                    <SubjectLinks subject={item.subject} bases={status.linkBases} />
+                  </div>
                 </li>
               );
             })}
