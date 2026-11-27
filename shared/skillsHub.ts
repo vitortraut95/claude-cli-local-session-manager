@@ -142,6 +142,11 @@ export type SkillsHubIssue =
       hubSkill: string | null;
     };
 
+/** Only `unlinked` is a pending fix; every other issue leaves a skill you use broken. */
+export function isBlockingIssue(issue: SkillsHubIssue): boolean {
+  return issue.kind !== "unlinked";
+}
+
 export function skillId(catalog: string, skill: string): string {
   return `${catalog}/${skill}`;
 }

@@ -7,6 +7,10 @@ export const common = {
     "{count} team skill(s) active on this machine",
     "{count} skill(s) do time ativa(s) nesta máquina",
   ),
+  "header.skills.blocking": dict(
+    "{count} skill problem(s) need your action — open to see",
+    "{count} problema(s) nas skills precisam de você — abra para ver",
+  ),
   "header.skills.notConfigured": dict(
     "Team skills repo not configured — click to set it up",
     "Repo de skills do time não configurado — clique pra configurar",

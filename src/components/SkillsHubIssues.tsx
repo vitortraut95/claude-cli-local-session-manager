@@ -1,6 +1,11 @@
 import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
-import { newDependencies, withPicks, type SkillsHubIssue } from "../../shared/skillsHub";
+import {
+  isBlockingIssue,
+  newDependencies,
+  withPicks,
+  type SkillsHubIssue,
+} from "../../shared/skillsHub";
 import { useDependencyNote } from "../hooks/useDependencyNote";
 import { useLanguage } from "../hooks/useLanguage";
 import { useToast } from "../hooks/useToast";
@@ -9,11 +14,6 @@ import type { SkillsHubStatus, SkillsSelection } from "../services/skillsHubApi"
 import { resolveApiErrorMessage } from "../utils/apiClient";
 import { Button } from "./Button";
 import { SkillsChangeDialog, type SkillsChangeRequest } from "./SkillsChangeDialog";
-
-/** Only `unlinked` is a pending fix; everything else leaves a skill you use broken. */
-function isBlocker(issue: SkillsHubIssue): boolean {
-  return issue.kind !== "unlinked";
-}
 
 /**
  * "Actions needed" on top of the skills modal: what's wrong with the skills you use and, when the
@@ -94,7 +94,7 @@ export function SkillsHubIssues({
     });
   };
 
-  const blocking = issues.some(isBlocker);
+  const blocking = issues.some(isBlockingIssue);
   return (
     <section
       className={`rounded-lg border p-3 ${

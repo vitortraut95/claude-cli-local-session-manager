@@ -17,6 +17,7 @@ import type { AppView } from "../hooks/useAppView";
 import { useLanguage } from "../hooks/useLanguage";
 import type { Theme } from "../hooks/useTheme";
 import { LANGUAGE_OPTIONS, type Language } from "../i18n/translations";
+import { isBlockingIssue } from "../../shared/skillsHub";
 import type { SkillsHubStatus } from "../services/skillsHubApi";
 import type { ClaudeUsageStatus, UpdateStatus } from "../services/systemApi";
 import type { CleanupBacklog } from "../hooks/useCleanupBacklog";
@@ -63,13 +64,15 @@ export type AppNavProps = {
   onOpenSettings: () => void;
 };
 
-/** The skills item's state: amber while the repo isn't set up here, else how many are linked. */
+/** The skills item's state: amber while the repo isn't set up here; otherwise red with the
+ *  actions that leave a skill you use broken, else how many are linked. */
 function skillsState(skills: AppNavProps["skills"]) {
   const status = skills.status;
   const warning = Boolean(status && !status.notUsed && (status.cloneUrl === null || !status.found));
   const linked =
     status?.found && !warning ? status.skills.filter((s) => s.state === "linked").length : null;
-  return { warning, notConfigured: status?.cloneUrl === null, linked };
+  const blocking = warning ? 0 : (status?.issues ?? []).filter(isBlockingIssue).length;
+  return { warning, notConfigured: status?.cloneUrl === null, linked, blocking };
 }
 
 const itemClass = (current: boolean) =>
@@ -85,7 +88,7 @@ function Count({
   label,
 }: {
   value: number;
-  tone?: "muted" | "amber";
+  tone?: "muted" | "amber" | "red";
   label: string;
 }) {
   if (value <= 0) return null;
@@ -95,7 +98,9 @@ function Count({
       className={`ml-auto text-xs tabular-nums ${
         tone === "amber"
           ? "font-medium text-amber-700 dark:text-amber-400"
-          : "text-gray-500 dark:text-gray-400"
+          : tone === "red"
+            ? "rounded-full bg-red-600 px-1.5 font-medium text-white dark:bg-red-500"
+            : "text-gray-500 dark:text-gray-400"
       }`}
     >
       {value}
@@ -220,9 +225,11 @@ export function AppNav(props: AppNavProps) {
       content={
         skills.warning
           ? t(skills.notConfigured ? "header.skills.notConfigured" : "header.skills.notInstalled")
-          : skills.linked !== null
-            ? t("header.skills.active", { count: skills.linked })
-            : null
+          : skills.blocking > 0
+            ? t("header.skills.blocking", { count: skills.blocking })
+            : skills.linked !== null
+              ? t("header.skills.active", { count: skills.linked })
+              : null
       }
     >
       <button
@@ -245,6 +252,12 @@ export function AppNav(props: AppNavProps) {
           <AlertTriangle
             aria-hidden="true"
             className="ml-auto h-4 w-4 text-amber-600 dark:text-amber-400"
+          />
+        ) : skills.blocking > 0 ? (
+          <Count
+            value={skills.blocking}
+            tone="red"
+            label={t("header.skills.blocking", { count: skills.blocking })}
           />
         ) : (
           skills.linked !== null && (
@@ -412,10 +425,12 @@ export function AppNav(props: AppNavProps) {
         >
           <Menu className="h-[18px] w-[18px]" />
           {t("nav.more")}
-          {cleanupHeavy && (
+          {(skills.blocking > 0 || cleanupHeavy) && (
             <span
               aria-hidden="true"
-              className="absolute top-2 right-[calc(50%-16px)] h-2 w-2 rounded-full bg-amber-500"
+              className={`absolute top-2 right-[calc(50%-16px)] h-2 w-2 rounded-full ${
+                skills.blocking > 0 ? "bg-red-600" : "bg-amber-500"
+              }`}
             />
           )}
         </button>
