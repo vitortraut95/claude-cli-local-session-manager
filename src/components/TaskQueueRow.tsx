@@ -21,6 +21,7 @@ import {
 } from "../utils/taskQueue";
 import { Button } from "./Button";
 import { Input } from "./Input";
+import { projectOptions } from "./projectOptions";
 import { Select } from "./Select";
 import { TaskQueueKindBadge, TaskQueueKindPicker } from "./TaskQueueKind";
 import { TaskQueuePrefixSelect } from "./TaskQueuePrefixSelect";
@@ -315,11 +316,7 @@ export function TaskQueueRow({
                       {entry.repos.length === 0 && (
                         <option value={NO_REPO_VALUE}>{t("taskQueueModal.noRepoOption")}</option>
                       )}
-                      {available.map((project) => (
-                        <option key={project.path} value={project.path}>
-                          {project.label}
-                        </option>
-                      ))}
+                      {projectOptions(available, t)}
                     </Select>
                   </div>
                 )}

@@ -14,6 +14,7 @@ import {
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { SettingRow } from "./SettingRow";
+import { projectOptions } from "./projectOptions";
 import { Select } from "./Select";
 import { TaskQueueKindPicker } from "./TaskQueueKind";
 import { TaskQueuePrefixSelect } from "./TaskQueuePrefixSelect";
@@ -210,11 +211,7 @@ export function TaskQueueForm({
                     >
                       <option value="">{t("taskQueueModal.pasteRepoNone")}</option>
                       <option value={NO_REPO_VALUE}>{t("taskQueueModal.noRepoOption")}</option>
-                      {projects.map((project) => (
-                        <option key={project.path} value={project.path}>
-                          {project.label}
-                        </option>
-                      ))}
+                      {projectOptions(projects, t)}
                     </Select>
                   }
                 />

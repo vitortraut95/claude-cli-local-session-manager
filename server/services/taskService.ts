@@ -55,8 +55,8 @@ function notGitRepoError(folder: string): AppError {
 }
 
 /**
- * The "new task" project select: `recentProjectPaths` (flagged `recent`) plus every workspace repo,
- * filtered to existing directories. Cheap (no `listSessions()`/git), since it runs on every open.
+ * The project selects: `recentProjectPaths` (flagged `recent`, most recent first) plus every
+ * workspace repo (alphabetical), filtered to existing directories. Cheap (no `listSessions()`/git), since it runs on every open.
  */
 export async function getRecentProjectFolders(): Promise<ProjectFolderOption[]> {
   const preferences = await getUserPreferences();
@@ -72,9 +72,11 @@ export async function getRecentProjectFolders(): Promise<ProjectFolderOption[]> 
   const byLabel = (a: ProjectFolderOption, b: ProjectFolderOption) =>
     a.label.localeCompare(b.label);
   return [
-    ...recent
-      .map((folderPath) => ({ path: folderPath, label: projectLabel(folderPath), recent: true }))
-      .sort(byLabel),
+    ...recent.map((folderPath) => ({
+      path: folderPath,
+      label: projectLabel(folderPath),
+      recent: true,
+    })),
     ...others
       .map((folderPath) => ({ path: folderPath, label: projectLabel(folderPath), recent: false }))
       .sort(byLabel),

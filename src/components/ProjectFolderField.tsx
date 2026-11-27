@@ -2,6 +2,7 @@ import { Folder, Loader2 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { OTHER_FOLDER_VALUE, type ProjectFolders } from "../hooks/useProjectFolders";
 import { Input } from "./Input";
+import { projectOptions } from "./projectOptions";
 import { Select } from "./Select";
 
 type ProjectFolderFieldProps = {
@@ -22,8 +23,6 @@ export function ProjectFolderField({
   const { t } = useLanguage();
   const {
     projects,
-    recentProjects,
-    otherProjects,
     loadingProjects,
     folderChoice,
     setFolderChoice,
@@ -47,32 +46,7 @@ export function ProjectFolderField({
           <option value="" disabled>
             {loadingProjects ? t("newTaskModal.loadingProjects") : t("newTaskModal.selectProject")}
           </option>
-          {otherProjects.length === 0 ? (
-            recentProjects.map((project) => (
-              <option key={project.path} value={project.path}>
-                {project.label}
-              </option>
-            ))
-          ) : (
-            <>
-              {recentProjects.length > 0 && (
-                <optgroup label={t("newTaskModal.recentProjectsGroup")}>
-                  {recentProjects.map((project) => (
-                    <option key={project.path} value={project.path}>
-                      {project.label}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              <optgroup label={t("newTaskModal.workspaceProjectsGroup")}>
-                {otherProjects.map((project) => (
-                  <option key={project.path} value={project.path}>
-                    {project.label}
-                  </option>
-                ))}
-              </optgroup>
-            </>
-          )}
+          {projectOptions(projects, t)}
           <option value={OTHER_FOLDER_VALUE}>{t("newTaskModal.otherFolder")}</option>
         </Select>
       )}

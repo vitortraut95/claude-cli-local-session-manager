@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ProjectFolderOption } from "../services/tasksApi";
 import * as tasksApi from "../services/tasksApi";
 
@@ -41,15 +41,6 @@ export function useProjectFolders(open: boolean) {
     };
   }, [open]);
 
-  // Grouped only when the workspace dirs contributed anything beyond the recent list.
-  const { recentProjects, otherProjects } = useMemo(
-    () => ({
-      recentProjects: projects.filter((p) => p.recent !== false),
-      otherProjects: projects.filter((p) => p.recent === false),
-    }),
-    [projects],
-  );
-
   const isOtherFolder = folderChoice === OTHER_FOLDER_VALUE || projects.length === 0;
   const effectiveFolderPath = isOtherFolder ? customFolderPath : folderChoice;
 
@@ -60,8 +51,6 @@ export function useProjectFolders(open: boolean) {
 
   return {
     projects,
-    recentProjects,
-    otherProjects,
     loadingProjects,
     folderChoice,
     setFolderChoice,

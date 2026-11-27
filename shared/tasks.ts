@@ -14,8 +14,8 @@ export type RefinementInput = {
 export type ProjectFolderOption = {
   path: string;
   label: string;
-  /** In `recentProjectPaths` (vs. only found in a workspace dir). Only set by
-   *  `getRecentProjectFolders`. */
+  /** In `recentProjectPaths` (vs. only found in a workspace dir); those come first, most recent
+   *  first. Only set by `getRecentProjectFolders`. */
   recent?: boolean;
 };
 

@@ -18,10 +18,7 @@ export const newTask = {
   "newTaskModal.loadingProjects": dict("Loading projects…", "Carregando projetos…"),
   "newTaskModal.selectProject": dict("Select a project", "Selecione um projeto"),
   "newTaskModal.recentProjectsGroup": dict("Recent", "Recentes"),
-  "newTaskModal.workspaceProjectsGroup": dict(
-    "Other repos (from your folders)",
-    "Outros repositórios (das suas pastas)",
-  ),
+  "newTaskModal.allProjectsGroup": dict("All repos", "Todos os repositórios"),
   "newTaskModal.otherFolder": dict("Other (paste folder path)", "Outro (cole o caminho da pasta)"),
   "newTaskModal.readingRepoInfo": dict(
     "Reading repository information…",
