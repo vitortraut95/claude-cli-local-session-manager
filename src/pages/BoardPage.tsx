@@ -13,9 +13,7 @@ import {
   Settings,
   Workflow,
   Wrench,
-  EyeOff,
   Pencil,
-  Power,
   Wand2,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -24,7 +22,6 @@ import { useShell } from "../hooks/useShell";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
 import * as boardWatcherApi from "../services/boardWatcherApi";
-import * as preferencesApi from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import type {
   AutomationSettings,
@@ -64,55 +61,9 @@ function scoreText(score: { up: number; down: number } | undefined): string {
   return total === 0 ? "—" : `${score.up}/${total} (${Math.round((score.up / total) * 100)}%)`;
 }
 
-/** The Board page; while its automations (beta) are off, how to turn them on. */
+/** The Board page: the guided setup's intro until it's finished, then the board watcher. */
 export function BoardPage() {
-  const { automationsOn } = useShell();
-  return automationsOn ? <BoardWatcher /> : <BoardOff />;
-}
-
-function BoardOff() {
-  const { t } = useLanguage();
-  const { showToast } = useToast();
-  const [turningOn, setTurningOn] = useState(false);
-  const turnOn = async () => {
-    setTurningOn(true);
-    try {
-      await preferencesApi.updatePreferences({ boardAutomations: true });
-      preferencesApi.notifyPreferencesChanged();
-    } catch (err) {
-      showToast(resolveApiErrorMessage(err, t, "board.actionError"), "error");
-      setTurningOn(false);
-    }
-  };
-  return (
-    <div className="flex min-h-dvh flex-col">
-      <PageHeader
-        title={
-          <>
-            {t("board.title")} <BetaBadge />
-          </>
-        }
-        subtitle={t("boardPage.subtitle")}
-      />
-      <div className="mx-auto flex max-w-xl flex-col items-center px-6 py-20 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
-          <EyeOff className="h-7 w-7" aria-hidden="true" />
-        </span>
-        <h2 className="mt-5 text-lg font-semibold text-gray-900 dark:text-gray-100">
-          {t("boardPage.off.title")}
-        </h2>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{t("boardPage.off.body")}</p>
-        <Button
-          className="mt-6"
-          onClick={() => void turnOn()}
-          disabled={turningOn}
-          icon={<Power className="h-4 w-4" />}
-        >
-          {t("boardPage.off.turnOn")}
-        </Button>
-      </div>
-    </div>
-  );
+  return <BoardWatcher />;
 }
 
 const SETUP_STEP_HINTS: Record<(typeof SETUP_STEPS)[number], TranslationKey> = {

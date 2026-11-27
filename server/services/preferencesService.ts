@@ -9,7 +9,6 @@ import type {
   OrchestratorPreferences,
   SkillsHubPreferences,
   UserPreferences,
-  WorktreeSetup,
 } from "../../shared/preferences.js";
 export type {
   SkillsHubPreferences,
@@ -58,7 +57,6 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     vpnInterface: "",
     heavyLimits: "auto",
   },
-  worktreeSetup: {},
   terminalLayout: "tabs",
 };
 
@@ -176,15 +174,6 @@ export function isOrchestratorPreferences(value: unknown): value is Orchestrator
   );
 }
 
-export function isWorktreeSetup(value: unknown): value is WorktreeSetup {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
-  return Object.values(value as Record<string, unknown>).every((options) => {
-    if (typeof options !== "object" || options === null) return false;
-    const raw = options as Record<string, unknown>;
-    return typeof raw.linkNodeModules === "boolean" && typeof raw.copyEnvFiles === "boolean";
-  });
-}
-
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
@@ -259,18 +248,13 @@ function normalizePreferences(value: unknown): UserPreferences {
       typeof parsed.remoteControl === "boolean"
         ? parsed.remoteControl
         : DEFAULT_PREFERENCES.remoteControl,
-    boardAutomations:
-      typeof parsed.boardAutomations === "boolean"
-        ? parsed.boardAutomations
-        : DEFAULT_PREFERENCES.boardAutomations,
+    // Always on: an older file may still hold the switch's old `false`.
+    boardAutomations: true,
     theme:
       parsed.theme === "light" || parsed.theme === "dark"
         ? parsed.theme
         : DEFAULT_PREFERENCES.theme,
     orchestrator: parseOrchestrator(parsed.orchestrator),
-    worktreeSetup: isWorktreeSetup(parsed.worktreeSetup)
-      ? parsed.worktreeSetup
-      : DEFAULT_PREFERENCES.worktreeSetup,
     terminalLayout:
       parsed.terminalLayout === "tabs" || parsed.terminalLayout === "limux-grid"
         ? parsed.terminalLayout

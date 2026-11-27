@@ -24,9 +24,3 @@ export function setupStepsDone(status: AutomationSetupStatus): Record<SetupStepK
     finish: status.enabled,
   };
 }
-
-/** Whether a new user still has something required to set up (the optional step aside). */
-export function setupIncomplete(status: AutomationSetupStatus): boolean {
-  const done = setupStepsDone(status);
-  return SETUP_STEPS.some((step) => step !== "extras" && !done[step]);
-}

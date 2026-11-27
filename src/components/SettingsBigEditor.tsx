@@ -5,7 +5,6 @@ import { BigEditorModal } from "./BigEditorModal";
 import { Input } from "./Input";
 import { StringListEditor } from "./StringListEditor";
 import { WorkspaceDirsEditor } from "./WorkspaceDirsEditor";
-import { WorktreeSetupEditor } from "./WorktreeSetupEditor";
 
 /** Keys edited in a big secondary modal rather than inline in their row. */
 export type BigEditorKey =
@@ -13,8 +12,7 @@ export type BigEditorKey =
   | "defaultPrompt"
   | "branchTypes"
   | "recentProjectPaths"
-  | "skillsHubRepoUrl"
-  | "worktreeSetup";
+  | "skillsHubRepoUrl";
 
 export type HubConfigDraft = { repoUrl: string; path: string };
 
@@ -53,19 +51,6 @@ export function SettingsBigEditor({
             if (await save({ workspaceDirs: value })) onClose();
           }}
           render={(value, setValue) => <WorkspaceDirsEditor value={value} onChange={setValue} />}
-        />
-      );
-    case "worktreeSetup":
-      return (
-        <BigEditorModal
-          title={t("settings.worktreeSetup.title")}
-          description={t("settings.worktreeSetup.description")}
-          initial={prefs.worktreeSetup ?? {}}
-          onCancel={onClose}
-          onSave={async (value) => {
-            if (await save({ worktreeSetup: value })) onClose();
-          }}
-          render={(value, setValue) => <WorktreeSetupEditor value={value} onChange={setValue} />}
         />
       );
     case "skillsHubRepoUrl":

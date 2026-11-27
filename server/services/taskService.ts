@@ -205,8 +205,8 @@ async function recordTaskBaseBranchIfNonDefault(
  * `<repoRoot>/.claude/worktrees/<branchName>`, or — when `useWorktree` is false — checks it out
  * directly in the repo root (then `worktreePath` is `repoRoot`). `baseBranch` is the raw typed
  * name, used only for recording. `taskKey` (normalized) links the branch to that task,
- * best-effort. A new worktree also gets the repo's `worktreeSetup` (linked `node_modules`, copied
- * `.env*`), reported in `setup`.
+ * best-effort. A new worktree also gets the main checkout's `.env*` and, with the same lockfiles,
+ * its `node_modules` linked (`prepareWorktree`), reported in `setup`.
  */
 export async function createTaskWorktree(
   folderPath: string,

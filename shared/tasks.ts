@@ -70,7 +70,7 @@ export type AddRepoResult = {
   baseBranch: string;
   /** Where the branch is checked out (worktree or the repo root) — what to `/add-dir`. */
   workingDirectory: string;
-  /** What the new worktree got from the repo's `worktreeSetup`. */
+  /** What the new worktree got from the main checkout (`.env*` copies, linked `node_modules`). */
   setup: WorktreeSetupResult;
   completedSteps: AddRepoStep[];
   task: TaskDetails;

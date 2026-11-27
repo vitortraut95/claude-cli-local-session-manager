@@ -47,8 +47,9 @@ opens the browser. Stop the app by closing that terminal.
   the search, Esc closes panels and menus. Dark and light themes share the same tokens
   (`src/index.css`): violet is the brand, green = running, amber = waiting on you, red = errors only
 - **Welcome tour** — a short tour of where everything is runs on the first visit
-- **Board (beta)** — on by default; until its guided setup is finished, opening the Board shows
-  what it does and the setup steps, and the setup opens right away
+- **Board (beta)** — always available; until its guided setup is finished, opening the Board shows
+  what it does and the setup steps, and the setup opens right away. Each automation is turned on
+  or off on the Board itself
 - **Sessions page** — the list is grouped by what needs you first: errors (missing folder, a failed
   queue launch, a failed test or review from the Board) and sessions waiting for your answer, then
   running, stopped, and the done ones folded at the end; quick filters for "needs you" and
@@ -142,11 +143,12 @@ opens the browser. Stop the app by closing that terminal.
   `manual` uses the numbers in the Task queue window (test/preview slots, RAM and CPU per run). A
   run's peak is only learned where the kernel exposes `memory.peak` and the command ran in the
   scope (not `docker run`)
-- **Task worktree setup** — per repo (Settings → "Task worktree setup"), a new task worktree gets
-  a symlink to each of the main checkout's `node_modules` (root and workspaces) and a copy of its
-  gitignored `.env*` files, since git only checks out tracked files. The link is added to the repo's
-  `info/exclude` (a `node_modules/` ignore line doesn't match a symlink) and the session is told not
-  to install there
+- **Task worktree setup** — automatic, nothing to configure: a new task worktree gets a copy of
+  the main checkout's gitignored `.env*` files, since git only checks out tracked files, and a
+  symlink to each of its `node_modules` (root and workspaces) when the worktree's lockfiles are
+  identical to the main checkout's (otherwise the session installs its own). The link is added to
+  the repo's `info/exclude` (a `node_modules/` ignore line doesn't match a symlink) and the session
+  is told to delete only the link before installing anything
 - **Multi-repo tasks** — a task (ticket key, e.g. `PROJ-123`) can span several repos: New task can
   create the same branch in extra repos (they join the one session via `--add-dir`), a card's "+"
   adds another repo later (then paste the `/add-dir` it shows), and each card shows the task's

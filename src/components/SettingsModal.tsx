@@ -14,9 +14,6 @@ import { ImportPreferencesButton } from "./ImportPreferencesButton";
 import { Modal } from "./Modal";
 import { SettingsBigEditor, type BigEditorKey, type HubConfigDraft } from "./SettingsBigEditor";
 import { SettingsList } from "./SettingsList";
-import * as boardWatcherApi from "../services/boardWatcherApi";
-import { setupIncomplete } from "../utils/automationSetup";
-import { AutomationSetupModal } from "./AutomationSetupModal";
 
 type SettingsModalProps = {
   theme: Theme;
@@ -34,7 +31,6 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editing, setEditing] = useState<BigEditorKey | null>(null);
-  const [automationSetupOpen, setAutomationSetupOpen] = useState(false);
   const [savingKey, setSavingKey] = useState<keyof UserPreferences | null>(null);
   const [openingFile, setOpeningFile] = useState(false);
   const { status: skillsHub } = useSkillsHubStatus(true);
@@ -95,15 +91,6 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
     }
   };
 
-  /** Turning the beta on opens the setup only while something required is missing. */
-  const openAutomationSetup = async (onlyIfIncomplete: boolean) => {
-    if (onlyIfIncomplete) {
-      const status = await boardWatcherApi.fetchSetupStatus().catch(() => null);
-      if (status && !setupIncomplete(status)) return;
-    }
-    setAutomationSetupOpen(true);
-  };
-
   const openFile = async () => {
     setOpeningFile(true);
     try {
@@ -121,7 +108,7 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
       title={t("settings.title")}
       // Escape would otherwise close this modal too while a big editor is open on top of it.
       onClose={() => {
-        if (!editing && !automationSetupOpen) onClose();
+        if (!editing) onClose();
       }}
       size="xl"
       placement="side"
@@ -175,12 +162,7 @@ export function SettingsModal({ theme, onToggleTheme, onClose }: SettingsModalPr
           onEdit={setEditing}
           theme={theme}
           onToggleTheme={onToggleTheme}
-          onOpenAutomationSetup={(onlyIfIncomplete) => void openAutomationSetup(onlyIfIncomplete)}
         />
-      )}
-
-      {automationSetupOpen && (
-        <AutomationSetupModal onClose={() => setAutomationSetupOpen(false)} />
       )}
 
       {prefs && editing && (

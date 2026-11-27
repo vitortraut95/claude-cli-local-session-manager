@@ -5,7 +5,6 @@ import {
   getUserPreferences,
   isEnvPreviews,
   isOrchestratorPreferences,
-  isWorktreeSetup,
   isSkillsHubPreferences,
   replaceUserPreferences,
   updateUserPreferences,
@@ -70,7 +69,6 @@ type LateFields =
   | "taskTestPermissionModeAuto"
   | "theme"
   | "orchestrator"
-  | "worktreeSetup"
   | "terminalLayout";
 
 /** Optional fields: an older frontend bundle sends the object without them, and the PUT handler
@@ -116,7 +114,6 @@ function isValidPreferences(
       candidate.theme === "light" ||
       candidate.theme === "dark") &&
     (candidate.orchestrator === undefined || isOrchestratorPreferences(candidate.orchestrator)) &&
-    (candidate.worktreeSetup === undefined || isWorktreeSetup(candidate.worktreeSetup)) &&
     (candidate.terminalLayout === undefined ||
       candidate.terminalLayout === "tabs" ||
       candidate.terminalLayout === "limux-grid")
@@ -147,8 +144,7 @@ tasksRouter.put("/preferences", async (req, res) => {
         "taskRefinementSkill?: string, " +
         "taskTestPermissionModeAuto?: boolean, remoteControl?: boolean, " +
         'theme?: "light"|"dark"|null, orchestrator?: { enabled, maxSessions, ' +
-        'minFreeMemoryPercent, maxUsagePercent, heavyLimits?: "auto"|"manual" }, worktreeSetup?: { [project]: ' +
-        '{ linkNodeModules, copyEnvFiles } }, terminalLayout?: "tabs"|"limux-grid" }.',
+        'minFreeMemoryPercent, maxUsagePercent, heavyLimits?: "auto"|"manual" }, terminalLayout?: "tabs"|"limux-grid" }.',
     );
   }
   const body = req.body;
@@ -158,6 +154,8 @@ tasksRouter.put("/preferences", async (req, res) => {
     ...body,
     skillsHub: { ...stored.skillsHub, ...body.skillsHub },
     orchestrator: { ...stored.orchestrator, ...body.orchestrator },
+    // Always on; an older bundle may still send the switch's `false`.
+    boardAutomations: true,
   }));
   res.json({ success: true });
 });

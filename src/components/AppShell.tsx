@@ -49,8 +49,8 @@ function typingInField(target: EventTarget | null): boolean {
 
 /**
  * The app: navigation on the left (a bottom bar on phones), the current page beside it, and the
- * panels any page can open (new session, refinement, cleanup, skills, settings, automations). Owns the preferences-driven state: initial setup, the Board's
- * beta switch, the terminal layout, auto-update and plan usage.
+ * panels any page can open (refinement, cleanup, skills, settings, automations). Owns the
+ * preferences-driven state: initial setup, the terminal layout, auto-update and plan usage.
  */
 export function AppShell() {
   // Applies the stored theme on load.
@@ -79,7 +79,6 @@ export function AppShell() {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [automationFocus, setAutomationFocus] = useState<AutomationFocus | undefined>();
   const [skillsFocus, setSkillsFocus] = useState<SkillPreference | undefined>();
-  const [automationsOn, setAutomationsOn] = useState(false);
   const [gridLayout, setGridLayout] = useState(false);
   const [resumingOpen, setResumingOpen] = useState(false);
   // Initial setup: asked on every load while any of its fields was never saved (null); "not now"
@@ -97,7 +96,6 @@ export function AppShell() {
         .then((prefs) => {
           if (cancelled) return;
           setGridLayout(prefs.terminalLayout === "limux-grid");
-          setAutomationsOn(prefs.boardAutomations ?? true);
           setSetupPrefs(
             prefs.workspaceDirs == null || prefs.skillsHub?.repoUrl === null ? prefs : null,
           );
@@ -179,7 +177,6 @@ export function AppShell() {
         setPanel("automation");
       },
       automationRevision,
-      automationsOn,
       resumeOpen,
       resumingOpen,
       gridLayout,
@@ -191,7 +188,6 @@ export function AppShell() {
       navigate,
       openNewTask,
       automationRevision,
-      automationsOn,
       resumeOpen,
       resumingOpen,
       gridLayout,
@@ -246,7 +242,6 @@ export function AppShell() {
           attentionCount={attentionCount}
           queueCount={signals.pendingQueueCount}
           cleanupBacklog={cleanup.backlog}
-          automationsOn={automationsOn}
           skills={{ status: skillsHub.status, failed: skillsHub.failed }}
           usage={{
             status: usage.status,
@@ -314,7 +309,7 @@ export function AppShell() {
           onSkip={() => setSetupSkipped(true)}
         />
       )}
-      {!showSetup && !showTour && <ReviewSkillModal automationsOn={automationsOn} />}
+      {!showSetup && !showTour && <ReviewSkillModal />}
       {showTour && (
         <WelcomeTour
           index={tourStep}

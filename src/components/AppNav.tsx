@@ -40,7 +40,6 @@ export type AppNavProps = {
   queueCount: number;
   /** What the Cleanup panel would offer; highlighted only when `heavy`. */
   cleanupBacklog: CleanupBacklog | null;
-  automationsOn: boolean;
   skills: { status: SkillsHubStatus | null; failed: boolean };
   usage: {
     status: ClaudeUsageStatus | null;
@@ -190,13 +189,7 @@ export function AppNav(props: AppNavProps) {
         {page.extra}
       </button>
     );
-    return page.view === "board" && !props.automationsOn ? (
-      <Tooltip key={page.view} content={t("nav.board.off")}>
-        {button}
-      </Tooltip>
-    ) : (
-      button
-    );
+    return button;
   };
 
   const pageItemFor = (view: AppView) => {

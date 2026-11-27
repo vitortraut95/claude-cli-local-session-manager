@@ -1,16 +1,14 @@
-import { FlaskConical, GitPullRequest, Scale, Settings } from "lucide-react";
+import { FlaskConical, GitPullRequest, Scale } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import type { Theme } from "../hooks/useTheme";
 import type { UserPreferences } from "../services/preferencesApi";
 import type { SkillsHubStatus } from "../services/skillsHubApi";
-import { BetaBadge } from "./BetaBadge";
 import { LimuxSetup } from "./LimuxSetup";
 import { Select } from "./Select";
 import type { BigEditorKey } from "./SettingsBigEditor";
 import { EditButton, NumberField, PreferenceRow, Toggle } from "./SettingsControls";
 import { SkillPreferenceSelect } from "./SkillPreferenceSelect";
 import { ThemeToggle } from "./ThemeToggle";
-import { ToolbarIconButton } from "./ToolbarIconButton";
 
 type SettingsListProps = {
   prefs: UserPreferences;
@@ -21,7 +19,6 @@ type SettingsListProps = {
   theme: Theme;
   onToggleTheme: () => void;
   /** The automations setup panel; `onlyIfIncomplete` = just turned on (opens for a new user). */
-  onOpenAutomationSetup: (onlyIfIncomplete: boolean) => void;
 };
 
 /** The settings rows: small values edited inline, big ones open their editor through `onEdit`. */
@@ -33,7 +30,6 @@ export function SettingsList({
   onEdit,
   theme,
   onToggleTheme,
-  onOpenAutomationSetup,
 }: SettingsListProps) {
   const { t } = useLanguage();
 
@@ -119,32 +115,6 @@ export function SettingsList({
           />
         }
       />
-      <PreferenceRow
-        title={t("settings.boardAutomations.title")}
-        badge={<BetaBadge className="self-center" />}
-        description={t("settings.boardAutomations.description")}
-        keyName="boardAutomations"
-        control={
-          <span className="flex items-center gap-1">
-            <ToolbarIconButton
-              tooltip={t("settings.boardAutomations.setup")}
-              ariaLabel={t("settings.boardAutomations.setup")}
-              icon={<Settings />}
-              color="violet"
-              onClick={() => onOpenAutomationSetup(false)}
-            />
-            <Toggle
-              checked={prefs.boardAutomations ?? true}
-              busy={savingKey === "boardAutomations"}
-              onChange={(checked) =>
-                void save({ boardAutomations: checked }).then((saved) => {
-                  if (saved && checked) onOpenAutomationSetup(true);
-                })
-              }
-            />
-          </span>
-        }
-      />
       {prefs.terminalLayout !== undefined && (
         <PreferenceRow
           title={t("settings.terminalLayout.title")}
@@ -212,22 +182,6 @@ export function SettingsList({
               showDescription={false}
             />
           }
-        />
-      )}
-      {prefs.worktreeSetup !== undefined && (
-        <PreferenceRow
-          title={t("settings.worktreeSetup.title")}
-          description={t("settings.worktreeSetup.description")}
-          keyName="worktreeSetup"
-          preview={
-            Object.keys(prefs.worktreeSetup).length > 0
-              ? t("settings.envPreviews.preview", {
-                  count: Object.keys(prefs.worktreeSetup).length,
-                  projects: Object.keys(prefs.worktreeSetup).join(", "),
-                })
-              : t("settings.preview.emptyList")
-          }
-          control={<EditButton onClick={() => onEdit("worktreeSetup")} />}
         />
       )}
       <PreferenceRow

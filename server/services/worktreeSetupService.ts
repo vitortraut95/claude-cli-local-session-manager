@@ -1,20 +1,45 @@
 import { appendFile, copyFile, lstat, readFile, readdir, stat, symlink } from "node:fs/promises";
 import path from "node:path";
-import { getUserPreferences } from "./preferencesService.js";
 import { runGit } from "../utils/git.js";
 import type { WorktreeSetupResult } from "../../shared/tasks.js";
 export type { WorktreeSetupResult } from "../../shared/tasks.js";
 
 /**
- * Gives a fresh task worktree what git doesn't check out, per the repo's `worktreeSetup`
- * preference: a symlink to each of the main checkout's `node_modules` (root and workspaces) and a
- * copy of its gitignored `.env*` files. Only folders that exist in the worktree are visited, so an
- * untracked tree in the main checkout (builds, caches) is never walked.
+ * Gives a fresh task worktree what git doesn't check out, with nothing to configure: a copy of the
+ * main checkout's gitignored `.env*` files, and a symlink to each of its `node_modules` (root and
+ * workspaces) when the worktree's lockfiles are identical to the main checkout's (same
+ * dependencies; otherwise the session installs its own). Only folders that exist in the worktree
+ * are visited, so an untracked tree in the main checkout (builds, caches) is never walked.
  */
 
 /** Deep enough for `packages/<name>` / `apps/<name>` workspaces. */
 const MAX_DEPTH = 3;
 const ENV_FILE = /^\.env(\..+)?$/;
+const LOCKFILES = ["yarn.lock", "package-lock.json", "pnpm-lock.yaml", "bun.lock", "bun.lockb"];
+
+async function readOrNull(file: string): Promise<Buffer | null> {
+  try {
+    return await readFile(file);
+  } catch {
+    return null;
+  }
+}
+
+/** Both folders have the same lockfiles with the same contents (none at all counts as same);
+ *  `requireOne` also asks for at least one. */
+async function sameLockfiles(a: string, b: string, requireOne: boolean): Promise<boolean> {
+  let found = false;
+  for (const name of LOCKFILES) {
+    const [left, right] = await Promise.all([
+      readOrNull(path.join(a, name)),
+      readOrNull(path.join(b, name)),
+    ]);
+    if (left === null && right === null) continue;
+    if (left === null || right === null || !left.equals(right)) return false;
+    found = true;
+  }
+  return found || !requireOne;
+}
 
 async function exists(target: string): Promise<boolean> {
   try {
@@ -58,8 +83,8 @@ export async function prepareWorktree(
   worktreePath: string,
 ): Promise<WorktreeSetupResult> {
   const result: WorktreeSetupResult = { linked: [], copied: [] };
-  const options = (await getUserPreferences()).worktreeSetup[path.basename(repoRoot)];
-  if (!options || (!options.linkNodeModules && !options.copyEnvFiles)) return result;
+  // Linking needs the same dependencies: the root lockfile, and a package's own one if it has it.
+  const rootDepsMatch = await sameLockfiles(repoRoot, worktreePath, true);
 
   const visit = async (relative: string, depth: number): Promise<void> => {
     const sourceDir = path.join(repoRoot, relative);
@@ -74,14 +99,19 @@ export async function prepareWorktree(
       const rel = path.join(relative, entry.name);
       const target = path.join(worktreePath, rel);
       if (entry.name === "node_modules") {
-        if (options.linkNodeModules && entry.isDirectory() && !(await exists(target))) {
+        if (
+          rootDepsMatch &&
+          entry.isDirectory() &&
+          !(await exists(target)) &&
+          (await sameLockfiles(sourceDir, targetDir, false))
+        ) {
           await symlink(path.join(repoRoot, rel), target, "dir");
           result.linked.push(rel);
         }
         continue;
       }
       if (entry.isFile() && ENV_FILE.test(entry.name)) {
-        if (options.copyEnvFiles && !(await exists(target))) {
+        if (!(await exists(target))) {
           await copyFile(path.join(repoRoot, rel), target);
           result.copied.push(rel);
         }

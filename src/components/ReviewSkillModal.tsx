@@ -11,14 +11,13 @@ import { SkillPreferenceSelect } from "./SkillPreferenceSelect";
  * installed: the reviews it queues would fail to launch. Shown on every load until then; "Not
  * now" only skips it for this page load.
  */
-export function ReviewSkillModal({ automationsOn }: { automationsOn: boolean }) {
+export function ReviewSkillModal() {
   const { t } = useLanguage();
   const [codeReviewOn, setCodeReviewOn] = useState(false);
   const [skipped, setSkipped] = useState(false);
-  const { skillsHub, loaded, ready } = useReviewSkill(automationsOn);
+  const { skillsHub, loaded, ready } = useReviewSkill();
 
   useEffect(() => {
-    if (!automationsOn) return;
     let cancelled = false;
     boardWatcherApi
       .fetchAutomationSettings()
@@ -31,9 +30,9 @@ export function ReviewSkillModal({ automationsOn }: { automationsOn: boolean }) 
     return () => {
       cancelled = true;
     };
-  }, [automationsOn]);
+  }, []);
 
-  const open = automationsOn && codeReviewOn && loaded && !ready && !skipped;
+  const open = codeReviewOn && loaded && !ready && !skipped;
   return (
     <Modal
       open={open}

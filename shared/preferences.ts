@@ -56,17 +56,6 @@ export type HeavyLimitsMode = "auto" | "manual";
 
 export type TerminalLayout = "tabs" | "limux-grid";
 
-/** What a new task worktree gets from the repo's main checkout (things git doesn't check out). */
-export type WorktreeSetupOptions = {
-  /** Symlink each `node_modules` (root and workspaces) instead of installing per worktree. */
-  linkNodeModules: boolean;
-  /** Copy the gitignored `.env*` files, so each task can change its own. */
-  copyEnvFiles: boolean;
-};
-
-/** Per repo folder name, like `envPreviews`; a repo not listed gets nothing. */
-export type WorktreeSetup = Record<string, WorktreeSetupOptions>;
-
 export type EnvPreviewTemplate = { label: string; url: string };
 
 export type EnvPreviews = Record<string, EnvPreviewTemplate[]>;
@@ -107,8 +96,6 @@ export type UserPreferences = {
   /** UI theme; null = follow the system. Optional: older files lack it. */
   theme: "light" | "dark" | null;
   orchestrator: OrchestratorPreferences;
-  /** Optional: older files lack it. */
-  worktreeSetup: WorktreeSetup;
   /** Where Claude sessions open: a terminal tab each, or panes of one Limux grid. Optional: older
    *  files lack it. */
   terminalLayout: TerminalLayout;
@@ -116,8 +103,8 @@ export type UserPreferences = {
    *  it can be followed and answered from the Claude app on the phone. Optional: older files lack
    *  it (default off). */
   remoteControl: boolean;
-  /** The board automations beta: lets the board watcher run; off, nothing of it runs and anything
-   *  running stops. Optional: older files lack it (default on). */
+  /** The board automations' master switch: off, nothing of the board watcher runs. Always on now
+   *  (read back as true whatever is stored); each automation is turned on or off on the Board. */
   boardAutomations: boolean;
 };
 

@@ -15,7 +15,6 @@ export type {
   UserPreferences,
   WorkspaceDirStatus,
   WorkspaceDirSuggestion,
-  WorktreeSetup,
 } from "../../shared/preferences";
 
 const client = axios.create({

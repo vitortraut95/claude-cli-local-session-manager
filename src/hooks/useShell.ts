@@ -18,8 +18,6 @@ export type ShellActions = {
   openAutomation: (focus?: AutomationFocus) => void;
   /** Goes up each time the automation panel closes, so pages showing its settings re-read them. */
   automationRevision: number;
-  /** The Board's automations (beta) are on in the preferences. */
-  automationsOn: boolean;
   /** Brings back the open tasks (or the Limux grid); see the sessions page header. */
   resumeOpen: () => Promise<void>;
   resumingOpen: boolean;

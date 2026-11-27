@@ -13,7 +13,6 @@ export const shell = {
   "nav.sessions": dict("Sessions", "Sessões"),
   "nav.sessions.count": dict("{count} not done", "{count} não concluídas"),
   "nav.board": dict("Board", "Board"),
-  "nav.board.off": dict("Off: open it to turn it on", "Desligado: abra para ligar"),
   "nav.queue": dict("Task queue", "Fila de tarefas"),
   "nav.queue.short": dict("Queue", "Fila"),
   "nav.queue.hint": dict("New tasks go here", "Novas tarefas entram aqui"),
@@ -171,12 +170,6 @@ export const shell = {
     "The eye follows the sprint and acts on PRs and tasks according to each automation's mode.",
     "O olho acompanha a sprint e age nos PRs e tarefas conforme o modo de cada automação.",
   ),
-  "boardPage.off.title": dict("The Board is off", "O Board está desligado"),
-  "boardPage.off.body": dict(
-    "The Board's automations are a beta and are turned off on this machine. Turn them on and a guided setup connects Jira, the board and Bitbucket.",
-    "As automações do Board são beta e estão desligadas nesta máquina. Ligue e uma configuração guiada conecta o Jira, o board e o Bitbucket.",
-  ),
-  "boardPage.off.turnOn": dict("Turn the Board on", "Ligar o Board"),
   "boardPage.intro.title": dict(
     "Let's connect the Board to your sprint",
     "Vamos conectar o Board à sua sprint",
