@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  BookOpen,
   Eye,
   ListTodo,
   Menu,
@@ -327,19 +326,6 @@ export function AppNav(props: AppNavProps) {
           </Tooltip>
         )}
       </button>
-      <button
-        type="button"
-        data-tour="guide"
-        aria-current={props.view === "guide" ? "page" : undefined}
-        onClick={() => {
-          props.onNavigate("guide");
-          onPick?.();
-        }}
-        className={itemClass(props.view === "guide")}
-      >
-        <BookOpen className="h-[18px] w-[18px]" />
-        <span className="truncate">{t("nav.guide")}</span>
-      </button>
     </>
   );
 
@@ -443,12 +429,7 @@ export function AppNav(props: AppNavProps) {
           type="button"
           onClick={() => setMoreOpen(true)}
           aria-haspopup="dialog"
-          aria-current={props.view === "guide" ? "page" : undefined}
-          className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium ${
-            props.view === "guide"
-              ? "text-violet-700 dark:text-violet-300"
-              : "text-gray-500 dark:text-gray-400"
-          }`}
+          className="relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium text-gray-500 dark:text-gray-400"
         >
           <Menu className="h-[18px] w-[18px]" />
           {t("nav.more")}

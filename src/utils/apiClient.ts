@@ -66,7 +66,6 @@ const SERVER_ERROR_CODE_KEYS: Partial<Record<string, TranslationKey>> = {
   QUEUE_INVALID_PR: "apiError.queueInvalidPr",
   REVIEW_NEEDS_BOARD: "apiError.reviewNeedsBoard",
   REVIEW_REPO_NOT_FOUND: "apiError.reviewRepoNotFound",
-  TASK_REFINEMENT_SKILL_REQUIRED: "apiError.taskRefinementSkillRequired",
   TASK_REFINEMENT_SKILL_NOT_INSTALLED: "apiError.taskRefinementSkillNotInstalled",
   MALFORMED_PREFERENCES: "apiError.malformedPreferences",
   SKILLS_HUB_NOT_FOUND: "apiError.skillsHubNotFound",

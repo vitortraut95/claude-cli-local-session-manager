@@ -21,9 +21,7 @@ const PREFERENCES_PATH = path.join(REPO_ROOT, "userPreferences.json");
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   defaultPrompt: "",
-  defaultSessionPrompt: "",
   branchTypes: ["feature", "fix"],
-  useWorktreeByDefault: false,
   useAutoPermissionModeByDefault: false,
   language: null,
   recentProjectPaths: [],
@@ -43,19 +41,20 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   taskRefinementSkill: "",
   taskTestPermissionModeAuto: true,
   remoteControl: false,
-  boardAutomations: false,
+  boardAutomations: true,
   theme: null,
   orchestrator: {
+    // High on purpose: a new user is never held back; each one lowers what their machine needs.
     enabled: true,
-    maxSessions: 6,
-    minFreeMemoryPercent: 20,
-    maxUsagePercent: 90,
-    testSlots: 1,
-    testMemoryMaxGb: 6,
-    testCpuPercent: 400,
-    previewSlots: 5,
-    previewMemoryMaxGb: 4,
-    launchSpacingMinutes: 5,
+    maxSessions: 50,
+    minFreeMemoryPercent: 0,
+    maxUsagePercent: 100,
+    testSlots: 16,
+    testMemoryMaxGb: 64,
+    testCpuPercent: 6400,
+    previewSlots: 16,
+    previewMemoryMaxGb: 64,
+    launchSpacingMinutes: 0,
     vpnInterface: "",
     heavyLimits: "auto",
   },
@@ -211,18 +210,10 @@ function normalizePreferences(value: unknown): UserPreferences {
       typeof parsed.defaultPrompt === "string"
         ? parsed.defaultPrompt
         : DEFAULT_PREFERENCES.defaultPrompt,
-    defaultSessionPrompt:
-      typeof parsed.defaultSessionPrompt === "string"
-        ? parsed.defaultSessionPrompt
-        : DEFAULT_PREFERENCES.defaultSessionPrompt,
     branchTypes:
       isStringArray(parsed.branchTypes) && parsed.branchTypes.length > 0
         ? parsed.branchTypes
         : DEFAULT_PREFERENCES.branchTypes,
-    useWorktreeByDefault:
-      typeof parsed.useWorktreeByDefault === "boolean"
-        ? parsed.useWorktreeByDefault
-        : DEFAULT_PREFERENCES.useWorktreeByDefault,
     useAutoPermissionModeByDefault:
       typeof parsed.useAutoPermissionModeByDefault === "boolean"
         ? parsed.useAutoPermissionModeByDefault

@@ -120,8 +120,8 @@ export const newTask = {
   ),
   "refinementModal.skillLabel": dict("Skill", "Skill"),
   "refinementModal.skillRequired": dict(
-    "Choose the refinement skill to fill in the sprint or the tasks.",
-    "Escolha a skill de refinamento pra informar a sprint ou as tarefas.",
+    "No refinement skill chosen: Claude gets a plain refinement request. Pick a skill above to follow your team's script.",
+    "Sem skill de refinamento: o Claude recebe um pedido genérico de refinamento. Escolha uma skill acima para seguir o roteiro do time.",
   ),
   "refinementModal.sprintLabel": dict("Sprint (optional)", "Sprint (opcional)"),
   "refinementModal.sprintPlaceholder": dict(

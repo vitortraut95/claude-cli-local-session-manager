@@ -1,5 +1,8 @@
 export type Language = "en" | "pt";
 
+/** The language while `UserPreferences.language` is null (never chosen). */
+export const DEFAULT_LANGUAGE: Language = "pt";
+
 /** The team-skills integration. Optional: older files lack it; each sub-field falls back. */
 export type SkillsHubPreferences = {
   /** The team's skills repo clone URL. Per-machine: this repo is public. Null = never set (the
@@ -70,15 +73,10 @@ export type EnvPreviews = Record<string, EnvPreviewTemplate[]>;
 
 export type UserPreferences = {
   defaultPrompt: string;
-  /** The "New session" modal's pre-filled prompt. Optional: older files lack it (""). */
-  defaultSessionPrompt: string;
   branchTypes: string[];
-  /** Fallback only, before a folder is chosen or if `RepoInfo.hasActiveSessionInRoot` can't be
-   *  resolved; otherwise the worktree checkbox follows that. */
-  useWorktreeByDefault: boolean;
   /** The "New task" modal's "--permission-mode auto" checkbox, remembered as last left. */
   useAutoPermissionModeByDefault: boolean;
-  /** Null = never chosen; the frontend falls back to the browser's language. */
+  /** Null = never chosen; the frontend falls back to Portuguese. */
   language: Language | null;
   /** Repo roots used via "New task", most-recent first — lets `getKnownProjectFolders()` offer a
    *  folder that has no session yet. */
@@ -118,9 +116,8 @@ export type UserPreferences = {
    *  it can be followed and answered from the Claude app on the phone. Optional: older files lack
    *  it (default off). */
   remoteControl: boolean;
-  /** The board automations beta: shows the header's "Board" button and lets the board watcher
-   *  run; off, nothing of it runs and anything running stops. Optional: older files lack it
-   *  (default off). */
+  /** The board automations beta: lets the board watcher run; off, nothing of it runs and anything
+   *  running stops. Optional: older files lack it (default on). */
   boardAutomations: boolean;
 };
 

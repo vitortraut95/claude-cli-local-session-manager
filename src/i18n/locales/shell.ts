@@ -13,7 +13,7 @@ export const shell = {
   "nav.sessions": dict("Sessions", "Sessões"),
   "nav.sessions.count": dict("{count} not done", "{count} não concluídas"),
   "nav.board": dict("Board", "Board"),
-  "nav.board.off": dict("Off: turn it on in Settings", "Desligado: ligue nas Configurações"),
+  "nav.board.off": dict("Off: open it to turn it on", "Desligado: abra para ligar"),
   "nav.queue": dict("Task queue", "Fila de tarefas"),
   "nav.queue.short": dict("Queue", "Fila"),
   "nav.queue.hint": dict("New tasks go here", "Novas tarefas entram aqui"),
@@ -25,7 +25,6 @@ export const shell = {
   ),
   "nav.skills": dict("Skills", "Skills"),
   "nav.skills.hint": dict("Skill management", "Gerenciamento de skills"),
-  "nav.guide": dict("Guide", "Guia"),
   "nav.settings": dict("Settings", "Configurações"),
   "nav.more": dict("More", "Mais"),
   "nav.close": dict("Close", "Fechar"),
@@ -186,10 +185,47 @@ export const shell = {
   ),
   "boardPage.off.title": dict("The Board is off", "O Board está desligado"),
   "boardPage.off.body": dict(
-    "The Board's automations are a beta. Turn them on in Settings › Board automations; the first time, a guided setup connects Jira, the board and Bitbucket.",
-    "As automações do Board são beta. Ligue em Configurações › Automações do Board; na primeira vez, uma configuração guiada conecta o Jira, o board e o Bitbucket.",
+    "The Board's automations are a beta and are turned off on this machine. Turn them on and a guided setup connects Jira, the board and Bitbucket.",
+    "As automações do Board são beta e estão desligadas nesta máquina. Ligue e uma configuração guiada conecta o Jira, o board e o Bitbucket.",
   ),
-  "boardPage.off.openSettings": dict("Open Settings", "Abrir Configurações"),
+  "boardPage.off.turnOn": dict("Turn the Board on", "Ligar o Board"),
+  "boardPage.intro.title": dict(
+    "Let's connect the Board to your sprint",
+    "Vamos conectar o Board à sua sprint",
+  ),
+  "boardPage.intro.body": dict(
+    "The Board watches your Jira board and reviews PRs, takes tests and moves tasks for you. It takes a few minutes, one step at a time, and each step is checked before it's saved.",
+    "O Board acompanha o seu board do Jira e revisa PRs, assume testes e move tarefas por você. Leva poucos minutos, uma etapa por vez, e cada etapa é conferida antes de salvar.",
+  ),
+  "boardPage.intro.step.claude": dict(
+    "Claude CLI: check that the claude command works here",
+    "Claude CLI: confere se o comando claude funciona aqui",
+  ),
+  "boardPage.intro.step.jira": dict(
+    "Jira: your site, e-mail and API token",
+    "Jira: o seu site, e-mail e token de API",
+  ),
+  "boardPage.intro.step.board": dict(
+    "Board columns: which column means what",
+    "Colunas do board: o que cada coluna significa",
+  ),
+  "boardPage.intro.step.bitbucket": dict(
+    "Bitbucket: access to read and comment on PRs",
+    "Bitbucket: acesso para ler e comentar nos PRs",
+  ),
+  "boardPage.intro.step.extras": dict(
+    "Teams and Jenkins (optional)",
+    "Teams e Jenkins (opcional)",
+  ),
+  "boardPage.intro.step.finish": dict(
+    "Turn on: pick which automations to use",
+    "Ativar: escolha quais automações usar",
+  ),
+  "boardPage.intro.note": dict(
+    "Tokens stay on this machine. Every automation starts off: you turn on only what you want.",
+    "Os tokens ficam só nesta máquina. Toda automação começa desligada: você liga só o que quiser.",
+  ),
+  "boardPage.intro.start": dict("Start the setup", "Começar a configuração"),
   "boardPage.modes": dict("Mode of each automation", "Modo de cada automação"),
 
   // Queue page

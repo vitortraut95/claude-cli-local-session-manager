@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { LanguageContext } from "../hooks/useLanguage";
-import { detectBrowserLanguage, type Language } from "../i18n/translations";
+import { DEFAULT_LANGUAGE, type Language } from "../i18n/translations";
 import * as preferencesApi from "../services/preferencesApi";
 
 /** Holds the app language, consumed via useLanguage(); fetches preferences once for the whole app. */
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(detectBrowserLanguage());
+  const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -14,10 +14,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       .fetchPreferences()
       .then((prefs) => {
         if (cancelled) return;
-        setLanguageState(prefs.language ?? detectBrowserLanguage());
+        setLanguageState(prefs.language ?? DEFAULT_LANGUAGE);
       })
       .catch(() => {
-        // Keep the browser-detected language already in state.
+        // Keep the default language already in state.
       })
       .finally(() => {
         if (!cancelled) setLoaded(true);

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 
 /** The app's pages. Sessions is the home; the rest are reached from the navigation. */
-export type AppView = "sessions" | "board" | "queue" | "guide";
+export type AppView = "sessions" | "board" | "queue";
 
-const VIEWS: readonly AppView[] = ["sessions", "board", "queue", "guide"];
+const VIEWS: readonly AppView[] = ["sessions", "board", "queue"];
 const PARAM = "view";
 
 function readView(): AppView {

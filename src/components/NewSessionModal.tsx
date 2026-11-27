@@ -1,13 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useProjectFolders } from "../hooks/useProjectFolders";
 import { useSkillsHubStatus } from "../hooks/useSkillsHubStatus";
 import { useToast } from "../hooks/useToast";
-import * as preferencesApi from "../services/preferencesApi";
 import type { TerminalLayout } from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import { resolveApiErrorMessage } from "../utils/apiClient";
-import { Button } from "./Button";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Modal } from "./Modal";
 import { ProjectFolderField } from "./ProjectFolderField";
@@ -41,10 +39,7 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
   const folders = useProjectFolders(open);
   const { effectiveFolderPath, resetFolder } = folders;
 
-  const [defaultPromptLoaded, setDefaultPromptLoaded] = useState<string | null>(null);
-  const [loadingPrompt, setLoadingPrompt] = useState(true);
   const [promptText, setPromptText] = useState("");
-  const [savingDefaultPrompt, setSavingDefaultPrompt] = useState(false);
 
   const [launching, setLaunching] = useState(false);
   // Set when the chosen project's root already has an active session — holds the resolved repo
@@ -55,70 +50,10 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
   const { status: skillsHub, failed: skillsHubFailed } = useSkillsHubStatus(open);
   const [skillsHubModalOpen, setSkillsHubModalOpen] = useState(false);
 
-  // Fetched once on mount, not on every open — re-seeding on open would clobber an in-progress
-  // edit across an accidental close.
-  useEffect(() => {
-    let cancelled = false;
-    preferencesApi
-      .fetchPreferences()
-      .then((prefs) => {
-        if (cancelled) return;
-        const loaded = prefs.defaultSessionPrompt ?? "";
-        setDefaultPromptLoaded(loaded);
-        setPromptText(loaded);
-      })
-      .catch(() => {
-        if (!cancelled) setDefaultPromptLoaded("");
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingPrompt(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // The settings modal can change the stored default while this modal keeps its own copy — the
-  // draft follows along only when it still equals the old stored value (never edited).
-  const defaultPromptRef = useRef(defaultPromptLoaded);
-  useEffect(() => {
-    defaultPromptRef.current = defaultPromptLoaded;
-  }, [defaultPromptLoaded]);
-  useEffect(() => {
-    const onChanged = () => {
-      preferencesApi
-        .fetchPreferences()
-        .then((prefs) => {
-          const previous = defaultPromptRef.current ?? "";
-          const loaded = prefs.defaultSessionPrompt ?? "";
-          setDefaultPromptLoaded(loaded);
-          setPromptText((current) => (current === previous ? loaded : current));
-        })
-        .catch(() => undefined);
-    };
-    window.addEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, onChanged);
-    return () => window.removeEventListener(preferencesApi.PREFERENCES_CHANGED_EVENT, onChanged);
-  }, []);
-
   const resetForm = useCallback(() => {
     resetFolder();
-    setPromptText(defaultPromptLoaded ?? "");
-  }, [resetFolder, defaultPromptLoaded]);
-
-  const promptDirty = defaultPromptLoaded !== null && promptText !== defaultPromptLoaded;
-
-  const handleSaveDefaultPrompt = async () => {
-    setSavingDefaultPrompt(true);
-    try {
-      await preferencesApi.updatePreferences({ defaultSessionPrompt: promptText });
-      setDefaultPromptLoaded(promptText);
-      showToast(t("newTaskModal.promptSaved"), "success");
-    } catch (err) {
-      showToast(resolveApiErrorMessage(err, t, "newTaskModal.promptSaveError"), "error");
-    } finally {
-      setSavingDefaultPrompt(false);
-    }
-  };
+    setPromptText("");
+  }, [resetFolder]);
 
   const trimmedFolder = effectiveFolderPath.trim();
   const canSubmit = trimmedFolder.length > 0 && !launching;
@@ -203,29 +138,13 @@ export function NewSessionModal({ open, onClose, onSessionCreated }: NewSessionM
         />
 
         <div>
-          <div className="mb-1 flex items-center justify-between">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-              {t("newTaskModal.promptLabel")}
-            </label>
-            {promptDirty && (
-              <Button
-                variant="link"
-                size="none"
-                onClick={handleSaveDefaultPrompt}
-                disabled={savingDefaultPrompt}
-              >
-                {savingDefaultPrompt ? t("newTaskModal.saving") : t("newTaskModal.saveAsDefault")}
-              </Button>
-            )}
-          </div>
+          <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+            {t("newTaskModal.promptLabel")}
+          </label>
           <textarea
             value={promptText}
             onChange={(event) => setPromptText(event.target.value)}
-            placeholder={
-              loadingPrompt
-                ? t("newTaskModal.loadingDefaultPrompt")
-                : t("newSessionModal.promptPlaceholder")
-            }
+            placeholder={t("newSessionModal.promptPlaceholder")}
             rows={8}
             className={TEXTAREA_CLASSNAME}
           />

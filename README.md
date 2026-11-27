@@ -41,14 +41,14 @@ opens the browser. Stop the app by closing that terminal.
 ## Features
 
 - **Layout** — a navigation sidebar (a bottom bar on phones) with the pages Sessions, Board and
-  Task queue, then Cleanup, Team skills and the Guide; plan usage, updates, Settings, theme and
+  Task queue, then Cleanup and Team skills; plan usage, updates, Settings, theme and
   language sit at its foot. New task (also the `N` key), New session, Refine tasks, Cleanup,
   Settings and the session's dialogs open as side panels, so the list stays in view. `/` jumps to
   the search, Esc closes panels and menus. Dark and light themes share the same tokens
   (`src/index.css`): violet is the brand, green = running, amber = waiting on you, red = errors only
-- **Guide and welcome tour** — the Guide page lists every feature, what it does and how to get
-  there, with an "Open" button that goes straight to it; a short tour runs on the first visit
-  (replay it from the Guide)
+- **Welcome tour** — a short tour of where everything is runs on the first visit
+- **Board (beta)** — on by default; until its guided setup is finished, opening the Board shows
+  what it does and the setup steps, and the setup opens right away
 - **Sessions page** — the list is grouped by what needs you first: errors (missing folder, a failed
   queue launch, a failed test or review from the Board) and sessions waiting for your answer, then
   running, stopped, and the done ones folded at the end; quick filters for "needs you" and
@@ -170,7 +170,7 @@ opens the browser. Stop the app by closing that terminal.
 - Self-update button at the foot of the navigation (and silently on start): resets the checkout to
   `origin/main`. With local changes (uncommitted/new files or unpushed commits) it never runs on
   its own — the button turns amber and asks before discarding them
-- pt/en language switcher
+- pt/en language switcher (Portuguese until someone picks another)
 
 ## Structure
 

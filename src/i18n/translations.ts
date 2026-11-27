@@ -1,4 +1,4 @@
-import type { Language } from "../services/preferencesApi";
+import { DEFAULT_LANGUAGE, type Language } from "../services/preferencesApi";
 import type { Dict } from "./dict";
 import { common } from "./locales/common";
 import { apiErrors } from "./locales/apiErrors";
@@ -16,25 +16,15 @@ import { boardWatcher } from "./locales/boardWatcher";
 import { automationSetup } from "./locales/automationSetup";
 import { automationModes } from "./locales/automationModes";
 import { shell } from "./locales/shell";
-import { guide } from "./locales/guide";
+import { tour } from "./locales/tour";
 
 export type { Language };
+export { DEFAULT_LANGUAGE };
 
 export const LANGUAGE_OPTIONS: { code: Language; label: string }[] = [
   { code: "en", label: "English" },
   { code: "pt", label: "Português" },
 ];
-
-/** Maps the browser's language to a supported one (English if unrecognized) — used while
- *  `UserPreferences.language` is null. */
-export function detectBrowserLanguage(): Language {
-  const candidates = navigator.languages ?? [navigator.language];
-  for (const raw of candidates) {
-    const prefix = raw.slice(0, 2).toLowerCase();
-    if (prefix === "pt" || prefix === "en") return prefix;
-  }
-  return "en";
-}
 
 /** Every user-visible string in the app, per language. */
 export const translations = {
@@ -54,7 +44,7 @@ export const translations = {
   ...automationSetup,
   ...automationModes,
   ...shell,
-  ...guide,
+  ...tour,
 } satisfies Record<string, Dict>;
 
 export type TranslationKey = keyof typeof translations;

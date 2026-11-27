@@ -11,7 +11,6 @@ import { WorktreeSetupEditor } from "./WorktreeSetupEditor";
 export type BigEditorKey =
   | "workspaceDirs"
   | "defaultPrompt"
-  | "defaultSessionPrompt"
   | "branchTypes"
   | "recentProjectPaths"
   | "skillsHubRepoUrl"
@@ -101,27 +100,6 @@ export function SettingsBigEditor({
           onCancel={onClose}
           onSave={async (value) => {
             if (await save({ defaultPrompt: value })) onClose();
-          }}
-          render={(value, setValue) => (
-            <textarea
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-              autoFocus
-              rows={24}
-              className={TEXTAREA_CLASS}
-            />
-          )}
-        />
-      );
-    case "defaultSessionPrompt":
-      return (
-        <BigEditorModal
-          title={t("settings.defaultSessionPrompt.title")}
-          description={t("settings.defaultSessionPrompt.description")}
-          initial={prefs.defaultSessionPrompt ?? ""}
-          onCancel={onClose}
-          onSave={async (value) => {
-            if (await save({ defaultSessionPrompt: value })) onClose();
           }}
           render={(value, setValue) => (
             <textarea

@@ -32,8 +32,8 @@ function ticketKeys(text: string): string[] {
 
 /**
  * "Refine tasks": a sprint and/or pasted tickets + additional notes, opened as a new session running
- * `taskRefinementSkill` (both empty = the skill offers the team's sprints). The fields stay locked
- * until that skill is chosen (here, in the Skills modal or in Settings) and installed.
+ * `taskRefinementSkill` (both empty = the skill offers the team's sprints). Without the skill it
+ * still launches, with a plain refinement request; the hint points to choosing one.
  *
  * Always mounted so an accidental close doesn't lose what was pasted — only a successful launch
  * resets the form.
@@ -70,7 +70,7 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
   const installedSkills = skillsHub?.installedSkills ?? [];
   const skillReady = Boolean(skill) && installedSkills.some((s) => s.name === skill);
   const keys = ticketKeys(tasks);
-  const canSubmit = skillReady && !launching;
+  const canSubmit = !launching;
 
   const launch = async (layout?: TerminalLayout) => {
     if (!canSubmit) return;
@@ -137,7 +137,6 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
             type="text"
             value={sprint}
             onChange={(event) => setSprint(event.target.value)}
-            disabled={!skillReady}
             placeholder={t("refinementModal.sprintPlaceholder")}
             className={FIELD_CLASSNAME}
           />
@@ -150,7 +149,6 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
           <textarea
             value={tasks}
             onChange={(event) => setTasks(event.target.value)}
-            disabled={!skillReady}
             placeholder={t("refinementModal.tasksPlaceholder")}
             rows={5}
             className={FIELD_CLASSNAME}
@@ -170,8 +168,7 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
               type="checkbox"
               checked={directToPo}
               onChange={(event) => setDirectToPo(event.target.checked)}
-              disabled={!skillReady}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-violet-600 dark:accent-violet-400"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-violet-600 dark:accent-violet-400"
             />
             {t("refinementModal.directToPoLabel")}
           </label>
@@ -187,7 +184,6 @@ export function RefinementModal({ open, onClose, onSessionCreated }: RefinementM
           <textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            disabled={!skillReady}
             placeholder={t("refinementModal.notesPlaceholder")}
             rows={4}
             className={FIELD_CLASSNAME}

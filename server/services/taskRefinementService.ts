@@ -1,15 +1,16 @@
+import { DEFAULT_LANGUAGE } from "../../shared/preferences.js";
 import { resolveInstalledSkill } from "./installedSkillService.js";
 import { getUserPreferences } from "./preferencesService.js";
 import { launchTaskTerminal } from "./taskService.js";
 import { firstWorkspaceDir } from "./workspaceService.js";
-import { BadRequestError } from "../utils/httpError.js";
 import type { TerminalLayout } from "../../shared/preferences.js";
 import type { RefinementInput } from "../../shared/tasks.js";
 
 /**
  * "Refine tasks": a batch of tickets and/or a sprint handed to `taskRefinementSkill` in a session of
- * its own (neither = the skill offers the team's sprints). No repo, branch or worktree — it opens in
- * the first workspace dir, like a queue entry without repo.
+ * its own (neither = the skill offers the team's sprints). Without a skill chosen, Claude gets a
+ * plain refinement request instead. No repo, branch or worktree — it opens in the first workspace
+ * dir, like a queue entry without repo.
  */
 
 const KEY_PATTERN = /\b[A-Za-z][A-Za-z0-9]+-\d+\b/g;
@@ -21,12 +22,16 @@ const TEXT = {
     sprint: "Sprint: {sprint}",
     directToPo: "Straight to the PO (skip the technical round with the devs).",
     notes: "Additional notes:",
+    noSkill:
+      "Refine and estimate these tasks before the sprint, without developing anything: read each ticket, list doubts and risks, and suggest an estimate. Write nothing to Jira without my OK.",
   },
   pt: {
     name: "Refinamento",
     sprint: "Sprint: {sprint}",
     directToPo: "Direto pro PO (pula a etapa técnica com os devs).",
     notes: "Observações adicionais:",
+    noSkill:
+      "Refine e estime estas tarefas antes da sprint, sem desenvolver nada: leia cada ticket, liste dúvidas e riscos e sugira uma estimativa. Não grave nada no Jira sem o meu OK.",
   },
 };
 
@@ -51,14 +56,7 @@ export async function launchRefinement(
     "TASK_REFINEMENT_SKILL_NOT_INSTALLED",
     "taskRefinementSkill",
   );
-  if (!skill) {
-    throw new BadRequestError(
-      "TASK_REFINEMENT_SKILL_REQUIRED",
-      "Choose the refinement skill first.",
-    );
-  }
-
-  const text = TEXT[prefs.language ?? "en"];
+  const text = TEXT[prefs.language ?? DEFAULT_LANGUAGE];
   const trimmedTasks = tasks.trim();
   const trimmedSprint = sprint.trim();
   const trimmedNotes = notes.trim();
@@ -70,7 +68,7 @@ export async function launchRefinement(
     .filter(Boolean)
     .join("\n");
   const prompt = [
-    request ? `/${skill}\n${request}` : `/${skill}`,
+    skill ? (request ? `/${skill}\n${request}` : `/${skill}`) : `${text.noSkill}\n${request}`,
     trimmedNotes && `${text.notes}\n${trimmedNotes}`,
   ]
     .filter(Boolean)

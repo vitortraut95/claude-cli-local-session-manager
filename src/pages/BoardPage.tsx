@@ -15,13 +15,16 @@ import {
   Wrench,
   EyeOff,
   Pencil,
+  Power,
+  Wand2,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useShell } from "../hooks/useShell";
 import { useToast } from "../hooks/useToast";
 import type { TranslationKey } from "../i18n/translations";
 import * as boardWatcherApi from "../services/boardWatcherApi";
+import * as preferencesApi from "../services/preferencesApi";
 import * as tasksApi from "../services/tasksApi";
 import type {
   AutomationSettings,
@@ -33,6 +36,7 @@ import { resolveApiErrorMessage } from "../utils/apiClient";
 import { isBoardDemo } from "../utils/boardDemo";
 import { queueItems } from "../utils/boardQueue";
 import { translateServerText } from "../utils/boardWatcher";
+import { SETUP_STEPS } from "../utils/automationSetup";
 import { formatUpdatedAt } from "../utils/formatDate";
 import { AUTOMATIONS } from "../../shared/boardWatcher";
 import { AnchoredMenu } from "../components/AnchoredMenu";
@@ -68,7 +72,18 @@ export function BoardPage() {
 
 function BoardOff() {
   const { t } = useLanguage();
-  const { openSettings } = useShell();
+  const { showToast } = useToast();
+  const [turningOn, setTurningOn] = useState(false);
+  const turnOn = async () => {
+    setTurningOn(true);
+    try {
+      await preferencesApi.updatePreferences({ boardAutomations: true });
+      preferencesApi.notifyPreferencesChanged();
+    } catch (err) {
+      showToast(resolveApiErrorMessage(err, t, "board.actionError"), "error");
+      setTurningOn(false);
+    }
+  };
   return (
     <div className="flex min-h-dvh flex-col">
       <PageHeader
@@ -87,8 +102,78 @@ function BoardOff() {
           {t("boardPage.off.title")}
         </h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{t("boardPage.off.body")}</p>
-        <Button className="mt-6" onClick={openSettings} icon={<Settings className="h-4 w-4" />}>
-          {t("boardPage.off.openSettings")}
+        <Button
+          className="mt-6"
+          onClick={() => void turnOn()}
+          disabled={turningOn}
+          icon={<Power className="h-4 w-4" />}
+        >
+          {t("boardPage.off.turnOn")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+const SETUP_STEP_HINTS: Record<(typeof SETUP_STEPS)[number], TranslationKey> = {
+  claude: "boardPage.intro.step.claude",
+  jira: "boardPage.intro.step.jira",
+  board: "boardPage.intro.step.board",
+  bitbucket: "boardPage.intro.step.bitbucket",
+  extras: "boardPage.intro.step.extras",
+  finish: "boardPage.intro.step.finish",
+};
+
+/** Shown until the guided setup is finished: what the Board does and the steps to connect it. */
+function BoardSetupIntro({ onStart }: { onStart: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <PageHeader
+        title={
+          <>
+            <WatcherEye state="sleeping" className="h-6 w-10" />
+            {t("board.title")} <BetaBadge />
+          </>
+        }
+        subtitle={t("boardPage.subtitle")}
+      />
+      <div className="mx-auto flex w-full max-w-2xl flex-col px-6 py-12">
+        <div className="flex flex-col items-center text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+            <Wand2 className="h-7 w-7" aria-hidden="true" />
+          </span>
+          <h2 className="mt-5 text-xl font-semibold text-gray-900 dark:text-gray-100">
+            {t("boardPage.intro.title")}
+          </h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            {t("boardPage.intro.body")}
+          </p>
+        </div>
+        <ol className="mt-8 flex flex-col gap-2">
+          {SETUP_STEPS.map((step, index) => (
+            <li
+              key={step}
+              className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900"
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+                {index + 1}
+              </span>
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                {t(SETUP_STEP_HINTS[step])}
+              </span>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
+          {t("boardPage.intro.note")}
+        </p>
+        <Button
+          className="mt-6 self-center"
+          onClick={onStart}
+          icon={<Wand2 className="h-4 w-4" />}
+        >
+          {t("boardPage.intro.start")}
         </Button>
       </div>
     </div>
@@ -107,6 +192,7 @@ function BoardWatcher() {
   const [feedback, setFeedback] = useState<Record<string, WatcherFeedback>>({});
   const [liveCurrent, setLiveCurrent] = useState<WatcherActivity["current"]>(null);
   const [tool, setTool] = useState<"daily" | "homolog" | "setup" | null>(null);
+  const [settingsRevision, setSettingsRevision] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -157,7 +243,20 @@ function BoardWatcher() {
     return () => {
       cancelled = true;
     };
-  }, [automationRevision]);
+  }, [automationRevision, settingsRevision]);
+
+  // Until the guided setup is finished the page is its intro, and the setup opens on arrival.
+  const needsSetup = settings !== null && (!settings.configured || !settings.enabled);
+  const setupOffered = useRef(false);
+  useEffect(() => {
+    if (!needsSetup || setupOffered.current) return;
+    setupOffered.current = true;
+    setTool("setup");
+  }, [needsSetup]);
+  const closeSetup = () => {
+    setTool(null);
+    setSettingsRevision((value) => value + 1);
+  };
 
   // The history changes when a look or a session finishes, so it's re-read then.
   const historyRefreshKey = `${status?.lastTickAt ?? ""}|${String(status?.reviewing ?? false)}`;
@@ -274,6 +373,15 @@ function BoardWatcher() {
 
   const chipClass =
     "inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium ring-1 ring-inset transition before:h-1.5 before:w-1.5 before:rounded-full before:content-[''] hover:brightness-110";
+
+  if (needsSetup) {
+    return (
+      <>
+        <BoardSetupIntro onStart={() => setTool("setup")} />
+        {tool === "setup" && <AutomationSetupModal onClose={closeSetup} />}
+      </>
+    );
+  }
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -586,7 +694,7 @@ function BoardWatcher() {
         />
       </div>
 
-      {tool === "setup" && <AutomationSetupModal onClose={() => setTool(null)} />}
+      {tool === "setup" && <AutomationSetupModal onClose={closeSetup} />}
       {(tool === "daily" || tool === "homolog") && (
         <Modal
           open

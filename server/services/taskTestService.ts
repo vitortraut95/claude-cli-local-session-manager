@@ -1,3 +1,4 @@
+import { DEFAULT_LANGUAGE } from "../../shared/preferences.js";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import type { UserPreferences } from "./preferencesService.js";
@@ -240,7 +241,7 @@ export async function launchTestEntry(
     }
   }
 
-  const text = PROMPT_TEXT[prefs.language ?? "en"];
+  const text = PROMPT_TEXT[prefs.language ?? DEFAULT_LANGUAGE];
   const dir = await firstWorkspaceDir(prefs);
   // A grouped entry tests every ticket on the first one's branch.
   const tasks = queueEntryTasks(entry);

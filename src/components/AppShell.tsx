@@ -12,7 +12,6 @@ import { useToast } from "../hooks/useToast";
 import { useUpdate } from "../hooks/useUpdate";
 import { useUsageLimits } from "../hooks/useUsageLimits";
 import { BoardPage } from "../pages/BoardPage";
-import { GuidePage } from "../pages/GuidePage";
 import { SessionsPage } from "../pages/SessionsPage";
 import { TaskQueuePage } from "../pages/TaskQueuePage";
 import * as preferencesApi from "../services/preferencesApi";
@@ -99,7 +98,7 @@ export function AppShell() {
         .then((prefs) => {
           if (cancelled) return;
           setGridLayout(prefs.terminalLayout === "limux-grid");
-          setAutomationsOn(prefs.boardAutomations ?? false);
+          setAutomationsOn(prefs.boardAutomations ?? true);
           setSetupPrefs(
             prefs.workspaceDirs == null || prefs.skillsHub?.repoUrl === null ? prefs : null,
           );
@@ -182,10 +181,6 @@ export function AppShell() {
         setPanel("automation");
       },
       automationRevision,
-      startTour: () => {
-        setTourStep(0);
-        setTourOpen(true);
-      },
       automationsOn,
       resumeOpen,
       resumingOpen,
@@ -294,7 +289,6 @@ export function AppShell() {
             onChanged={onQueueChanged}
             newTaskRequest={newTaskRequest}
           />
-          {view === "guide" && <GuidePage />}
         </div>
       </div>
 

@@ -42,11 +42,6 @@ export const settings = {
     "Sent in every development session the task queue opens, after the task link.",
     "Vai em toda sessão de desenvolvimento que a fila de tarefas abre, depois do link da tarefa.",
   ),
-  "settings.defaultSessionPrompt.title": dict("Default session prompt", "Prompt padrão de sessão"),
-  "settings.defaultSessionPrompt.description": dict(
-    'Pre-filled instructions in the "New session" modal.',
-    'Instruções que já vêm preenchidas no modal "Nova sessão".',
-  ),
   "settings.branchTypes.title": dict("Branch types", "Tipos de branch"),
   "settings.branchTypes.description": dict(
     'Options of the "New task" branch type select — the first one is the default.',
@@ -62,14 +57,6 @@ export const settings = {
   "settings.recentProjectPaths.placeholder": dict(
     "/absolute/path/to/repo",
     "/caminho/absoluto/do/repo",
-  ),
-  "settings.useWorktreeByDefault.title": dict(
-    "Use a worktree by default",
-    "Usar worktree por padrão",
-  ),
-  "settings.useWorktreeByDefault.description": dict(
-    '"New task" fallback before a folder is chosen — once it is, the app suggests a worktree only if the repo root already has an active session.',
-    'Padrão do "Nova tarefa" antes de escolher a pasta — depois de escolhida, o app sugere worktree só se a raiz do repo já tiver uma sessão ativa.',
   ),
   "settings.useAutoPermissionModeByDefault.title": dict(
     "Start tasks with --permission-mode auto",

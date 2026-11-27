@@ -134,7 +134,7 @@ export function SettingsList({
               onClick={() => onOpenAutomationSetup(false)}
             />
             <Toggle
-              checked={prefs.boardAutomations ?? false}
+              checked={prefs.boardAutomations ?? true}
               busy={savingKey === "boardAutomations"}
               onChange={(checked) =>
                 void save({ boardAutomations: checked }).then((saved) => {
@@ -245,20 +245,6 @@ export function SettingsList({
         control={<EditButton onClick={() => onEdit("defaultPrompt")} />}
       />
       <PreferenceRow
-        title={t("settings.defaultSessionPrompt.title")}
-        description={t("settings.defaultSessionPrompt.description")}
-        keyName="defaultSessionPrompt"
-        preview={
-          prefs.defaultSessionPrompt?.trim()
-            ? t("settings.preview.text", {
-                firstLine: prefs.defaultSessionPrompt.trim().split("\n")[0] ?? "",
-                lines: prefs.defaultSessionPrompt.split("\n").length,
-              })
-            : t("settings.preview.emptyText")
-        }
-        control={<EditButton onClick={() => onEdit("defaultSessionPrompt")} />}
-      />
-      <PreferenceRow
         title={t("settings.branchTypes.title")}
         description={t("settings.branchTypes.description")}
         keyName="branchTypes"
@@ -271,18 +257,6 @@ export function SettingsList({
         keyName="recentProjectPaths"
         preview={listPreview(prefs.recentProjectPaths)}
         control={<EditButton onClick={() => onEdit("recentProjectPaths")} />}
-      />
-      <PreferenceRow
-        title={t("settings.useWorktreeByDefault.title")}
-        description={t("settings.useWorktreeByDefault.description")}
-        keyName="useWorktreeByDefault"
-        control={
-          <Toggle
-            checked={prefs.useWorktreeByDefault}
-            busy={savingKey === "useWorktreeByDefault"}
-            onChange={(checked) => void save({ useWorktreeByDefault: checked })}
-          />
-        }
       />
       <PreferenceRow
         title={t("settings.useAutoPermissionModeByDefault.title")}

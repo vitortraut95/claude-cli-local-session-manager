@@ -1,7 +1,7 @@
 const SEEN_KEY = "onboarding.tour.v1";
 
-/** Whether this browser already finished or skipped the welcome tour (it then only starts from
- *  the Guide). */
+/** Whether this browser already finished or skipped the welcome tour (it then doesn't show
+ *  again). */
 export function hasSeenTour(): boolean {
   try {
     return window.localStorage.getItem(SEEN_KEY) === "1";

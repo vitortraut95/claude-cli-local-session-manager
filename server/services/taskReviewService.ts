@@ -1,3 +1,4 @@
+import { DEFAULT_LANGUAGE } from "../../shared/preferences.js";
 import { randomUUID } from "node:crypto";
 import {
   bitbucketCredentialsFromEnv,
@@ -142,7 +143,7 @@ export async function launchReviewEntry(
     throw err;
   }
 
-  const text = PROMPT_TEXT[prefs.language ?? "en"];
+  const text = PROMPT_TEXT[prefs.language ?? DEFAULT_LANGUAGE];
   const link = entry.link ?? prUrl(config, pr) ?? entry.key;
   const sessionId = randomUUID();
   const url = `http://localhost:${API_PORT}/sessions/${sessionId}/review-result`;

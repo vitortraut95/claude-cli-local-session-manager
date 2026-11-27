@@ -60,7 +60,6 @@ import {
 export const tasksRouter = Router();
 
 type LateFields =
-  | "defaultSessionPrompt"
   | "workspaceDirs"
   | "skillsHub"
   | "jenkinsBaseUrl"
@@ -83,11 +82,8 @@ function isValidPreferences(
   const candidate = body as Record<string, unknown>;
   return (
     typeof candidate.defaultPrompt === "string" &&
-    (candidate.defaultSessionPrompt === undefined ||
-      typeof candidate.defaultSessionPrompt === "string") &&
     Array.isArray(candidate.branchTypes) &&
     candidate.branchTypes.every((item) => typeof item === "string") &&
-    typeof candidate.useWorktreeByDefault === "boolean" &&
     typeof candidate.useAutoPermissionModeByDefault === "boolean" &&
     (candidate.language === null ||
       candidate.language === "en" ||
@@ -142,8 +138,7 @@ tasksRouter.put("/preferences", async (req, res) => {
     throw new BadRequestError(
       "MALFORMED_PREFERENCES",
       "Malformed preferences payload — expected { defaultPrompt: string, " +
-        "defaultSessionPrompt?: string, branchTypes: string[], " +
-        "useWorktreeByDefault: boolean, useAutoPermissionModeByDefault: boolean, " +
+        "branchTypes: string[], useAutoPermissionModeByDefault: boolean, " +
         'language: "en"|"pt"|null, ' +
         "recentProjectPaths: string[], keepRecentSessionsPerProject: number, " +
         "workspaceDirs?: string[] | null, skillsHub?: { repoUrl?, path, catalogs, skills?, " +

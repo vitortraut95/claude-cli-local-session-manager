@@ -131,10 +131,6 @@ export const apiErrors = {
     "No local clone of this PR's repo in the workspace folders.",
     "Nenhum clone local do repo deste PR nas pastas de trabalho.",
   ),
-  "apiError.taskRefinementSkillRequired": dict(
-    "Choose the refinement skill first.",
-    "Escolha a skill de refinamento primeiro.",
-  ),
   "apiError.taskRefinementSkillNotInstalled": dict(
     "The configured refinement skill isn't installed on this machine anymore. Choose another one or install it again.",
     "A skill de refinamento configurada não está mais instalada nesta máquina. Escolha outra ou instale de novo.",

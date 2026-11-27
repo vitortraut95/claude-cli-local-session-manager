@@ -51,13 +51,6 @@ const STEPS: Step[] = [
     body: "tour.tools.body",
     targets: ["cleanup", "skills", "settings"],
   },
-  {
-    id: "guide",
-    title: "tour.guide.title",
-    body: "tour.guide.body",
-    targets: ["guide"],
-    view: "guide",
-  },
 ];
 
 type WelcomeTourProps = {
@@ -167,7 +160,7 @@ export function WelcomeTour({
             }
             const next = STEPS[index + 1]!;
             // Following along: the steps about a page show that page.
-            if (next.view && next.view !== "guide") onNavigate(next.view);
+            if (next.view) onNavigate(next.view);
             setIndex(index + 1);
           }}
         >

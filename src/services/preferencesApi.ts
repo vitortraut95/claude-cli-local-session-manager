@@ -5,6 +5,7 @@ import type {
   WorkspaceDirStatus,
   WorkspaceDirSuggestion,
 } from "../../shared/preferences";
+export { DEFAULT_LANGUAGE } from "../../shared/preferences";
 export type {
   HeavyLimitsMode,
   Language,

@@ -1,3 +1,4 @@
+import { DEFAULT_LANGUAGE } from "../../shared/preferences.js";
 import path from "node:path";
 import { addRepoToTask } from "./taskGroupService.js";
 import { getUserPreferences, type UserPreferences } from "./preferencesService.js";
@@ -203,7 +204,7 @@ function composePrompt(
   linked: string[],
   rootNote = "",
 ): string {
-  const text = PROMPT_TEXT[prefs.language ?? "en"];
+  const text = PROMPT_TEXT[prefs.language ?? DEFAULT_LANGUAGE];
   const tasks = queueEntryTasks(entry);
   return [
     tasks.length > 1
@@ -429,7 +430,7 @@ async function launchEntry(
 
 /** The note for a multi-repo session: the task branch and the call that makes it in each repo. */
 function multiRepoNote(entry: QueueEntry, prefs: UserPreferences, dir: string): string {
-  const text = PROMPT_TEXT[prefs.language ?? "en"];
+  const text = PROMPT_TEXT[prefs.language ?? DEFAULT_LANGUAGE];
   const branch = queueEntryBranch(entry);
   const body = JSON.stringify({
     folderPath: "<repo>",
@@ -459,7 +460,7 @@ async function launchRootEntry(
   const addDirs = entry.multiRepo ? await otherWorkspaceDirs(prefs, dir) : [];
   const rootNote = entry.multiRepo
     ? multiRepoNote(entry, prefs, dir)
-    : PROMPT_TEXT[prefs.language ?? "en"].noRepo.replace("{dir}", dir);
+    : PROMPT_TEXT[prefs.language ?? DEFAULT_LANGUAGE].noRepo.replace("{dir}", dir);
   const { sessionId } = await tracker.run("terminal", () =>
     launchTaskTerminal({
       worktreePath: dir,
